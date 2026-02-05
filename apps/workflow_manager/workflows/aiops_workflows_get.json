@@ -1,0 +1,78 @@
+{
+  "name": "aiops-workflows-get",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "catalog/workflows/get",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Catalog Workflows Get)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst request = ($json && typeof $json === 'object') ? $json : {};\nconst headers = (request.headers && typeof request.headers === 'object') ? request.headers : {};\n\nfunction getHeader(name) {\n  const lower = String(name).toLowerCase();\n  if (headers[lower] !== undefined) return headers[lower];\n  if (headers[name] !== undefined) return headers[name];\n  const key = Object.keys(headers).find((k) => String(k).toLowerCase() === lower);\n  return key ? headers[key] : undefined;\n}\n\nfunction error(status, message) {\n  return [{ json: { ok: false, status_code: status, error: message } }];\n}\n\nconst sharedToken = $env.N8N_WORKFLOWS_TOKEN;\nif (!sharedToken) return error(500, 'N8N_WORKFLOWS_TOKEN is not set');\n\nlet provided = getHeader('authorization') || getHeader('x-aiops-workflows-token');\nif (provided && /^bearer\\s+/i.test(provided)) {\n  provided = provided.replace(/^bearer\\s+/i, '').trim();\n}\nif (!provided || provided !== sharedToken) {\n  return error(401, 'invalid workflows token');\n}\n\nlet apiKey = getHeader('x-aiops-n8n-api-key') || $env.N8N_API_KEY || $env.N8N_API_KEY || '';\napiKey = String(apiKey).trim();\nif (!apiKey) return error(500, 'N8N_API_KEY is not set (or x-aiops-n8n-api-key)');\n\nconst baseUrlRaw = $env.N8N_INTERNAL_API_BASE_URL || $env.N8N_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5678';\nconst baseUrl = baseUrlRaw.replace(/\\/$/, '');\n\nconst query = (request.query && typeof request.query === 'object') ? request.query : (request ?? {});\nconst workflowId = String(query.workflow_id ?? query.workflowId ?? '').trim();\nconst workflowName = String(query.name ?? '').trim();\n\nif (!workflowId && !workflowName) {\n  return error(400, 'workflow_id or name is required');\n}\n\nlet id = workflowId;\nif (!id) {\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${baseUrl}/api/v1/workflows`,\n    qs: {\n      name: workflowName,\n      limit: 2\n    },\n    json: true,\n    headers: {\n      'X-N8N-API-KEY': apiKey\n    }\n  });\n\n  const items = response?.data ?? response?.workflows ?? response?.items ?? [];\n  if (!items || items.length == 0) {\n    return error(404, 'workflow not found');\n  }\n  if (items.length > 1) {\n    return error(409, 'multiple workflows matched name');\n  }\n  id = items[0].id;\n}\n\nconst workflowResponse = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${baseUrl}/api/v1/workflows/${id}`,\n  qs: {\n    excludePinnedData: true\n  },\n  json: true,\n  headers: {\n    'X-N8N-API-KEY': apiKey\n  }\n});\n\nconst workflow = workflowResponse?.data ?? workflowResponse;\nif (!workflow) return error(404, 'workflow not found');\n\nconst nodes = (workflow.nodes ?? []).map((node) => {\n  const cleaned = { ...node };\n  if (cleaned.credentials) delete cleaned.credentials;\n  return cleaned;\n});\n\nconst data = {\n  id: workflow.id ?? id,\n  name: workflow.name ?? null,\n  active: workflow.active ?? null,\n  created_at: workflow.createdAt ?? workflow.created_at ?? null,\n  updated_at: workflow.updatedAt ?? workflow.updated_at ?? null,\n  tags: workflow.tags ?? [],\n  description: workflow.description ?? workflow.settings?.description ?? null,\n  settings: workflow.settings ?? null,\n  meta: workflow.meta ?? null,\n  aiops_catalog: workflow?.meta?.aiops_catalog ?? workflow?.aiops_catalog ?? null,\n  nodes,\n  connections: workflow.connections ?? {}\n};\n\nconst workflowHash = crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');\n\nreturn [{ json: { ok: true, status_code: 200, data, meta: { workflow_hash: workflowHash } } }];\n"
+      },
+      "id": "2",
+      "name": "Get Workflow",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: $json.ok, data: $json.data, meta: $json.meta, error: $json.error } }}",
+        "options": {
+          "responseCode": "={{$json.status_code}}"
+        }
+      },
+      "id": "3",
+      "name": "Respond Catalog Get",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        780,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Catalog Workflows Get)": {
+      "main": [
+        [
+          {
+            "node": "Get Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Workflow": {
+      "main": [
+        [
+          {
+            "node": "Respond Catalog Get",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionTimeout": 300
+  }
+}

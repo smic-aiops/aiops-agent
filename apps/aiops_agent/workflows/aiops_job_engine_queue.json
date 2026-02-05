@@ -1,0 +1,817 @@
+{
+  "name": "aiops-job-engine-queue",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "jobs/job-engine/enqueue",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Jobs Enqueue)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst request = ($json && typeof $json === 'object') ? $json : {};\nconst body = (request.body && typeof request.body === 'object') ? request.body : request;\n\nlet { context_id, job_plan, callback_url, trace_id, source, reply_target, actor, normalized_event } = body;\n\nfunction normalizeWebhookBase(raw) {\n  let base = String(raw ?? '').trim().replace(/\\/+$/, '');\n  if (!base) return '';\n\n  // まず /webhook までを取り出す\n  const webhookIndex = base.indexOf('/webhook');\n  if (webhookIndex >= 0) {\n    base = base.slice(0, webhookIndex) + '/webhook';\n  } else {\n    base = base + '/webhook';\n  }\n\n  // :5678 は「内部HTTP」か「誤って外部URLにポートが付いた」かが混在する。\n  // - localhost/private IP の場合は http:// を優先（https は EPROTO になりやすい）\n  // - public host の場合は :5678 を落として https:// を優先\n  const m = base.match(/^https?:\\/\\/([^/]+):5678(\\/|$)/);\n  if (m) {\n    const host = m[1];\n    const isLocal = host === 'localhost'\n      || host === '127.0.0.1'\n      || /^10\\./.test(host)\n      || /^192\\.168\\./.test(host)\n      || /^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(host);\n    if (isLocal) {\n      base = base.replace(/^https:\\/\\//, 'http://');\n    } else {\n      base = base.replace(/^https?:\\/\\/([^/]+):5678(\\/|$)/, 'https://$1$2');\n    }\n  }\n\n  return base.replace(/\\/+$/, '');\n}\n\nif (!callback_url) {\n  const explicit = $env.N8N_ADAPTER_CALLBACK_URL || $env.N8N_JOB_ENGINE_CALLBACK_URL || '';\n  if (explicit) {\n    callback_url = String(explicit);\n  } else {\n    const derived = request.webhookUrl ? String(request.webhookUrl).replace(/\\/webhook\\/.*/, '/webhook') : '';\n    const baseRaw = derived\n      || $env.N8N_WEBHOOK_BASE_URL\n      || $env.N8N_WEBHOOK_BASE_URL\n      || $env.N8N_ADAPTER_BASE_URL\n      || $env.N8N_APPROVAL_BASE_URL\n      || '';\n    const webhookBase = normalizeWebhookBase(baseRaw);\n    if (webhookBase) {\n      callback_url = webhookBase + '/callback/job-engine';\n    }\n  }\n}\n\nsource = String(source ?? 'unknown').trim() || 'unknown';\nreply_target = (reply_target && typeof reply_target === 'object' && !Array.isArray(reply_target)) ? reply_target : {};\nactor = (actor && typeof actor === 'object' && !Array.isArray(actor)) ? actor : {};\nnormalized_event = (normalized_event && typeof normalized_event === 'object' && !Array.isArray(normalized_event)) ? normalized_event : {};\n\nconst missing = [];\nif (!context_id) missing.push('context_id');\nif (!job_plan) missing.push('job_plan');\nif (!callback_url) missing.push('callback_url');\nif (missing.length) throw new Error(missing.join(', ') + ' required');\n\nconst jobId = crypto.randomUUID();\n\nreturn [{ json: { job_id: jobId, context_id, job_plan, callback_url, trace_id, source, reply_target, actor, normalized_event } }];"
+      },
+      "id": "2",
+      "name": "Assign job_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ins_ctx AS (\n  INSERT INTO aiops_context (context_id, source, reply_target, actor, normalized_event, status)\n  VALUES (\n    NULLIF(NULLIF('{{ $json.context_id }}',''), 'undefined')::uuid,\n    '{{ String($json.source ?? \"unknown\").replace(/'/g, \"''\") }}',\n    COALESCE(NULLIF('{{ JSON.stringify($json.reply_target || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb),\n    COALESCE(NULLIF('{{ JSON.stringify($json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb),\n    COALESCE(NULLIF('{{ JSON.stringify($json.normalized_event || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb),\n    'open'\n  )\n  ON CONFLICT (context_id) DO NOTHING\n  RETURNING context_id\n)\nINSERT INTO aiops_job_queue (job_id, context_id, job_plan, callback_url, trace_id, status)\nVALUES (\n  NULLIF(NULLIF('{{ $json.job_id }}',''), 'undefined')::uuid,\n  NULLIF(NULLIF('{{ $json.context_id }}',''), 'undefined')::uuid,\n  COALESCE(NULLIF('{{ JSON.stringify($json.job_plan || {}) }}', 'undefined')::jsonb, '{}'::jsonb),\n  NULLIF(NULLIF('{{ $json.callback_url }}',''), 'undefined'),\n  NULLIF(NULLIF('{{ $json.trace_id }}',''), 'undefined'),\n  'queued'\n)\nON CONFLICT (job_id) DO NOTHING;"
+      },
+      "id": "3",
+      "name": "Queue Insert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        760,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { job_id: $node[\"Assign job_id\"].json.job_id, status: 'accepted' } }}",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Return job_id",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "Cron Worker",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        260,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH next_job AS (\n  SELECT job_id\n  FROM aiops_job_queue\n  WHERE status = 'queued'\n    AND NULLIF(BTRIM(callback_url), '') IS NOT NULL\n  ORDER BY created_at\n  LIMIT 1\n  FOR UPDATE SKIP LOCKED\n), upd AS (\n  UPDATE aiops_job_queue q\n  SET status = 'running', started_at = NOW()\n  FROM next_job\n  WHERE q.job_id = next_job.job_id\n  RETURNING q.job_id, q.context_id, q.job_plan, q.callback_url, q.trace_id\n)\nSELECT * FROM upd;"
+      },
+      "id": "6",
+      "name": "Dequeue 1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        520,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+      {
+        "value1": "={{$json.job_id || ''}}",
+        "value2": "",
+        "operation": "notEqual"
+      }
+    ]
+  }
+      },
+      "id": "7",
+      "name": "IF job found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        760,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst crypto = require('crypto');\n\nconst workflowsBase = $env.N8N_WORKFLOWS_BASE_URL;\nconst workflowsToken = $env.N8N_WORKFLOWS_TOKEN;\n\nconst jobId = $json.job_id ?? crypto.randomUUID();\nconst traceId = $json.trace_id ?? $json.job_plan?.trace_id ?? null;\nconst plan = ($json.job_plan && typeof $json.job_plan === 'object') ? $json.job_plan : {};\nconst callbackUrl = String($json.callback_url ?? '').trim();\n\nconst resultPayload = {\n  executed_at: new Date().toISOString(),\n  trace_id: traceId,\n  workflow_id: plan.workflow_id ?? null,\n  params: plan.params ?? null,\n  note: 'reference execution (fallback)'\n};\nlet status = 'success';\nlet errorPayload = null;\n\nfunction deriveWebhookBaseFromCallbackUrl(raw) {\n  const url = String(raw ?? '').trim();\n  if (!url) return '';\n  // e.g. https://host/webhook/callback/job-engine -> https://host/webhook\n  return url.replace(/\\/callback\\/job-engine.*$/, '').replace(/\\/+$/, '');\n}\n\nasync function executeViaN8nWebhook() {\n  const workflowId = String(plan.workflow_id ?? '').trim();\n  const params = (plan.params && typeof plan.params === 'object') ? plan.params : {};\n\n  const webhookBase = deriveWebhookBaseFromCallbackUrl(callbackUrl) || String($env.N8N_WEBHOOK_BASE_URL ?? '').trim().replace(/\\/+$/, '');\n  if (!webhookBase) {\n    throw new Error('webhook base url is not available (callback_url / N8N_WEBHOOK_BASE_URL)');\n  }\n\n  const realm = String(params.realm ?? params.tenant ?? $env.N8N_REALM ?? $env.N8N_ENV_REALM ?? '').trim();\n  if (!realm) {\n    throw new Error('realm is required');\n  }\n\n  if (workflowId === 'wf.sulu_service_control') {\n    const body = { ...params, realm };\n    const response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${webhookBase}/sulu/service-control`,\n      json: true,\n      body\n    });\n    resultPayload.workflow_api_response = response;\n    resultPayload.note = 'executed via n8n webhook: /sulu/service-control';\n    return;\n  }\n\n  throw new Error(`unsupported workflow_id: ${workflowId}`);\n}\n\nasync function sendToWorkflowApiOrFallback() {\n  if (workflowsBase) {\n    try {\n      const response = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${String(workflowsBase).replace(/\\/$/, '')}/workflows/execute`,\n        json: true,\n        headers: workflowsToken ? { Authorization: `Bearer ${workflowsToken}` } : {},\n        body: {\n          job_id: jobId,\n          job_plan: plan\n        }\n      });\n      resultPayload.workflow_api_response = response;\n      resultPayload.note = 'executed via workflow api';\n      return;\n    } catch (error) {\n      // Fallback to n8n webhook to keep demos/ops working even if workflow api is not deployed.\n      resultPayload.note = `workflow api failed; fallback to n8n webhook (${String(error.message ?? error)})`;\n    }\n  }\n\n  await executeViaN8nWebhook();\n}\n\ntry {\n  await sendToWorkflowApiOrFallback();\n} catch (error) {\n  status = 'failed';\n  errorPayload = {\n    message: String(error.message ?? error),\n    details: error.context ?? null\n  };\n}\n\nreturn [{\n  json: {\n    job_id: jobId,\n    status,\n    result_payload: resultPayload,\n    error_payload: errorPayload,\n    callback_url: callbackUrl,\n    trace_id: traceId\n  }\n}];\n"
+      },
+      "id": "8",
+      "name": "Execute Job (stub)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.callback_url}}",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { job_id: $json.job_id, status: $json.status, result_payload: $json.result_payload, error_payload: $json.error_payload, trace_id: $json.trace_id } }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "9",
+      "name": "Callback to Adapter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1240,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE aiops_job_queue\nSET status = 'success', finished_at = NOW(), last_error = NULL\nWHERE job_id = NULLIF(NULLIF('{{$json.job_id}}',''), 'undefined')::uuid;"
+      },
+      "id": "10",
+      "name": "Mark Success",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "value2": "success"
+            }
+          ]
+        }
+      },
+      "id": "11",
+      "name": "IF Job Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE aiops_job_queue\nSET status = 'failed', finished_at = NOW(), last_error = COALESCE((NULLIF('{{ JSON.stringify($json.error_payload || {}) }}', 'undefined')::jsonb)->>'message', (NULLIF('{{ JSON.stringify($json.error_payload || {}) }}', 'undefined')::jsonb)::text)\nWHERE job_id = NULLIF(NULLIF('{{$json.job_id}}',''), 'undefined')::uuid;"
+      },
+      "id": "12",
+      "name": "Mark Failed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Webhook (Jobs Enqueue)',\n  target: 'Assign job_id',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "13",
+      "name": "Debug Log After: Webhook (Jobs Enqueue) -> Assign job_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Webhook (Jobs Enqueue)',\n  target: 'Assign job_id',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "14",
+      "name": "Debug Log Before: Assign job_id <- Webhook (Jobs Enqueue)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Assign job_id',\n  target: 'Queue Insert',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "15",
+      "name": "Debug Log After: Assign job_id -> Queue Insert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Assign job_id',\n  target: 'Queue Insert',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "16",
+      "name": "Debug Log Before: Queue Insert <- Assign job_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Queue Insert',\n  target: 'Return job_id',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "17",
+      "name": "Debug Log After: Queue Insert -> Return job_id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Queue Insert',\n  target: 'Return job_id',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "18",
+      "name": "Debug Log Before: Return job_id <- Queue Insert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Cron Worker',\n  target: 'Dequeue 1',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "19",
+      "name": "Debug Log After: Cron Worker -> Dequeue 1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Cron Worker',\n  target: 'Dequeue 1',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "20",
+      "name": "Debug Log Before: Dequeue 1 <- Cron Worker",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst first = items[0]?.json ?? {};\nconst rawJobId = first.job_id;\nconst jobId = rawJobId === null || rawJobId === undefined ? '' : String(rawJobId).trim();\nif (!jobId || jobId === 'undefined') {\n  return [];\n}\n\nconst debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return items;\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Dequeue 1',\n  target: 'IF job found',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn items;\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "21",
+      "name": "Debug Log After: Dequeue 1 -> IF job found",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Dequeue 1',\n  target: 'IF job found',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "22",
+      "name": "Debug Log Before: IF job found <- Dequeue 1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'IF job found',\n  target: 'Execute Job (stub)',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "23",
+      "name": "Debug Log After: IF job found -> Execute Job (stub)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'IF job found',\n  target: 'Execute Job (stub)',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "24",
+      "name": "Debug Log Before: Execute Job (stub) <- IF job found",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Execute Job (stub)',\n  target: 'Callback to Adapter',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "25",
+      "name": "Debug Log After: Execute Job (stub) -> Callback to Adapter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Execute Job (stub)',\n  target: 'Callback to Adapter',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "26",
+      "name": "Debug Log Before: Callback to Adapter <- Execute Job (stub)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Callback to Adapter',\n  target: 'IF Job Success',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "27",
+      "name": "Debug Log After: Callback to Adapter -> IF Job Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Callback to Adapter',\n  target: 'IF Job Success',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "28",
+      "name": "Debug Log Before: IF Job Success <- Callback to Adapter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'IF Job Success',\n  target: 'Mark Success',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "29",
+      "name": "Debug Log After: IF Job Success -> Mark Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'IF Job Success',\n  target: 'Mark Success',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "30",
+      "name": "Debug Log Before: Mark Success <- IF Job Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'IF Job Success',\n  target: 'Mark Failed',\n  output_index: 1,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "31",
+      "name": "Debug Log After: IF Job Success -> Mark Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'IF Job Success',\n  target: 'Mark Failed',\n  output_index: 1,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "32",
+      "name": "Debug Log Before: Mark Failed <- IF Job Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        760
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Jobs Enqueue)": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Webhook (Jobs Enqueue) -> Assign job_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign job_id": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Assign job_id -> Queue Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue Insert": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Queue Insert -> Return job_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron Worker": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Cron Worker -> Dequeue 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dequeue 1": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Dequeue 1 -> IF job found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF job found": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: IF job found -> Execute Job (stub)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Execute Job (stub)": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Execute Job (stub) -> Callback to Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Callback to Adapter": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Callback to Adapter -> IF Job Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Job Success": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: IF Job Success -> Mark Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Debug Log After: IF Job Success -> Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Webhook (Jobs Enqueue) -> Assign job_id": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Assign job_id <- Webhook (Jobs Enqueue)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Assign job_id <- Webhook (Jobs Enqueue)": {
+      "main": [
+        [
+          {
+            "node": "Assign job_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Assign job_id -> Queue Insert": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Queue Insert <- Assign job_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Queue Insert <- Assign job_id": {
+      "main": [
+        [
+          {
+            "node": "Queue Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Queue Insert -> Return job_id": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Return job_id <- Queue Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Return job_id <- Queue Insert": {
+      "main": [
+        [
+          {
+            "node": "Return job_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Cron Worker -> Dequeue 1": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Dequeue 1 <- Cron Worker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Dequeue 1 <- Cron Worker": {
+      "main": [
+        [
+          {
+            "node": "Dequeue 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Dequeue 1 -> IF job found": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: IF job found <- Dequeue 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: IF job found <- Dequeue 1": {
+      "main": [
+        [
+          {
+            "node": "IF job found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: IF job found -> Execute Job (stub)": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Execute Job (stub) <- IF job found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Execute Job (stub) <- IF job found": {
+      "main": [
+        [
+          {
+            "node": "Execute Job (stub)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Execute Job (stub) -> Callback to Adapter": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Callback to Adapter <- Execute Job (stub)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Callback to Adapter <- Execute Job (stub)": {
+      "main": [
+        [
+          {
+            "node": "Callback to Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Callback to Adapter -> IF Job Success": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: IF Job Success <- Callback to Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: IF Job Success <- Callback to Adapter": {
+      "main": [
+        [
+          {
+            "node": "IF Job Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: IF Job Success -> Mark Success": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Mark Success <- IF Job Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Mark Success <- IF Job Success": {
+      "main": [
+        [
+          {
+            "node": "Mark Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: IF Job Success -> Mark Failed": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Mark Failed <- IF Job Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Mark Failed <- IF Job Success": {
+      "main": [
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionTimeout": 300
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "aiops": {
+      "purpose": "Job engine: enqueue + cron worker queue"
+    }
+  }
+}

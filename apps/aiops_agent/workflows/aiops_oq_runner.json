@@ -1,0 +1,531 @@
+{
+  "name": "aiops-oq-runner",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Manual Trigger (OQ)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "multipleMethods": false,
+        "httpMethod": "POST",
+        "path": "aiops-agent/oq/runner",
+        "authentication": "none",
+        "responseMode": "onReceived",
+        "responseCode": 200,
+        "contentTypeNotice": "",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Webhook (OQ)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        240
+      ],
+      "webhookId": "2b6539ee-990f-5fd5-96a1-16881a750914"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const nodeCrypto = (() => {\n  try {\n    return require('crypto');\n  } catch (error) {\n    return null;\n  }\n})();\n\nconst webCrypto = typeof globalThis !== 'undefined' ? globalThis.crypto : null;\nconst textEncoder = typeof TextEncoder !== 'undefined'\n  ? new TextEncoder()\n  : { encode: (value) => Buffer.from(String(value), 'utf8') };\n\nfunction toHex(buffer) {\n  return Array.from(new Uint8Array(buffer))\n    .map((value) => value.toString(16).padStart(2, '0'))\n    .join('');\n}\n\nfunction randomUUID() {\n  if (nodeCrypto && typeof nodeCrypto.randomUUID === 'function') {\n    return nodeCrypto.randomUUID();\n  }\n  if (webCrypto && typeof webCrypto.randomUUID === 'function') {\n    return webCrypto.randomUUID();\n  }\n  return `oq-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;\n}\n\nfunction randomBytesHex(length) {\n  if (nodeCrypto) {\n    return nodeCrypto.randomBytes(length).toString('hex');\n  }\n  if (webCrypto && typeof webCrypto.getRandomValues === 'function') {\n    const bytes = new Uint8Array(length);\n    webCrypto.getRandomValues(bytes);\n    return toHex(bytes);\n  }\n  const bytes = Array.from({ length }, () => Math.floor(Math.random() * 256));\n  return bytes.map((value) => value.toString(16).padStart(2, '0')).join('');\n}\n\nasync function hmac(secret, message) {\n  if (nodeCrypto) {\n    return nodeCrypto.createHmac('sha256', secret).update(message).digest('hex');\n  }\n  if (webCrypto && webCrypto.subtle) {\n    const key = await webCrypto.subtle.importKey(\n      'raw',\n      textEncoder.encode(secret),\n      { name: 'HMAC', hash: 'SHA-256' },\n      false,\n      ['sign']\n    );\n    const signature = await webCrypto.subtle.sign(\n      'HMAC',\n      key,\n      textEncoder.encode(message)\n    );\n    return toHex(signature);\n  }\n  throw new Error('crypto is required for HMAC; set NODE_FUNCTION_ALLOW_BUILTIN=crypto or enable WebCrypto');\n}\n\nconst baseUrlRaw = $env.N8N_ADAPTER_BASE_URL || $env.N8N_APPROVAL_BASE_URL || '';\nconst baseUrl = baseUrlRaw.replace(/\\/$/, '');\nif (!baseUrl) {\n  throw new Error('N8N_ADAPTER_BASE_URL is required');\n}\n\nconst pathTemplate = $env.N8N_INGEST_PATH_TEMPLATE || '/ingest/{source}';\nconst zulipPathTemplate = $env.N8N_ZULIP_INGEST_PATH_TEMPLATE || pathTemplate;\nconst traceId = randomUUID();\nconst runSuffix = randomBytesHex(4);\nconst now = new Date();\nconst nowTs = Math.floor(now.getTime() / 1000);\n\nconst slackSecret = $env.N8N_SLACK_SIGNING_SECRET || '';\nconst zulipTokenSingle = $env.N8N_ZULIP_OUTGOING_TOKEN || '';\nconst zulipTokensJson = $env.N8N_ZULIP_OUTGOING_TOKEN || '';\nconst zulipTokensYaml = $env.N8N_ZULIP_OUTGOING_TOKEN || '';\nconst zulipTenant = $env.N8N_ZULIP_TENANT || '';\nconst mattermostToken = $env.N8N_MATTERMOST_OUTGOING_TOKEN || '';\nconst teamsToken = $env.N8N_TEAMS_TEST_TOKEN || '';\n\nfunction parseSimpleYamlMap(text) {\n  const map = {};\n  const textValue = String(text);\n  const lines = textValue\n    .split(String.fromCharCode(13))\n    .join('')\n    .split(String.fromCharCode(10));\n  for (const line of lines) {\n    const trimmed = line.trim();\n    if (!trimmed || trimmed.startsWith('#')) continue;\n    const idx = trimmed.indexOf(':');\n    if (idx <= 0) continue;\n    const key = trimmed.slice(0, idx).trim();\n    let value = trimmed.slice(idx + 1).trim();\n    if (!key) continue;\n    if ((value.startsWith('\"') && value.endsWith('\"')) || (value.startsWith(\"'\") && value.endsWith(\"'\"))) {\n      value = value.slice(1, -1);\n    }\n    map[key] = value;\n  }\n  return map;\n}\n\nfunction parseTokenMap() {\n  if (zulipTokensJson) {\n    try {\n      const parsed = JSON.parse(zulipTokensJson);\n      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;\n    } catch (error) {\n      // ignore\n    }\n  }\n  if (zulipTokensYaml) {\n    const parsed = parseSimpleYamlMap(zulipTokensYaml);\n    if (Object.keys(parsed).length > 0) return parsed;\n  }\n  return null;\n}\n\nfunction selectZulipToken() {\n  const tokenMap = parseTokenMap();\n  if (tokenMap && Object.keys(tokenMap).length > 0) {\n    if (zulipTenant && tokenMap[zulipTenant]) return tokenMap[zulipTenant];\n    if (tokenMap.default) return tokenMap.default;\n  }\n  return zulipTokenSingle;\n}\n\nfunction buildUrl(source, opts = {}) {\n  const template = opts.template || pathTemplate;\n  let path = template.replace('{source}', source);\n  if (path.includes('{tenant}')) {\n    const tenant = opts.tenant || '';\n    if (!tenant) throw new Error('N8N_ZULIP_TENANT is required when ingest path uses {tenant}');\n    path = path.replace('{tenant}', tenant);\n  }\n  if (!path.startsWith('/')) path = '/' + path;\n  return baseUrl + path;\n}\n\nfunction stableStringify(value) {\n  if (Array.isArray(value)) {\n    return '[' + value.map(stableStringify).join(',') + ']';\n  }\n  if (value && typeof value === 'object') {\n    const keys = Object.keys(value).sort();\n    const parts = keys.map((key) => {\n      return JSON.stringify(key) + ':' + stableStringify(value[key]);\n    });\n    return '{' + parts.join(',') + '}';\n  }\n  return JSON.stringify(value);\n}\n\nfunction baseHeaders() {\n  return {\n    'Content-Type': 'application/json',\n    'X-AIOPS-TRACE-ID': traceId,\n  };\n}\n\nfunction expectedFor(scenario) {\n  if (scenario === 'normal' || scenario === 'duplicate') return '2xx';\n  if (scenario === 'abnormal_auth') return '401/403';\n  if (scenario === 'abnormal_schema') return '4xx';\n  return 'unknown';\n}\n\nfunction clone(obj) {\n  return JSON.parse(JSON.stringify(obj));\n}\n\nfunction requireEnv(value, name) {\n  if (!value) throw new Error(`${name} is required for OQ cases`);\n}\n\nconst cases = [];\n\nfunction addCase(baseCase) {\n  cases.push({ json: baseCase });\n}\n\nfunction addDuplicateCases(baseCase) {\n  for (let i = 1; i <= 2; i += 1) {\n    const copy = {\n      ...baseCase,\n      headers: { ...baseCase.headers },\n      body: clone(baseCase.body),\n      case_id: `${baseCase.case_id}-${i}`,\n      duplicate_index: i,\n    };\n    cases.push({ json: copy });\n  }\n}\n\nasync function buildSlackCase(scenario, caseId, eventId) {\n  const payload = {\n    type: 'event_callback',\n    event_id: eventId,\n    event_time: nowTs,\n    team_id: 'T_TEST',\n    event: {\n      type: 'app_mention',\n      user: 'U_TEST',\n      text: '<@U_BOT> restart api',\n      channel: 'C_TEST',\n      ts: `${nowTs}.000100`,\n      event_ts: `${nowTs}.000100`,\n    },\n  };\n  if (scenario === 'abnormal_schema') {\n    delete payload.event_id;\n  }\n\n  const headers = baseHeaders();\n  headers['X-Slack-Request-Timestamp'] = String(nowTs);\n\n  if (scenario === 'abnormal_auth') {\n    headers['X-Slack-Signature'] = 'v0=' + '0'.repeat(64);\n  } else {\n    requireEnv(slackSecret, 'N8N_SLACK_SIGNING_SECRET');\n    const base = `v0:${nowTs}:${stableStringify(payload)}`;\n    headers['X-Slack-Signature'] = 'v0=' + await hmac(slackSecret, base);\n  }\n\n  return {\n    case_id: caseId,\n    source: 'slack',\n    scenario,\n    expected: expectedFor(scenario),\n    event_id: eventId,\n    url: buildUrl('slack'),\n    headers,\n    body: payload,\n    trace_id: traceId,\n    run_id: runSuffix,\n    adapter_base_url: baseUrl,\n  };\n}\n\nfunction buildZulipCase(scenario, caseId, eventId, opts = {}) {\n  const token = scenario === 'abnormal_auth' ? 'INVALID_TOKEN' : selectZulipToken();\n  if (scenario !== 'abnormal_auth') {\n    requireEnv(token, 'N8N_ZULIP_OUTGOING_TOKEN or N8N_ZULIP_OUTGOING_TOKEN/YAML');\n  }\n\n  const payload = {\n    token,\n    trigger: 'mention',\n    message: {\n      id: eventId,\n      type: 'stream',\n      stream_id: 10,\n      display_recipient: String(opts.stream ?? $env.N8N_OQ_ZULIP_STREAM ?? '0perational Qualification'),\n      subject: String(opts.topic ?? $env.N8N_OQ_ZULIP_TOPIC ?? 'oq-runner'),\n      content: String(opts.content ?? '@**AIOps エージェント** diagnose'),\n      sender_email: 'user@example.com',\n      sender_full_name: 'Test User',\n      timestamp: nowTs,\n    },\n  };\n  if (scenario === 'abnormal_schema') {\n    delete payload.message.id;\n  }\n\n  return {\n    case_id: caseId,\n    source: 'zulip',\n    scenario,\n    expected: expectedFor(scenario),\n    event_id: eventId,\n    url: buildUrl('zulip', { template: zulipPathTemplate, tenant: zulipTenant }),\n    headers: baseHeaders(),\n    body: payload,\n    trace_id: traceId,\n    run_id: runSuffix,\n    adapter_base_url: baseUrl,\n  };\n}\n\nfunction buildMattermostCase(scenario, caseId, eventId) {\n  if (scenario !== 'abnormal_auth') {\n    requireEnv(mattermostToken, 'N8N_MATTERMOST_OUTGOING_TOKEN');\n  }\n  const token = scenario === 'abnormal_auth' ? 'INVALID_TOKEN' : mattermostToken;\n\n  const payload = {\n    token,\n    team_id: 'team_test',\n    channel_id: 'channel_test',\n    user_id: 'user_test',\n    user_name: 'test-user',\n    post_id: eventId,\n    text: 'aiops restart api',\n    trigger_word: 'aiops',\n  };\n  if (scenario === 'abnormal_schema') {\n    delete payload.post_id;\n  }\n\n  return {\n    case_id: caseId,\n    source: 'mattermost',\n    scenario,\n    expected: expectedFor(scenario),\n    event_id: eventId,\n    url: buildUrl('mattermost'),\n    headers: baseHeaders(),\n    body: payload,\n    trace_id: traceId,\n    run_id: runSuffix,\n    adapter_base_url: baseUrl,\n  };\n}\n\nfunction buildTeamsCase(scenario, caseId, eventId) {\n  requireEnv(teamsToken, 'N8N_TEAMS_TEST_TOKEN');\n  const token = scenario === 'abnormal_auth' ? 'INVALID_TOKEN' : teamsToken;\n\n  const payload = {\n    type: 'message',\n    id: eventId,\n    timestamp: now.toISOString(),\n    channelId: 'msteams',\n    serviceUrl: 'https://smba.trafficmanager.net/teams/',\n    from: { id: 'user_test', name: 'Test User' },\n    conversation: { id: 'conv_test' },\n    recipient: { id: 'bot_test', name: 'AIOps エージェント' },\n    text: 'help',\n  };\n  if (scenario === 'abnormal_schema') {\n    delete payload.conversation;\n  }\n\n  const headers = baseHeaders();\n  headers['X-AIOPS-TEST-TOKEN'] = token;\n\n  return {\n    case_id: caseId,\n    source: 'teams',\n    scenario,\n    expected: expectedFor(scenario),\n    event_id: eventId,\n    url: buildUrl('teams'),\n    headers,\n    body: payload,\n    trace_id: traceId,\n    run_id: runSuffix,\n    adapter_base_url: baseUrl,\n  };\n}\n\nfunction buildCloudWatchCase(scenario, caseId, eventId) {\n  const payload = {\n    version: '0',\n    id: eventId,\n    'detail-type': 'CloudWatch Alarm State Change',\n    source: 'aws.cloudwatch',\n    account: '123456789012',\n    time: now.toISOString(),\n    region: 'ap-northeast-1',\n    resources: [\n      'arn:aws:cloudwatch:ap-northeast-1:123456789012:alarm:HighErrorRate',\n    ],\n    detail: {\n      alarmName: 'HighErrorRate',\n      state: {\n        value: 'ALARM',\n        reason: 'Threshold Crossed: ...',\n        timestamp: now.toISOString(),\n      },\n      previousState: { value: 'OK' },\n    },\n  };\n  if (scenario === 'abnormal_schema') {\n    delete payload['detail-type'];\n  }\n\n  return {\n    case_id: caseId,\n    source: 'cloudwatch',\n    scenario,\n    expected: expectedFor(scenario),\n    event_id: eventId,\n    url: buildUrl('cloudwatch'),\n    headers: baseHeaders(),\n    body: payload,\n    trace_id: traceId,\n    run_id: runSuffix,\n    adapter_base_url: baseUrl,\n  };\n}\n\nfunction withChatText(baseCase, text) {\n  const copy = {\n    ...baseCase,\n    headers: { ...(baseCase.headers ?? {}) },\n    body: clone(baseCase.body),\n  };\n  if (copy.source === 'slack' && copy.body?.event) {\n    copy.body.event.text = text;\n  } else if (copy.source === 'zulip' && copy.body?.message) {\n    copy.body.message.content = text;\n  } else if (copy.source === 'mattermost') {\n    copy.body.text = text;\n  } else if (copy.source === 'teams') {\n    copy.body.text = text;\n  }\n  return copy;\n}\n\nasync function buildChatCase(source, scenario, caseId, eventId, text) {\n  let baseCase = null;\n  if (source === 'slack') {\n    baseCase = await buildSlackCase(scenario, caseId, eventId);\n  } else if (source === 'zulip') {\n    baseCase = buildZulipCase(scenario, caseId, eventId);\n  } else if (source === 'mattermost') {\n    baseCase = buildMattermostCase(scenario, caseId, eventId);\n  } else if (source === 'teams') {\n    baseCase = buildTeamsCase(scenario, caseId, eventId);\n  } else {\n    throw new Error(`unsupported chat source: ${source}`);\n  }\n  return withChatText(baseCase, text);\n}\n\nfunction buildPatternEventId(source, index, baseId) {\n  if (source === 'zulip') return baseId + index;\n  if (source === 'slack') return `Ev_oq_${runSuffix}_rag_${index}`;\n  if (source === 'mattermost') return `post_oq_${runSuffix}_rag_${index}`;\n  if (source === 'teams') return `teams_oq_${runSuffix}_rag_${index}`;\n  return `event_oq_${runSuffix}_rag_${index}`;\n}\n\nasync function main() {\n  const slackEventId = `Ev_oq_${runSuffix}`;\n  const zulipEventId = Math.floor(Date.now() % 1000000000);\n  const mattermostEventId = `post_oq_${runSuffix}`;\n  const teamsEventId = `teams_oq_${runSuffix}`;\n  const cloudwatchEventId = `cw_oq_${runSuffix}`;\n\n  const hasZulipToken = Boolean(selectZulipToken());\n  const patternChatSource = hasZulipToken\n    ? 'zulip'\n    : (slackSecret ? 'slack' : (mattermostToken ? 'mattermost' : (teamsToken ? 'teams' : null)));\n  const patternCases = [\n    {\n      case_id: 'OQ-RAG-KEDB-001',\n      resource: 'kedb_documents',\n      text: 'ログに 502 が出ている。類似の既知エラーを探して。'\n    },\n    {\n      case_id: 'OQ-RAG-PROB-001',\n      resource: 'problem_management',\n      text: '問題番号 PRB-0001 の根本原因と回避策を確認して。'\n    },\n    {\n      case_id: 'OQ-RAG-GITLAB-001',\n      resource: 'gitlab_management_docs',\n      text: 'サービス管理の運用ルール（GitLab Wiki）を確認して。'\n    },\n    {\n      case_id: 'OQ-CMDB-001',\n      resource: 'gitlab_cmdb',\n      text: 'CMDB で sulu の CI 情報を確認して。'\n    },\n    {\n      case_id: 'OQ-RUNBOOK-001',\n      resource: 'gitlab_runbook',\n      text: 'CloudWatch アラーム HighErrorRate の Runbook を確認して。'\n    }\n  ];\n\n  if (slackSecret) {\n    addCase(await buildSlackCase('normal', 'OQ-ING-SLACK-001', slackEventId));\n    addCase(await buildSlackCase('abnormal_auth', 'OQ-ING-SLACK-002', `Ev_oq_${runSuffix}_auth`));\n    addCase(await buildSlackCase('abnormal_schema', 'OQ-ING-SLACK-003', `Ev_oq_${runSuffix}_schema`));\n    addDuplicateCases(await buildSlackCase('duplicate', 'OQ-ING-SLACK-004', 'Ev_oq_duplicate_001'));\n  }\n\n  if (hasZulipToken) {\n    addCase(buildZulipCase('normal', 'OQ-ING-ZULIP-001', zulipEventId));\n    addCase(buildZulipCase('abnormal_auth', 'OQ-ING-ZULIP-002', zulipEventId + 1));\n    addCase(buildZulipCase('abnormal_schema', 'OQ-ING-ZULIP-003', zulipEventId + 2));\n    addDuplicateCases(buildZulipCase('duplicate', 'OQ-ING-ZULIP-004', 1000001));\n    addCase(buildZulipCase('normal', 'OQ-ING-ZULIP-TOPICCTX-001', zulipEventId + 10, { content: 'OK' }));\n  }\n\n  if (mattermostToken) {\n    addCase(buildMattermostCase('normal', 'OQ-ING-MM-001', mattermostEventId));\n    addCase(buildMattermostCase('abnormal_auth', 'OQ-ING-MM-002', `post_oq_${runSuffix}_auth`));\n    addCase(buildMattermostCase('abnormal_schema', 'OQ-ING-MM-003', `post_oq_${runSuffix}_schema`));\n    addDuplicateCases(buildMattermostCase('duplicate', 'OQ-ING-MM-004', 'post_oq_duplicate_001'));\n  }\n\n  if (teamsToken) {\n    addCase(buildTeamsCase('normal', 'OQ-ING-TEAMS-001', teamsEventId));\n    addCase(buildTeamsCase('abnormal_auth', 'OQ-ING-TEAMS-002', `teams_oq_${runSuffix}_auth`));\n    addCase(buildTeamsCase('abnormal_schema', 'OQ-ING-TEAMS-003', `teams_oq_${runSuffix}_schema`));\n    addDuplicateCases(buildTeamsCase('duplicate', 'OQ-ING-TEAMS-004', 'teams_oq_duplicate_001'));\n  }\n\n  addCase(buildCloudWatchCase('normal', 'OQ-ING-CW-001', cloudwatchEventId));\n  addCase(buildCloudWatchCase('abnormal_schema', 'OQ-ING-CW-002', `cw_oq_${runSuffix}_schema`));\n  addDuplicateCases(buildCloudWatchCase('duplicate', 'OQ-ING-CW-003', 'cw_oq_duplicate_001'));\n\n  if (patternChatSource) {\n    const baseId = zulipEventId + 200;\n    for (let i = 0; i < patternCases.length; i += 1) {\n      const entry = patternCases[i];\n      const eventId = buildPatternEventId(patternChatSource, i + 1, baseId);\n      const caseObj = await buildChatCase(\n        patternChatSource,\n        'normal',\n        entry.case_id,\n        eventId,\n        entry.text\n      );\n      caseObj.pattern_resource = entry.resource;\n      addCase(caseObj);\n    }\n  }\n\n  return cases;\n}\n\nreturn await main();\n"
+      },
+      "id": "2",
+      "name": "Build OQ Cases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.url}}",
+        "method": "POST",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "3",
+      "name": "Send OQ Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        680,
+        300
+      ],
+      "continueOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const response = $json ?? {};\nconst paired = $item(0).pairedItem ?? response.pairedItem ?? null;\nconst originalIndex = paired?.item ?? $itemIndex;\nconst original = $items('Build OQ Cases')[originalIndex]?.json ?? {};\nconst status = Number(\n  response.statusCode\n    ?? response.status\n    ?? response.status_code\n    ?? response.body?.status\n    ?? response.body?.status_code\n    ?? 0\n);\n\nfunction matches(expected, statusCode) {\n  if (expected === '2xx') return statusCode >= 200 && statusCode <= 299;\n  if (expected === '401/403') return statusCode === 401 || statusCode === 403;\n  if (expected === '4xx') return statusCode >= 400 && statusCode <= 499 && statusCode !== 404;\n  return false;\n}\n\nconst ok = matches(original.expected, status);\n\nreturn {\n  json: {\n    ...original,\n    status,\n    ok,\n    response_body: response.body ?? null,\n    response_headers: response.headers ?? null,\n  },\n};\n"
+      },
+      "id": "4",
+      "name": "Evaluate Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all().map((item) => item.json);\nconst failed = items\n  .filter((item) => !item.ok)\n  .map((item) => ({\n    case_id: item.case_id,\n    source: item.source,\n    scenario: item.scenario,\n    expected: item.expected,\n    status: item.status,\n  }));\n\nreturn [\n  {\n    json: {\n      run_id: items[0]?.run_id ?? null,\n      trace_id: items[0]?.trace_id ?? null,\n      adapter_base_url: items[0]?.adapter_base_url ?? null,\n      total: items.length,\n      passed: items.length - failed.length,\n      failed,\n      ok: failed.length === 0,\n    },\n  },\n];\n"
+      },
+      "id": "5",
+      "name": "Summarize Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Manual Trigger (OQ)',\n  target: 'Build OQ Cases',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "7",
+      "name": "Debug Log After: Manual Trigger (OQ) -> Build OQ Cases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Manual Trigger (OQ)',\n  target: 'Build OQ Cases',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "8",
+      "name": "Debug Log Before: Build OQ Cases <- Manual Trigger (OQ)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Build OQ Cases',\n  target: 'Send OQ Event',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "9",
+      "name": "Debug Log After: Build OQ Cases -> Send OQ Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Build OQ Cases',\n  target: 'Send OQ Event',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "10",
+      "name": "Debug Log Before: Send OQ Event <- Build OQ Cases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Send OQ Event',\n  target: 'Evaluate Response',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "11",
+      "name": "Debug Log After: Send OQ Event -> Evaluate Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Send OQ Event',\n  target: 'Evaluate Response',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "12",
+      "name": "Debug Log Before: Evaluate Response <- Send OQ Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Evaluate Response',\n  target: 'Summarize Results',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "13",
+      "name": "Debug Log After: Evaluate Response -> Summarize Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Evaluate Response',\n  target: 'Summarize Results',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "14",
+      "name": "Debug Log Before: Summarize Results <- Evaluate Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Webhook (OQ)',\n  target: 'Build OQ Cases',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "15",
+      "name": "Debug Log After: Webhook (OQ) -> Build OQ Cases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Webhook (OQ)',\n  target: 'Build OQ Cases',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "16",
+      "name": "Debug Log Before: Build OQ Cases <- Webhook (OQ)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const summary = $json ?? {};\n\nconst stream = $env.N8N_OQ_ZULIP_STREAM || '0perational Qualification';\nconst topic = $env.N8N_OQ_ZULIP_TOPIC || 'oq-runner';\n\nconst baseUrl = ($env.N8N_ZULIP_API_BASE_URL || '').replace(/\\/$/, '');\nconst email = $env.N8N_ZULIP_BOT_EMAIL || '';\nconst apiKey = $env.N8N_ZULIP_BOT_TOKEN || '';\n\nif (!baseUrl || !email || !apiKey) {\n  return [{\n    json: {\n      ...summary,\n      zulip: {\n        ok: false,\n        skipped: true,\n        reason: 'missing_config',\n        stream,\n        topic\n      }\n    }\n  }];\n}\n\nconst total = Number(summary.total ?? 0);\nconst passed = Number(summary.passed ?? 0);\nconst ok = Boolean(summary.ok);\n\nconst lines = [];\nlines.push(`OQ結果: ${ok ? 'PASS' : 'FAIL'} (${passed}/${total})`);\nif (summary.run_id) lines.push(`run_id: ${summary.run_id}`);\nif (summary.trace_id) lines.push(`trace_id: ${summary.trace_id}`);\nlines.push(`timestamp: ${new Date().toISOString()}`);\n\nconst failed = Array.isArray(summary.failed) ? summary.failed : [];\nif (!ok && failed.length) {\n  lines.push('');\n  lines.push('Failures:');\n  for (const f of failed.slice(0, 20)) {\n    const parts = [];\n    if (f.case_id) parts.push(f.case_id);\n    if (f.source || f.scenario) parts.push(`(${[f.source, f.scenario].filter(Boolean).join('/')})`);\n    if (f.expected) parts.push(`expected=${f.expected}`);\n    if (f.status !== undefined && f.status !== null) parts.push(`status=${f.status}`);\n    lines.push('- ' + parts.join(' '));\n  }\n  if (failed.length > 20) {\n    lines.push(`...and ${failed.length - 20} more`);\n  }\n}\n\nconst message = lines.join(String.fromCharCode(10));\nconst httpRequest = this.helpers.httpRequest;\nconst auth = Buffer.from(`${email}:${apiKey}`).toString('base64');\n\ntry {\n  // Ensure the bot is subscribed to the stream. On this Zulip deployment, this also creates the stream if missing.\n  await httpRequest({\n    method: 'POST',\n    url: `${baseUrl}/api/v1/users/me/subscriptions`,\n    headers: {\n      'Content-Type': 'application/x-www-form-urlencoded',\n      Authorization: `Basic ${auth}`\n    },\n    form: {\n      subscriptions: JSON.stringify([{ name: stream }])\n    }\n  });\n\n  const postRes = await httpRequest({\n    method: 'POST',\n    url: `${baseUrl}/api/v1/messages`,\n    headers: {\n      'Content-Type': 'application/x-www-form-urlencoded',\n      Authorization: `Basic ${auth}`\n    },\n    form: {\n      type: 'stream',\n      to: stream,\n      topic,\n      content: message\n    }\n  });\n\n  return [{\n    json: {\n      ...summary,\n      zulip: {\n        ok: true,\n        stream,\n        topic,\n        message_id: postRes?.id ?? null\n      }\n    }\n  }];\n} catch (error) {\n  const msg = (error && typeof error === 'object' && 'message' in error) ? String(error.message) : String(error);\n  return [{\n    json: {\n      ...summary,\n      zulip: {\n        ok: false,\n        stream,\n        topic,\n        error: msg\n      }\n    }\n  }];\n}\n"
+      },
+      "id": "17",
+      "name": "Post OQ Summary to Zulip",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "seconds"
+      },
+      "id": "18",
+      "name": "Wait (Zulip Topic Context)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "database",
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT\n    '{{ String($json.case_id ?? '').replace(/'/g, \"''\") }}' AS case_id,\n    '{{ String($json.source ?? '').replace(/'/g, \"''\") }}' AS source,\n    '{{ String($json.scenario ?? '').replace(/'/g, \"''\") }}' AS scenario,\n    '{{ String($json.expected ?? '').replace(/'/g, \"''\") }}' AS expected,\n    {{ Number($json.status ?? 0) }}::int AS status,\n    {{ $json.ok }} AS ok,\n    '{{ String($json.event_id ?? '').replace(/'/g, \"''\") }}' AS event_id\n), key AS (\n  SELECT\n    CASE WHEN input.case_id = 'OQ-ING-ZULIP-TOPICCTX-001'\n      THEN (input.source || ':' || input.event_id)\n      ELSE NULL\n    END AS dedupe_key\n  FROM input\n), ctx AS (\n  SELECT d.context_id\n  FROM aiops_dedupe d\n  WHERE d.dedupe_key = (SELECT dedupe_key FROM key)\n  LIMIT 1\n)\nSELECT\n  input.case_id,\n  input.source,\n  input.scenario,\n  input.expected,\n  input.status,\n  input.ok,\n  (SELECT dedupe_key FROM key) AS dedupe_key,\n  (SELECT context_id FROM ctx) AS context_id,\n  c.normalized_event AS normalized_event\nFROM input\nLEFT JOIN aiops_context c ON c.context_id = (SELECT context_id FROM ctx)\nLIMIT 1;\n",
+        "options": {}
+      },
+      "id": "19",
+      "name": "Load Context (Zulip Topic Context)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const row = $json ?? {};\n\nconst targetCase = 'OQ-ING-ZULIP-TOPICCTX-001';\nif (row.case_id !== targetCase) {\n  return {\n    json: {\n      ...row,\n      zulip_topic_context_check: { skipped: true },\n      ok: Boolean(row.ok)\n    }\n  };\n}\n\nconst normalized = row.normalized_event ?? null;\nconst ctx = normalized && typeof normalized === 'object' ? (normalized.zulip_topic_context ?? null) : null;\n\nconst fetched = ctx && typeof ctx === 'object' ? ctx.fetched : null;\nconst hasMessages = ctx && typeof ctx === 'object' ? Array.isArray(ctx.messages) : false;\n\nconst topicContextOk = Boolean(ctx) && fetched === true && hasMessages;\n\nreturn {\n  json: {\n    ...row,\n    zulip_topic_context_check: {\n      ok: topicContextOk,\n      fetched,\n      has_messages: hasMessages,\n      reason: ctx && typeof ctx === 'object' ? (ctx.reason ?? null) : null\n    },\n    ok: Boolean(row.ok) && topicContextOk\n  }\n};\n"
+      },
+      "id": "20",
+      "name": "Apply Topic Context Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger (OQ)": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Manual Trigger (OQ) -> Build OQ Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build OQ Cases": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Build OQ Cases -> Send OQ Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send OQ Event": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Send OQ Event -> Evaluate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Response": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Evaluate Response -> Summarize Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook (OQ)": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Webhook (OQ) -> Build OQ Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Manual Trigger (OQ) -> Build OQ Cases": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Build OQ Cases <- Manual Trigger (OQ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Build OQ Cases <- Manual Trigger (OQ)": {
+      "main": [
+        [
+          {
+            "node": "Build OQ Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Build OQ Cases -> Send OQ Event": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Send OQ Event <- Build OQ Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Send OQ Event <- Build OQ Cases": {
+      "main": [
+        [
+          {
+            "node": "Send OQ Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Send OQ Event -> Evaluate Response": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Evaluate Response <- Send OQ Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Evaluate Response <- Send OQ Event": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Evaluate Response -> Summarize Results": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Summarize Results <- Evaluate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Summarize Results <- Evaluate Response": {
+      "main": [
+        [
+          {
+            "node": "Wait (Zulip Topic Context)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Webhook (OQ) -> Build OQ Cases": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Build OQ Cases <- Webhook (OQ)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Build OQ Cases <- Webhook (OQ)": {
+      "main": [
+        [
+          {
+            "node": "Build OQ Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Results": {
+      "main": [
+        [
+          {
+            "node": "Post OQ Summary to Zulip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Zulip Topic Context)": {
+      "main": [
+        [
+          {
+            "node": "Load Context (Zulip Topic Context)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Context (Zulip Topic Context)": {
+      "main": [
+        [
+          {
+            "node": "Apply Topic Context Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Topic Context Check": {
+      "main": [
+        [
+          {
+            "node": "Summarize Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionTimeout": 300
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "aiops": {
+      "purpose": "OQ runner: send ingest test scenarios and summarize results"
+    }
+  }
+}

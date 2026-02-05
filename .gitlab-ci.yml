@@ -1,0 +1,22 @@
+stages:
+  - n8n_sync
+
+# Sync repo-managed workflows into n8n on commit.
+# Required CI/CD variables (masked/protected recommended):
+#   N8N_BASE_URL : 
+#   N8N_API_KEY  : n8n API key (Settings -> n8n API -> Create API Key)
+sync:n8n_workflows:
+  stage: n8n_sync
+  image: alpine:3.19
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - n8n/workflows/*.json
+        - scripts/n8n/sync_workflows.sh
+      when: on_success
+    - when: never
+  before_script:
+    - apk add --no-cache bash curl jq
+  script:
+    - bash scripts/n8n/sync_workflows.sh
+

@@ -1,0 +1,358 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Sync n8n workflows in apps/gitlab_mention_notify/workflows via the n8n Public API.
+#
+# Required:
+#   N8N_API_KEY
+# Optional:
+#   N8N_PUBLIC_API_BASE_URL (defaults to terraform output service_urls.n8n)
+#   N8N_API_KEY_<REALMKEY> : realm-scoped n8n API key (e.g. N8N_API_KEY_TENANT_B)
+#   N8N_AGENT_REALMS : comma/space-separated realm list (default: terraform output N8N_AGENT_REALMS)
+#   WORKFLOW_DIR (default: apps/gitlab_mention_notify/workflows)
+#   ACTIVATE (default: false)
+#   DRY_RUN (default: false)
+#   SKIP_API_WHEN_DRY_RUN (default: true)
+
+require_var() {
+  local key="$1"
+  local val="$2"
+  if [ -z "${val}" ]; then
+    echo "${key} is required but could not be resolved." >&2
+    exit 1
+  fi
+}
+
+is_truthy() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|y|Y|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+cd "${REPO_ROOT}"
+
+urlencode() {
+  jq -nr --arg v "${1}" '$v|@uri'
+}
+
+derive_n8n_public_base_url() {
+  if [ -z "${1:-}" ] && command -v terraform >/dev/null 2>&1; then
+    terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null | jq -r '.service_urls.value.n8n // empty' || true
+  else
+    printf '%s' "${1:-}"
+  fi
+}
+
+resolve_realm_env() {
+  local key="$1"
+  local realm="$2"
+  local realm_key=""
+  if [[ -n "${realm}" ]]; then
+    realm_key="$(tr '[:lower:]-' '[:upper:]_' <<<"${realm}")"
+  fi
+  local value=""
+  if [[ -n "${realm_key}" ]]; then
+    value="$(printenv "${key}_${realm_key}" || true)"
+  fi
+  if [[ -z "${value}" ]]; then
+    value="$(printenv "${key}" || true)"
+  fi
+  printf '%s' "${value}"
+}
+
+resolve_realm_scoped_env_only() {
+  local key="$1"
+  local realm="$2"
+  if [[ -z "${realm}" ]]; then
+    printf ''
+    return
+  fi
+  local realm_key=""
+  realm_key="$(tr '[:lower:]-' '[:upper:]_' <<<"${realm}")"
+  if [[ -z "${realm_key}" ]]; then
+    printf ''
+    return
+  fi
+  printenv "${key}_${realm_key}" 2>/dev/null || true
+}
+
+parse_realm_list() {
+  local raw="${1:-}"
+  raw="${raw//,/ }"
+  for part in ${raw}; do
+    if [[ -n "${part}" ]]; then
+      TARGET_REALMS+=("${part}")
+    fi
+  done
+}
+
+load_agent_realms() {
+  if [[ -n "${N8N_AGENT_REALMS}" ]]; then
+    parse_realm_list "${N8N_AGENT_REALMS}"
+    return
+  fi
+  if command -v terraform >/dev/null 2>&1; then
+    while IFS= read -r realm; do
+      if [[ -n "${realm}" ]]; then
+        TARGET_REALMS+=("${realm}")
+      fi
+    done < <(terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null | jq -r '.N8N_AGENT_REALMS.value // [] | .[]' 2>/dev/null || true)
+  fi
+}
+
+load_n8n_realm_urls() {
+  if [[ -z "${N8N_REALM_URLS_JSON}" && -x "$(command -v terraform)" ]]; then
+    N8N_REALM_URLS_JSON="$(terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null | jq -c '.n8n_realm_urls.value // {}' 2>/dev/null || true)"
+  fi
+}
+
+load_n8n_api_keys_by_realm() {
+  if [[ -z "${N8N_API_KEYS_BY_REALM_JSON}" && -x "$(command -v terraform)" ]]; then
+    N8N_API_KEYS_BY_REALM_JSON="$(terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null | jq -c '.n8n_api_keys_by_realm.value // {}' 2>/dev/null || true)"
+  fi
+}
+
+resolve_n8n_api_key_for_realm() {
+  local realm="$1"
+  # 1) env N8N_API_KEY_<REALMKEY>
+  local v=""
+  v="$(resolve_realm_scoped_env_only "N8N_API_KEY" "${realm}")"
+  if [[ -n "${v}" ]]; then
+    printf '%s' "${v}"
+    return
+  fi
+  # 2) terraform output n8n_api_keys_by_realm[realm]
+  load_n8n_api_keys_by_realm
+  if [[ -n "${N8N_API_KEYS_BY_REALM_JSON}" && -n "${realm}" ]]; then
+    v="$(jq -r --arg realm "${realm}" '.[$realm] // empty' <<<"${N8N_API_KEYS_BY_REALM_JSON}" 2>/dev/null || true)"
+    if [[ -n "${v}" && "${v}" != "null" ]]; then
+      printf '%s' "${v}"
+      return
+    fi
+  fi
+  # 3) fallback
+  printf '%s' "${DEFAULT_N8N_API_KEY}"
+}
+
+resolve_n8n_public_base_url_for_realm() {
+  local realm="$1"
+  if [[ -z "${realm}" ]]; then
+    printf '%s' "${DEFAULT_N8N_PUBLIC_API_BASE_URL}"
+    return
+  fi
+  load_n8n_realm_urls
+  if [[ -n "${N8N_REALM_URLS_JSON}" ]]; then
+    jq -r --arg realm "${realm}" '.[$realm] // empty' <<<"${N8N_REALM_URLS_JSON}"
+  fi
+}
+
+N8N_PUBLIC_API_BASE_URL="${N8N_PUBLIC_API_BASE_URL:-}"
+N8N_PUBLIC_API_BASE_URL="$(derive_n8n_public_base_url "${N8N_PUBLIC_API_BASE_URL}")"
+N8N_PUBLIC_API_BASE_URL="${N8N_PUBLIC_API_BASE_URL%/}"
+DEFAULT_N8N_PUBLIC_API_BASE_URL="${N8N_PUBLIC_API_BASE_URL}"
+
+N8N_API_KEY="${N8N_API_KEY:-}"
+if [ -z "${N8N_API_KEY}" ] && command -v terraform >/dev/null 2>&1; then
+  N8N_API_KEY="$(terraform -chdir="${REPO_ROOT}" output -raw n8n_api_key 2>/dev/null || true)"
+fi
+if [ "${N8N_API_KEY}" = "null" ]; then
+  N8N_API_KEY=""
+fi
+DEFAULT_N8N_API_KEY="${N8N_API_KEY}"
+N8N_REALM_URLS_JSON="${N8N_REALM_URLS_JSON:-}"
+N8N_API_KEYS_BY_REALM_JSON="${N8N_API_KEYS_BY_REALM_JSON:-}"
+N8N_AGENT_REALMS="${N8N_AGENT_REALMS:-}"
+TARGET_REALMS=()
+
+WORKFLOW_DIR="${WORKFLOW_DIR:-apps/gitlab_mention_notify/workflows}"
+ACTIVATE="${ACTIVATE:-false}"
+DRY_RUN="${DRY_RUN:-false}"
+SKIP_API_WHEN_DRY_RUN="${SKIP_API_WHEN_DRY_RUN:-true}"
+
+API_BODY=""
+API_STATUS=""
+
+api_call() {
+  local method="$1"
+  local path="$2"
+  local data="${3:-}"
+  local url="${N8N_PUBLIC_API_BASE_URL}/api/v1${path}"
+  local tmp
+  tmp="$(mktemp)"
+
+  if [ -n "${data}" ]; then
+    API_STATUS="$(curl -sS -o "${tmp}" -w "%{http_code}" \
+      -X "${method}" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+      -H "Content-Type: application/json" \
+      --data "${data}" \
+      "${url}")"
+  else
+    API_STATUS="$(curl -sS -o "${tmp}" -w "%{http_code}" \
+      -X "${method}" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+      -H "Content-Type: application/json" \
+      "${url}")"
+  fi
+
+  API_BODY="$(cat "${tmp}")"
+  rm -f "${tmp}"
+}
+
+extract_workflow_list() {
+  jq -c '(.data // .workflows // .items // [])' <<<"${API_BODY}" 2>/dev/null || echo '[]'
+}
+
+expect_2xx() {
+  local label="$1"
+  if [[ "${API_STATUS}" != 2* ]]; then
+    echo "[n8n] ${label} failed (HTTP ${API_STATUS})" >&2
+    echo "${API_BODY}" >&2
+    exit 1
+  fi
+}
+
+merge_payload() {
+  local desired="$1"
+  local existing="$2"
+  jq -c \
+    --argjson desired "${desired}" \
+    --argjson existing "${existing}" \
+    '
+    def key: (.name + "\u0000" + (.type // ""));
+    ($existing.nodes // []) as $existing_nodes
+    | (reduce $existing_nodes[] as $n ({}; .[($n|key)] = $n)) as $idx
+    | $desired
+    | .nodes = (
+        (.nodes // [])
+        | map(
+            . as $d
+            | ($idx[($d|key)] // null) as $e
+            | if $e == null then
+                $d
+              else
+                $d
+                | .id = ($e.id // .id)
+                | if ($e.webhookId // .webhookId) == null then
+                    del(.webhookId)
+                  else
+                    .webhookId = ($e.webhookId // .webhookId | tostring)
+                  end
+                | if (.credentials? == null) then
+                    (if ($e.credentials? == null) then . else .credentials = $e.credentials end)
+                  else
+                    .
+                  end
+              end
+          )
+      )
+    | del(.id)
+    | with_entries(select(.value != null))
+    ' <<<"{}"
+}
+
+shopt -s nullglob
+files=("${WORKFLOW_DIR}"/*.json)
+if [ "${#files[@]}" -eq 0 ]; then
+  echo "[n8n] No workflow json files found under ${WORKFLOW_DIR}" >&2
+  exit 1
+fi
+
+load_agent_realms
+if [ "${#TARGET_REALMS[@]}" -eq 0 ]; then
+  TARGET_REALMS=("")
+fi
+
+if is_truthy "${DRY_RUN}" && is_truthy "${SKIP_API_WHEN_DRY_RUN}"; then
+  echo "[n8n] DRY_RUN: skipping API sync."
+  for realm in "${TARGET_REALMS[@]}"; do
+    realm_label="${realm:-default}"
+    echo "[n8n] dry-run realm=${realm_label} dir=${WORKFLOW_DIR}"
+    for file in "${files[@]}"; do
+      jq -e . "${file}" >/dev/null
+      wf_name="$(jq -r '.name // empty' "${file}")"
+      echo "[n8n] dry-run: would sync ${wf_name} (${file})"
+    done
+  done
+  exit 0
+fi
+
+for realm in "${TARGET_REALMS[@]}"; do
+  realm_label="${realm:-default}"
+  N8N_PUBLIC_API_BASE_URL="$(resolve_n8n_public_base_url_for_realm "${realm}")"
+  if [[ -n "${realm}" && -z "${N8N_PUBLIC_API_BASE_URL}" ]]; then
+    echo "[n8n] N8N base URL not found for realm: ${realm_label}" >&2
+    exit 1
+  fi
+  if [[ -z "${N8N_PUBLIC_API_BASE_URL}" ]]; then
+    N8N_PUBLIC_API_BASE_URL="${DEFAULT_N8N_PUBLIC_API_BASE_URL}"
+  fi
+  N8N_PUBLIC_API_BASE_URL="${N8N_PUBLIC_API_BASE_URL%/}"
+  require_var "N8N_PUBLIC_API_BASE_URL" "${N8N_PUBLIC_API_BASE_URL}"
+
+  N8N_API_KEY="$(resolve_n8n_api_key_for_realm "${realm}")"
+  require_var "N8N_API_KEY" "${N8N_API_KEY}"
+
+  echo "[n8n] realm=${realm_label} base_url=${N8N_PUBLIC_API_BASE_URL}"
+
+  for file in "${files[@]}"; do
+    jq -e . "${file}" >/dev/null
+    wf_name="$(jq -r '.name // empty' "${file}")"
+    if [ -z "${wf_name}" ]; then
+      echo "[n8n] Missing .name in ${file}" >&2
+      exit 1
+    fi
+
+    encoded_name="$(urlencode "${wf_name}")"
+    api_call "GET" "/workflows?name=${encoded_name}&limit=250"
+    if [[ "${API_STATUS}" != 2* ]]; then
+      api_call "GET" "/workflows?limit=250"
+    fi
+    expect_2xx "GET /workflows"
+
+    wf_matches="$(extract_workflow_list | jq -c --arg name "${wf_name}" 'map(select(.name == $name))')"
+    wf_count="$(jq -r 'length' <<<"${wf_matches}")"
+    if [ "${wf_count}" = "0" ]; then
+      payload="$(jq -c '.' "${file}")"
+      if is_truthy "${DRY_RUN}"; then
+        echo "[n8n] create: ${wf_name} (${file})"
+        continue
+      fi
+      api_call "POST" "/workflows" "${payload}"
+      expect_2xx "POST /workflows (${wf_name})"
+      wf_id="$(jq -r '.id // empty' <<<"${API_BODY}")"
+      echo "[n8n] created: ${wf_name} -> ${wf_id}"
+    elif [ "${wf_count}" = "1" ]; then
+      wf_id="$(jq -r '.[0].id // empty' <<<"${wf_matches}")"
+      api_call "GET" "/workflows/${wf_id}?excludePinnedData=true"
+      if [[ "${API_STATUS}" != 2* ]]; then
+        api_call "GET" "/workflows/${wf_id}"
+      fi
+      expect_2xx "GET /workflows/${wf_id}"
+      existing="${API_BODY}"
+      desired="$(jq -c '.' "${file}")"
+      merged="$(merge_payload "${desired}" "${existing}")"
+      if is_truthy "${DRY_RUN}"; then
+        echo "[n8n] update: ${wf_name} (${wf_id}) (${file})"
+        continue
+      fi
+      api_call "PUT" "/workflows/${wf_id}" "${merged}"
+      expect_2xx "PUT /workflows/${wf_id} (${wf_name})"
+      echo "[n8n] updated: ${wf_name} -> ${wf_id}"
+    else
+      echo "[n8n] Multiple workflows matched name='${wf_name}'. Please ensure uniqueness." >&2
+      jq -r '.[] | [.id, .name] | @tsv' <<<"${wf_matches}" >&2 || true
+      exit 1
+    fi
+
+    if is_truthy "${ACTIVATE}"; then
+      api_call "POST" "/workflows/${wf_id}/activate"
+      expect_2xx "POST /workflows/${wf_id}/activate"
+    fi
+  done
+done
+
+echo "[n8n] Done."

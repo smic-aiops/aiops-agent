@@ -1,0 +1,36 @@
+.terraform/
+terraform.tfstate
+terraform.tfstate.*
+*.tfvars
+*.tfvars.*
+*.tfstate
+*.tfstate.*
+tfplan
+tfplan*
+tfplan_out
+tfplan_cli
+tfplan_unpack/
+
+# Local image tarballs
+images/
+modules/stack/templates/*.zip
+docker/sulu/source/
+
+# OQ / test evidence (local only)
+evidence/
+!apps/**/docs/oq/evidence/
+!apps/**/docs/oq/evidence/**
+
+# IQ test outputs (local only)
+apps/workflow_manager/data/iq_test_*.jsonl
+
+# Local logs
+logs/
+
+# CLI history / OS cruft
+.DS_Store
+
+# Python cache
+__pycache__/
+
+vendor/

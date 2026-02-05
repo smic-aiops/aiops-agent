@@ -1,0 +1,206 @@
+{
+  "name": "gitlab-issue-rag-sync",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/issue/rag/sync/oq",
+        "httpMethod": "POST",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-oq",
+      "name": "Webhook (OQ)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "webhookId": "e299ef60-bc84-457f-8ad6-83617cc144fa",
+      "position": [
+        200,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "custom",
+              "cronExpression": "0 */2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+	        "jsCode": "const workflowContext = this;\n\nconst incomingRaw = $input.first()?.json || {};\nconst incoming = (incomingRaw && typeof incomingRaw === 'object' && incomingRaw.body && typeof incomingRaw.body === 'object') ? incomingRaw.body : incomingRaw;\nconst incomingEnv = (incoming && incoming.env && typeof incoming.env === 'object') ? incoming.env : (incomingRaw?.env || {});\nconst incomingPaths = (incoming && incoming.project_paths && typeof incoming.project_paths === 'object') ? incoming.project_paths : (incomingRaw?.project_paths || {});\n\nconst baseUrl = String($env.N8N_GITLAB_API_BASE_URL || $env.GITLAB_API_BASE_URL || '').replace(/\\/$/, '');\nconst token = String(\n  $env.N8N_GITLAB_TOKEN ||\n    $env.GITLAB_TOKEN ||\n    incomingEnv.N8N_GITLAB_TOKEN ||\n    incomingEnv.GITLAB_TOKEN ||\n    incoming.N8N_GITLAB_TOKEN ||\n    incoming.GITLAB_TOKEN ||\n    ''\n).trim();\nconst webBaseUrl = (\n  $env.N8N_GITLAB_WEB_BASE_URL ||\n  $env.GITLAB_WEB_BASE_URL ||\n  baseUrl.replace(/\\/api\\/v4$/, '')\n).replace(/\\/$/, '');\n\nconst generalProjectPath = String(\n  $env.N8N_GITLAB_ISSUE_RAG_GENERAL_PROJECT_PATH ||\n    incomingEnv.N8N_GITLAB_ISSUE_RAG_GENERAL_PROJECT_PATH ||\n    incoming.N8N_GITLAB_ISSUE_RAG_GENERAL_PROJECT_PATH ||\n    incomingPaths.general ||\n    ''\n).trim();\nconst serviceProjectPath = String(\n  $env.N8N_GITLAB_ISSUE_RAG_SERVICE_PROJECT_PATH ||\n    incomingEnv.N8N_GITLAB_ISSUE_RAG_SERVICE_PROJECT_PATH ||\n    incoming.N8N_GITLAB_ISSUE_RAG_SERVICE_PROJECT_PATH ||\n    incomingPaths.service ||\n    ''\n).trim();\nconst technicalProjectPath = String(\n  $env.N8N_GITLAB_ISSUE_RAG_TECH_PROJECT_PATH ||\n    incomingEnv.N8N_GITLAB_ISSUE_RAG_TECH_PROJECT_PATH ||\n    incoming.N8N_GITLAB_ISSUE_RAG_TECH_PROJECT_PATH ||\n    incomingPaths.technical ||\n    ''\n).trim();\n\nconst state = String($env.N8N_GITLAB_ISSUE_RAG_STATE || 'all').toLowerCase();\nconst maxIssues = Number($env.N8N_GITLAB_ISSUE_RAG_MAX_ISSUES || 1000);\nconst maxNotesPerIssue = Number($env.N8N_GITLAB_ISSUE_RAG_MAX_NOTES_PER_ISSUE || 200);\nconst includeSystemNotes = String(incomingEnv.N8N_GITLAB_ISSUE_RAG_INCLUDE_SYSTEM_NOTES || $env.N8N_GITLAB_ISSUE_RAG_INCLUDE_SYSTEM_NOTES || '').toLowerCase() === 'true';\n\nconst chunkSize = Number($env.N8N_GITLAB_ISSUE_RAG_CHUNK_SIZE || 1200);\nconst chunkOverlap = Number($env.N8N_GITLAB_ISSUE_RAG_CHUNK_OVERLAP || 120);\nconst forceFullSync = String(incomingEnv.N8N_GITLAB_ISSUE_RAG_FORCE_FULL_SYNC || $env.N8N_GITLAB_ISSUE_RAG_FORCE_FULL_SYNC || '').toLowerCase() === 'true';\nconst dryRun = String(incomingEnv.N8N_GITLAB_ISSUE_RAG_DRY_RUN || $env.N8N_GITLAB_ISSUE_RAG_DRY_RUN || '').toLowerCase() === 'true';\n\nconst embeddingApiBase = String($env.N8N_EMBEDDING_API_BASE_URL || 'https://api.openai.com/v1').replace(/\\/$/, '');\nconst embeddingApiKey = incomingEnv.N8N_EMBEDDING_API_KEY || $env.N8N_EMBEDDING_API_KEY || $env.OPENAI_API_KEY || $env.OPENAI_MODEL_API_KEY || '';\nconst embeddingModel = $env.N8N_EMBEDDING_MODEL || 'text-embedding-3-small';\nconst embeddingDim = Number($env.N8N_EMBEDDING_DIMENSION || 1536);\nconst embeddingSkip = String(incomingEnv.N8N_EMBEDDING_SKIP || $env.N8N_EMBEDDING_SKIP || '').toLowerCase() === 'true';\n\nconst allowedStates = new Set(['opened', 'closed', 'all']);\nconst issueState = allowedStates.has(state) ? state : 'all';\n\nconst targets = [\n  {\n    management_domain: 'general_management',\n    management_domain_label_ja: '一般管理',\n    project_path: generalProjectPath\n  },\n  {\n    management_domain: 'service_management',\n    management_domain_label_ja: 'サービス管理',\n    project_path: serviceProjectPath\n  },\n  {\n    management_domain: 'technical_management',\n    management_domain_label_ja: '技術管理',\n    project_path: technicalProjectPath\n  }\n].filter((t) => Boolean(t.project_path));\n\nif (!baseUrl || !token || targets.length === 0) {\n  return [\n    {\n      json: {\n        ok: false,\n        error: 'missing_gitlab_config',\n        base_url: baseUrl || null,\n        targets\n      }\n    }\n  ];\n}\n\nreturn targets.map((target) => ({\n  json: {\n    ok: true,\n    project_path: target.project_path,\n    management_domain: target.management_domain,\n    management_domain_label_ja: target.management_domain_label_ja,\n    gitlab: {\n      base_url: baseUrl,\n      token,\n      web_base_url: webBaseUrl\n    },\n    config: {\n      issue_state: issueState,\n      max_issues: Number.isFinite(maxIssues) ? maxIssues : 1000,\n      max_notes_per_issue: Number.isFinite(maxNotesPerIssue) ? maxNotesPerIssue : 200,\n      include_system_notes: includeSystemNotes,\n      chunk_size: Number.isFinite(chunkSize) ? chunkSize : 1200,\n      chunk_overlap: Number.isFinite(chunkOverlap) ? chunkOverlap : 120,\n      force_full_sync: forceFullSync,\n      dry_run: dryRun,\n      embedding: {\n        api_base: embeddingApiBase,\n        api_key: embeddingApiKey,\n        model: embeddingModel,\n        dimension: Number.isFinite(embeddingDim) ? embeddingDim : 1536,\n        skip: embeddingSkip\n      }\n    }\n  }\n}));\n"
+	      },
+      "id": "2",
+      "name": "Load GitLab Issue RAG Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowContext = this;\n\nconst items = $input.all().map((item) => item.json);\nconst out = [];\n\nfunction buildQuery(params) {\n  return Object.entries(params)\n    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)\n    .join('&');\n}\n\nfunction normalizeErrorMessage(error) {\n  if (!error) return 'unknown_error';\n  if (typeof error === 'string') return error;\n  if (error.message) return String(error.message);\n  try {\n    return JSON.stringify(error);\n  } catch (e) {\n    return String(error);\n  }\n}\n\nasync function listIssues(baseUrl, token, projectPath, state) {\n  const projectEncoded = encodeURIComponent(projectPath);\n  const perPage = 100;\n  let page = 1;\n  const issues = [];\n  while (true) {\n    const query = buildQuery({\n      per_page: String(perPage),\n      page: String(page),\n      state: state || 'all',\n      order_by: 'updated_at',\n      sort: 'desc'\n    });\n    const url = `${baseUrl}/projects/${projectEncoded}/issues?${query}`;\n    const response = await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url,\n      headers: { 'PRIVATE-TOKEN': token },\n      json: true\n    });\n    const batch = Array.isArray(response) ? response : [];\n    issues.push(...batch);\n    if (batch.length < perPage) break;\n    page += 1;\n  }\n  return issues;\n}\n\nasync function listIssueNotes(baseUrl, token, projectPath, issueIid) {\n  const projectEncoded = encodeURIComponent(projectPath);\n  const perPage = 100;\n  let page = 1;\n  const notes = [];\n  while (true) {\n    const query = buildQuery({\n      per_page: String(perPage),\n      page: String(page),\n      sort: 'asc',\n      order_by: 'created_at'\n    });\n    const url = `${baseUrl}/projects/${projectEncoded}/issues/${issueIid}/notes?${query}`;\n    const response = await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url,\n      headers: { 'PRIVATE-TOKEN': token },\n      json: true\n    });\n    const batch = Array.isArray(response) ? response : [];\n    notes.push(...batch);\n    if (batch.length < perPage) break;\n    page += 1;\n  }\n  return notes;\n}\n\nfunction normalizeBody(value) {\n  return String(value || '').replace(/\\r\\n/g, '\\n').trim();\n}\n\nfunction buildIssueContent(payload) {\n  const header = [\n    '---',\n    `source: gitlab_issue`,\n    `management_domain: ${payload.management_domain}`,\n    `management_domain_label_ja: ${payload.management_domain_label_ja}`,\n    `project_path: ${payload.project_path}`,\n    `issue_iid: ${payload.issue_iid}`,\n    `issue_title: ${payload.issue_title}`,\n    `issue_url: ${payload.source_url}`,\n    `issue_state: ${payload.issue_state}`,\n    `source_updated_at: ${payload.source_updated_at || ''}`,\n    '---',\n    ''\n  ].join('\\n');\n\n  const parts = [header];\n\n  if (payload.description) {\n    parts.push('## Description');\n    parts.push(payload.description);\n    parts.push('');\n  }\n\n  if (payload.notes && payload.notes.length) {\n    parts.push('## Comments');\n    for (const note of payload.notes) {\n      const createdAt = note.created_at || '';\n      const author = note.author || 'unknown';\n      const body = note.body || '';\n      parts.push(`- (${createdAt}) ${author}`);\n      parts.push(body);\n      parts.push('');\n    }\n  }\n\n  return parts.join('\\n').trim();\n}\n\nfor (const item of items) {\n  if (!item.ok) {\n    out.push({ json: item });\n    continue;\n  }\n\n  const config = item.config || {};\n  const maxIssues = Number(config.max_issues || 1000);\n  const maxNotesPerIssue = Number(config.max_notes_per_issue || 200);\n  const includeSystemNotes = Boolean(config.include_system_notes);\n  const issueState = String(config.issue_state || 'all').toLowerCase();\n\n  const staticData = (workflowContext && typeof workflowContext.getWorkflowStaticData === 'function')\n    ? workflowContext.getWorkflowStaticData('global')\n    : (typeof $getWorkflowStaticData === 'function' ? $getWorkflowStaticData('global') : {});\n  const cacheKey = `gitlab:issue_rag:${item.project_path}:${item.management_domain}`;\n  const cached = staticData?.[cacheKey]?.issues || {};\n  const newCache = {};\n\n  let list = [];\n  try {\n    list = await listIssues(item.gitlab.base_url, item.gitlab.token, item.project_path, issueState);\n  } catch (error) {\n    out.push({\n      json: {\n        ok: false,\n        error: 'gitlab_list_issues_failed',\n        error_message: normalizeErrorMessage(error),\n        project_path: item.project_path,\n        management_domain: item.management_domain,\n        management_domain_label_ja: item.management_domain_label_ja,\n        source_url: `${item.gitlab.web_base_url}/${item.project_path}`,\n        config\n      }\n    });\n    continue;\n  }\n\n  let processed = 0;\n  for (const issue of list) {\n    if (processed >= maxIssues) break;\n    const iid = issue.iid;\n    if (!iid) continue;\n    const updatedAt = issue.updated_at || issue.created_at || null;\n    newCache[String(iid)] = updatedAt;\n\n    if (!config.force_full_sync && updatedAt && cached[String(iid)] === updatedAt) {\n      continue;\n    }\n\n    const title = normalizeBody(issue.title || `#${iid}`);\n    const description = normalizeBody(issue.description || '');\n\n    let notes = [];\n    let notesError = null;\n    try {\n      const allNotes = await listIssueNotes(item.gitlab.base_url, item.gitlab.token, item.project_path, iid);\n      const filtered = allNotes\n        .filter((note) => includeSystemNotes || !note.system)\n        .map((note) => ({\n          created_at: note.created_at || null,\n          author: note.author?.username || note.author?.name || null,\n          body: normalizeBody(note.body || '')\n        }))\n        .filter((note) => note.body);\n\n      notes = filtered.slice(0, maxNotesPerIssue);\n    } catch (error) {\n      notes = [];\n      notesError = normalizeErrorMessage(error);\n    }\n\n    const issueUrl = `${item.gitlab.web_base_url}/${item.project_path}/-/issues/${iid}`;\n    const content = buildIssueContent({\n      project_path: item.project_path,\n      management_domain: item.management_domain,\n      management_domain_label_ja: item.management_domain_label_ja,\n      issue_iid: iid,\n      issue_title: title,\n      source_url: issueUrl,\n      issue_state: issue.state || issueState,\n      source_updated_at: updatedAt,\n      description,\n      notes\n    });\n\n    if (!content) continue;\n\n    out.push({\n      json: {\n        project_path: item.project_path,\n        management_domain: item.management_domain,\n        management_domain_label_ja: item.management_domain_label_ja,\n        issue_iid: iid,\n        issue_title: title,\n        source_url: issueUrl,\n        issue_state: issue.state || issueState,\n        content,\n        source_updated_at: updatedAt,\n        notes_error: notesError,\n        config\n      }\n    });\n\n    processed += 1;\n  }\n\n  staticData[cacheKey] = {\n    last_synced_at: new Date().toISOString(),\n    issues: newCache\n  };\n}\n\nreturn out;\n"
+      },
+      "id": "3",
+      "name": "Fetch GitLab Issues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst items = $input.all().map((item) => item.json);\nconst out = [];\n\nfunction chunkText(text, size, overlap) {\n  const chunks = [];\n  const clean = String(text || '').trim();\n  if (!clean) return chunks;\n  const maxSize = Math.max(200, size || 1200);\n  const step = Math.max(50, maxSize - (overlap || 0));\n  for (let i = 0; i < clean.length; i += step) {\n    const slice = clean.slice(i, i + maxSize);\n    if (!slice.trim()) continue;\n    chunks.push(slice);\n  }\n  return chunks;\n}\n\nfunction stableId(seed) {\n  const hash = crypto.createHash('sha256').update(seed).digest('hex');\n  return hash.slice(0, 32);\n}\n\nfor (const item of items) {\n  const config = item.config || {};\n  const size = Number(config.chunk_size || 1200);\n  const overlap = Number(config.chunk_overlap || 120);\n  const chunks = chunkText(item.content || '', size, overlap);\n  chunks.forEach((chunk, index) => {\n    const docSeed = `gitlab_issue:${item.management_domain}:${item.project_path}:${item.issue_iid}:${index}`;\n    const docId = stableId(docSeed);\n    out.push({\n      json: {\n        document_id: docId,\n        management_domain: item.management_domain,\n        management_domain_label_ja: item.management_domain_label_ja,\n        project_path: item.project_path,\n        issue_iid: item.issue_iid,\n        issue_title: item.issue_title,\n        source_url: item.source_url,\n        issue_state: item.issue_state,\n        content: chunk,\n        chunk_index: index,\n        source_updated_at: item.source_updated_at || null,\n        config\n      }\n    });\n  });\n}\n\nreturn out;\n"
+      },
+      "id": "4",
+      "name": "Chunk Issue Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowContext = this;\n\nconst items = $input.all().map((item) => item.json);\nconst out = [];\n\nasync function embedText(config, text) {\n  const apiKey = config.embedding?.api_key || '';\n  if (!apiKey) throw new Error('missing_embedding_api_key');\n  const url = `${config.embedding.api_base}/embeddings`;\n  const body = {\n    model: config.embedding.model,\n    input: text\n  };\n  if (config.embedding.dimension) {\n    body.dimensions = config.embedding.dimension;\n  }\n  const response = await workflowContext.helpers.httpRequest({\n    method: 'POST',\n    url,\n    headers: {\n      Authorization: `Bearer ${apiKey}`,\n      'Content-Type': 'application/json'\n    },\n    body,\n    json: true\n  });\n  const data = Array.isArray(response?.data) ? response.data : [];\n  return data[0]?.embedding || null;\n}\n\nfor (const item of items) {\n  const config = item.config || {};\n  const embeddingCfg = config.embedding || {};\n  if (config.dry_run || embeddingCfg.skip) {\n    out.push({ json: { ...item, embedding: null } });\n    continue;\n  }\n  try {\n    const embedding = await embedText(config, item.content || '');\n    out.push({ json: { ...item, embedding } });\n  } catch (error) {\n    out.push({ json: { ...item, embedding: null, embedding_error: error?.message ? String(error.message) : String(error) } });\n  }\n}\n\nreturn out;\n"
+      },
+      "id": "5",
+      "name": "Embed Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst items = $input.all().map((item) => item.json);\nconst out = [];\n\nfunction hashText(text) {\n  return crypto.createHash('sha256').update(String(text || '')).digest('hex');\n}\n\nfor (const item of items) {\n  const config = item.config || {};\n  const embeddingCfg = config.embedding || {};\n  const metadata = {\n    source: 'gitlab_issue',\n    content_kind: item.content_kind || 'issue_with_comments',\n    management_domain: item.management_domain,\n    management_domain_label_ja: item.management_domain_label_ja,\n    project_path: item.project_path,\n    issue_iid: item.issue_iid,\n    issue_title: item.issue_title,\n    issue_state: item.issue_state,\n    source_url: item.source_url,\n    source_updated_at: item.source_updated_at || null,\n    chunk_index: item.chunk_index,\n    content_hash: hashText(item.content || ''),\n    embedding_model: embeddingCfg.model || null,\n    embedding_dimension: embeddingCfg.dimension || null,\n    dry_run: Boolean(config.dry_run),\n    embedding_skipped: Boolean(config.dry_run || embeddingCfg.skip),\n    notes_error: item.notes_error || null,\n    embedding_error: item.embedding_error || null\n  };\n\n  let embeddingValue = null;\n  if (Array.isArray(item.embedding)) {\n    embeddingValue = `[${item.embedding.join(',')}]`;\n  }\n\n  out.push({\n    json: {\n      document_id: item.document_id,\n      management_domain: item.management_domain,\n      project_path: item.project_path,\n      issue_iid: item.issue_iid,\n      issue_title: item.issue_title,\n      source_url: item.source_url,\n      content: item.content,\n      embedding: embeddingValue,\n      metadata,\n      source_updated_at: item.source_updated_at || null\n    }\n  });\n}\n\nreturn out;\n"
+      },
+      "id": "6",
+      "name": "Build Upsert Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        200
+      ]
+    },
+    {
+	      "parameters": {
+	        "operation": "executeQuery",
+	        "query": "INSERT INTO itsm_gitlab_issue_documents (\n  document_id,\n  management_domain,\n  project_path,\n  issue_iid,\n  issue_title,\n  source_url,\n  content,\n  embedding,\n  metadata,\n  source_updated_at,\n  updated_at\n) VALUES (\n  {{ $json.document_id ? `'${String($json.document_id).replace(/'/g, \"''\")}'` : 'NULL' }},\n  {{ $json.management_domain ? `'${String($json.management_domain).replace(/'/g, \"''\")}'` : 'NULL' }},\n  {{ $json.project_path ? `'${String($json.project_path).replace(/'/g, \"''\")}'` : 'NULL' }},\n  {{ $json.issue_iid !== null && $json.issue_iid !== undefined ? Number($json.issue_iid) : 'NULL' }},\n  {{ $json.issue_title ? `'${String($json.issue_title).replace(/'/g, \"''\")}'` : 'NULL' }},\n  {{ $json.source_url ? `'${String($json.source_url).replace(/'/g, \"''\")}'` : 'NULL' }},\n  {{ $json.content !== null && $json.content !== undefined ? `'${String($json.content).replace(/'/g, \"''\")}'` : 'NULL' }},\n  {{ $json.embedding ? `'${String($json.embedding).replace(/'/g, \"''\")}'` : 'NULL' }}::vector,\n  {{ $json.metadata === null || $json.metadata === undefined ? 'NULL' : `'${(typeof $json.metadata === 'string' ? $json.metadata : JSON.stringify($json.metadata)).replace(/'/g, \"''\")}'` }}::jsonb,\n  {{ $json.source_updated_at ? `'${String($json.source_updated_at).replace(/'/g, \"''\")}'` : 'NULL' }}::timestamptz,\n  NOW()\n)\nON CONFLICT (document_id) DO UPDATE SET\n  management_domain = EXCLUDED.management_domain,\n  project_path = EXCLUDED.project_path,\n  issue_iid = EXCLUDED.issue_iid,\n  issue_title = EXCLUDED.issue_title,\n  source_url = EXCLUDED.source_url,\n  content = EXCLUDED.content,\n  embedding = EXCLUDED.embedding,\n  metadata = EXCLUDED.metadata,\n  source_updated_at = EXCLUDED.source_updated_at,\n  updated_at = NOW();\n"
+	      },
+      "id": "7",
+      "name": "Upsert Issue Chunks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load GitLab Issue RAG Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load GitLab Issue RAG Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch GitLab Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch GitLab Issues": {
+      "main": [
+        [
+          {
+            "node": "Chunk Issue Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Issue Content": {
+      "main": [
+        [
+          {
+            "node": "Embed Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Chunks": {
+      "main": [
+        [
+          {
+            "node": "Build Upsert Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Upsert Items": {
+      "main": [
+        [
+          {
+            "node": "Upsert Issue Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook (OQ)": {
+      "main": [
+        [
+          {
+            "node": "Load GitLab Issue RAG Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

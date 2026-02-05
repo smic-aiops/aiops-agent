@@ -1,0 +1,359 @@
+'use strict';
+
+const CONFIG = {
+  keycloakBaseUrl: "${keycloak_base_url}",
+  realm: "${keycloak_realm}",
+  clientId: "${service_control_ui_client_id}",
+  allowedGroup: "${control_site_auth_allowed_group}",
+  callbackPath: "${control_site_auth_callback_path}"
+};
+
+const KEYCLOAK_BASE_URL = (CONFIG.keycloakBaseUrl || '').replace(/\/+$/, '');
+const REALM = (CONFIG.realm || '').replace(/^\/+|\/+$/g, '');
+const ISSUER = KEYCLOAK_BASE_URL + '/realms/' + REALM;
+const AUTH_URL = ISSUER + '/protocol/openid-connect/auth';
+const TOKEN_URL = ISSUER + '/protocol/openid-connect/token';
+const JWKS_URL = ISSUER + '/protocol/openid-connect/certs';
+
+const AUTH_COOKIE = 'svc_control_auth';
+const STATE_COOKIE = 'svc_control_state';
+const VERIFIER_COOKIE = 'svc_control_verifier';
+const REDIRECT_COOKIE = 'svc_control_redirect';
+
+const JWKS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+let jwksCache = null;
+let jwksCacheExpiresAt = 0;
+let jwksFetchPromise = null;
+
+const https = require('https');
+const crypto = require('crypto');
+
+function nowSeconds() {
+  return Math.floor(Date.now() / 1000);
+}
+
+function getHeader(headers, name) {
+  const key = name.toLowerCase();
+  const entry = headers[key];
+  if (!entry || entry.length === 0) return '';
+  return entry.map((item) => item.value).join(';');
+}
+
+function parseCookies(headers) {
+  const header = getHeader(headers, 'cookie');
+  if (!header) return {};
+  const out = {};
+  header.split(';').forEach((part) => {
+    const idx = part.indexOf('=');
+    if (idx === -1) return;
+    const key = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1).trim();
+    if (key) out[key] = value;
+  });
+  return out;
+}
+
+function buildCookie(name, value, options) {
+  const parts = [name + '=' + value];
+  if (options.maxAge !== undefined) parts.push('Max-Age=' + options.maxAge);
+  if (options.path) parts.push('Path=' + options.path);
+  if (options.secure) parts.push('Secure');
+  if (options.httpOnly) parts.push('HttpOnly');
+  if (options.sameSite) parts.push('SameSite=' + options.sameSite);
+  return parts.join('; ');
+}
+
+function buildResponse(statusCode, body, headers) {
+  return {
+    status: String(statusCode),
+    statusDescription: statusCode === 302 ? 'Found' : 'Forbidden',
+    body: body || '',
+    headers: headers || {}
+  };
+}
+
+function redirect(location, cookies) {
+  const headers = {
+    location: [{ key: 'Location', value: location }]
+  };
+  if (cookies && cookies.length) {
+    headers['set-cookie'] = cookies.map((value) => ({ key: 'Set-Cookie', value }));
+  }
+  return buildResponse(302, '', headers);
+}
+
+function forbidden(message) {
+  return buildResponse(403, message || 'Forbidden', {
+    'content-type': [{ key: 'Content-Type', value: 'text/plain; charset=utf-8' }]
+  });
+}
+
+function randomString(bytes) {
+  return crypto.randomBytes(bytes).toString('hex');
+}
+
+function base64UrlEncode(buffer) {
+  return buffer
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+function base64UrlDecode(input) {
+  const normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+  return Buffer.from(normalized + padding, 'base64');
+}
+
+async function sha256(input) {
+  return crypto.createHash('sha256').update(input).digest();
+}
+
+async function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        res.on('end', () => {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            reject(new Error('HTTP ' + res.statusCode + ' from ' + url));
+            return;
+          }
+          try {
+            resolve(JSON.parse(data));
+          } catch (err) {
+            reject(err);
+          }
+        });
+      })
+      .on('error', reject);
+  });
+}
+
+async function getJwks() {
+  const now = Date.now();
+  if (jwksCache && now < jwksCacheExpiresAt) {
+    return jwksCache;
+  }
+  if (!jwksFetchPromise) {
+    jwksFetchPromise = fetchJson(JWKS_URL)
+      .then((data) => {
+        jwksCache = data;
+        jwksCacheExpiresAt = Date.now() + JWKS_CACHE_TTL_MS;
+        jwksFetchPromise = null;
+        return jwksCache;
+      })
+      .catch((err) => {
+        jwksFetchPromise = null;
+        throw err;
+      });
+  }
+  return jwksFetchPromise;
+}
+
+function extractKid(token) {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const header = JSON.parse(base64UrlDecode(parts[0]).toString('utf8'));
+    return header.kid || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function getAudience(payload) {
+  if (!payload) return [];
+  const aud = payload.aud;
+  if (Array.isArray(aud)) return aud;
+  if (typeof aud === 'string') return [aud];
+  return [];
+}
+
+function getAuthorizedParty(payload) {
+  if (!payload) return '';
+  return typeof payload.azp === 'string' ? payload.azp : '';
+}
+
+function groupAllowed(payload) {
+  const allowed = CONFIG.allowedGroup;
+  if (!allowed) return true;
+  const groups = payload.groups || payload.group || [];
+  const list = Array.isArray(groups) ? groups : [groups];
+  const normalized = list.map((item) => String(item || '').replace(/^\/+/, ''));
+  return normalized.includes(allowed);
+}
+
+async function verifyJwt(token) {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const header = JSON.parse(base64UrlDecode(parts[0]).toString('utf8'));
+  const payload = JSON.parse(base64UrlDecode(parts[1]).toString('utf8'));
+  const signature = base64UrlDecode(parts[2]);
+
+  if (header.alg !== 'RS256') return null;
+  if (payload.iss !== ISSUER) return null;
+  if (payload.exp && payload.exp < nowSeconds()) return null;
+  const aud = getAudience(payload);
+  if (CONFIG.clientId) {
+    const azp = getAuthorizedParty(payload);
+    if (!aud.includes(CONFIG.clientId) && azp !== CONFIG.clientId) return null;
+  }
+  if (!groupAllowed(payload)) return null;
+
+  const jwks = await getJwks();
+  const keys = (jwks && jwks.keys) || [];
+  const key = keys.find((item) => item.kid === header.kid);
+  if (!key) return null;
+  const publicKey = crypto.createPublicKey({ key, format: 'jwk' });
+  const verify = crypto.createVerify('RSA-SHA256');
+  verify.update(parts[0] + '.' + parts[1]);
+  verify.end();
+  const valid = verify.verify(publicKey, signature);
+  return valid ? payload : null;
+}
+
+function buildRedirectUri(request) {
+  const host = getHeader(request.headers, 'host');
+  return 'https://' + host + CONFIG.callbackPath;
+}
+
+function buildOriginalPath(request) {
+  const qs = request.querystring ? '?' + request.querystring : '';
+  return request.uri + qs;
+}
+
+function clearAuthCookies() {
+  return [
+    buildCookie(AUTH_COOKIE, '', { path: '/', maxAge: 0, secure: true, httpOnly: true, sameSite: 'Lax' }),
+    buildCookie(STATE_COOKIE, '', { path: '/', maxAge: 0, secure: true, httpOnly: true, sameSite: 'Lax' }),
+    buildCookie(VERIFIER_COOKIE, '', { path: '/', maxAge: 0, secure: true, httpOnly: true, sameSite: 'Lax' }),
+    buildCookie(REDIRECT_COOKIE, '', { path: '/', maxAge: 0, secure: true, httpOnly: true, sameSite: 'Lax' })
+  ];
+}
+
+async function startLogin(request) {
+  const state = randomString(12);
+  const verifier = randomString(32);
+  const challenge = base64UrlEncode(await sha256(verifier));
+  const redirectUri = buildRedirectUri(request);
+  const originalPath = buildOriginalPath(request);
+  const params = new URLSearchParams({
+    client_id: CONFIG.clientId,
+    response_type: 'code',
+    scope: 'openid',
+    redirect_uri: redirectUri,
+    code_challenge_method: 'S256',
+    code_challenge: challenge,
+    state: state
+  });
+  const cookies = [
+    buildCookie(STATE_COOKIE, state, { path: '/', maxAge: 300, secure: true, httpOnly: true, sameSite: 'Lax' }),
+    buildCookie(VERIFIER_COOKIE, verifier, { path: '/', maxAge: 300, secure: true, httpOnly: true, sameSite: 'Lax' }),
+    buildCookie(REDIRECT_COOKIE, originalPath, { path: '/', maxAge: 300, secure: true, httpOnly: true, sameSite: 'Lax' })
+  ];
+  return redirect(AUTH_URL + '?' + params.toString(), cookies);
+}
+
+async function exchangeCodeForToken(code, verifier, redirectUri) {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: CONFIG.clientId,
+    code: code,
+    code_verifier: verifier,
+    redirect_uri: redirectUri
+  }).toString();
+  return new Promise((resolve, reject) => {
+    const req = https.request(TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(body)
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          reject(new Error('Token endpoint error: ' + res.statusCode));
+          return;
+        }
+        try {
+          resolve(JSON.parse(data));
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+async function handleCallback(request) {
+  const params = new URLSearchParams(request.querystring || '');
+  const code = params.get('code');
+  const state = params.get('state');
+  if (!code) {
+    return forbidden('Missing authorization code.');
+  }
+  const cookies = parseCookies(request.headers);
+  if (!state || !cookies[STATE_COOKIE] || state !== cookies[STATE_COOKIE]) {
+    return forbidden('Invalid authentication state.');
+  }
+  const verifier = cookies[VERIFIER_COOKIE];
+  if (!verifier) {
+    return forbidden('PKCE verifier がありません。');
+  }
+  const redirectUri = buildRedirectUri(request);
+  const tokenResponse = await exchangeCodeForToken(code, verifier, redirectUri);
+  const accessToken = tokenResponse.access_token;
+  if (!accessToken) {
+    return forbidden('Failed to obtain access token.');
+  }
+  const payload = await verifyJwt(accessToken);
+  if (!payload) {
+    return forbidden('Invalid authentication token.');
+  }
+  const maxAge = tokenResponse.expires_in ? Number(tokenResponse.expires_in) : 300;
+  const authCookie = buildCookie(AUTH_COOKIE, accessToken, {
+    path: '/',
+    maxAge: maxAge,
+    secure: true,
+    httpOnly: true,
+    sameSite: 'Lax'
+  });
+  const redirectPath = cookies[REDIRECT_COOKIE] || '/';
+  const cleanup = clearAuthCookies();
+  return redirect(redirectPath, [authCookie].concat(cleanup));
+}
+
+exports.handler = async (event) => {
+  const request = event.Records[0].cf.request;
+  if (!KEYCLOAK_BASE_URL || !REALM || !CONFIG.clientId) {
+    return forbidden('Authentication is not configured.');
+  }
+  if (request.uri === CONFIG.callbackPath) {
+    return handleCallback(request);
+  }
+  const cookies = parseCookies(request.headers);
+  const token = cookies[AUTH_COOKIE];
+  if (token) {
+    try {
+      const payload = await verifyJwt(token);
+      if (payload) {
+        return request;
+      }
+    } catch (err) {
+      // ignore and fallthrough to login
+    }
+  }
+  return startLogin(request);
+};

@@ -1,0 +1,123 @@
+{
+  "name": "aiops-db-check-dedupe",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "aiops-agent/db/check/dedupe",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (DB Check Dedupe)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = ($json && typeof $json === 'object') ? $json : {};\nconst body = (req.body && typeof req.body === 'object') ? req.body : req;\n\nconst dedupeKey = String(body.dedupe_key ?? '').trim();\nif (!dedupeKey) {\n  throw new Error('dedupe_key is required');\n}\n\nreturn [{\n  json: {\n    dedupe_key: dedupeKey\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Extract Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH d AS (\n  SELECT context_id, first_seen_at\n  FROM aiops_dedupe\n  WHERE dedupe_key = '{{ String($json.dedupe_key ?? \"\").replace(/'/g, \"''\") }}'\n  LIMIT 1\n)\nSELECT\n  '{{ String($json.dedupe_key ?? \"\").replace(/'/g, \"''\") }}' AS dedupe_key,\n  (SELECT COUNT(*)::int FROM aiops_dedupe WHERE dedupe_key = '{{ String($json.dedupe_key ?? \"\").replace(/'/g, \"''\") }}') AS dedupe_count,\n  (SELECT context_id FROM d) AS context_id,\n  (SELECT first_seen_at FROM d) AS first_seen_at,\n  (SELECT COUNT(*)::int FROM aiops_job_queue WHERE context_id = (SELECT context_id FROM d)) AS job_queue_count,\n  (SELECT COALESCE((normalized_event->'pii_redaction'->>'detected')::boolean, false) FROM aiops_context WHERE context_id = (SELECT context_id FROM d)) AS pii_detected,\n  (SELECT normalized_event->'pii_redaction'->'findings' FROM aiops_context WHERE context_id = (SELECT context_id FROM d)) AS pii_findings,\n  (SELECT left(COALESCE(normalized_event->>'text',''), 400) FROM aiops_context WHERE context_id = (SELECT context_id FROM d)) AS normalized_text_preview;"
+      },
+      "id": "3",
+      "name": "Query Dedupe",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        760,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = ($json && typeof $json === 'object') ? $json : {};\nconst dedupeCount = Number.parseInt(String(row.dedupe_count ?? 0), 10);\nconst jobQueueCount = Number.parseInt(String(row.job_queue_count ?? 0), 10);\nconst okDedupe = Number.isFinite(dedupeCount) && dedupeCount === 1;\nconst okQueue = Number.isFinite(jobQueueCount) && jobQueueCount <= 1;\n\nreturn [{\n  json: {\n    ok: okDedupe && okQueue,\n    dedupe_key: row.dedupe_key ?? null,\n    dedupe_count: Number.isFinite(dedupeCount) ? dedupeCount : 0,\n    context_id: row.context_id ?? null,\n    first_seen_at: row.first_seen_at ?? null,\n    job_queue_count: Number.isFinite(jobQueueCount) ? jobQueueCount : 0,\n    pii_detected: Boolean(row.pii_detected),\n    pii_findings: row.pii_findings ?? null,\n    normalized_text_preview: row.normalized_text_preview ?? null\n  }\n}];\n"
+      },
+      "id": "5",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (DB Check Dedupe)": {
+      "main": [
+        [
+          {
+            "node": "Extract Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Params": {
+      "main": [
+        [
+          {
+            "node": "Query Dedupe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Dedupe": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

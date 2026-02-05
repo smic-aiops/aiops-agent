@@ -1,0 +1,78 @@
+{
+  "name": "Test GitLab Service Catalog Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "tests/gitlab/service-catalog-sync",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Test Service Catalog",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowContext = this;\nconst request = ($json && typeof $json === 'object') ? $json : {};\nconst headers = (request.headers && typeof request.headers === 'object') ? request.headers : {};\nconst env = $env || {};\n\nfunction getHeader(name) {\n  const lower = String(name).toLowerCase();\n  if (headers[lower] !== undefined) return headers[lower];\n  if (headers[name] !== undefined) return headers[name];\n  const key = Object.keys(headers).find((k) => String(k).toLowerCase() === lower);\n  return key ? headers[key] : undefined;\n}\n\nfunction error(status, message) {\n  return [{ json: { ok: false, status_code: status, error: message } }];\n}\n\nconst sharedToken = env.N8N_WORKFLOWS_TOKEN;\nif (!sharedToken) return error(500, 'N8N_WORKFLOWS_TOKEN is not set');\n\nlet provided = getHeader('authorization') || getHeader('x-aiops-workflows-token');\nif (provided && /^bearer\\s+/i.test(provided)) {\n  provided = provided.replace(/^bearer\\s+/i, '').trim();\n}\nif (!provided || provided !== sharedToken) {\n  return error(401, 'invalid workflows token');\n}\n\nfunction cleanText(value) {\n  if (value === null || value === undefined) return '';\n  return String(value).trim();\n}\n\nfunction required(value, name) {\n  const v = cleanText(value);\n  if (!v) throw new Error(`${name} is required`);\n  return v;\n}\n\nfunction isTruthy(value) {\n  const v = cleanText(value).toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n}\n\nfunction splitRow(line) {\n  return line.trim().replace(/^\\|/, '').replace(/\\|$/, '').split('|').map((v) => v.trim());\n}\n\nfunction parseMarkdownTable(text) {\n  const lines = String(text || '').split(/\\r?\\n/);\n\n  let headerIdx = -1;\n  for (let i = 0; i < lines.length; i += 1) {\n    const line = lines[i].trim();\n    if (!line.startsWith('|') || !line.includes('|')) continue;\n    const headerLower = splitRow(lines[i]).map((h) => h.toLowerCase());\n    if (headerLower.includes('workflow_name') && headerLower.includes('workflow_id')) {\n      headerIdx = i;\n      break;\n    }\n  }\n\n  if (headerIdx < 0 || headerIdx + 1 >= lines.length) {\n    return { ok: false, error: 'table_not_found', lines };\n  }\n\n  const headers = splitRow(lines[headerIdx]);\n  const headersLower = headers.map((h) => h.toLowerCase());\n\n  const separatorIdx = headerIdx + 1;\n  const separatorLine = lines[separatorIdx]?.trim() ?? '';\n  if (!separatorLine.startsWith('|') || !separatorLine.includes('---')) {\n    return { ok: false, error: 'table_separator_missing', lines };\n  }\n\n  const rows = [];\n  let i = separatorIdx + 1;\n  while (i < lines.length) {\n    const line = lines[i].trim();\n    if (!line.startsWith('|')) break;\n    if (line.replace(/\\s/g, '').startsWith('|---')) {\n      i += 1;\n      continue;\n    }\n    const cols = splitRow(lines[i]);\n    while (cols.length < headers.length) cols.push('');\n    rows.push(cols);\n    i += 1;\n  }\n\n  return {\n    ok: true,\n    lines,\n    headerIdx,\n    separatorIdx,\n    tableEndIdx: i,\n    headers,\n    headersLower,\n    rows\n  };\n}\n\nfunction resolveRealm() {\n  return cleanText(env.N8N_REALM || env.N8N_REALM || env.N8N_GITLAB_REALM || 'default') || 'default';\n}\n\nfunction realmKeyForEnv(realm) {\n  return String(realm || '').toUpperCase().replace(/[^A-Z0-9]+/g, '_');\n}\n\nasync function fetchAllWorkflows(n8nBaseUrl, apiKey) {\n  const all = [];\n  let cursor = '';\n  for (let safety = 0; safety < 100; safety += 1) {\n    const qs = { limit: 250 };\n    if (cursor) qs.cursor = cursor;\n\n    const response = await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url: `${n8nBaseUrl}/api/v1/workflows`,\n      qs,\n      json: true,\n      headers: { 'X-N8N-API-KEY': apiKey }\n    });\n\n    const items = response?.data ?? response?.workflows ?? response?.items ?? [];\n    if (Array.isArray(items)) all.push(...items);\n\n    cursor = response?.nextCursor ?? response?.next_cursor ?? '';\n    if (!cursor) break;\n  }\n  return all;\n}\n\ntry {\n  const query = (request.query && typeof request.query === 'object') ? request.query : (request ?? {});\n  const dryRun = isTruthy(query.dry_run ?? query.dryRun ?? 'true');\n\n  const realm = resolveRealm();\n  const realmKey = realmKeyForEnv(realm);\n\n  const gitlabBaseUrl = cleanText(query.gitlab_api_base_url ?? query.gitlab_base_url ?? env.GITLAB_API_BASE_URL ?? env.GITLAB_API_BASE_URL ?? '');\n  const gitlabToken = cleanText(getHeader('x-aiops-gitlab-token') ?? env.N8N_GITLAB_TOKEN ?? env.GITLAB_TOKEN ?? '');\n  const gitlabRef = cleanText(query.gitlab_ref ?? env.N8N_GITLAB_REF ?? env.GITLAB_REF ?? 'main') || 'main';\n\n  const projectPath = cleanText(query.gitlab_project_path ?? env[`N8N_GITLAB_PROJECT_PATH_${realmKey}`] ?? env.N8N_GITLAB_PROJECT_PATH ?? '');\n  const filePath = cleanText(query.gitlab_workflow_catalog_md_path ?? env[`N8N_GITLAB_WORKFLOW_CATALOG_MD_PATH_${realmKey}`] ?? env.N8N_GITLAB_WORKFLOW_CATALOG_MD_PATH ?? '');\n\n  const n8nApiKey = cleanText(\n    getHeader('x-aiops-n8n-api-key')\n      ?? query.n8n_api_key\n      ?? query.n8nApiKey\n      ?? env.N8N_API_KEY\n      ?? env.N8N_API_KEY\n      ?? ''\n  );\n  const n8nBaseUrl = cleanText(env.N8N_INTERNAL_API_BASE_URL || env.N8N_PUBLIC_API_BASE_URL || env.N8N_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5678').replace(/\\/$/, '');\n\n  const approvalCol = cleanText(env.N8N_GITLAB_WORKFLOW_CATALOG_APPROVAL_COLUMN || 'aiops_approved') || 'aiops_approved';\n\n  required(gitlabBaseUrl, 'GITLAB_API_BASE_URL');\n  required(gitlabToken, 'N8N_GITLAB_TOKEN');\n  required(projectPath, 'N8N_GITLAB_PROJECT_PATH');\n  required(filePath, 'N8N_GITLAB_WORKFLOW_CATALOG_MD_PATH');\n  required(n8nApiKey, 'N8N_API_KEY (or x-aiops-n8n-api-key)');\n\n  const projectEncoded = encodeURIComponent(projectPath);\n  const fileEncoded = encodeURIComponent(filePath);\n\n  const rawUrl = `${gitlabBaseUrl.replace(/\\/$/, '')}/projects/${projectEncoded}/repository/files/${fileEncoded}/raw?ref=${encodeURIComponent(gitlabRef)}`;\n\n  const md = await workflowContext.helpers.httpRequest({\n    method: 'GET',\n    url: rawUrl,\n    json: false,\n    headers: { 'PRIVATE-TOKEN': gitlabToken }\n  });\n\n  const parsed = parseMarkdownTable(md);\n  if (!parsed.ok) return error(500, parsed.error);\n\n  const nameIdx = parsed.headersLower.indexOf('workflow_name');\n  const idIdx = parsed.headersLower.indexOf('workflow_id');\n  const approvalIdx = approvalCol ? parsed.headersLower.indexOf(String(approvalCol).toLowerCase()) : -1;\n  if (nameIdx < 0 || idIdx < 0) return error(500, 'required_columns_missing');\n\n  const workflows = await fetchAllWorkflows(n8nBaseUrl, n8nApiKey);\n  const byName = new Map();\n  for (const wf of workflows) {\n    const name = cleanText(wf?.name);\n    const id = cleanText(wf?.id);\n    if (!name || !id) continue;\n    if (!byName.has(name)) byName.set(name, []);\n    byName.get(name).push(id);\n  }\n\n  const missing = [];\n  const ambiguous = [];\n  const planned = [];\n\n  for (const row of parsed.rows) {\n    const wfName = cleanText(row[nameIdx]);\n    if (!wfName) continue;\n\n    if (approvalIdx >= 0) {\n      const approvedRaw = cleanText(row[approvalIdx]).toLowerCase();\n      if (approvedRaw && ['false', '0', 'no', 'n'].includes(approvedRaw)) {\n        continue;\n      }\n    }\n\n    const ids = byName.get(wfName) || [];\n    if (ids.length === 0) {\n      missing.push(wfName);\n      continue;\n    }\n    if (ids.length > 1) {\n      ambiguous.push({ workflow_name: wfName, workflow_ids: ids });\n      continue;\n    }\n\n    const desired = ids[0];\n    const current = cleanText(row[idIdx]);\n    if (current !== desired) {\n      planned.push({ workflow_name: wfName, from: current || null, to: desired });\n    }\n  }\n\n  return [{\n    json: {\n      ok: true,\n      status_code: 200,\n      realm,\n      dry_run: dryRun,\n      planned_updates: planned,\n      missing_workflow_names: missing,\n      ambiguous_workflow_names: ambiguous\n    }\n  }];\n} catch (e) {\n  return error(500, e?.message ? String(e.message) : String(e));\n}\n"
+      },
+      "id": "2",
+      "name": "Test Service Catalog Sync",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: $json.ok, data: $json, error: $json.error } }}",
+        "options": {
+          "responseCode": "={{$json.status_code}}"
+        }
+      },
+      "id": "3",
+      "name": "Respond Test",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        740,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Test Service Catalog": {
+      "main": [
+        [
+          {
+            "node": "Test Service Catalog Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Service Catalog Sync": {
+      "main": [
+        [
+          {
+            "node": "Respond Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionTimeout": 300
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "name": "aiops-workflows-list",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "catalog/workflows/list",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Catalog Workflows List)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = ($json && typeof $json === 'object') ? $json : {};\nconst headers = (request.headers && typeof request.headers === 'object') ? request.headers : {};\n\nfunction getHeader(name) {\n  const lower = String(name).toLowerCase();\n  if (headers[lower] !== undefined) return headers[lower];\n  if (headers[name] !== undefined) return headers[name];\n  const key = Object.keys(headers).find((k) => String(k).toLowerCase() === lower);\n  return key ? headers[key] : undefined;\n}\n\nfunction error(status, message) {\n  return [{ json: { ok: false, status_code: status, error: message } }];\n}\n\nconst sharedToken = $env.N8N_WORKFLOWS_TOKEN;\nif (!sharedToken) return error(500, 'N8N_WORKFLOWS_TOKEN is not set');\n\nlet provided = getHeader('authorization') || getHeader('x-aiops-workflows-token');\nif (provided && /^bearer\\s+/i.test(provided)) {\n  provided = provided.replace(/^bearer\\s+/i, '').trim();\n}\nif (!provided || provided !== sharedToken) {\n  return error(401, 'invalid workflows token');\n}\n\nlet apiKey = getHeader('x-aiops-n8n-api-key') || $env.N8N_API_KEY || $env.N8N_API_KEY || '';\napiKey = String(apiKey).trim();\nif (!apiKey) return error(500, 'N8N_API_KEY is not set (or x-aiops-n8n-api-key)');\n\nconst baseUrlRaw = $env.N8N_INTERNAL_API_BASE_URL || $env.N8N_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5678';\nconst baseUrl = baseUrlRaw.replace(/\\/$/, '');\n\nconst query = (request.query && typeof request.query === 'object') ? request.query : (request ?? {});\n\nfunction parseLimit(value) {\n  if (value === null || value === undefined || value === '') return 100;\n  const parsed = Number.parseInt(String(value), 10);\n  if (!Number.isFinite(parsed) || parsed <= 0) return 100;\n  return Math.min(parsed, 250);\n}\n\nfunction parseBool(value) {\n  if (value === null || value === undefined || value === '') return null;\n  const v = String(value).trim().toLowerCase();\n  if (['true', '1', 'yes', 'y'].includes(v)) return true;\n  if (['false', '0', 'no', 'n'].includes(v)) return false;\n  return null;\n}\n\nconst limit = parseLimit(query.limit ?? query.page_size ?? query.pageSize);\nconst cursor = String(query.cursor ?? '').trim();\nconst name = String(query.name ?? '').trim();\nconst active = parseBool(query.active);\nconst updatedAfterRaw = String(query.updated_after ?? query.updatedAfter ?? '').trim();\n\nlet updatedAfter = null;\nif (updatedAfterRaw) {\n  const ts = Date.parse(updatedAfterRaw);\n  if (!Number.isNaN(ts)) updatedAfter = ts;\n}\n\nconst qs = { limit };\nif (cursor) qs.cursor = cursor;\nif (name) qs.name = name;\nif (active !== null) qs.active = active;\n\nconst response = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${baseUrl}/api/v1/workflows`,\n  qs,\n  json: true,\n  headers: {\n    'X-N8N-API-KEY': apiKey\n  }\n});\n\nconst items = response?.data ?? response?.workflows ?? response?.items ?? [];\n\nconst filtered = updatedAfter\n  ? items.filter((item) => {\n      const updatedAtValue = item.updatedAt ?? item.updated_at ?? null;\n      if (!updatedAtValue) return true;\n      const ts = Date.parse(String(updatedAtValue));\n      if (Number.isNaN(ts)) return true;\n      return ts > updatedAfter;\n    })\n  : items;\n\nconst data = filtered.map((item) => ({\n  id: item.id ?? null,\n  name: item.name ?? null,\n  active: item.active ?? null,\n  created_at: item.createdAt ?? item.created_at ?? null,\n  updated_at: item.updatedAt ?? item.updated_at ?? null,\n  tags: item.tags ?? [],\n  description: item.description ?? item.settings?.description ?? null,\n  settings: item.settings ?? null,\n  meta: item.meta ?? null,\n  aiops_catalog: item?.meta?.aiops_catalog ?? item?.aiops_catalog ?? null\n}));\n\nconst meta = {\n  next_cursor: response?.nextCursor ?? response?.next_cursor ?? null,\n  limit\n};\nif (updatedAfterRaw) meta.updated_after = updatedAfterRaw;\n\nreturn [{ json: { ok: true, status_code: 200, data, meta } }];\n"
+      },
+      "id": "2",
+      "name": "List Workflows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: $json.ok, data: $json.data, meta: $json.meta, error: $json.error } }}",
+        "options": {
+          "responseCode": "={{$json.status_code}}"
+        }
+      },
+      "id": "3",
+      "name": "Respond Catalog List",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        780,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Catalog Workflows List)": {
+      "main": [
+        [
+          {
+            "node": "List Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Workflows": {
+      "main": [
+        [
+          {
+            "node": "Respond Catalog List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionTimeout": 300
+  }
+}

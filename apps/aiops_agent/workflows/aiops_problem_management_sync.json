@@ -1,0 +1,865 @@
+{
+  "name": "aiops-problem-management-sync",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 2,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowContext = this;\nconst baseUrl = String($env.GITLAB_API_BASE_URL || $env.GITLAB_API_BASE_URL || '').replace(/\\/$/, '');\nconst token = $env.N8N_GITLAB_TOKEN || $env.GITLAB_TOKEN || '';\nconst ref = $env.N8N_GITLAB_REF || 'main';\n\nconst realmsRaw = $env.N8N_GITLAB_REALMS || $env.N8N_REALMS || '';\nconst fallbackRealm = 'default';\nconst realms = realmsRaw\n  ? realmsRaw.split(',').map((v) => v.trim()).filter(Boolean)\n  : [fallbackRealm];\n\nfunction parseYamlBlock(text) {\n  const lines = String(text || '').split(/\\r?\\n/);\n  const root = {};\n  const stack = [{ indent: -1, obj: root }];\n\n  function parseScalar(value) {\n    let v = value.trim();\n    if ((v.startsWith('\"') && v.endsWith('\"')) || (v.startsWith(\"'\") && v.endsWith(\"'\"))) {\n      v = v.slice(1, -1);\n    }\n    const lower = v.toLowerCase();\n    if (['true', 'false'].includes(lower)) return lower === 'true';\n    if (v && !Number.isNaN(Number(v))) return Number(v);\n    return v;\n  }\n\n  function nextNonEmpty(start) {\n    for (let i = start; i < lines.length; i += 1) {\n      const t = lines[i].trim();\n      if (t && !t.startsWith('#')) return t;\n    }\n    return null;\n  }\n\n  for (let i = 0; i < lines.length; i += 1) {\n    const raw = lines[i];\n    if (!raw || raw.trim() === '' || raw.trim().startsWith('#')) continue;\n    const indent = raw.match(/^\\s*/)[0].length;\n    const trimmed = raw.trim();\n\n    while (stack.length && indent <= stack[stack.length - 1].indent) {\n      stack.pop();\n    }\n    const current = stack[stack.length - 1].obj;\n\n    if (trimmed.startsWith('- ')) {\n      const value = parseScalar(trimmed.slice(2));\n      if (Array.isArray(current)) {\n        current.push(value);\n      }\n      continue;\n    }\n\n    if (!trimmed.includes(':')) continue;\n    const parts = trimmed.split(':');\n    const key = parts.shift().trim();\n    const rest = parts.join(':').trim();\n    if (!key) continue;\n\n    if (rest == '') {\n      const peek = nextNonEmpty(i + 1);\n      const container = (peek && peek.startsWith('- ')) ? [] : {};\n      current[key] = container;\n      stack.push({ indent, obj: container });\n    } else {\n      current[key] = parseScalar(rest);\n    }\n  }\n  return root;\n}\n\nfunction extractFrontmatter(text) {\n  const lines = String(text || '').split(/\\r?\\n/);\n  if (lines[0]?.trim() !== '---') return null;\n  let end = -1;\n  for (let i = 1; i < lines.length; i += 1) {\n    if (lines[i].trim() === '---') {\n      end = i;\n      break;\n    }\n  }\n  if (end < 0) return null;\n  return lines.slice(1, end).join('\\n');\n}\n\nfunction extractJsonBlock(text) {\n  const match = String(text || '').match(/```json\\s*([\\s\\S]*?)```/i);\n  if (!match) return null;\n  try {\n    return JSON.parse(match[1]);\n  } catch (error) {\n    return null;\n  }\n}\n\nasync function fetchMarkdown(projectPath, filePath) {\n  if (!baseUrl || !token || !projectPath || !filePath) return null;\n  const projectEncoded = encodeURIComponent(projectPath);\n  const fileEncoded = encodeURIComponent(filePath);\n  const url = `${baseUrl}/projects/${projectEncoded}/repository/files/${fileEncoded}/raw?ref=${encodeURIComponent(ref)}`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'GET',\n    url,\n    headers: { 'PRIVATE-TOKEN': token },\n    json: false\n  });\n}\n\nconst items = [];\nfor (const realm of realms) {\n  const realmKey = String(realm || '').toUpperCase().replace(/[^A-Z0-9]+/g, '_');\n  const projectPath = $env[`N8N_GITLAB_PROJECT_PATH_${realmKey}`] || $env.N8N_GITLAB_PROJECT_PATH || '';\n  const configPath = $env[`N8N_GITLAB_PROBLEM_CONFIG_MD_PATH_${realmKey}`] || $env.N8N_GITLAB_PROBLEM_CONFIG_MD_PATH || '';\n\n  if (!projectPath || !configPath || !baseUrl || !token) {\n    items.push({\n      json: {\n        realm,\n        ok: false,\n        error: 'missing_gitlab_config',\n        project_path: projectPath || null,\n        config_path: configPath || null\n      }\n    });\n    continue;\n  }\n\n  let markdown = null;\n  let config = {};\n  try {\n    markdown = await fetchMarkdown(projectPath, configPath);\n    const jsonBlock = extractJsonBlock(markdown);\n    if (jsonBlock) {\n      config = jsonBlock;\n    } else {\n      const frontmatter = extractFrontmatter(markdown);\n      config = frontmatter ? parseYamlBlock(frontmatter) : {};\n    }\n  } catch (error) {\n    items.push({\n      json: {\n        realm,\n        ok: false,\n        error: error?.message ? String(error.message) : String(error),\n        project_path: projectPath,\n        config_path: configPath\n      }\n    });\n    continue;\n  }\n\n  items.push({\n    json: {\n      realm,\n      ok: true,\n      gitlab: {\n        base_url: baseUrl,\n        token,\n        ref\n      },\n      project_path: projectPath,\n      config_path: configPath,\n      config\n    }\n  });\n}\n\nreturn items;\n"
+      },
+      "id": "2",
+      "name": "Load GitLab Sync Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowContext = this;\n\nconst items = $input.all().map((item) => item.json);\nconst out = [];\n\nfunction parseList(value) {\n  if (!value) return [];\n  if (Array.isArray(value)) return value;\n  return String(value).split(',').map((v) => v.trim()).filter(Boolean);\n}\n\nasync function fetchIssues(baseUrl, token, projectPath, params) {\n  const projectEncoded = encodeURIComponent(projectPath);\n  const perPage = 100;\n  let page = 1;\n  let all = [];\n  while (true) {\n    const query = new URLSearchParams({ per_page: String(perPage), page: String(page), ...params });\n    const url = `${baseUrl}/projects/${projectEncoded}/issues?${query.toString()}`;\n    const response = await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url,\n      headers: { 'PRIVATE-TOKEN': token },\n      json: true\n    });\n    const batch = Array.isArray(response) ? response : [];\n    all = all.concat(batch);\n    if (batch.length < perPage) break;\n    page += 1;\n  }\n  return all;\n}\n\nfor (const item of items) {\n  if (!item.ok) continue;\n  const cfg = item.config || {};\n  const filters = cfg.issue_filters || {};\n  const labels = parseList(filters.labels || []);\n  const state = String(filters.state || 'opened');\n\n  const staticData = workflowContext.getWorkflowStaticData('global');\n  const cacheKey = `gitlab:problem_sync:${item.realm}`;\n  const lastSynced = staticData?.[cacheKey]?.last_synced_at || null;\n\n  let updatedAfter = null;\n  if (lastSynced) {\n    updatedAfter = lastSynced;\n  } else if (filters.updated_since_days) {\n    const days = Number(filters.updated_since_days);\n    if (Number.isFinite(days) && days > 0) {\n      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);\n      updatedAfter = since.toISOString();\n    }\n  }\n\n  const params = { state };\n  if (labels.length) params.labels = labels.join(',');\n  if (updatedAfter) params.updated_after = updatedAfter;\n\n  const issueProjectPath = cfg.issue_project_path || item.project_path;\n  const issues = await fetchIssues(item.gitlab.base_url, item.gitlab.token, issueProjectPath, params);\n\n  staticData[cacheKey] = { last_synced_at: new Date().toISOString() };\n\n  for (const issue of issues) {\n    out.push({ json: { ...item, issue, issue_project_path: issueProjectPath } });\n  }\n}\n\nreturn out;\n"
+      },
+      "id": "3",
+      "name": "Fetch GitLab Issues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst items = $input.all().map((item) => item.json);\nconst out = [];\n\nfunction stableUuid(seed) {\n  const hash = crypto.createHash('sha256').update(seed).digest('hex');\n  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-5${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}`;\n}\n\nfunction pickLabelValue(labels, prefix) {\n  if (!prefix) return null;\n  const match = labels.find((label) => String(label).toLowerCase().startsWith(prefix.toLowerCase()));\n  if (!match) return null;\n  return String(match).slice(prefix.length).trim() || null;\n}\n\nfunction normalizeStatus(state, map) {\n  const raw = String(state || '').toLowerCase();\n  if (map && map[raw]) return map[raw];\n  return raw == 'closed' ? 'closed' : 'investigating';\n}\n\nfunction extractSection(text, heading) {\n  if (!text || !heading) return null;\n  const lines = String(text).split(/\\r?\\n/);\n  const target = heading.trim();\n  let start = -1;\n  for (let i = 0; i < lines.length; i += 1) {\n    if (lines[i].trim() === target) {\n      start = i + 1;\n      break;\n    }\n  }\n  if (start < 0) return null;\n  const collected = [];\n  for (let i = start; i < lines.length; i += 1) {\n    const line = lines[i];\n    if (line.trim().startsWith('## ')) break;\n    collected.push(line);\n  }\n  const result = collected.join('\\n').trim();\n  return result || null;\n}\n\nfor (const item of items) {\n  const issue = item.issue || {};\n  const cfg = item.config || {};\n  const labels = Array.isArray(issue.labels) ? issue.labels : [];\n  const labelMap = cfg.label_mapping || {};\n  const prefixes = cfg.label_prefix || {};\n  const defaults = cfg.defaults || {};\n  const statusMap = cfg.status_map || {};\n\n  const problemLabel = labelMap.problem || 'problem';\n  const knownErrorLabel = labelMap.known_error || 'known_error';\n  const workaroundLabel = labelMap.workaround || 'workaround';\n\n  const labelsLower = labels.map((l) => String(l).toLowerCase());\n  const isProblem = problemLabel ? labelsLower.includes(String(problemLabel).toLowerCase()) : true;\n  const isKnownError = knownErrorLabel ? labelsLower.includes(String(knownErrorLabel).toLowerCase()) : false;\n  const isWorkaroundLabel = workaroundLabel ? labelsLower.includes(String(workaroundLabel).toLowerCase()) : false;\n\n  const serviceName = pickLabelValue(labels, prefixes.service_name) || null;\n  const ciRef = pickLabelValue(labels, prefixes.ci_ref) || null;\n  const priority = String(pickLabelValue(labels, prefixes.priority) || defaults.priority || 'p3').toLowerCase();\n  const impact = String(pickLabelValue(labels, prefixes.impact) || defaults.impact || 'medium').toLowerCase();\n  const urgency = String(pickLabelValue(labels, prefixes.urgency) || defaults.urgency || 'medium').toLowerCase();\n  const riskLevel = String(pickLabelValue(labels, prefixes.risk_level) || defaults.risk_level || 'medium').toLowerCase();\n\n  const issueId = issue.id || issue.iid || issue.url || 'unknown';\n  const issueKey = `${item.issue_project_path || item.project_path || 'gitlab'}#${issueId}`;\n\n  const problemId = stableUuid(`gitlab:problem:${issueKey}`);\n  const knownErrorId = stableUuid(`gitlab:known_error:${issueKey}`);\n  const workaroundId = stableUuid(`gitlab:workaround:${issueKey}`);\n  const kedbId = stableUuid(`gitlab:kedb:${issueKey}`);\n\n  const problemNumber = issue.references?.full || `PROB-${issue.iid || issue.id}`;\n  const knownErrorNumber = `KE-${issue.iid || issue.id}`;\n\n  const description = issue.description || '';\n  const workaroundSection = extractSection(description, cfg.workaround_section_heading || '## Workaround');\n  const hasWorkaround = Boolean(workaroundSection) || isWorkaroundLabel;\n\n  const externalRefs = {\n    source: 'gitlab',\n    project_path: item.issue_project_path || item.project_path || null,\n    issue_id: issue.id || null,\n    issue_iid: issue.iid || null,\n    issue_url: issue.web_url || issue.url || null,\n    labels\n  };\n\n  if (isProblem) {\n    out.push({\n      json: {\n        kind: 'problem',\n        problem_id: problemId,\n        problem_number: problemNumber,\n        title: issue.title || '(untitled)',\n        description: description || issue.title || '(empty)',\n        status: normalizeStatus(issue.state, statusMap),\n        category: null,\n        subcategory: null,\n        priority,\n        impact,\n        urgency,\n        service_name: serviceName,\n        ci_ref: ciRef,\n        reported_at: issue.created_at || null,\n        detected_at: issue.created_at || null,\n        last_occurrence_at: issue.updated_at || null,\n        owner_group: null,\n        owner_user: issue.assignee?.username || null,\n        root_cause: null,\n        resolution: null,\n        workaround_summary: null,\n        source: 'gitlab',\n        external_refs: externalRefs\n      }\n    });\n  }\n\n  if (isKnownError) {\n    out.push({\n      json: {\n        kind: 'known_error',\n        known_error_id: knownErrorId,\n        known_error_number: knownErrorNumber,\n        problem_id: problemId,\n        workaround_id: hasWorkaround ? workaroundId : null,\n        status: cfg.known_error_status || 'published',\n        title: issue.title || '(untitled)',\n        symptoms: description || issue.title || '(empty)',\n        cause: null,\n        resolution: null,\n        service_name: serviceName,\n        ci_ref: ciRef,\n        risk_level: riskLevel,\n        owner_group: null,\n        owner_user: issue.assignee?.username || null,\n        published_at: issue.updated_at || null,\n        retired_at: null,\n        tags: labels\n      }\n    });\n  }\n\n  if (hasWorkaround) {\n    out.push({\n      json: {\n        kind: 'workaround',\n        workaround_id: workaroundId,\n        title: `${issue.title || 'Workaround'}`,\n        steps: workaroundSection || description || issue.title || '(empty)',\n        validation_steps: null,\n        rollback_steps: null,\n        risk_level: riskLevel,\n        estimated_minutes: null,\n        requires_confirm: true,\n        automation_hint: null\n      }\n    });\n  }\n\n  const content = `# ${issue.title || 'Issue'}\\n\\n${description || ''}`.trim();\n  const contentHash = crypto.createHash('sha256').update(content).digest('hex');\n\n  out.push({\n    json: {\n      kind: 'kedb_document',\n      document_id: kedbId,\n      known_error_id: isKnownError ? knownErrorId : null,\n      workaround_id: hasWorkaround ? workaroundId : null,\n      source_type: cfg.kedb_source_type || 'known_error',\n      content,\n      content_hash: contentHash,\n      language: 'ja',\n      metadata: externalRefs,\n      embedding: null,\n      active: true\n    }\n  });\n}\n\nreturn out;\n"
+      },
+      "id": "4",
+      "name": "Build Upsert Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.kind}}",
+              "value2": "problem"
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "IF Problem",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.kind}}",
+              "value2": "known_error"
+            }
+          ]
+        }
+      },
+      "id": "6",
+      "name": "IF Known Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.kind}}",
+              "value2": "workaround"
+            }
+          ]
+        }
+      },
+      "id": "7",
+      "name": "IF Workaround",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.kind}}",
+              "value2": "kedb_document"
+            }
+          ]
+        }
+      },
+      "id": "8",
+      "name": "IF 既知エラーDB Document",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO itsm_problem (\n  problem_id,\n  problem_number,\n  title,\n  description,\n  status,\n  category,\n  subcategory,\n  priority,\n  impact,\n  urgency,\n  service_name,\n  ci_ref,\n  reported_at,\n  detected_at,\n  last_occurrence_at,\n  owner_group,\n  owner_user,\n  root_cause,\n  resolution,\n  workaround_summary,\n  source,\n  external_refs,\n  updated_at\n) VALUES (\n  {{$json.problem_id}}::uuid,\n  {{$json.problem_number}},\n  {{$json.title}},\n  {{$json.description}},\n  {{$json.status}},\n  {{$json.category}},\n  {{$json.subcategory}},\n  {{$json.priority}},\n  {{$json.impact}},\n  {{$json.urgency}},\n  {{$json.service_name}},\n  {{$json.ci_ref}},\n  {{$json.reported_at}}::timestamptz,\n  {{$json.detected_at}}::timestamptz,\n  {{$json.last_occurrence_at}}::timestamptz,\n  {{$json.owner_group}},\n  {{$json.owner_user}},\n  {{$json.root_cause}},\n  {{$json.resolution}},\n  {{$json.workaround_summary}},\n  {{$json.source}},\n  {{$json.external_refs}}::jsonb,\n  NOW()\n)\nON CONFLICT (problem_id) DO UPDATE SET\n  problem_number = EXCLUDED.problem_number,\n  title = EXCLUDED.title,\n  description = EXCLUDED.description,\n  status = EXCLUDED.status,\n  category = EXCLUDED.category,\n  subcategory = EXCLUDED.subcategory,\n  priority = EXCLUDED.priority,\n  impact = EXCLUDED.impact,\n  urgency = EXCLUDED.urgency,\n  service_name = EXCLUDED.service_name,\n  ci_ref = EXCLUDED.ci_ref,\n  reported_at = EXCLUDED.reported_at,\n  detected_at = EXCLUDED.detected_at,\n  last_occurrence_at = EXCLUDED.last_occurrence_at,\n  owner_group = EXCLUDED.owner_group,\n  owner_user = EXCLUDED.owner_user,\n  root_cause = EXCLUDED.root_cause,\n  resolution = EXCLUDED.resolution,\n  workaround_summary = EXCLUDED.workaround_summary,\n  source = EXCLUDED.source,\n  external_refs = EXCLUDED.external_refs,\n  updated_at = NOW();"
+      },
+      "id": "9",
+      "name": "Upsert Problem",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO itsm_known_error (\n  known_error_id,\n  known_error_number,\n  problem_id,\n  workaround_id,\n  status,\n  title,\n  symptoms,\n  cause,\n  resolution,\n  service_name,\n  ci_ref,\n  risk_level,\n  owner_group,\n  owner_user,\n  published_at,\n  retired_at,\n  tags,\n  updated_at\n) VALUES (\n  {{$json.known_error_id}}::uuid,\n  {{$json.known_error_number}},\n  {{$json.problem_id}}::uuid,\n  {{$json.workaround_id}}::uuid,\n  {{$json.status}},\n  {{$json.title}},\n  {{$json.symptoms}},\n  {{$json.cause}},\n  {{$json.resolution}},\n  {{$json.service_name}},\n  {{$json.ci_ref}},\n  {{$json.risk_level}},\n  {{$json.owner_group}},\n  {{$json.owner_user}},\n  {{$json.published_at}}::timestamptz,\n  {{$json.retired_at}}::timestamptz,\n  {{$json.tags}}::jsonb,\n  NOW()\n)\nON CONFLICT (known_error_id) DO UPDATE SET\n  known_error_number = EXCLUDED.known_error_number,\n  problem_id = EXCLUDED.problem_id,\n  workaround_id = EXCLUDED.workaround_id,\n  status = EXCLUDED.status,\n  title = EXCLUDED.title,\n  symptoms = EXCLUDED.symptoms,\n  cause = EXCLUDED.cause,\n  resolution = EXCLUDED.resolution,\n  service_name = EXCLUDED.service_name,\n  ci_ref = EXCLUDED.ci_ref,\n  risk_level = EXCLUDED.risk_level,\n  owner_group = EXCLUDED.owner_group,\n  owner_user = EXCLUDED.owner_user,\n  published_at = EXCLUDED.published_at,\n  retired_at = EXCLUDED.retired_at,\n  tags = EXCLUDED.tags,\n  updated_at = NOW();"
+      },
+      "id": "10",
+      "name": "Upsert Known Error",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO itsm_workaround (\n  workaround_id,\n  title,\n  steps,\n  validation_steps,\n  rollback_steps,\n  risk_level,\n  estimated_minutes,\n  requires_confirm,\n  automation_hint,\n  updated_at\n) VALUES (\n  {{$json.workaround_id}}::uuid,\n  {{$json.title}},\n  {{$json.steps}},\n  {{$json.validation_steps}},\n  {{$json.rollback_steps}},\n  {{$json.risk_level}},\n  {{$json.estimated_minutes}},\n  {{$json.requires_confirm}},\n  {{$json.automation_hint}}::jsonb,\n  NOW()\n)\nON CONFLICT (workaround_id) DO UPDATE SET\n  title = EXCLUDED.title,\n  steps = EXCLUDED.steps,\n  validation_steps = EXCLUDED.validation_steps,\n  rollback_steps = EXCLUDED.rollback_steps,\n  risk_level = EXCLUDED.risk_level,\n  estimated_minutes = EXCLUDED.estimated_minutes,\n  requires_confirm = EXCLUDED.requires_confirm,\n  automation_hint = EXCLUDED.automation_hint,\n  updated_at = NOW();"
+      },
+      "id": "11",
+      "name": "Upsert Workaround",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO itsm_kedb_documents (\n  document_id,\n  known_error_id,\n  workaround_id,\n  source_type,\n  content,\n  content_hash,\n  language,\n  metadata,\n  embedding,\n  active,\n  updated_at\n) VALUES (\n  {{$json.document_id}}::uuid,\n  {{$json.known_error_id}}::uuid,\n  {{$json.workaround_id}}::uuid,\n  {{$json.source_type}},\n  {{$json.content}},\n  {{$json.content_hash}},\n  {{$json.language}},\n  {{$json.metadata}}::jsonb,\n  {{$json.embedding}},\n  {{$json.active}},\n  NOW()\n)\nON CONFLICT (document_id) DO UPDATE SET\n  known_error_id = EXCLUDED.known_error_id,\n  workaround_id = EXCLUDED.workaround_id,\n  source_type = EXCLUDED.source_type,\n  content = EXCLUDED.content,\n  content_hash = EXCLUDED.content_hash,\n  language = EXCLUDED.language,\n  metadata = EXCLUDED.metadata,\n  embedding = EXCLUDED.embedding,\n  active = EXCLUDED.active,\n  updated_at = NOW();"
+      },
+      "id": "12",
+      "name": "Upsert 既知エラーDB Document",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Daily Trigger',\n  target: 'Load GitLab Sync Config',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "13",
+      "name": "Debug Log After: Daily Trigger -> Load GitLab Sync Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Daily Trigger',\n  target: 'Load GitLab Sync Config',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "14",
+      "name": "Debug Log Before: Load GitLab Sync Config <- Daily Trigger",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Load GitLab Sync Config',\n  target: 'Fetch GitLab Issues',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "15",
+      "name": "Debug Log After: Load GitLab Sync Config -> Fetch GitLab Issues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Load GitLab Sync Config',\n  target: 'Fetch GitLab Issues',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "16",
+      "name": "Debug Log Before: Fetch GitLab Issues <- Load GitLab Sync Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Fetch GitLab Issues',\n  target: 'Build Upsert Items',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "17",
+      "name": "Debug Log After: Fetch GitLab Issues -> Build Upsert Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Fetch GitLab Issues',\n  target: 'Build Upsert Items',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "18",
+      "name": "Debug Log Before: Build Upsert Items <- Fetch GitLab Issues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Build Upsert Items',\n  target: 'IF Problem',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "19",
+      "name": "Debug Log After: Build Upsert Items -> IF Problem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Build Upsert Items',\n  target: 'IF Problem',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "20",
+      "name": "Debug Log Before: IF Problem <- Build Upsert Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Build Upsert Items',\n  target: 'IF Known Error',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "21",
+      "name": "Debug Log After: Build Upsert Items -> IF Known Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Build Upsert Items',\n  target: 'IF Known Error',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "22",
+      "name": "Debug Log Before: IF Known Error <- Build Upsert Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Build Upsert Items',\n  target: 'IF Workaround',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "23",
+      "name": "Debug Log After: Build Upsert Items -> IF Workaround",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Build Upsert Items',\n  target: 'IF Workaround',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "24",
+      "name": "Debug Log Before: IF Workaround <- Build Upsert Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Build Upsert Items',\n  target: 'IF 既知エラーDB Document',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "25",
+      "name": "Debug Log After: Build Upsert Items -> IF 既知エラーDB Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Build Upsert Items',\n  target: 'IF 既知エラーDB Document',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "26",
+      "name": "Debug Log Before: IF 既知エラーDB Document <- Build Upsert Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'IF Problem',\n  target: 'Upsert Problem',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "27",
+      "name": "Debug Log After: IF Problem -> Upsert Problem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'IF Problem',\n  target: 'Upsert Problem',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "28",
+      "name": "Debug Log Before: Upsert Problem <- IF Problem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'IF Known Error',\n  target: 'Upsert Known Error',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "29",
+      "name": "Debug Log After: IF Known Error -> Upsert Known Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'IF Known Error',\n  target: 'Upsert Known Error',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "30",
+      "name": "Debug Log Before: Upsert Known Error <- IF Known Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'IF Workaround',\n  target: 'Upsert Workaround',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "31",
+      "name": "Debug Log After: IF Workaround -> Upsert Workaround",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'IF Workaround',\n  target: 'Upsert Workaround',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "32",
+      "name": "Debug Log Before: Upsert Workaround <- IF Workaround",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'IF 既知エラーDB Document',\n  target: 'Upsert 既知エラーDB Document',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "33",
+      "name": "Debug Log After: IF 既知エラーDB Document -> Upsert 既知エラーDB Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'IF 既知エラーDB Document',\n  target: 'Upsert 既知エラーDB Document',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "34",
+      "name": "Debug Log Before: Upsert 既知エラーDB Document <- IF 既知エラーDB Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Daily Trigger -> Load GitLab Sync Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load GitLab Sync Config": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Load GitLab Sync Config -> Fetch GitLab Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch GitLab Issues": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Fetch GitLab Issues -> Build Upsert Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Upsert Items": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Build Upsert Items -> IF Problem",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Debug Log After: Build Upsert Items -> IF Known Error",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Debug Log After: Build Upsert Items -> IF Workaround",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Debug Log After: Build Upsert Items -> IF 既知エラーDB Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Problem": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: IF Problem -> Upsert Problem",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "IF Known Error": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: IF Known Error -> Upsert Known Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "IF Workaround": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: IF Workaround -> Upsert Workaround",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "IF 既知エラーDB Document": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: IF 既知エラーDB Document -> Upsert 既知エラーDB Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Debug Log After: Daily Trigger -> Load GitLab Sync Config": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Load GitLab Sync Config <- Daily Trigger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Load GitLab Sync Config <- Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load GitLab Sync Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Load GitLab Sync Config -> Fetch GitLab Issues": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Fetch GitLab Issues <- Load GitLab Sync Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Fetch GitLab Issues <- Load GitLab Sync Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch GitLab Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Fetch GitLab Issues -> Build Upsert Items": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Build Upsert Items <- Fetch GitLab Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Build Upsert Items <- Fetch GitLab Issues": {
+      "main": [
+        [
+          {
+            "node": "Build Upsert Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Build Upsert Items -> IF Problem": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: IF Problem <- Build Upsert Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: IF Problem <- Build Upsert Items": {
+      "main": [
+        [
+          {
+            "node": "IF Problem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Build Upsert Items -> IF Known Error": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: IF Known Error <- Build Upsert Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: IF Known Error <- Build Upsert Items": {
+      "main": [
+        [
+          {
+            "node": "IF Known Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Build Upsert Items -> IF Workaround": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: IF Workaround <- Build Upsert Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: IF Workaround <- Build Upsert Items": {
+      "main": [
+        [
+          {
+            "node": "IF Workaround",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Build Upsert Items -> IF 既知エラーDB Document": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: IF 既知エラーDB Document <- Build Upsert Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: IF 既知エラーDB Document <- Build Upsert Items": {
+      "main": [
+        [
+          {
+            "node": "IF 既知エラーDB Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: IF Problem -> Upsert Problem": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Upsert Problem <- IF Problem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Upsert Problem <- IF Problem": {
+      "main": [
+        [
+          {
+            "node": "Upsert Problem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: IF Known Error -> Upsert Known Error": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Upsert Known Error <- IF Known Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Upsert Known Error <- IF Known Error": {
+      "main": [
+        [
+          {
+            "node": "Upsert Known Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: IF Workaround -> Upsert Workaround": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Upsert Workaround <- IF Workaround",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Upsert Workaround <- IF Workaround": {
+      "main": [
+        [
+          {
+            "node": "Upsert Workaround",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: IF 既知エラーDB Document -> Upsert 既知エラーDB Document": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Upsert 既知エラーDB Document <- IF 既知エラーDB Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Upsert 既知エラーDB Document <- IF 既知エラーDB Document": {
+      "main": [
+        [
+          {
+            "node": "Upsert 既知エラーDB Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "",
+  "staticData": null,
+  "tags": []
+}

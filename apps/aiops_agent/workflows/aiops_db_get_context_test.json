@@ -1,0 +1,183 @@
+{
+  "name": "aiops-db-get-context-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "aiops-agent/db/get/context/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (DB Get Context Test)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst contextId = crypto.randomUUID();\nconst traceId = crypto.randomUUID();\nconst dedupeKey = `test:${crypto.randomBytes(8).toString('hex')}`;\n\nconst normalizedEvent = {\n  source: 'test',\n  trace_id: traceId,\n  text: 'aiops-db-get-context-test',\n  received_at: new Date().toISOString()\n};\n\nreturn [{\n  json: {\n    context_id: contextId,\n    trace_id: traceId,\n    dedupe_key: dedupeKey,\n    normalized_event: normalizedEvent\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Build Test Fixture",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO aiops_context (context_id, source, reply_target, actor, normalized_event, status)\nVALUES (\n  '{{ String($json.context_id ?? \"\").replace(/'/g, \"''\") }}'::uuid,\n  'test',\n  '{}'::jsonb,\n  '{}'::jsonb,\n  '{{ JSON.stringify($json.normalized_event ?? {}).replace(/'/g, \"''\") }}'::jsonb,\n  'open'\n)\nON CONFLICT (context_id) DO NOTHING;\n\nINSERT INTO aiops_dedupe (dedupe_key, context_id)\nVALUES (\n  '{{ String($json.dedupe_key ?? \"\").replace(/'/g, \"''\") }}',\n  '{{ String($json.context_id ?? \"\").replace(/'/g, \"''\") }}'::uuid\n)\nON CONFLICT (dedupe_key) DO NOTHING;\n\nSELECT 1 AS ok;"
+      },
+      "id": "3",
+      "name": "Insert Fixture",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        760,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT\n    '{{ String($node[\"Build Test Fixture\"].json.trace_id ?? \"\").replace(/'/g, \"''\") }}' AS trace_id\n), resolved AS (\n  SELECT\n    (SELECT c.context_id FROM aiops_context c WHERE c.normalized_event->>'trace_id' = (SELECT trace_id FROM input) ORDER BY c.created_at DESC LIMIT 1) AS context_id\n), ctx AS (\n  SELECT c.*\n  FROM aiops_context c\n  WHERE c.context_id = (SELECT context_id FROM resolved)\n  LIMIT 1\n), dedupe AS (\n  SELECT d.dedupe_key, d.first_seen_at\n  FROM aiops_dedupe d\n  WHERE d.context_id = (SELECT context_id FROM resolved)\n  ORDER BY d.first_seen_at ASC\n  LIMIT 1\n)\nSELECT\n  (SELECT context_id FROM resolved) AS context_id,\n  (SELECT dedupe_key FROM dedupe) AS dedupe_key,\n  (SELECT source FROM ctx) AS source,\n  (SELECT normalized_event FROM ctx) AS normalized_event;"
+      },
+      "id": "4",
+      "name": "Query By Trace ID",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM aiops_dedupe\nWHERE dedupe_key = '{{ String($node[\"Build Test Fixture\"].json.dedupe_key ?? \"\").replace(/'/g, \"''\") }}';\n\nDELETE FROM aiops_context\nWHERE context_id = '{{ String($node[\"Build Test Fixture\"].json.context_id ?? \"\").replace(/'/g, \"''\") }}'::uuid;\n\nSELECT 1 AS ok;"
+      },
+      "id": "5",
+      "name": "Cleanup Fixture",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fixture = $node['Build Test Fixture'].json;\nconst row = ($node['Query By Trace ID'].json && typeof $node['Query By Trace ID'].json === 'object') ? $node['Query By Trace ID'].json : {};\n\nconst ok = Boolean(row.context_id)\n  && String(row.context_id) === String(fixture.context_id)\n  && (row.normalized_event && typeof row.normalized_event === 'object')\n  && String(row.normalized_event.trace_id || '') === String(fixture.trace_id);\n\nreturn [{\n  json: {\n    ok,\n    trace_id: fixture.trace_id,\n    context_id: fixture.context_id,\n    dedupe_key: fixture.dedupe_key,\n    found_context_id: row.context_id ?? null,\n    found_dedupe_key: row.dedupe_key ?? null,\n    found_source: row.source ?? null\n  }\n}];\n"
+      },
+      "id": "6",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "7",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1720,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (DB Get Context Test)": {
+      "main": [
+        [
+          {
+            "node": "Build Test Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Test Fixture": {
+      "main": [
+        [
+          {
+            "node": "Insert Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Fixture": {
+      "main": [
+        [
+          {
+            "node": "Query By Trace ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query By Trace ID": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Fixture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Fixture": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionTimeout": 60
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "aiops": {
+      "purpose": "Test: verify db-get-context style lookup via trace_id"
+    }
+  }
+}
+

@@ -1,0 +1,55 @@
+{
+  "name": "GitLab Service Catalog Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 3,
+              "minute": 15
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Cron Service Catalog",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowContext = this;\nconst env = $env || {};\n\nfunction cleanText(value) {\n  if (value === null || value === undefined) return '';\n  return String(value).trim();\n}\n\nfunction required(value, name) {\n  const v = cleanText(value);\n  if (!v) throw new Error(`${name} is required`);\n  return v;\n}\n\nfunction isTruthy(value) {\n  const v = cleanText(value).toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n}\n\nfunction splitRow(line) {\n  return line.trim().replace(/^\\|/, '').replace(/\\|$/, '').split('|').map((v) => v.trim());\n}\n\nfunction parseMarkdownTable(text) {\n  const lines = String(text || '').split(/\\r?\\n/);\n\n  let headerIdx = -1;\n  for (let i = 0; i < lines.length; i += 1) {\n    const line = lines[i].trim();\n    if (!line.startsWith('|') || !line.includes('|')) continue;\n    const headerLower = splitRow(lines[i]).map((h) => h.toLowerCase());\n    if (headerLower.includes('workflow_name') && headerLower.includes('workflow_id')) {\n      headerIdx = i;\n      break;\n    }\n  }\n\n  if (headerIdx < 0 || headerIdx + 1 >= lines.length) {\n    return { ok: false, error: 'table_not_found', lines };\n  }\n\n  const headers = splitRow(lines[headerIdx]);\n  const headersLower = headers.map((h) => h.toLowerCase());\n\n  const separatorIdx = headerIdx + 1;\n  const separatorLine = lines[separatorIdx]?.trim() ?? '';\n  if (!separatorLine.startsWith('|') || !separatorLine.includes('---')) {\n    return { ok: false, error: 'table_separator_missing', lines };\n  }\n\n  const rows = [];\n  let i = separatorIdx + 1;\n  while (i < lines.length) {\n    const line = lines[i].trim();\n    if (!line.startsWith('|')) break;\n    if (line.replace(/\\s/g, '').startsWith('|---')) {\n      i += 1;\n      continue;\n    }\n    const cols = splitRow(lines[i]);\n    while (cols.length < headers.length) cols.push('');\n    rows.push(cols);\n    i += 1;\n  }\n\n  return {\n    ok: true,\n    lines,\n    headerIdx,\n    separatorIdx,\n    tableEndIdx: i,\n    headers,\n    headersLower,\n    rows\n  };\n}\n\nfunction renderMarkdownTable(parsed) {\n  const { lines, headerIdx, tableEndIdx, headers, rows } = parsed;\n  const out = [];\n  out.push(...lines.slice(0, headerIdx));\n  out.push(`| ${headers.join(' | ')} |`);\n  out.push(`| ${headers.map(() => '---').join(' | ')} |`);\n  for (const row of rows) {\n    out.push(`| ${row.map((v) => String(v ?? '')).join(' | ')} |`);\n  }\n  out.push(...lines.slice(tableEndIdx));\n  return out.join('\\n') + '\\n';\n}\n\nfunction resolveRealm() {\n  return cleanText(env.N8N_REALM || env.N8N_REALM || env.N8N_GITLAB_REALM || 'default') || 'default';\n}\n\nfunction realmKeyForEnv(realm) {\n  return String(realm || '').toUpperCase().replace(/[^A-Z0-9]+/g, '_');\n}\n\nasync function fetchAllWorkflows(n8nBaseUrl, apiKey) {\n  const all = [];\n  let cursor = '';\n  for (let safety = 0; safety < 100; safety += 1) {\n    const qs = { limit: 250 };\n    if (cursor) qs.cursor = cursor;\n\n    const response = await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url: `${n8nBaseUrl}/api/v1/workflows`,\n      qs,\n      json: true,\n      headers: { 'X-N8N-API-KEY': apiKey }\n    });\n\n    const items = response?.data ?? response?.workflows ?? response?.items ?? [];\n    if (Array.isArray(items)) all.push(...items);\n\n    cursor = response?.nextCursor ?? response?.next_cursor ?? '';\n    if (!cursor) break;\n  }\n  return all;\n}\n\nasync function run() {\n  const realm = resolveRealm();\n  const realmKey = realmKeyForEnv(realm);\n\n  const gitlabBaseUrl = cleanText(env.GITLAB_API_BASE_URL || env.GITLAB_API_BASE_URL || '');\n  const gitlabToken = cleanText(env.N8N_GITLAB_TOKEN || env.GITLAB_TOKEN || '');\n  const gitlabRef = cleanText(env.N8N_GITLAB_REF || env.GITLAB_REF || 'main') || 'main';\n\n  const projectPath = cleanText(env[`N8N_GITLAB_PROJECT_PATH_${realmKey}`] || env.N8N_GITLAB_PROJECT_PATH || '');\n  const filePath = cleanText(env[`N8N_GITLAB_WORKFLOW_CATALOG_MD_PATH_${realmKey}`] || env.N8N_GITLAB_WORKFLOW_CATALOG_MD_PATH || '');\n\n  const n8nApiKey = cleanText(env.N8N_API_KEY || env.N8N_API_KEY || '');\n  const n8nBaseUrl = cleanText(env.N8N_INTERNAL_API_BASE_URL || env.N8N_PUBLIC_API_BASE_URL || env.N8N_PUBLIC_API_BASE_URL || 'http://127.0.0.1:5678').replace(/\\/$/, '');\n\n  const approvalCol = cleanText(env.N8N_GITLAB_WORKFLOW_CATALOG_APPROVAL_COLUMN || 'aiops_approved') || 'aiops_approved';\n  const allowAppend = isTruthy(env.N8N_GITLAB_WORKFLOW_CATALOG_ALLOW_APPEND || 'false');\n  const dryRun = isTruthy(env.N8N_GITLAB_SERVICE_CATALOG_SYNC_DRY_RUN || 'false');\n  const commitMessage = cleanText(env.N8N_GITLAB_WORKFLOW_CATALOG_COMMIT_MESSAGE || 'sync service catalog workflow ids') || 'sync service catalog workflow ids';\n\n  required(gitlabBaseUrl, 'GITLAB_API_BASE_URL');\n  required(gitlabToken, 'N8N_GITLAB_TOKEN');\n  required(projectPath, 'N8N_GITLAB_PROJECT_PATH');\n  required(filePath, 'N8N_GITLAB_WORKFLOW_CATALOG_MD_PATH');\n  required(n8nApiKey, 'N8N_API_KEY');\n\n  const projectEncoded = encodeURIComponent(projectPath);\n  const fileEncoded = encodeURIComponent(filePath);\n\n  const rawUrl = `${gitlabBaseUrl.replace(/\\/$/, '')}/projects/${projectEncoded}/repository/files/${fileEncoded}/raw?ref=${encodeURIComponent(gitlabRef)}`;\n\n  const md = await workflowContext.helpers.httpRequest({\n    method: 'GET',\n    url: rawUrl,\n    json: false,\n    headers: { 'PRIVATE-TOKEN': gitlabToken }\n  });\n\n  const parsed = parseMarkdownTable(md);\n  if (!parsed.ok) {\n    return [{ json: { ok: false, status_code: 500, error: parsed.error, realm } }];\n  }\n\n  const nameIdx = parsed.headersLower.indexOf('workflow_name');\n  const idIdx = parsed.headersLower.indexOf('workflow_id');\n  const approvalIdx = approvalCol ? parsed.headersLower.indexOf(String(approvalCol).toLowerCase()) : -1;\n  if (nameIdx < 0 || idIdx < 0) {\n    return [{ json: { ok: false, status_code: 500, error: 'required_columns_missing', realm } }];\n  }\n\n  const workflows = await fetchAllWorkflows(n8nBaseUrl, n8nApiKey);\n  const byName = new Map();\n  for (const wf of workflows) {\n    const name = cleanText(wf?.name);\n    const id = cleanText(wf?.id);\n    if (!name || !id) continue;\n    if (!byName.has(name)) byName.set(name, []);\n    byName.get(name).push(id);\n  }\n\n  const missing = [];\n  const ambiguous = [];\n  let updated = 0;\n\n  for (const row of parsed.rows) {\n    const wfName = cleanText(row[nameIdx]);\n    if (!wfName) continue;\n\n    if (approvalIdx >= 0) {\n      const approvedRaw = cleanText(row[approvalIdx]).toLowerCase();\n      if (approvedRaw && ['false', '0', 'no', 'n'].includes(approvedRaw)) {\n        continue;\n      }\n    }\n\n    const ids = byName.get(wfName) || [];\n    if (ids.length === 0) {\n      missing.push(wfName);\n      continue;\n    }\n    if (ids.length > 1) {\n      ambiguous.push({ workflow_name: wfName, workflow_ids: ids });\n      continue;\n    }\n\n    const desired = ids[0];\n    const current = cleanText(row[idIdx]);\n    if (current !== desired) {\n      row[idIdx] = desired;\n      updated += 1;\n    }\n  }\n\n  if (allowAppend) {\n    // Intentionally not auto-appending here by default to avoid unexpected catalog growth.\n  }\n\n  const newMd = renderMarkdownTable(parsed);\n  const changed = String(md) !== String(newMd);\n\n  if (dryRun || !changed) {\n    return [{\n      json: {\n        ok: true,\n        status_code: 200,\n        realm,\n        changed,\n        updated_count: updated,\n        missing_count: missing.length,\n        ambiguous_count: ambiguous.length,\n        missing_workflow_names: missing,\n        ambiguous_workflow_names: ambiguous\n      }\n    }];\n  }\n\n  const updateUrl = `${gitlabBaseUrl.replace(/\\/$/, '')}/projects/${projectEncoded}/repository/files/${fileEncoded}`;\n  const result = await workflowContext.helpers.httpRequest({\n    method: 'PUT',\n    url: updateUrl,\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    form: {\n      branch: gitlabRef,\n      commit_message: commitMessage,\n      content: newMd\n    }\n  });\n\n  return [{\n    json: {\n      ok: true,\n      status_code: 200,\n      realm,\n      changed: true,\n      updated_count: updated,\n      result\n    }\n  }];\n}\n\ntry {\n  return await run();\n} catch (error) {\n  return [{\n    json: {\n      ok: false,\n      status_code: 500,\n      error: error?.message ? String(error.message) : String(error)\n    }\n  }];\n}\n"
+      },
+      "id": "2",
+      "name": "Sync Service Catalog",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Cron Service Catalog": {
+      "main": [
+        [
+          {
+            "node": "Sync Service Catalog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionTimeout": 300
+  }
+}

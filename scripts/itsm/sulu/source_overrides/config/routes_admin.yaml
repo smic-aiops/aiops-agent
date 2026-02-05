@@ -1,0 +1,4 @@
+n8n_observer_events:
+    path: /admin/api/n8n/observer/events
+    controller: App\Controller\N8nObserverController::events
+    methods: [GET]

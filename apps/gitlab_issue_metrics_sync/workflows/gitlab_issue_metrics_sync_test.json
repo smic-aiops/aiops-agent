@@ -1,0 +1,78 @@
+{
+  "name": "gitlab-issue-metrics-sync-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/issue/metrics/sync/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Test)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const env = $env || {};\n\nfunction toDateKey(dateObj) {\n  const year = dateObj.getUTCFullYear();\n  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');\n  const day = String(dateObj.getUTCDate()).padStart(2, '0');\n  return `${year}-${month}-${day}`;\n}\n\nconst targetDate = String(env.N8N_METRICS_TARGET_DATE || '').trim();\nif (targetDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(targetDate)) {\n  return [{ json: { ok: false, status_code: 400, message: 'N8N_METRICS_TARGET_DATE must be YYYY-MM-DD' } }];\n}\n\nconst now = new Date();\nconst utcMidnightToday = new Date(Date.UTC(\n  now.getUTCFullYear(),\n  now.getUTCMonth(),\n  now.getUTCDate(),\n  0,\n  0,\n  0\n));\nconst utcMidnightYesterday = new Date(utcMidnightToday.getTime() - 24 * 60 * 60 * 1000);\nconst expectedYesterday = toDateKey(utcMidnightYesterday);\n\nconst dt = targetDate || expectedYesterday;\n\nreturn [\n  {\n    json: {\n      ok: true,\n      status_code: 200,\n      expected_yesterday_utc: expectedYesterday,\n      dt,\n      target_date: targetDate || null\n    }\n  }\n];\n"
+      },
+      "id": "2",
+      "name": "Validate UTC Date (Test)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond (Test)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        820,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Test)": {
+      "main": [
+        [
+          {
+            "node": "Validate UTC Date (Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate UTC Date (Test)": {
+      "main": [
+        [
+          {
+            "node": "Respond (Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

@@ -1,0 +1,78 @@
+{
+  "name": "cloudwatch-event-notify-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "cloudwatch/notify/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Test)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n}\n\nconst request = $json ?? {};\nconst headers = (request && typeof request === 'object' && request.headers && typeof request.headers === 'object')\n  ? request.headers\n  : {};\nconst body = (request && typeof request === 'object' && request.body && typeof request.body === 'object')\n  ? request.body\n  : {};\n\nfunction getHeader(name) {\n  const key = String(name || '').toLowerCase();\n  if (!key) return undefined;\n  if (headers[key] !== undefined) return headers[key];\n  const found = Object.keys(headers).find((k) => k.toLowerCase() === key);\n  return found ? headers[found] : undefined;\n}\n\nfunction kebab(key) {\n  return String(key || '').toLowerCase().replace(/_/g, '-');\n}\n\nfunction overrideEnv(key) {\n  const headerValue = getHeader('x-aiops-env-' + kebab(key));\n  if (headerValue !== undefined && headerValue !== null && String(headerValue).trim() !== '') {\n    return String(headerValue);\n  }\n  const envFromBody = (body && typeof body.env === 'object' && body.env) ? body.env : null;\n  if (envFromBody && envFromBody[key] !== undefined && envFromBody[key] !== null && String(envFromBody[key]).trim() !== '') {\n    return String(envFromBody[key]);\n  }\n  return '';\n}\n\nfunction pickEnv(key, fallback = '') {\n  const overridden = overrideEnv(key);\n  if (overridden) return overridden;\n  const envValue = $env?.[key];\n  return (envValue !== undefined && envValue !== null && String(envValue).trim() !== '') ? String(envValue) : String(fallback || '');\n}\n\nconst required = {\n  ZULIP_BASE_URL: pickEnv('ZULIP_BASE_URL'),\n  ZULIP_BOT_EMAIL: pickEnv('ZULIP_BOT_EMAIL'),\n  ZULIP_BOT_API_KEY: pickEnv('ZULIP_BOT_API_KEY'),\n  GITLAB_API_BASE_URL: pickEnv('GITLAB_API_BASE_URL'),\n  GITLAB_TOKEN: pickEnv('GITLAB_TOKEN'),\n  GITLAB_PROJECT_ID: pickEnv('GITLAB_PROJECT_ID') || pickEnv('GITLAB_PROJECT_PATH'),\n  GRAFANA_BASE_URL: pickEnv('GRAFANA_BASE_URL'),\n  GRAFANA_API_KEY: pickEnv('GRAFANA_API_KEY')\n};\n\nconst missing = Object.entries(required)\n  .filter(([, value]) => !String(value).trim())\n  .map(([key]) => key);\n\nconst query = (request && typeof request === 'object' && request.query && typeof request.query === 'object') ? request.query : {};\nconst queryStrict = query.strict ?? query.test_strict ?? query.testStrict;\nconst strict = isTruthy(queryStrict ?? body.strict ?? $env.CLOUDWATCH_NOTIFY_TEST_STRICT);\nconst ok = strict ? missing.length === 0 : true;\nconst status = ok ? 200 : 424;\n\nfunction redactHeaders(rawHeaders) {\n  const out = {};\n  for (const [k, v] of Object.entries(rawHeaders || {})) {\n    const lk = String(k).toLowerCase();\n    if (lk.startsWith('x-aiops-env-')) {\n      out[k] = '***';\n      continue;\n    }\n    out[k] = v;\n  }\n  return out;\n}\n\nfunction redactEnv(rawEnv) {\n  const envObj = (rawEnv && typeof rawEnv === 'object' && !Array.isArray(rawEnv)) ? rawEnv : {};\n  const out = {};\n  for (const [k, v] of Object.entries(envObj)) {\n    const lk = String(k).toLowerCase();\n    if (lk.includes('token') || lk.includes('api_key') || lk.includes('password') || lk.includes('secret')) {\n      out[k] = '***';\n      continue;\n    }\n    out[k] = v;\n  }\n  return out;\n}\n\nconst receivedSafe = {\n  query,\n  body: {\n    ...body,\n    env: redactEnv(body.env)\n  },\n  headers: redactHeaders(headers)\n};\n\nreturn [{\n  json: {\n    ok,\n    status_code: status,\n    strict,\n    missing,\n    received: receivedSafe,\n    message: ok ? 'ok' : 'missing required env vars'\n  }\n}];"
+      },
+      "id": "2",
+      "name": "Validate Env",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        780,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Test)": {
+      "main": [
+        [
+          {
+            "node": "Validate Env",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Env": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

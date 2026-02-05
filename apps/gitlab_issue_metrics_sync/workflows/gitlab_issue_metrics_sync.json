@@ -1,0 +1,242 @@
+{
+  "name": "GitLab Issue Metrics Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 1,
+              "minute": 30
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Cron Metrics",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "gitlab/issue/metrics/sync/oq",
+        "httpMethod": "POST",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "7",
+      "name": "Webhook (OQ)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst workflowContext = this;\nconst env = $env || {};\nconst inputJson = (() => {\n  try {\n    const first = $input.first();\n    return first && first.json ? first.json : {};\n  } catch (error) {\n    return {};\n  }\n})();\n\nconst requestBody = (inputJson && typeof inputJson.body === 'object' && inputJson.body !== null) ? inputJson.body : inputJson;\n\nfunction required(value, name) {\n  if (value === undefined || value === null || String(value).trim() === '') {\n    throw new Error(`${name} is required`);\n  }\n  return value;\n}\n\nfunction trimSlash(value) {\n  return String(value || '').replace(/\\/+$/, '');\n}\n\nfunction parseList(value) {\n  if (!value) return [];\n  if (Array.isArray(value)) return value.filter(Boolean);\n  return String(value)\n    .split(',')\n    .map((v) => v.trim())\n    .filter(Boolean);\n}\n\nfunction isTruthy(value) {\n  const raw = String(value || '').trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(raw);\n}\n\nfunction toDateKey(dateObj) {\n  const year = dateObj.getUTCFullYear();\n  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');\n  const day = String(dateObj.getUTCDate()).padStart(2, '0');\n  return `${year}-${month}-${day}`;\n}\n\nfunction dateRangeUtc(dt) {\n  const [y, m, d] = dt.split('-').map((v) => Number(v));\n  const start = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));\n  const end = new Date(Date.UTC(y, m - 1, d, 23, 59, 59));\n  return { start, end };\n}\n\nfunction toMinutes(start, end) {\n  if (!start || !end) return null;\n  const diff = (end.getTime() - start.getTime()) / 60000;\n  return Number.isFinite(diff) ? diff : null;\n}\n\nfunction percentile(values, p) {\n  const list = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);\n  if (!list.length) return null;\n  const idx = Math.ceil((p / 100) * list.length) - 1;\n  return list[Math.max(0, Math.min(idx, list.length - 1))];\n}\n\nconst realm = String(env.N8N_REALM || 'default').trim() || 'default';\n\nconst gitlabBaseUrl = trimSlash(\n  requestBody.N8N_GITLAB_BASE_URL ||\n  requestBody.GITLAB_BASE_URL ||\n  requestBody.gitlab_base_url ||\n  env.N8N_GITLAB_BASE_URL ||\n  env.GITLAB_BASE_URL ||\n  env.GITLAB_URL ||\n  env.SERVICE_URL_GITLAB ||\n  ''\n);\n\nconst gitlabApiBase = trimSlash(\n  requestBody.N8N_GITLAB_API_BASE_URL ||\n  requestBody.GITLAB_API_BASE_URL ||\n  requestBody.gitlab_api_base_url ||\n  env.N8N_GITLAB_API_BASE_URL ||\n  env.GITLAB_API_BASE_URL ||\n  (gitlabBaseUrl ? `${gitlabBaseUrl}/api/v4` : '') ||\n  ''\n);\nconst gitlabToken = env.N8N_GITLAB_TOKEN || env.GITLAB_TOKEN || env.GITLAB_ADMIN_TOKEN || '';\nlet projectRef = (\n  requestBody.N8N_GITLAB_PROJECT_ID ||\n  requestBody.GITLAB_PROJECT_ID ||\n  requestBody.N8N_GITLAB_PROJECT_PATH ||\n  requestBody.GITLAB_PROJECT_PATH ||\n  requestBody.gitlab_project_path ||\n  env.N8N_GITLAB_PROJECT_ID ||\n  env.GITLAB_PROJECT_ID ||\n  env.N8N_GITLAB_PROJECT_PATH ||\n  env.GITLAB_PROJECT_PATH ||\n  ''\n);\nif (!projectRef) {\n  projectRef = `${realm}/technical-management`;\n}\nrequired(gitlabApiBase, 'GITLAB_API_BASE_URL');\nrequired(gitlabToken, 'GITLAB_TOKEN');\nrequired(projectRef, 'GITLAB_PROJECT_ID or GITLAB_PROJECT_PATH');\n\nconst labelFilters = parseList(env.N8N_GITLAB_LABEL_FILTERS || env.GITLAB_LABEL_FILTERS || '\u30c1\u30e3\u30cd\u30eb\uff1aZulip');\nconst issueState = String(env.N8N_GITLAB_ISSUE_STATE || 'all').trim() || 'all';\nconst escalationLabel = String(env.N8N_GITLAB_ESCALATION_LABEL || '\u4e00\u6b21\u5bfe\u5fdc\uff1a\u30a8\u30b9\u30ab\u30ec\u30fc\u30b7\u30e7\u30f3');\nconst firstContactDoneLabel = String(env.N8N_GITLAB_FIRST_CONTACT_DONE_LABEL || '\u4e00\u6b21\u5bfe\u5fdc\uff1a\u5b8c\u4e86');\nconst collectFirstResponse = isTruthy(env.N8N_GITLAB_COLLECT_FIRST_RESPONSE || 'true');\nconst firstResponseLimit = Number(env.N8N_GITLAB_FIRST_RESPONSE_LIMIT || '100');\nconst collectReopen = isTruthy(env.N8N_GITLAB_COLLECT_REOPEN || 'true');\nconst reopenLimit = Number(env.N8N_GITLAB_REOPEN_LIMIT || '200');\n\nconst s3Bucket = env.N8N_S3_BUCKET || env.S3_BUCKET || '';\nconst s3Prefix = String(env.N8N_S3_PREFIX || 'itsm/customer_request').replace(/\\/+$/, '');\nrequired(s3Bucket, 'N8N_S3_BUCKET');\n\nconst targetDate = String(\n  requestBody.N8N_METRICS_TARGET_DATE ||\n  requestBody.target_date ||\n  env.N8N_METRICS_TARGET_DATE ||\n  ''\n).trim();\n\nlet dt = '';\nif (targetDate) {\n  dt = targetDate;\n} else {\n  const now = new Date();\n  const utcMidnightToday = new Date(Date.UTC(\n    now.getUTCFullYear(),\n    now.getUTCMonth(),\n    now.getUTCDate(),\n    0,\n    0,\n    0\n  ));\n  const utcMidnightYesterday = new Date(utcMidnightToday.getTime() - 24 * 60 * 60 * 1000);\n  dt = toDateKey(utcMidnightYesterday);\n}\nconst { start, end } = dateRangeUtc(dt);\n\nasync function fetchIssues(params) {\n  const projectEncoded = encodeURIComponent(projectRef);\n  const perPage = 100;\n  let page = 1;\n  const all = [];\n  while (true) {\n    const qs = { per_page: perPage, page, ...params };\n    if (labelFilters.length) qs.labels = labelFilters.join(',');\n    const response = await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url: `${gitlabApiBase}/projects/${projectEncoded}/issues`,\n      qs,\n      json: true,\n      headers: { 'PRIVATE-TOKEN': gitlabToken }\n    });\n    const batch = Array.isArray(response) ? response : [];\n    all.push(...batch);\n    if (batch.length < perPage) break;\n    page += 1;\n  }\n  return all;\n}\n\nasync function fetchStateEvents(issueIid) {\n  const projectEncoded = encodeURIComponent(projectRef);\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/issues/${issueIid}/resource_state_events`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'GET',\n    url,\n    qs: { per_page: 100, sort: 'asc' },\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken }\n  });\n}\n\nasync function hasReopenInRange(issue) {\n  if (!collectReopen) return false;\n  if (reopenLimit > 0 && issue.iid_index > reopenLimit) return false;\n  let events;\n  try {\n    events = await fetchStateEvents(issue.iid);\n  } catch (error) {\n    return false;\n  }\n  if (!Array.isArray(events)) return false;\n  const sorted = events.slice().sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));\n  let seenClosed = false;\n  for (const event of sorted) {\n    const state = String(event.state || '');\n    const createdAt = new Date(event.created_at);\n    if (state === 'closed') {\n      seenClosed = true;\n      continue;\n    }\n    if (state === 'opened' && seenClosed) {\n      if (createdAt >= start && createdAt <= end) {\n        return true;\n      }\n    }\n  }\n  return false;\n}\n\nasync function fetchFirstResponseAt(issue) {\n  if (!collectFirstResponse) return null;\n  if (firstResponseLimit > 0 && issue.iid_index > firstResponseLimit) return null;\n  const projectEncoded = encodeURIComponent(projectRef);\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/issues/${issue.iid}/notes`;\n  const notes = await workflowContext.helpers.httpRequest({\n    method: 'GET',\n    url,\n    qs: {\n      per_page: 100,\n      order_by: 'created_at',\n      sort: 'asc'\n    },\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken }\n  });\n  if (!Array.isArray(notes)) return null;\n  const authorId = issue.author?.id;\n  const firstNote = notes.find((note) => !note.system && note.author?.id !== authorId);\n  return firstNote ? new Date(firstNote.created_at) : null;\n}\n\nconst updatedIssues = await fetchIssues({\n  state: issueState,\n  updated_after: start.toISOString()\n});\n\nconst issuesWithIndex = updatedIssues.map((issue, idx) => ({ ...issue, iid_index: idx + 1 }));\n\nconst createdIssues = issuesWithIndex.filter((issue) => {\n  const createdAt = new Date(issue.created_at);\n  return createdAt >= start && createdAt <= end;\n});\n\nconst closedIssues = issuesWithIndex.filter((issue) => {\n  if (!issue.closed_at) return false;\n  const closedAt = new Date(issue.closed_at);\n  return closedAt >= start && closedAt <= end;\n});\n\nlet backlogCount = null;\ntry {\n  const backlog = await fetchIssues({\n    state: 'opened',\n    created_before: end.toISOString()\n  });\n  backlogCount = backlog.length;\n} catch (error) {\n  backlogCount = null;\n}\n\nconst firstResponseMinutes = [];\nfor (const issue of createdIssues) {\n  try {\n    const firstResponseAt = await fetchFirstResponseAt(issue);\n    const createdAt = new Date(issue.created_at);\n    const minutes = toMinutes(createdAt, firstResponseAt);\n    if (minutes !== null) firstResponseMinutes.push(minutes);\n  } catch (error) {\n    // ignore\n  }\n}\n\nconst resolutionMinutes = closedIssues\n  .map((issue) => toMinutes(new Date(issue.created_at), new Date(issue.closed_at)))\n  .filter((value) => value !== null);\n\nlet reopenedCount = null;\nif (collectReopen) {\n  let count = 0;\n  for (const issue of issuesWithIndex) {\n    try {\n      if (await hasReopenInRange(issue)) count += 1;\n    } catch (error) {\n      // ignore\n    }\n  }\n  reopenedCount = count;\n}\n\n\nconst escalatedCount = closedIssues.filter((issue) => {\n  const labels = Array.isArray(issue.labels) ? issue.labels : [];\n  return labels.includes(escalationLabel);\n}).length;\n\nconst firstContactDoneCount = closedIssues.filter((issue) => {\n  const labels = Array.isArray(issue.labels) ? issue.labels : [];\n  return labels.includes(firstContactDoneLabel) && !labels.includes(escalationLabel);\n}).length;\n\nconst closedCount = closedIssues.length;\nconst firstContactResolutionRate = closedCount > 0\n  ? firstContactDoneCount / closedCount\n  : null;\n\nconst reopenRate = (reopenedCount !== null && closedCount > 0)\n  ? reopenedCount / closedCount\n  : null;\n\nconst events = issuesWithIndex.map((issue) => {\n  const labels = Array.isArray(issue.labels) ? issue.labels : [];\n  return {\n    event_id: String(issue.id),\n    event_type: 'issue_snapshot',\n    event_at: issue.updated_at,\n    realm,\n    gitlab_project_path: String(projectRef),\n    gitlab_issue_iid: issue.iid,\n    gitlab_issue_state: issue.state,\n    gitlab_labels: labels,\n    issue_title: issue.title,\n    issue_url: issue.web_url || issue.url || null,\n    issue_created_at: issue.created_at,\n    issue_closed_at: issue.closed_at,\n    issue_updated_at: issue.updated_at\n  };\n});\n\nconst metrics = {\n  realm,\n  request_count: createdIssues.length,\n  first_response_p50_minutes: percentile(firstResponseMinutes, 50),\n  first_response_p95_minutes: percentile(firstResponseMinutes, 95),\n  resolution_p50_minutes: percentile(resolutionMinutes, 50),\n  resolution_p95_minutes: percentile(resolutionMinutes, 95),\n  first_contact_resolution_rate: firstContactResolutionRate,\n  reopen_rate: reopenRate,\n  backlog_count: backlogCount,\n  escalated_count: escalatedCount\n};\n\nconst eventsBody = events.map((item) => JSON.stringify(item)).join('\\n') + (events.length ? '\\n' : '');\nconst metricsBody = JSON.stringify(metrics);\n\nconst eventsKey = `${s3Prefix}/events/dt=${dt}/realm=${realm}/gitlab_issues.jsonl`;\nconst metricsKey = `${s3Prefix}/daily_metrics/dt=${dt}/realm=${realm}/metrics.json`;\n\nreturn [\n  {\n    json: {\n      record_type: 'events',\n      s3_bucket: s3Bucket,\n      s3_key: eventsKey,\n      dt,\n      realm\n    },\n    binary: {\n      data: {\n        data: Buffer.from(eventsBody, 'utf8').toString('base64'),\n        mimeType: 'application/json',\n        fileName: 'gitlab_issues.jsonl'\n      }\n    }\n  },\n  {\n    json: {\n      record_type: 'daily_metrics',\n      s3_bucket: s3Bucket,\n      s3_key: metricsKey,\n      dt,\n      realm\n    },\n    binary: {\n      data: {\n        data: Buffer.from(metricsBody, 'utf8').toString('base64'),\n        mimeType: 'application/json',\n        fileName: 'metrics.json'\n      }\n    }\n  }\n];\n"
+      },
+      "id": "2",
+      "name": "Build Metrics Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.record_type}}",
+              "value2": "events"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF Events",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{$json.s3_bucket}}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "fileName": "={{$json.s3_key}}"
+      },
+      "id": "4",
+      "name": "S3 Upload Events",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [
+        940,
+        140
+      ],
+      "credentials": {
+        "aws": {
+          "id": "aiops-aws",
+          "name": "aiops-aws"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.record_type}}",
+              "value2": "daily_metrics"
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "IF Metrics",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{$json.s3_bucket}}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "fileName": "={{$json.s3_key}}"
+      },
+      "id": "6",
+      "name": "S3 Upload Metrics",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [
+        940,
+        260
+      ],
+      "credentials": {
+        "aws": {
+          "id": "aiops-aws",
+          "name": "aiops-aws"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Env\n- GITLAB_API_BASE_URL or GITLAB_API_BASE_URL\n- N8N_GITLAB_TOKEN or GITLAB_TOKEN\n- N8N_GITLAB_PROJECT_ID or N8N_GITLAB_PROJECT_PATH\n- N8N_GITLAB_LABEL_FILTERS (default: \u30c1\u30e3\u30cd\u30eb\uff1aZulip)\n- N8N_GITLAB_ISSUE_STATE (default: all)\n- N8N_GITLAB_ESCALATION_LABEL\n- N8N_GITLAB_FIRST_CONTACT_DONE_LABEL\n- N8N_GITLAB_COLLECT_FIRST_RESPONSE (true/false)\n- N8N_GITLAB_FIRST_RESPONSE_LIMIT\n- N8N_GITLAB_COLLECT_REOPEN (true/false)\n- N8N_GITLAB_REOPEN_LIMIT\n- N8N_S3_BUCKET\n- N8N_S3_PREFIX (default: itsm/customer_request)\n- N8N_METRICS_TARGET_DATE (YYYY-MM-DD, optional)\n\nAWS credential\n- aws credential name: aiops-aws",
+        "height": 260,
+        "width": 460,
+        "color": 6
+      },
+      "id": "100",
+      "name": "Sticky Note: env",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Cron Metrics": {
+      "main": [
+        [
+          {
+            "node": "Build Metrics Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Metrics Payload": {
+      "main": [
+        [
+          {
+            "node": "IF Events",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Events": {
+      "main": [
+        [
+          {
+            "node": "S3 Upload Events",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "IF Metrics": {
+      "main": [
+        [
+          {
+            "node": "S3 Upload Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Webhook (OQ)": {
+      "main": [
+        [
+          {
+            "node": "Build Metrics Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "meta": {
+    "workflowId": "wf.gitlab_issue_metrics_sync",
+    "revision": 1,
+    "aiops_catalog": {
+      "summary": "GitLab Issue\u3092\u96c6\u8a08\u3057\u3066S3/Athena\u3078\u9023\u643a\u3059\u308b",
+      "realm": "default",
+      "platform": "n8n",
+      "required_roles": [
+        "service_desk"
+      ],
+      "required_groups": [],
+      "required_users": [],
+      "risk_level": "low",
+      "impact_scope": "service",
+      "category": "service_request",
+      "workflow_class": "service_request"
+    }
+  }
+}

@@ -1,0 +1,169 @@
+{
+  "name": "aiops-adapter-ingest-other-reply-test",
+  "active": false,
+  "settings": {},
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Manual Trigger (Other Reply Test)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [\n  {\n    json: {\n      source: 'zulip',\n      reply_target: { source: 'zulip', tenant: 'default', stream: 'test', topic: 'test' },\n      normalized_event: { text: 'こんにちは' },\n      needs_clarification: false,\n      clarifying_questions: []\n    }\n  },\n  {\n    json: {\n      source: 'zulip',\n      reply_target: { source: 'zulip', tenant: 'default', stream: 'test', topic: 'test' },\n      normalized_event: { text: 'ありがとう！' },\n      needs_clarification: false,\n      clarifying_questions: []\n    }\n  },\n  {\n    json: {\n      source: 'zulip',\n      reply_target: { source: 'zulip', tenant: 'default', stream: 'test', topic: 'test' },\n      normalized_event: { text: 'OK' },\n      needs_clarification: false,\n      clarifying_questions: []\n    }\n  }\n];\n"
+      },
+      "id": "2",
+      "name": "Build Sample Other Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const replyTarget = $json.reply_target ?? {};\nconst source = replyTarget.source ?? $json.source ?? 'unknown';\nconst normalizedEvent = $json.normalized_event ?? {};\nconst rawText = normalizedEvent.text ?? $json.text ?? '';\nconst text = String(rawText ?? '').trim();\n\nconst isMatch = (re) => re.test(text);\nconst isGreeting = text.length > 0 && (\n  isMatch(/^(おはよう|お早う|こんにちは|こんばんは|はじめまして|やあ|もしもし|お疲れ様|おつかれ)(\\b|\\s|$)/i)\n  || isMatch(/^(hi|hello|hey|good\\s*(morning|afternoon|evening))(\\b|\\s|$)/i)\n);\nconst isThanks = text.length > 0 && (\n  isMatch(/(ありがとう|ありがと|助かる|感謝)/i)\n  || isMatch(/\\b(thanks|thank\\s+you)\\b/i)\n);\nconst isBye = text.length > 0 && (\n  isMatch(/(さようなら|またね|失礼します|おやすみ|bye|good\\s*night)/i)\n);\n\nlet content = '';\nif (isGreeting) {\n  content = 'こんにちは！';\n} else if (isThanks) {\n  content = 'どういたしまして！';\n} else if (isBye) {\n  content = '了解です。またいつでも声をかけてください。';\n} else if (!text) {\n  content = '了解です。ご用件があれば気軽に教えてください。';\n} else {\n  content = '承知しました。ご用件があれば気軽に続けてください。';\n}\n\ncontent += '\\n\\n例:「○○のアラート原因を調べて」「この変更を承認して」「プレビュー結果を評価して」';\n\nreturn [{\n  json: {\n    ...$json,\n    reply_target: replyTarget,\n    content,\n    source\n  }\n}];\n"
+      },
+      "id": "3",
+      "name": "Build Friendly Reply (Other) (Test)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Manual Trigger (Other Reply Test)',\n  target: 'Build Sample Other Events',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "4",
+      "name": "Debug Log After: Manual Trigger (Other Reply Test) -> Build Sample Other Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Manual Trigger (Other Reply Test)',\n  target: 'Build Sample Other Events',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "5",
+      "name": "Debug Log Before: Build Sample Other Events <- Manual Trigger (Other Reply Test)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'after',\n  source: 'Build Sample Other Events',\n  target: 'Build Friendly Reply (Other) (Test)',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "6",
+      "name": "Debug Log After: Build Sample Other Events -> Build Friendly Reply (Other) (Test)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const debugFlag = String($env.N8N_DEBUG_LOG || '').toLowerCase();\nconst enabled = ['1', 'true', 'yes', 'y', 'on'].includes(debugFlag);\nif (!enabled) {\n  return $input.all();\n}\n\nconst maxItemsRaw = $env.N8N_DEBUG_LOG_MAX_ITEMS || '5';\nconst maxItems = Number.isFinite(Number(maxItemsRaw)) ? Number(maxItemsRaw) : 5;\nconst items = $input.all();\nconst sample = items.slice(0, Math.max(0, maxItems));\n\nfunction mask(value, depth = 0) {\n  if (depth > 4) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (keyLower.includes('token') || keyLower.includes('secret') || keyLower.includes('password') || keyLower.includes('authorization') || keyLower.includes('cookie') || keyLower.includes('api_key') || keyLower.includes('apikey')) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nconst payload = sample.map((item) => mask(item.json));\nconst line = JSON.stringify({\n  tag: 'n8n_debug',\n  phase: 'before',\n  source: 'Build Sample Other Events',\n  target: 'Build Friendly Reply (Other) (Test)',\n  output_index: 0,\n  items_total: items.length,\n  items: payload\n});\n\ntry {\n  if (this?.logger?.info) {\n    this.logger.info(line);\n  } else {\n    console.log(line);\n  }\n} catch (error) {\n  console.log(line);\n}\n\nconst observerUrl = $env.N8N_OBSERVER_URL;\nconst observerToken = $env.N8N_OBSERVER_TOKEN;\n\nif (observerUrl && observerToken) {\n  let event = null;\n  try {\n    event = JSON.parse(line);\n  } catch (error) {\n    event = { tag: 'n8n_debug', raw: String(line ?? '') };\n  }\n\n  const payloadForObserver = {\n    kind: 'n8n.debug_log',\n    realm: $env.N8N_OBSERVER_REALM ?? null,\n    workflow: $workflow.name,\n    execution_id: $execution.id,\n    sent_at: new Date().toISOString(),\n    event\n  };\n\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: observerUrl,\n      json: true,\n      headers: {\n        'X-Observer-Token': observerToken\n      },\n      body: payloadForObserver,\n      timeout: 5000\n    });\n  } catch (error) {\n    // Observability must never break production workflows.\n  }\n}\nreturn $input.all();\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "7",
+      "name": "Debug Log Before: Build Friendly Reply (Other) (Test) <- Build Sample Other Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger (Other Reply Test)": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Manual Trigger (Other Reply Test) -> Build Sample Other Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Sample Other Events": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Build Sample Other Events -> Build Friendly Reply (Other) (Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Manual Trigger (Other Reply Test) -> Build Sample Other Events": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Build Sample Other Events <- Manual Trigger (Other Reply Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Build Sample Other Events <- Manual Trigger (Other Reply Test)": {
+      "main": [
+        [
+          {
+            "node": "Build Sample Other Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log After: Build Sample Other Events -> Build Friendly Reply (Other) (Test)": {
+      "main": [
+        [
+          {
+            "node": "Debug Log Before: Build Friendly Reply (Other) (Test) <- Build Sample Other Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Log Before: Build Friendly Reply (Other) (Test) <- Build Sample Other Events": {
+      "main": [
+        [
+          {
+            "node": "Build Friendly Reply (Other) (Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

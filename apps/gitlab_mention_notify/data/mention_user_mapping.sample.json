@@ -1,0 +1,9 @@
+{
+  "example-user": {
+    "zulip_user_id": 123456,
+    "zulip_email": "user@example.com"
+  },
+  "@legacy-user": {
+    "zulip_email": "legacy@example.com"
+  }
+}

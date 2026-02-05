@@ -1,0 +1,78 @@
+{
+  "name": "zulip-stream-sync",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "zulip/streams/sync",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Stream Sync)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst body = (request && typeof request === 'object' && request.body && typeof request.body === 'object') ? request.body : request;\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n}\n\nconst realm = String(\n  body.realm ||\n  body.tenant ||\n  body.reply_target?.tenant ||\n  body.reply_target?.realm ||\n  $env.N8N_REALM ||\n  'default'\n).trim() || 'default';\n\nlet baseUrl = '';\n\nfunction error(status, message, extra = {}) {\n  return [{\n    json: {\n      ok: false,\n      status_code: status,\n      realm,\n      zulip_base_url: baseUrl || '',\n      error: message,\n      ...extra\n    }\n  }];\n}\n\nconst action = String(body.action || '').toLowerCase();\nif (!['create', 'archive'].includes(action)) {\n  return error(400, 'invalid action');\n}\n\nconst streamName = String(body.stream_name || body.stream || '').trim();\nconst streamIdInput = String(body.stream_id || body.zulip_stream_id || '').trim();\nconst description = String(body.stream_description || body.description || '').trim();\nconst inviteOnly = body.invite_only === undefined ? true : !!body.invite_only;\nconst dryRun = isTruthy(body.dry_run) || isTruthy($env.ZULIP_STREAM_SYNC_DRY_RUN) || isTruthy($env.DRY_RUN);\n\nfunction parseYamlMap(text) {\n  const map = {};\n  String(text || '').split(/\\r?\\n/).forEach((line) => {\n    const trimmed = line.trim();\n    if (!trimmed || trimmed.startsWith('#')) return;\n    const idx = trimmed.indexOf(':');\n    if (idx <= 0) return;\n    const key = trimmed.slice(0, idx).trim();\n    let value = trimmed.slice(idx + 1).trim();\n    value = value.replace(/^['\\\"]|['\\\"]$/g, '');\n    map[key] = value;\n  });\n  return map;\n}\n\nfunction parseMap(jsonRaw, yamlRaw) {\n  if (jsonRaw) {\n    try {\n      const parsed = JSON.parse(String(jsonRaw || ''));\n      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {\n        return parsed;\n      }\n    } catch (e) {}\n  }\n  return parseYamlMap(yamlRaw);\n}\n\nfunction resolveFromMap(jsonRaw, yamlRaw, fallbackRaw) {\n  const map = parseMap(jsonRaw, yamlRaw);\n  const value = (realm && map[realm]) ? map[realm] : (map.default || fallbackRaw || '');\n  return String(value || '').trim();\n}\n\nbaseUrl = resolveFromMap(\n  $env.N8N_ZULIP_API_BASE_URL,\n  $env.N8N_ZULIP_API_BASE_URL,\n  $env.ZULIP_BASE_URL || $env.N8N_ZULIP_API_BASE_URL\n);\nbaseUrl = baseUrl.replace(/\\/$/, '');\nif (baseUrl.endsWith('/api/v1')) baseUrl = baseUrl.slice(0, -'/api/v1'.length);\nif (baseUrl.endsWith('/api/v1/')) baseUrl = baseUrl.slice(0, -'/api/v1/'.length);\nbaseUrl = baseUrl.replace(/\\/$/, '');\n\nconst email = resolveFromMap(\n  $env.N8N_ZULIP_BOT_EMAIL,\n  $env.N8N_ZULIP_BOT_EMAIL,\n  $env.ZULIP_BOT_EMAIL || $env.N8N_ZULIP_BOT_EMAIL\n);\n\nconst apiKey = resolveFromMap(\n  $env.N8N_ZULIP_BOT_TOKEN,\n  $env.N8N_ZULIP_BOT_TOKEN || $env.ZULIP_BOT_TOKEN,\n  $env.ZULIP_BOT_API_KEY || $env.N8N_ZULIP_BOT_TOKEN || $env.ZULIP_BOT_TOKEN\n);\n\nconst missing = [];\nif (!baseUrl) missing.push('ZULIP_BASE_URL');\nif (!email) missing.push('ZULIP_BOT_EMAIL');\nif (!apiKey) missing.push('ZULIP_BOT_API_KEY');\nif (missing.length && !dryRun) {\n  return error(424, 'missing zulip credentials', { missing });\n}\n\nif (action === 'create' && !streamName) {\n  return error(400, 'stream_name is required for create');\n}\nif (action === 'archive' && !streamName && !streamIdInput) {\n  return error(400, 'stream_name or stream_id is required for archive');\n}\n\nconst httpRequest = this.helpers.httpRequest;\nconst auth = Buffer.from(`${email}:${apiKey}`).toString('base64');\nconst headers = {\n  Authorization: `Basic ${auth}`\n};\n\nfunction redactSensitive(value) {\n  const keyPattern = /(api[_-]?key|token|secret|password|passwd|authorization)/i;\n\n  function redactString(s) {\n    const str = String(s);\n    return str.replace(/(Basic\\s+)[A-Za-z0-9+/=._-]+/g, '$1***REDACTED***');\n  }\n\n  function walk(v) {\n    if (v === null || v === undefined) return v;\n    if (typeof v === 'string') return redactString(v);\n    if (typeof v === 'number' || typeof v === 'boolean') return v;\n    if (Array.isArray(v)) return v.map(walk);\n    if (typeof v === 'object') {\n      const out = {};\n      for (const [k, vv] of Object.entries(v)) {\n        if (keyPattern.test(String(k))) {\n          out[k] = '***REDACTED***';\n        } else {\n          out[k] = walk(vv);\n        }\n      }\n      return out;\n    }\n    return redactString(v);\n  }\n\n  if (typeof value === 'string') {\n    const trimmed = value.trim();\n    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {\n      try {\n        return walk(JSON.parse(trimmed));\n      } catch (e) {\n        return walk(value);\n      }\n    }\n  }\n\n  return walk(value);\n}\n\nasync function listStreams() {\n  if (!baseUrl) return [];\n  const resp = await httpRequest({\n    method: 'GET',\n    url: `${baseUrl}/api/v1/streams`,\n    qs: {\n      include_public: 'true',\n      include_subscribed: 'true',\n      include_all_active: 'true'\n    },\n    headers,\n    json: true\n  });\n  return Array.isArray(resp?.streams) ? resp.streams : [];\n}\n\nasync function resolveStreamId(name) {\n  if (!name) return '';\n  const streams = await listStreams();\n  const match = streams.find((s) => s && s.name === name);\n  return match ? String(match.stream_id || '') : '';\n}\n\nfunction pickUpstreamStatus(err) {\n  return err?.statusCode ?? err?.response?.statusCode ?? err?.response?.status ?? err?.httpCode ?? null;\n}\n\nfunction pickUpstreamBody(err) {\n  const raw = err?.response?.body ?? err?.response?.data ?? err?.body ?? err?.error ?? null;\n  return redactSensitive(raw);\n}\n\nasync function createStream() {\n  if (dryRun) {\n    return {\n      ok: true,\n      dry_run: true,\n      action: 'create',\n      stream_name: streamName,\n      ...(missing.length ? { missing } : {})\n    };\n  }\n\n  const existingId = streamIdInput || (await resolveStreamId(streamName));\n  if (existingId) {\n    return {\n      ok: true,\n      action: 'create',\n      stream_name: streamName,\n      stream_id: existingId,\n      skipped: true,\n      reason: 'already exists'\n    };\n  }\n\n  const subscriptions = [{ name: streamName, ...(description ? { description } : {}) }];\n  const createBody = `subscriptions=${encodeURIComponent(JSON.stringify(subscriptions))}&invite_only=${inviteOnly ? 'true' : 'false'}`;\n\n  try {\n    await httpRequest({\n      method: 'POST',\n      url: `${baseUrl}/api/v1/users/me/subscriptions`,\n      headers: {\n        ...headers,\n        'Content-Type': 'application/x-www-form-urlencoded'\n      },\n      body: createBody,\n      json: true\n    });\n  } catch (err) {\n    return {\n      ok: false,\n      status_code: 502,\n      action: 'create',\n      stream_name: streamName,\n      upstream_status: pickUpstreamStatus(err),\n      upstream_body: pickUpstreamBody(err),\n      error: String(err?.message || err)\n    };\n  }\n\n  const createdId = await resolveStreamId(streamName);\n  return {\n    ok: true,\n    action: 'create',\n    stream_name: streamName,\n    stream_id: createdId || ''\n  };\n}\n\nasync function archiveStream() {\n  if (dryRun) {\n    return {\n      ok: true,\n      dry_run: true,\n      action: 'archive',\n      stream_name: streamName,\n      stream_id: streamIdInput || '',\n      ...(missing.length ? { missing } : {})\n    };\n  }\n\n  const targetId = streamIdInput || (await resolveStreamId(streamName));\n  if (!targetId) {\n    return {\n      ok: true,\n      action: 'archive',\n      stream_name: streamName,\n      skipped: true,\n      reason: 'not found'\n    };\n  }\n\n  try {\n    await httpRequest({\n      method: 'PATCH',\n      url: `${baseUrl}/api/v1/streams/${targetId}`,\n      headers: {\n        ...headers,\n        'Content-Type': 'application/x-www-form-urlencoded'\n      },\n      body: 'is_archived=true',\n      json: true\n    });\n  } catch (err) {\n    return {\n      ok: false,\n      status_code: 502,\n      action: 'archive',\n      stream_name: streamName,\n      stream_id: targetId,\n      upstream_status: pickUpstreamStatus(err),\n      upstream_body: pickUpstreamBody(err),\n      error: String(err?.message || err)\n    };\n  }\n\n  return {\n    ok: true,\n    action: 'archive',\n    stream_name: streamName,\n    stream_id: targetId\n  };\n}\n\ntry {\n  const result = action === 'create' ? await createStream() : await archiveStream();\n  const ok = result.ok === true;\n  const statusCode = Number(result.status_code) || (ok ? 200 : 500);\n  const { ok: _ok, status_code: _sc, ...rest } = result;\n  return [{\n    json: {\n      ok,\n      status_code: statusCode,\n      realm,\n      zulip_base_url: baseUrl || '',\n      ...rest\n    }\n  }];\n} catch (err) {\n  return error(500, String(err?.message || err));\n}\n"
+      },
+      "id": "2",
+      "name": "Process Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Stream Sync)": {
+      "main": [
+        [
+          {
+            "node": "Process Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Request": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

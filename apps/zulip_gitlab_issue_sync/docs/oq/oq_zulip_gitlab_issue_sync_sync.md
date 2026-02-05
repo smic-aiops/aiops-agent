@@ -1,0 +1,34 @@
+# OQ: Zulip↔GitLab Issue 同期（Zulip GitLab Issue Sync）
+
+## 対象
+
+- アプリ: `apps/zulip_gitlab_issue_sync`
+- ワークフロー: `apps/zulip_gitlab_issue_sync/workflows/zulip_gitlab_issue_sync.json`
+- 実行方法: n8n 手動実行、または `apps/zulip_gitlab_issue_sync/scripts/run_oq.sh`
+
+## 受け入れ基準
+
+- Zulip 側の投稿/スレッドと GitLab Issue/コメントが同期される（作成/更新/クローズ等の差分が反映される）
+- 同期結果（サマリ）が Zulip へ通知される
+- 実行結果として `ok=true` 相当の完了（ワークフロー失敗で終了しない）となる
+
+## テストケース
+
+### TC-01: 手動同期（OQ）
+
+- 前提:
+  - `apps/zulip_gitlab_issue_sync/workflows/zulip_gitlab_issue_sync.json` が n8n に同期済み
+  - Zulip/GitLab の接続用環境変数が設定済み
+  - 同期対象の stream/topic に、ボット以外の投稿が存在する（ボット投稿のみの場合はスキップされる）
+- 実行:
+  - n8n から `Zulip GitLab Issue Sync` を手動実行（または `apps/zulip_gitlab_issue_sync/scripts/run_oq.sh` を実行して直近の実行結果を確認）
+- 期待:
+  - GitLab 側で Issue/コメントの作成/更新が行われる（必要な差分があれば）
+  - Zulip 側へ結果が投稿される（対象 stream/topic/DM のいずれか）
+  - n8n 実行が失敗終了しない
+
+## 証跡（evidence）
+
+- n8n 実行ログ（Zulip/GitLab API 呼び出しの成功/失敗）
+- GitLab Issue/コメントの差分（作成/更新/クローズ等）
+- Zulip 側の通知投稿（投稿先・内容の確認）

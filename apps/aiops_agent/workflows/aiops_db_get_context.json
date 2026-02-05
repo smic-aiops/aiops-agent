@@ -1,0 +1,158 @@
+{
+  "name": "aiops-db-get-context",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "aiops-agent/db/get/context",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (DB Get Context)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = ($json && typeof $json === 'object') ? $json : {};\nconst body = (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) ? req.body : req;\n\nconst traceId = String(body.trace_id ?? body.traceId ?? '').trim();\nconst dedupeKey = String(body.dedupe_key ?? body.dedupeKey ?? '').trim();\nconst contextId = String(body.context_id ?? body.contextId ?? '').trim();\n\nconst includeRaw = Boolean(body.include_raw ?? body.includeRaw ?? false);\nconst includePromptText = Boolean(body.include_prompt_text ?? body.includePromptText ?? false);\n\nconst defaultPromptKeys = [\n  'orchestrator.rag_router.v1',\n  'orchestrator.preview.v1',\n  'adapter.classify.v1',\n  'adapter.initial_reply.v1'\n];\n\nconst promptKeys = Array.isArray(body.prompt_keys)\n  ? body.prompt_keys\n  : (Array.isArray(body.promptKeys) ? body.promptKeys : defaultPromptKeys);\n\nconst cleanKey = (value) => {\n  const raw = String(value ?? '').trim();\n  if (!raw) return null;\n  // allow: a-zA-Z0-9 . _ -\n  if (!/^[A-Za-z0-9._-]{1,128}$/.test(raw)) return null;\n  return raw;\n};\n\nconst cleanedPromptKeys = [...new Set(promptKeys.map(cleanKey).filter(Boolean))].slice(0, 20);\nconst keys = cleanedPromptKeys.length ? cleanedPromptKeys : defaultPromptKeys;\n\nconst promptKeysSql = `ARRAY[${keys.map((k) => `'${k.replace(/'/g, \"''\")}'`).join(',')}]::text[]`;\n\nif (!traceId && !dedupeKey && !contextId) {\n  throw new Error('trace_id or dedupe_key or context_id is required');\n}\n\nreturn [{\n  json: {\n    trace_id: traceId || null,\n    dedupe_key: dedupeKey || null,\n    context_id: contextId || null,\n    include_raw: includeRaw,\n    include_prompt_text: includePromptText,\n    prompt_keys: keys,\n    prompt_keys_sql: promptKeysSql\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Extract Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT\n    NULLIF('{{ String($json.trace_id ?? \"\").replace(/'/g, \"''\") }}', '') AS trace_id,\n    NULLIF('{{ String($json.dedupe_key ?? \"\").replace(/'/g, \"''\") }}', '') AS dedupe_key,\n    NULLIF(NULLIF('{{ String($json.context_id ?? \"\").replace(/'/g, \"''\") }}', ''), 'undefined')::uuid AS context_id\n), resolved AS (\n  SELECT\n    COALESCE(\n      (SELECT c.context_id FROM aiops_context c WHERE c.context_id = (SELECT context_id FROM input) LIMIT 1),\n      (SELECT d.context_id FROM aiops_dedupe d WHERE d.dedupe_key = (SELECT dedupe_key FROM input) LIMIT 1),\n      (SELECT c.context_id FROM aiops_context c WHERE c.normalized_event->>'trace_id' = (SELECT trace_id FROM input) ORDER BY c.created_at DESC LIMIT 1)\n    ) AS context_id\n), ctx AS (\n  SELECT c.*\n  FROM aiops_context c\n  WHERE c.context_id = (SELECT context_id FROM resolved)\n  LIMIT 1\n), dedupe AS (\n  SELECT d.dedupe_key, d.first_seen_at\n  FROM aiops_dedupe d\n  WHERE d.context_id = (SELECT context_id FROM resolved)\n  ORDER BY d.first_seen_at ASC\n  LIMIT 1\n), jobq AS (\n  SELECT\n    COUNT(*)::int AS job_queue_count,\n    MAX(created_at) AS job_queue_last_created_at,\n    MAX(started_at) AS job_queue_last_started_at,\n    MAX(finished_at) AS job_queue_last_finished_at,\n    (\n      SELECT q.status\n      FROM aiops_job_queue q\n      WHERE q.context_id = (SELECT context_id FROM resolved)\n      ORDER BY q.created_at DESC\n      LIMIT 1\n    ) AS job_queue_last_status\n  FROM aiops_job_queue\n  WHERE context_id = (SELECT context_id FROM resolved)\n)\nSELECT\n  (SELECT context_id FROM resolved) AS context_id,\n  (SELECT dedupe_key FROM dedupe) AS dedupe_key,\n  (SELECT first_seen_at FROM dedupe) AS dedupe_first_seen_at,\n  (SELECT job_queue_count FROM jobq) AS job_queue_count,\n  (SELECT job_queue_last_status FROM jobq) AS job_queue_last_status,\n  (SELECT job_queue_last_created_at FROM jobq) AS job_queue_last_created_at,\n  (SELECT job_queue_last_started_at FROM jobq) AS job_queue_last_started_at,\n  (SELECT job_queue_last_finished_at FROM jobq) AS job_queue_last_finished_at,\n  (SELECT source FROM ctx) AS source,\n  (SELECT status FROM ctx) AS context_status,\n  (SELECT created_at FROM ctx) AS context_created_at,\n  (SELECT closed_at FROM ctx) AS context_closed_at,\n  (SELECT reply_target FROM ctx) AS reply_target,\n  (SELECT actor FROM ctx) AS actor,\n  (SELECT normalized_event FROM ctx) AS normalized_event;"
+      },
+      "id": "3",
+      "name": "Query Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        760,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT DISTINCT ON (h.prompt_key)\n  h.prompt_key,\n  h.prompt_version,\n  h.prompt_hash,\n  h.created_at,\n  {{ $node[\"Extract Params\"].json.include_prompt_text ? 'h.prompt_text' : 'NULL' }} AS prompt_text\nFROM aiops_prompt_history h\nWHERE h.prompt_key = ANY({{ $node[\"Extract Params\"].json.prompt_keys_sql }})\nORDER BY h.prompt_key, h.created_at DESC;"
+      },
+      "id": "4",
+      "name": "Query Prompt History",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = ($node['Query Context']?.json && typeof $node['Query Context'].json === 'object') ? $node['Query Context'].json : {};\nconst promptRows = $input.all().map((item) => item.json);\n\nconst includeRaw = Boolean($node['Extract Params']?.json?.include_raw);\n\nfunction mask(value, depth = 0) {\n  if (depth > 6) return '[max-depth]';\n  if (Array.isArray(value)) {\n    return value.map((entry) => mask(entry, depth + 1));\n  }\n  if (value && typeof value === 'object') {\n    const result = {};\n    for (const [key, raw] of Object.entries(value)) {\n      const keyLower = String(key).toLowerCase();\n      if (\n        keyLower.includes('token') ||\n        keyLower.includes('secret') ||\n        keyLower.includes('password') ||\n        keyLower.includes('authorization') ||\n        keyLower.includes('cookie') ||\n        keyLower.includes('api_key') ||\n        keyLower.includes('apikey')\n      ) {\n        result[key] = '***';\n      } else {\n        result[key] = mask(raw, depth + 1);\n      }\n    }\n    return result;\n  }\n  return value;\n}\n\nlet normalizedEvent = base.normalized_event ?? null;\nif (normalizedEvent && typeof normalizedEvent === 'object') {\n  normalizedEvent = { ...normalizedEvent };\n  if (!includeRaw) {\n    delete normalizedEvent.raw_headers;\n    delete normalizedEvent.raw_body;\n    delete normalizedEvent.raw_request;\n    delete normalizedEvent.raw;\n  }\n}\n\nconst response = {\n  ok: Boolean(base.context_id),\n  context_id: base.context_id ?? null,\n  dedupe_key: base.dedupe_key ?? null,\n  dedupe_first_seen_at: base.dedupe_first_seen_at ?? null,\n  source: base.source ?? null,\n  context_status: base.context_status ?? null,\n  context_created_at: base.context_created_at ?? null,\n  context_closed_at: base.context_closed_at ?? null,\n  job_queue_count: base.job_queue_count ?? 0,\n  job_queue_last_status: base.job_queue_last_status ?? null,\n  job_queue_last_created_at: base.job_queue_last_created_at ?? null,\n  job_queue_last_started_at: base.job_queue_last_started_at ?? null,\n  job_queue_last_finished_at: base.job_queue_last_finished_at ?? null,\n  reply_target: mask(base.reply_target ?? null),\n  actor: mask(base.actor ?? null),\n  normalized_event: mask(normalizedEvent),\n  prompt_history_latest: promptRows.map((r) => mask(r))\n};\n\nreturn [{ json: response }];\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "5",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (DB Get Context)": {
+      "main": [
+        [
+          {
+            "node": "Extract Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Params": {
+      "main": [
+        [
+          {
+            "node": "Query Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Context": {
+      "main": [
+        [
+          {
+            "node": "Query Prompt History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Prompt History": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionTimeout": 60
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "aiops": {
+      "purpose": "DB utility: resolve context by trace_id/dedupe_key and fetch prompt history metadata"
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "name": "cloudwatch-event-notify",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "cloudwatch/notify",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (CloudWatch)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = ($json && $json.headers) ? $json.headers : {};\nconst body = ($json && $json.body) ? $json.body : ($json ?? {});\n\nfunction getHeader(name) {\n  const lower = name.toLowerCase();\n  if (headers[lower] !== undefined) return headers[lower];\n  if (headers[name] !== undefined) return headers[name];\n  const key = Object.keys(headers).find((k) => k.toLowerCase() === lower);\n  return key ? headers[key] : undefined;\n}\n\nfunction error(status, message) {\n  return [{ json: { ok: false, status_code: status, error: message } }];\n}\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n}\n\nconst secret = $env.N8N_CLOUDWATCH_WEBHOOK_SECRET || '';\nif (secret) {\n  const token = getHeader('x-webhook-token') || getHeader('x-cloudwatch-token') || getHeader('x-api-key');\n  if (token !== secret) {\n    return error(401, 'invalid token');\n  }\n}\n\nfunction parsePayload(payload) {\n  if (!payload || typeof payload !== 'object') return {};\n  if (Array.isArray(payload.Records)) {\n    const record = payload.Records.find((item) => item?.Sns?.Message);\n    if (record?.Sns?.Message) {\n      const msg = record.Sns.Message;\n      try {\n        return JSON.parse(msg);\n      } catch (err) {\n        return { message: msg, sns: record.Sns };\n      }\n    }\n  }\n  return payload;\n}\n\nconst event = parsePayload(body) || {};\nconst detail = event.detail || {};\nconst detailType = event['detail-type'] || event.detailType || detail.detailType || '';\nconst title = detailType || event.source || 'CloudWatch Event';\nconst time = event.time || detail.time || new Date().toISOString();\nconst region = event.region || detail.region || '';\nconst account = event.account || detail.account || '';\nconst resources = Array.isArray(event.resources) ? event.resources : [];\n\nconst lines = [`**${title}**`];\nif (detail.alarmName) lines.push(`alarm: ${detail.alarmName}`);\nif (detail.state?.value) lines.push(`state: ${detail.state.value}`);\nif (detail.state?.reason) lines.push(`reason: ${detail.state.reason}`);\nif (time) lines.push(`time: ${time}`);\nif (region) lines.push(`region: ${region}`);\nif (account) lines.push(`account: ${account}`);\nif (resources.length) lines.push(`resources: ${resources.join(', ')}`);\n\nconst jsonSnippet = JSON.stringify(event, null, 2);\nlines.push('');\nlines.push('```');\nlines.push(jsonSnippet.slice(0, 4000));\nlines.push('```');\nconst message = lines.join('\\n');\n\nconst query = ($json && $json.query && typeof $json.query === 'object') ? $json.query : {};\nconst queryDryRun = (query.dry_run ?? query.dryRun ?? getHeader('x-aiops-dry-run'));\nconst dryRun = isTruthy(queryDryRun ?? $env.CLOUDWATCH_NOTIFY_DRY_RUN ?? $env.DRY_RUN);\nconst httpRequest = this.helpers.httpRequest;\nconst results = [];\n\nasync function sendZulip() {\n  const baseUrl = ($env.ZULIP_BASE_URL || '').replace(/\\/$/, '');\n  const email = $env.ZULIP_BOT_EMAIL || '';\n  const apiKey = $env.ZULIP_BOT_API_KEY || '';\n  if (!baseUrl || !email || !apiKey) {\n    results.push({ channel: 'zulip', ok: true, skipped: true, reason: 'missing config' });\n    return;\n  }\n  const stream = $env.ZULIP_STREAM || 'itsm-incident';\n  const topic = $env.ZULIP_TOPIC || 'CloudWatch';\n  if (dryRun) {\n    results.push({ channel: 'zulip', ok: true, dry_run: true });\n    return;\n  }\n  const auth = Buffer.from(`${email}:${apiKey}`).toString('base64');\n  try {\n    await httpRequest({\n      method: 'POST',\n      url: `${baseUrl}/api/v1/messages`,\n      headers: {\n        'Content-Type': 'application/x-www-form-urlencoded',\n        Authorization: `Basic ${auth}`\n      },\n      form: {\n        type: 'stream',\n        to: stream,\n        topic,\n        content: message\n      }\n    });\n    results.push({ channel: 'zulip', ok: true });\n  } catch (err) {\n    results.push({ channel: 'zulip', ok: false, error: String(err?.message || err) });\n  }\n}\n\nasync function sendGitLab() {\n  let baseUrl = ($env.GITLAB_API_BASE_URL || '').replace(/\\/$/, '');\n  const token = getHeader('x-aiops-gitlab-token') || $env.GITLAB_TOKEN || $env.GITLAB_ADMIN_TOKEN || '';\n  const projectId = $env.GITLAB_PROJECT_ID || '';\n  const projectPath = $env.GITLAB_PROJECT_PATH || '';\n  let project = projectId || projectPath;\n\n  project = String(project || '').trim();\n  if (project.startsWith('http://') || project.startsWith('https://')) {\n    try {\n      const u = new URL(project);\n      project = (u.pathname || '').replace(/^\\/+/, '');\n    } catch (e) {}\n  }\n  project = project.replace(/^\\/+/, '');\n  if (project.includes('/-/')) project = project.split('/-/')[0];\n\n  if (baseUrl && !baseUrl.endsWith('/api/v4')) baseUrl = `${baseUrl}/api/v4`;\n\n  if (!baseUrl || !token || !project) {\n    results.push({ channel: 'gitlab', ok: true, skipped: true, reason: 'missing config' });\n    return;\n  }\n  if (dryRun) {\n    results.push({ channel: 'gitlab', ok: true, dry_run: true });\n    return;\n  }\n  const encoded = encodeURIComponent(project);\n  const url = `${baseUrl}/projects/${encoded}/issues`;\n  const issueTitle = `[CloudWatch] ${title}`;\n  try {\n    const response = await httpRequest({\n      method: 'POST',\n      url,\n      headers: {\n        'PRIVATE-TOKEN': token,\n        'Content-Type': 'application/json'\n      },\n      body: {\n        title: issueTitle,\n        description: message\n      },\n      json: true\n    });\n    results.push({ channel: 'gitlab', ok: true, issue_url: response?.web_url || response?.url || null });\n  } catch (err) {\n    const status = err?.statusCode ?? err?.response?.statusCode ?? err?.response?.status ?? null;\n    const raw = err?.response?.body ?? err?.response?.data ?? err?.body ?? null;\n    let detail = null;\n    try {\n      detail = raw ? JSON.stringify(raw) : null;\n    } catch (e) {\n      detail = raw ? String(raw) : null;\n    }\n    if (detail && detail.length > 1000) detail = detail.slice(0, 1000);\n    results.push({ channel: 'gitlab', ok: false, status, error: String(err?.message || err), detail });\n  }\n}\n\nasync function sendGrafana() {\n  const baseUrl = ($env.GRAFANA_BASE_URL || '').replace(/\\/$/, '');\n  const apiKey = $env.GRAFANA_API_KEY || '';\n  if (!baseUrl || !apiKey) {\n    results.push({ channel: 'grafana', ok: true, skipped: true, reason: 'missing config' });\n    return;\n  }\n  const tags = ['cloudwatch'];\n  if (event.source) tags.push(event.source);\n  if (detailType) tags.push(detailType);\n  if (region) tags.push(region);\n  const extraTags = ($env.GRAFANA_TAGS || '')\n    .split(',')\n    .map((v) => v.trim())\n    .filter(Boolean);\n  tags.push(...extraTags);\n\n  const payload = {\n    text: message.slice(0, 2000),\n    tags\n  };\n  if ($env.GRAFANA_DASHBOARD_UID) payload.dashboardUid = $env.GRAFANA_DASHBOARD_UID;\n  if ($env.GRAFANA_PANEL_ID) payload.panelId = Number($env.GRAFANA_PANEL_ID);\n\n  if (dryRun) {\n    results.push({ channel: 'grafana', ok: true, dry_run: true });\n    return;\n  }\n\n  try {\n    await httpRequest({\n      method: 'POST',\n      url: `${baseUrl}/api/annotations`,\n      headers: {\n        Authorization: `Bearer ${apiKey}`,\n        'Content-Type': 'application/json'\n      },\n      body: payload,\n      json: true\n    });\n    results.push({ channel: 'grafana', ok: true });\n  } catch (err) {\n    results.push({ channel: 'grafana', ok: false, error: String(err?.message || err) });\n  }\n}\n\nawait sendZulip();\nawait sendGitLab();\nawait sendGrafana();\n\nconst failed = results.filter((r) => r.ok === false);\n\nreturn [{\n  json: {\n    ok: failed.length === 0,\n    status_code: failed.length === 0 ? 200 : 207,\n    title,\n    time,\n    region,\n    account,\n    results\n  }\n}];"
+      },
+      "id": "2",
+      "name": "Process + Notify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        780,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (CloudWatch)": {
+      "main": [
+        [
+          {
+            "node": "Process + Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process + Notify": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

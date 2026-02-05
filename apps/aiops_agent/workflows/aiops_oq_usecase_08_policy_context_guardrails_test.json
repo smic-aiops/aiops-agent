@@ -1,0 +1,164 @@
+{
+  "name": "aiops-oq-usecase-08-policy-context-guardrails-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "aiops-agent/oq/usecase/08/policy-context-guardrails",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (OQ-08)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst req = ($json && typeof $json === 'object') ? $json : {};\nconst body = (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) ? req.body : req;\n\nconst traceId = crypto.randomUUID();\nconst contextId = crypto.randomUUID();\nconst dedupeKey = `oq08:${traceId}`;\n\nconst policyContext = (body.policy_context && typeof body.policy_context === 'object') ? body.policy_context : {\n  taxonomy: { rag_mode_vocab: [] },\n  defaults: { rag_router: { mode: 'kedb_documents', query_strategy: 'normalized_event_text', filters: { use_service_name: true } } },\n  fallbacks: { rag_router: { mode: 'kedb_documents', reason: 'oq_usecase_08_forced_fallback', query_strategy: 'normalized_event_text', filters: { use_service_name: true } } },\n  limits: { rag_router: { top_k_default: 3, top_k_cap: 3, max_clarifying_questions: 0 }, jobs_preview: { max_candidates: 3 } }\n};\n\nconst normalizedEvent = {\n  source: 'oq_test',\n  trace_id: traceId,\n  received_at: new Date().toISOString(),\n  text: String(body.text ?? 'OQ-USECASE-08 policy_context guardrails').slice(0, 400)\n};\n\nconst actor = { source: 'oq_test', realm: body.realm ?? body.tenant ?? null };\nconst iamContext = { realm: body.realm ?? body.tenant ?? null, roles: body.roles ?? [], groups: body.groups ?? [] };\n\nreturn [{\n  json: {\n    context_id: contextId,\n    dedupe_key: dedupeKey,\n    trace_id: traceId,\n    actor,\n    iam_context: iamContext,\n    policy_context: policyContext,\n    normalized_event: normalizedEvent\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Build Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:5678/webhook/jobs/preview",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { context_id: $json.context_id, actor: $json.actor, normalized_event: $json.normalized_event, iam_context: $json.iam_context, policy_context: $json.policy_context } }}",
+        "options": {
+          "timeout": 25000
+        }
+      },
+      "id": "3",
+      "name": "Call jobs.Preview",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        760,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $node['Build Input'].json ?? {};\nconst preview = ($json && typeof $json === 'object') ? $json : {};\n\nconst forcedReason = base.policy_context?.fallbacks?.rag_router?.reason ?? 'oq_usecase_08_forced_fallback';\nconst ragContext = preview.preview_facts?.rag_context ?? {};\n\nconst ragRoute = {\n  mode: ragContext.mode ?? null,\n  reason: forcedReason,\n  query: ragContext.query ?? null,\n  filters: ragContext.filters ?? {},\n  top_k: ragContext.top_k ?? null\n};\n\nconst normalizedEvent = { ...(base.normalized_event ?? {}) };\nnormalizedEvent.rag_route = ragRoute;\nnormalizedEvent.preview_facts = preview.preview_facts ?? null;\n\nreturn [{\n  json: {\n    ...base,\n    preview,\n    normalized_event: normalizedEvent\n  }\n}];\n"
+      },
+      "id": "4",
+      "name": "Attach rag_route",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO aiops_context (context_id, source, reply_target, actor, normalized_event, status)\nVALUES (\n  '{{ String($json.context_id ?? \"\").replace(/'/g, \"''\") }}'::uuid,\n  'oq_test',\n  '{}'::jsonb,\n  '{{ JSON.stringify($json.actor ?? {}).replace(/'/g, \"''\") }}'::jsonb,\n  '{{ JSON.stringify($json.normalized_event ?? {}).replace(/'/g, \"''\") }}'::jsonb,\n  'open'\n)\nON CONFLICT (context_id) DO UPDATE\nSET normalized_event = EXCLUDED.normalized_event;\n\nINSERT INTO aiops_dedupe (dedupe_key, context_id)\nVALUES (\n  '{{ String($json.dedupe_key ?? \"\").replace(/'/g, \"''\") }}',\n  '{{ String($json.context_id ?? \"\").replace(/'/g, \"''\") }}'::uuid\n)\nON CONFLICT (dedupe_key) DO NOTHING;\n\nSELECT 1 AS ok;"
+      },
+      "id": "5",
+      "name": "Persist Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, context_id: $node['Build Input'].json.context_id, trace_id: $node['Build Input'].json.trace_id, dedupe_key: $node['Build Input'].json.dedupe_key, rag_route: $node['Attach rag_route'].json.normalized_event.rag_route } }}",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (OQ-08)": {
+      "main": [
+        [
+          {
+            "node": "Build Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Input": {
+      "main": [
+        [
+          {
+            "node": "Call jobs.Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call jobs.Preview": {
+      "main": [
+        [
+          {
+            "node": "Attach rag_route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach rag_route": {
+      "main": [
+        [
+          {
+            "node": "Persist Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Context": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionTimeout": 120
+  },
+  "versionId": "00000000-0000-0000-0000-000000000000",
+  "meta": {
+    "aiops": {
+      "purpose": "OQ-08 helper: call jobs.preview with injected policy_context, then persist rag_route into aiops_context"
+    }
+  }
+}
+

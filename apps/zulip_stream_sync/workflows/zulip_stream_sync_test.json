@@ -1,0 +1,78 @@
+{
+  "name": "zulip-stream-sync-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "zulip/streams/sync/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Test)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = (request && typeof request === 'object' && request.headers && typeof request.headers === 'object')\n  ? request.headers\n  : {};\nconst body = (request && typeof request === 'object' && request.body && typeof request.body === 'object')\n  ? request.body\n  : request;\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n}\n\nfunction getHeader(name) {\n  const key = String(name || '').toLowerCase();\n  if (!key) return undefined;\n  if (headers[key] !== undefined) return headers[key];\n  const found = Object.keys(headers).find((k) => k.toLowerCase() === key);\n  return found ? headers[found] : undefined;\n}\n\nfunction kebab(key) {\n  return String(key || '').toLowerCase().replace(/_/g, '-');\n}\n\nfunction overrideEnv(key) {\n  const headerValue = getHeader('x-aiops-env-' + kebab(key));\n  if (headerValue !== undefined && headerValue !== null && String(headerValue).trim() !== '') {\n    return String(headerValue);\n  }\n\n  const envFromBody = (body && typeof body === 'object' && body.env && typeof body.env === 'object') ? body.env : null;\n  if (envFromBody && envFromBody[key] !== undefined && envFromBody[key] !== null && String(envFromBody[key]).trim() !== '') {\n    return String(envFromBody[key]);\n  }\n\n  return '';\n}\n\nfunction pickEnv(key) {\n  const overridden = overrideEnv(key);\n  if (overridden) return overridden;\n  return String($env?.[key] || '').trim();\n}\n\nconst realm = String(\n  body?.realm ||\n  body?.tenant ||\n  body?.reply_target?.tenant ||\n  body?.reply_target?.realm ||\n  $env.N8N_REALM ||\n  'default'\n).trim() || 'default';\n\nfunction parseYamlMap(text) {\n  const map = {};\n  String(text || '').split(/\\r?\\n/).forEach((line) => {\n    const trimmed = line.trim();\n    if (!trimmed || trimmed.startsWith('#')) return;\n    const idx = trimmed.indexOf(':');\n    if (idx <= 0) return;\n    const key = trimmed.slice(0, idx).trim();\n    let value = trimmed.slice(idx + 1).trim();\n    value = value.replace(/^['\\\"]|['\\\"]$/g, '');\n    map[key] = value;\n  });\n  return map;\n}\n\nfunction parseMap(jsonRaw, yamlRaw) {\n  if (jsonRaw) {\n    try {\n      const parsed = JSON.parse(String(jsonRaw || ''));\n      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {\n        return parsed;\n      }\n    } catch (e) {}\n  }\n  return parseYamlMap(yamlRaw);\n}\n\nfunction resolveFromMap(jsonRaw, yamlRaw, fallbackRaw) {\n  const map = parseMap(jsonRaw, yamlRaw);\n  const value = (realm && map[realm]) ? map[realm] : (map.default || fallbackRaw || '');\n  return String(value || '').trim();\n}\n\nlet baseUrl = resolveFromMap(\n  pickEnv('N8N_ZULIP_API_BASE_URL'),\n  pickEnv('N8N_ZULIP_API_BASE_URL'),\n  pickEnv('ZULIP_BASE_URL') || pickEnv('N8N_ZULIP_API_BASE_URL')\n);\nbaseUrl = baseUrl.replace(/\\/$/, '');\nif (baseUrl.endsWith('/api/v1')) baseUrl = baseUrl.slice(0, -'/api/v1'.length);\nif (baseUrl.endsWith('/api/v1/')) baseUrl = baseUrl.slice(0, -'/api/v1/'.length);\nbaseUrl = baseUrl.replace(/\\/$/, '');\n\nconst email = resolveFromMap(\n  pickEnv('N8N_ZULIP_BOT_EMAIL'),\n  pickEnv('N8N_ZULIP_BOT_EMAIL'),\n  pickEnv('ZULIP_BOT_EMAIL') || pickEnv('N8N_ZULIP_BOT_EMAIL')\n);\n\nconst apiKey = resolveFromMap(\n  pickEnv('N8N_ZULIP_BOT_TOKEN'),\n  pickEnv('N8N_ZULIP_BOT_TOKEN') || pickEnv('ZULIP_BOT_TOKEN'),\n  pickEnv('ZULIP_BOT_API_KEY') || pickEnv('N8N_ZULIP_BOT_TOKEN') || pickEnv('ZULIP_BOT_TOKEN')\n);\n\nconst required = {\n  ZULIP_BASE_URL: baseUrl,\n  ZULIP_BOT_EMAIL: email,\n  ZULIP_BOT_API_KEY: apiKey\n};\n\nconst missing = Object.entries(required)\n  .filter(([, value]) => !String(value).trim())\n  .map(([key]) => key);\n\nconst strict = isTruthy((body && typeof body === 'object') ? body.strict : undefined) || isTruthy($env.ZULIP_STREAM_SYNC_TEST_STRICT);\nconst ok = strict ? missing.length === 0 : true;\nconst status = ok ? 200 : 424;\n\nfunction redactHeaders(rawHeaders) {\n  const out = {};\n  for (const [k, v] of Object.entries(rawHeaders || {})) {\n    const lk = String(k).toLowerCase();\n    if (lk.startsWith('x-aiops-env-')) {\n      out[k] = '***';\n      continue;\n    }\n    out[k] = v;\n  }\n  return out;\n}\n\nfunction redactEnv(rawEnv) {\n  const envObj = (rawEnv && typeof rawEnv === 'object' && !Array.isArray(rawEnv)) ? rawEnv : {};\n  const out = {};\n  for (const [k, v] of Object.entries(envObj)) {\n    const lk = String(k).toLowerCase();\n    if (lk.includes('token') || lk.includes('api_key') || lk.includes('password') || lk.includes('secret') || lk.includes('authorization')) {\n      out[k] = '***';\n      continue;\n    }\n    out[k] = v;\n  }\n  return out;\n}\n\nconst receivedSafe = {\n  body: (body && typeof body === 'object') ? { ...body, env: redactEnv(body.env) } : body,\n  headers: redactHeaders(headers)\n};\n\nreturn [{\n  json: {\n    ok,\n    status_code: status,\n    strict,\n    realm,\n    zulip_base_url: baseUrl || '',\n    missing,\n    received: receivedSafe,\n    message: ok ? 'ok' : 'missing required env vars'\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Validate Env",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        780,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Test)": {
+      "main": [
+        [
+          {
+            "node": "Validate Env",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Env": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

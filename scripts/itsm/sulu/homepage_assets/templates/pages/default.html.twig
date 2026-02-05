@@ -1,0 +1,260 @@
+{% extends 'base.html.twig' %}
+
+{% block style %}
+    {{ parent() }}
+    <link rel="stylesheet" href="/build/itsm-home.css">
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script defer src="/build/itsm-home.js"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="itsm-home">
+        <div class="itsm-ambient">
+            <div class="itsm-ambient__ring"></div>
+            <div class="itsm-ambient__ring itsm-ambient__ring--right"></div>
+            <div class="itsm-ambient__grid"></div>
+        </div>
+
+        <header class="itsm-hero">
+            <div class="itsm-hero__label">
+                <span class="itsm-hero__badge">ITSM</span>
+                <span class="itsm-hero__badge">AIOps</span>
+                <span class="itsm-hero__badge">AI Agent</span>
+            </div>
+            <h1 class="itsm-hero__title">
+                サービス運用を、<br>
+                静かに強くする。
+            </h1>
+            <p class="itsm-hero__lead">
+                ITSM の実践知と AIOps の観測をつなぎ、AI Agent が意思決定を加速。
+                インシデント、変更、問題管理を 1 つのストーリーで整えます。
+            </p>
+            <div class="itsm-hero__cta">
+                <a class="itsm-button itsm-button--primary" href="#contact">相談する</a>
+                <a class="itsm-button itsm-button--ghost" href="#capabilities">機能を見る</a>
+            </div>
+            <div class="itsm-hero__stats">
+                <div class="itsm-stat">
+                    <span class="itsm-stat__label">リードタイム</span>
+                    <span class="itsm-stat__value"></span>
+                </div>
+                <div class="itsm-stat">
+                    <span class="itsm-stat__label">自動トリアージ</span>
+                    <span class="itsm-stat__value"></span>
+                </div>
+                <div class="itsm-stat">
+                    <span class="itsm-stat__label">MTTR</span>
+                    <span class="itsm-stat__value"></span>
+                </div>
+            </div>
+        </header>
+
+        <section class="itsm-panels">
+            <article class="itsm-panel">
+                <h2>ITSM に沿った運用設計</h2>
+                <p>
+                    サービスバリューチェーンに沿ってワークフローを可視化し、
+                    変更・問題・インシデントの連携を自然にします。
+                </p>
+            </article>
+            <article class="itsm-panel">
+                <h2>リアルタイム AIOps</h2>
+                <p>
+                    ログ、メトリクス、トレースを 1 枚のシグナルに統合。
+                    異常検知と原因推定を秒単位で返します。
+                </p>
+            </article>
+            <article class="itsm-panel">
+                <h2>AI Agent の自動化</h2>
+                <p>
+                    運用Runbookを学習した AI Agent が提案から実行まで担当。
+                    守るべき承認は残しつつ省力化します。
+                </p>
+            </article>
+        </section>
+
+        <section class="itsm-capabilities" id="capabilities">
+            <div class="itsm-capabilities__copy">
+                <h2>運用の判断と、実行を同じ画面で。</h2>
+                <p>
+                    監視・チケット・ナレッジ・チャットが分断されていると、
+                    速度よりも「探すこと」に時間を奪われます。
+                    このスタックは意思決定の場所を 1 箇所に寄せます。
+                </p>
+                <div class="itsm-capabilities__list">
+                    <div>
+                        <h3>シグナル統合</h3>
+                        <p>相関分析でイベントを集約し、状況を一言で示す。</p>
+                    </div>
+                    <div>
+                        <h3>変更ガード</h3>
+                        <p>変更管理を自動でリスク評価し、差分を提示。</p>
+                    </div>
+                    <div>
+                        <h3>エージェント実行</h3>
+                        <p>AI Agent が自動復旧候補を提示、承認後に実行。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="itsm-capabilities__board">
+                <div class="itsm-board__header">
+                    <span>リアルタイム運用ボード</span>
+                    <span>現在</span>
+                </div>
+                <div class="itsm-board__row">
+                    <span class="itsm-chip itsm-chip--warn">障害</span>
+                    <span>API latency spiked</span>
+                    <span>Auto root cause: DB IO</span>
+                </div>
+                <div class="itsm-board__row">
+                    <span class="itsm-chip itsm-chip--ok">変更</span>
+                    <span>Deploy v2.4.1</span>
+                    <span>Risk: Low, rollback ready</span>
+                </div>
+                <div class="itsm-board__row">
+                    <span class="itsm-chip itsm-chip--info">エージェント</span>
+                    <span>Auto scale up RDS</span>
+                    <span>Awaiting approval</span>
+                </div>
+                <div class="itsm-board__pulse"></div>
+            </div>
+        </section>
+
+        <section class="itsm-flow">
+            <h2>運用を流れで捉える</h2>
+            <div class="itsm-flow__grid">
+                <div class="itsm-flow__step">
+                    <span>01</span>
+                    <h3>観測</h3>
+                    <p>全システムの状況を集約し、ノイズを削減。</p>
+                </div>
+                <div class="itsm-flow__step">
+                    <span>02</span>
+                    <h3>判断</h3>
+                    <p>AI が一次診断を提示し、判断を加速。</p>
+                </div>
+                <div class="itsm-flow__step">
+                    <span>03</span>
+                    <h3>実行</h3>
+                    <p>承認ワークフローのまま、自動実行へ。</p>
+                </div>
+                <div class="itsm-flow__step">
+                    <span>04</span>
+                    <h3>学習</h3>
+                    <p>事後分析を蓄積し、次の復旧速度を上げる。</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="itsm-capabilities" id="service-platform">
+            <div class="itsm-capabilities__copy">
+                <h2>AIOps Agent サービス管理基盤のご案内</h2>
+                <p>
+                    分断されたツールや属人化した運用を整理し、運用改善とDXを同時に進めるための土台を整えます。
+                    既存のITサービスや社内リソースを活かしながら、不足部分を補完し、段階的に進化させます。
+                </p>
+                <div class="itsm-capabilities__list">
+                    <div>
+                        <h3>変えられないを変革する</h3>
+                        <p>
+                            インシデント対応に追われる現場でも、AIと自動化への投資を止めずに前進できます。
+                        </p>
+                    </div>
+                    <div>
+                        <h3>サービス管理基盤とは</h3>
+                        <p>
+                            「運用の安定化」「追補型の基盤整備」「自動化・AI活用」を並行して進める基盤サービスです。
+                        </p>
+                    </div>
+                    <div>
+                        <h3>AI ワークフロー x AIOps エージェント</h3>
+                        <p>
+                            業務内容に合わせたワークフローをカタログ化し、プロンプトやポリシーで AIOps エージェントを育てられます。
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="itsm-capabilities__board">
+                <div class="itsm-board__header">
+                    <span>サービス基盤</span>
+                    <span>概要</span>
+                </div>
+                <div class="itsm-board__row">
+                    <span class="itsm-chip itsm-chip--info">DX</span>
+                    <span>分断された運用データを一元化</span>
+                    <span>改善に必要な情報を一画面で把握</span>
+                </div>
+                <div class="itsm-board__row">
+                    <span class="itsm-chip itsm-chip--warn">ワークフロー</span>
+                    <span>サービスリクエストを自動化</span>
+                    <span>カタログとして一覧化し運用負荷を削減</span>
+                </div>
+                <div class="itsm-board__row">
+                    <span class="itsm-chip itsm-chip--ok">エージェント</span>
+                    <span>現場主導でAIを育成</span>
+                    <span>ルールとプロンプトで柔軟に調整</span>
+                </div>
+                <div class="itsm-board__pulse"></div>
+            </div>
+        </section>
+
+        <section class="itsm-panels">
+            <article class="itsm-panel">
+                <h2>AIOps Agent サービス管理基盤の価値</h2>
+                <p>
+                    現在のリソースを活かしながら、運用・改善・基盤整備を分断なく継続できる仕組みで、
+                    「継続的な進化」としてDXを実現します。
+                </p>
+            </article>
+            <article class="itsm-panel">
+                <h2>目指す未来</h2>
+                <p>
+                    AIと自動化が日常業務に自然に組み込まれる世界を目指し、
+                    現場主導で改善が回る組織を支援します。
+                </p>
+            </article>
+            <article class="itsm-panel">
+                <h2>APIキーについて</h2>
+                <p>
+                    AIモデルを稼働させるためのAPIキー（OpenAI互換APIキーなど）は本サービスでは提供せず、
+                    ご利用者側でのご用意が必要です。
+                </p>
+            </article>
+        </section>
+
+        <section class="itsm-flow">
+            <h2>選ばれる理由</h2>
+            <div class="itsm-flow__grid">
+                <div class="itsm-flow__step">
+                    <span>01</span>
+                    <h3>既存システムを活用</h3>
+                    <p>無理なく段階的にDXを推進できます。</p>
+                </div>
+                <div class="itsm-flow__step">
+                    <span>02</span>
+                    <h3>強固なセキュリティ</h3>
+                    <p>データレジデンシーにも配慮します。</p>
+                </div>
+                <div class="itsm-flow__step">
+                    <span>03</span>
+                    <h3>AIエージェント中心</h3>
+                    <p>運用の中核にAIを据えた基盤設計。</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="itsm-cta" id="contact">
+            <div>
+                <h2>運用の未来を、一緒に設計しませんか？</h2>
+                <p>AiOps Agent サービス基盤開発の仲間を募集中！</p>
+            </div>
+            <div class="itsm-cta__actions">
+                <a class="itsm-button itsm-button--primary" href="mailto:admin@smic-aiops.jp">問い合わせ</a>
+                <a class="itsm-button itsm-button--ghost" href="#capabilities">資料を見る</a>
+            </div>
+        </section>
+    </div>
+{% endblock %}

@@ -1,0 +1,14 @@
+sulu_security:
+  single_sign_on:
+    providers:
+      '%env(SULU_HOST)%':
+        dsn: 'openid://%env(SULU_SSO_CLIENT_ID)%:%env(SULU_SSO_CLIENT_SECRET)%@%env(SULU_KEYCLOAK_HOST)%/realms/%env(SULU_KEYCLOAK_REALM)%/.well-known/openid-configuration'
+        default_role_key: '%env(SULU_SSO_DEFAULT_ROLE_KEY)%'
+
+security:
+  firewalls:
+    admin:
+      access_token:
+        token_handler: sulu_security.single_sign_on_token_handler
+        token_extractors:
+          - sulu_security.single_sign_on_token_extractor

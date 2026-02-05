@@ -1,0 +1,37 @@
+{
+  "version": "ja-1",
+  "notes": "ソース別のUI/入力方式の特性（facts）。提示文面やUI選択の判断はプロンプト内ポリシーで行う。",
+  "sources": {
+    "zulip": {
+      "supports_buttons": false,
+      "supports_links": true,
+      "supports_text_commands": true,
+      "preferred_interaction": "text_commands"
+    },
+    "slack": {
+      "supports_buttons": true,
+      "supports_links": true,
+      "supports_text_commands": true,
+      "preferred_interaction": "buttons_or_links"
+    },
+    "mattermost": {
+      "supports_buttons": false,
+      "supports_links": true,
+      "supports_text_commands": true,
+      "preferred_interaction": "text_commands_or_links"
+    },
+    "teams": {
+      "supports_buttons": true,
+      "supports_links": true,
+      "supports_text_commands": true,
+      "preferred_interaction": "buttons_or_links"
+    },
+    "cloudwatch": {
+      "supports_buttons": false,
+      "supports_links": false,
+      "supports_text_commands": false,
+      "preferred_interaction": "none"
+    }
+  }
+}
+

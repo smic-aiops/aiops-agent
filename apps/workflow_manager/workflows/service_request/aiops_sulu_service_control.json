@@ -1,0 +1,144 @@
+{
+  "name": "Sulu Service Control",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "sulu/service-control",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Sulu Control",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = ($json && typeof $json === 'object' && $json.body !== undefined)\n  ? ($json.body ?? {})\n  : ($json ?? {});\n\nconst rawAction = payload.action ?? payload.command ?? '';\nconst action = String(rawAction).toLowerCase().trim();\nif (!['up', 'down', 'restart'].includes(action)) {\n  throw new Error('Unsupported action: ' + action);\n}\n\nconst endpoint = (action === 'up') ? 'start' : (action === 'down') ? 'stop' : 'start';\nconst defaultRealm = ($env && ($env.N8N_REALM || $env.N8N_ENV_REALM)) ? ($env.N8N_REALM || $env.N8N_ENV_REALM) : '';\nconst realm = String(payload.realm ?? payload.tenant ?? defaultRealm).trim();\nif (!realm) throw new Error('realm is required');\n\nreturn [{ json: { action, endpoint, service: 'sulu', realm } }];\n"
+      },
+      "id": "2",
+      "name": "Resolve Sulu Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const env = $env || {};\n\nconst baseUrlRaw = env.SERVICE_CONTROL_API_BASE_URL || '';\nconst baseUrl = String(baseUrlRaw).replace(/\\/+$/, '');\nif (!baseUrl) {\n  throw new Error('SERVICE_CONTROL_API_BASE_URL is required');\n}\n\nconst resolved = $node['Resolve Sulu Action']?.json ?? {};\nconst endpoint = String(resolved.endpoint ?? '').trim();\nconst service = String(resolved.service ?? 'sulu').trim() || 'sulu';\nconst realm = String(resolved.realm ?? '').trim();\nif (!endpoint) throw new Error('endpoint is required');\nif (!realm) throw new Error('realm is required');\n\nconst url = `${baseUrl}/${endpoint}`;\n\nconst raw = await this.helpers.httpRequest({\n  method: 'POST',\n  url,\n  qs: { service, realm },\n  json: false,\n});\n\nlet parsed;\ntry {\n  parsed = JSON.parse(String(raw));\n} catch (error) {\n  parsed = { raw: String(raw) };\n}\n\nreturn [{ json: parsed }];\n"
+      },
+      "id": "7",
+      "name": "Call Service Control API",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'ok', action: $node['Resolve Sulu Action'].json.action, realm: $node['Resolve Sulu Action'].json.realm, result: $json } }}"
+      },
+      "id": "8",
+      "name": "Respond Sulu Status",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1940,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "このワークフローは service_request（サービスリクエスト）です。aiops_catalog.workflow_class=service_request を前提にカタログ化する。",
+        "height": 180,
+        "width": 360,
+        "color": 6
+      },
+      "id": "100",
+      "name": "Sticky Note: workflow_class",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        240,
+        -80
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Sulu Control": {
+      "main": [
+        [
+          {
+            "node": "Resolve Sulu Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Sulu Action": {
+      "main": [
+        [
+          {
+            "node": "Call Service Control API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Service Control API": {
+      "main": [
+        [
+          {
+            "node": "Respond Sulu Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1.0.1",
+  "meta": {
+    "workflowId": "wf.sulu_service_control",
+    "revision": 2,
+    "createdBy": {
+      "id": "1",
+      "name": "system"
+    },
+    "aiops_catalog": {
+      "summary": "Sulu サービスの起動/停止/再起動を制御",
+      "realm": "prod",
+      "platform": "sulu",
+      "required_roles": [
+        "ops:oncall"
+      ],
+      "required_groups": [
+        "infra"
+      ],
+      "required_users": [],
+      "risk_level": "medium",
+      "impact_scope": "service",
+      "category": "service-control",
+      "run_window": "24x7",
+      "approval_contact": "infra-lead@example.com",
+      "available": true,
+      "available_from_monitoring": true,
+      "workflow_class": "service_request"
+    }
+  }
+}

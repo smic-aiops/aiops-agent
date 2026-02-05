@@ -1,0 +1,24 @@
+{
+  "version": "ja-1",
+  "notes": "send_stub_event.py 用のテストシナリオ定義（facts）。シナリオ名/送信回数/期待ステータス/ソース別の制約をデータ化し、スクリプト側の固定ルールを増やさないためのもの。",
+  "defaults": {
+    "path_template": "/ingest/{source}",
+    "scenario": "normal",
+    "timeout_sec": 10.0
+  },
+  "default_sources": ["slack", "zulip", "mattermost", "teams", "cloudwatch", "feedback"],
+  "scenarios": {
+    "normal": { "send_times": 1, "expected": "2xx" },
+    "duplicate": { "send_times": 2, "expected": "2xx" },
+    "abnormal_auth": { "send_times": 1, "expected": "401/403" },
+    "abnormal_schema": { "send_times": 1, "expected": "4xx_except_404" }
+  },
+  "source_constraints": {
+    "cloudwatch": {
+      "unsupported_scenarios": ["abnormal_auth"]
+    },
+    "feedback": {
+      "unsupported_scenarios": ["duplicate", "abnormal_auth", "abnormal_schema"]
+    }
+  }
+}

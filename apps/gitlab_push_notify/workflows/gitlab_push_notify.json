@@ -1,0 +1,78 @@
+{
+  "name": "gitlab-push-notify",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/push/notify",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (GitLab Push)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = ($json && $json.headers) ? $json.headers : {};\nconst payload = ($json && $json.body) ? $json.body : ($json ?? {});\nconst self = this;\n\nfunction getHeader(name) {\n  const lower = name.toLowerCase();\n  if (headers[lower] !== undefined) return headers[lower];\n  if (headers[name] !== undefined) return headers[name];\n  const key = Object.keys(headers).find((k) => k.toLowerCase() === lower);\n  return key ? headers[key] : undefined;\n}\n\nfunction error(status, message, extra = {}) {\n  return [{\n    json: {\n      ok: false,\n      status_code: status,\n      error: message,\n      ...extra,\n    },\n  }];\n}\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n}\n\nfunction parseYamlMap(text) {\n  const map = {};\n  String(text || '').split(/\\r?\\n/).forEach((line) => {\n    const trimmed = line.trim();\n    if (!trimmed || trimmed.startsWith('#')) return;\n    const idx = trimmed.indexOf(':');\n    if (idx <= 0) return;\n    const key = trimmed.slice(0, idx).trim();\n    let value = trimmed.slice(idx + 1).trim();\n    value = value.replace(/^['\\\"]|['\\\"]$/g, '');\n    if (key) map[key] = value;\n  });\n  return map;\n}\n\nfunction getByRealm(map, realm) {\n  if (!map || typeof map !== 'object') return '';\n  if (realm && map[realm]) return map[realm];\n  if (map.default) return map.default;\n  return '';\n}\n\nconst secret = String($env.GITLAB_WEBHOOK_SECRET || '').trim();\nif (!secret) {\n  return error(424, 'missing webhook secret', { missing: ['GITLAB_WEBHOOK_SECRET'] });\n}\n\nconst token = getHeader('x-gitlab-token');\nif (token !== secret) {\n  return error(401, 'invalid token');\n}\n\nconst headerEvent = getHeader('x-gitlab-event') || '';\nconst objectKind = payload.object_kind || '';\nconst isPushEvent = /push/i.test(headerEvent) || objectKind === 'push';\nif (!isPushEvent) {\n  return [{\n    json: {\n      ok: true,\n      status_code: 200,\n      skipped: true,\n      reason: 'not push event',\n      event: headerEvent || objectKind || 'unknown',\n    },\n  }];\n}\n\nconst targetProjectId = String($env.GITLAB_PROJECT_ID || '').trim();\nconst targetProjectPath = String($env.GITLAB_PROJECT_PATH || '').trim();\nconst projectId = payload.project_id ?? payload.project?.id ?? '';\nconst projectPath = payload.project?.path_with_namespace ?? payload.project?.path ?? '';\n\nif (targetProjectId) {\n  if (!String(projectId).trim()) {\n    return [{ json: { ok: true, status_code: 200, skipped: true, reason: 'missing project id' } }];\n  }\n  if (String(projectId) !== targetProjectId) {\n    return [{\n      json: {\n        ok: true,\n        status_code: 200,\n        skipped: true,\n        reason: 'project id mismatch',\n        project_id: projectId,\n      },\n    }];\n  }\n}\n\nif (targetProjectPath) {\n  if (!String(projectPath).trim()) {\n    return [{ json: { ok: true, status_code: 200, skipped: true, reason: 'missing project path' } }];\n  }\n  if (projectPath !== targetProjectPath) {\n    return [{\n      json: {\n        ok: true,\n        status_code: 200,\n        skipped: true,\n        reason: 'project path mismatch',\n        project_path: projectPath,\n      },\n    }];\n  }\n}\n\nconst realm = String(projectPath || '').includes('/') ? String(projectPath).split('/')[0] : '';\n\nconst userName = payload.user_name || payload.user_username || payload.user_email || 'unknown';\nconst ref = payload.ref || '';\nconst branch = ref.replace(/^refs\\/heads\\//, '') || ref || 'unknown';\nconst commits = Array.isArray(payload.commits) ? payload.commits : [];\nconst totalCommits = payload.total_commits_count ?? commits.length;\nconst maxCommits = Number.parseInt($env.GITLAB_PUSH_MAX_COMMITS || '5', 10) || 5;\n\nconst lines = ['**GitLab Push**'];\nif (projectPath) lines.push(`project: ${projectPath}`);\nif (projectId) lines.push(`project_id: ${projectId}`);\nif (branch) lines.push(`branch: ${branch}`);\nif (userName) lines.push(`user: ${userName}`);\nlines.push(`commits: ${totalCommits}`);\n\nconst commitLines = commits.slice(0, maxCommits).map((commit) => {\n  const shortId = (commit.id || '').slice(0, 8);\n  const message = String(commit.message || '').split('\\\\n')[0].trim();\n  const author = commit.author?.name || commit.author?.email || '';\n  const url = commit.url || '';\n  const parts = [];\n  if (shortId) parts.push(shortId);\n  if (message) parts.push(message);\n  if (author) parts.push(`(${author})`);\n  if (url) parts.push(url);\n  return `- ${parts.join(' ')}`;\n});\n\nif (commitLines.length) {\n  lines.push('');\n  lines.push(...commitLines);\n}\n\nif (totalCommits > commitLines.length) {\n  lines.push(`...and ${totalCommits - commitLines.length} more`);\n}\n\nif (payload.compare) {\n  lines.push('');\n  lines.push(`compare: ${payload.compare}`);\n}\nif (payload.project?.web_url) {\n  lines.push(`project_url: ${payload.project.web_url}`);\n}\n\nconst message = lines.join('\\\\n');\nconst dryRun = isTruthy($env.GITLAB_PUSH_NOTIFY_DRY_RUN || $env.DRY_RUN || payload.dry_run || payload.dryRun || getHeader('x-aiops-dry-run') || (($json && $json.query) ? ($json.query.dry_run || $json.query.dryRun) : undefined));\n\nconst stream = $env.ZULIP_STREAM || 'itsm-oncall';\nconst topic = $env.ZULIP_TOPIC || (projectPath || 'GitLab Push');\nconst results = [];\n\nfunction resolveZulipConfig() {\n  const baseUrlDirect = String($env.ZULIP_BASE_URL || '').trim();\n  const emailDirect = String($env.ZULIP_BOT_EMAIL || '').trim();\n  const apiKeyDirect = String($env.ZULIP_BOT_API_KEY || '').trim();\n\n  const baseUrlsYaml = $env.ZULIP_API_MESS_BASE_URL || $env.N8N_ZULIP_API_BASE_URL || '';\n  const emailsYaml = $env.ZULIP_MESS_BOT_EMAIL || $env.N8N_ZULIP_BOT_EMAIL || '';\n  const tokensYaml = $env.ZULIP_MESS_BOT_TOKEN || $env.N8N_ZULIP_BOT_TOKEN || '';\n\n  const baseUrlMap = parseYamlMap(baseUrlsYaml);\n  const emailMap = parseYamlMap(emailsYaml);\n  const tokenMap = parseYamlMap(tokensYaml);\n\n  const baseUrl = baseUrlDirect || getByRealm(baseUrlMap, realm);\n  const email = emailDirect || getByRealm(emailMap, realm);\n  const apiKey = apiKeyDirect || getByRealm(tokenMap, realm);\n\n  return {\n    baseUrl: String(baseUrl || '').replace(/\\/+$/, ''),\n    email,\n    apiKey,\n    source: {\n      base_url: baseUrlDirect ? 'env' : (baseUrl ? 'N8N_ZULIP_API_BASE_URL' : 'unresolved'),\n      email: emailDirect ? 'env' : (email ? 'N8N_ZULIP_BOT_EMAIL' : 'unresolved'),\n      api_key: apiKeyDirect ? 'env' : (apiKey ? 'N8N_ZULIP_BOT_TOKEN' : 'unresolved'),\n    },\n  };\n}\n\nasync function maybeSendZulip() {\n  const cfg = resolveZulipConfig();\n\n  if (dryRun) {\n    results.push({\n      channel: 'zulip',\n      ok: true,\n      dry_run: true,\n      stream,\n      topic,\n      content: message,\n      resolved: { source: cfg.source, realm },\n    });\n    return;\n  }\n\n  const missing = [];\n  if (!cfg.baseUrl) missing.push('ZULIP_BASE_URL');\n  if (!cfg.email) missing.push('ZULIP_BOT_EMAIL');\n  if (!cfg.apiKey) missing.push('ZULIP_BOT_API_KEY');\n\n  if (missing.length) {\n    results.push({\n      channel: 'zulip',\n      ok: true,\n      skipped: true,\n      reason: 'missing config',\n      missing,\n      stream,\n      topic,\n      resolved: { source: cfg.source, realm },\n    });\n    return;\n  }\n\n  const auth = Buffer.from(`${cfg.email}:${cfg.apiKey}`).toString('base64');\n  try {\n    const body = [\n      ['type', 'stream'],\n      ['to', stream],\n      ['topic', topic],\n      ['content', message],\n    ]\n      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)\n      .join('&');\n\n    await self.helpers.httpRequest({\n      method: 'POST',\n      url: `${cfg.baseUrl}/api/v1/messages`,\n      headers: {\n        'Content-Type': 'application/x-www-form-urlencoded',\n        Authorization: `Basic ${auth}`,\n      },\n      body,\n    });\n    results.push({ channel: 'zulip', ok: true, stream, topic, resolved: { source: cfg.source, realm } });\n  } catch (err) {\n    const statusCode = err?.httpCode || err?.statusCode || err?.response?.statusCode || err?.status || null;\n    const respBody = err?.response?.body || err?.response?.data || null;\n    let respPreview = '';\n    try {\n      if (typeof respBody === 'string') respPreview = respBody;\n      else if (respBody !== undefined && respBody !== null) respPreview = JSON.stringify(respBody);\n    } catch (e) {}\n    if (respPreview && respPreview.length > 800) respPreview = respPreview.slice(0, 800) + '...';\n\n    results.push({\n      channel: 'zulip',\n      ok: false,\n      stream,\n      topic,\n      error: String(err?.message || err),\n      status_code: statusCode,\n      response_preview: respPreview || undefined,\n      request: { url: `${cfg.baseUrl}/api/v1/messages`, type: 'stream', to: stream },\n      resolved: { source: cfg.source, realm },\n    });\n  }\n}\n\nawait maybeSendZulip();\n\nconst failed = results.filter((r) => r.ok === false);\n\nreturn [{\n  json: {\n    ok: failed.length === 0,\n    status_code: failed.length === 0 ? 200 : 207,\n    project_id: projectId,\n    project_path: projectPath,\n    branch,\n    commits: totalCommits,\n    message,\n    results,\n  },\n}];\n"
+      },
+      "id": "2",
+      "name": "Format + Notify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        780,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (GitLab Push)": {
+      "main": [
+        [
+          {
+            "node": "Format + Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format + Notify": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

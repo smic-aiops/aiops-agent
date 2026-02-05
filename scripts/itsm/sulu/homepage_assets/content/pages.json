@@ -1,0 +1,30 @@
+{
+  "pages": [
+    {
+      "path": "/",
+      "webspace": "website",
+      "locale": "ja",
+      "fallback_locale": "en",
+      "template": "homepage",
+      "title": "ホーム",
+      "lead": "AIOps の入口ページです。",
+      "article": "<p>ここに紹介文を入れられます。</p>",
+      "publish": true
+    },
+    {
+      "path": "/ai-node-monitoring",
+      "create_if_missing": true,
+      "parent_path": "/",
+      "template": "ai_node_monitoring",
+      "resource_segment": "/ai-node-monitoring",
+      "navigation_contexts": ["main"],
+      "webspace": "website",
+      "locale": "ja",
+      "fallback_locale": "en",
+      "title": "AI ノードモニタリング",
+      "lead": "n8n の AI ノード（OpenAI など）の入出力を確認します。",
+      "article": "<p>運用メモや注意事項をここに書けます。</p>",
+      "publish": true
+    }
+  ]
+}

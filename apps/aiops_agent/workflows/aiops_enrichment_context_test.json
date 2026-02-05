@@ -1,0 +1,162 @@
+{
+  "name": "aiops-enrichment-context-test",
+  "active": false,
+  "settings": {},
+  "nodes": [
+    {
+      "parameters": {
+        "path": "aiops/test/enrichment-context",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Enrichment Context Test)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $json ?? {};\nconst body = (req && typeof req === 'object' && req.body !== undefined)\n  ? (req.body ?? {})\n  : req;\n\nconst contextId = String(body.context_id ?? body.contextId ?? '').trim();\nif (!contextId) {\n  return [{ json: { ok: false, error: 'context_id is required' } }];\n}\n\nconst uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nif (!uuidRe.test(contextId)) {\n  return [{ json: { ok: false, error: 'context_id must be uuid', context_id: contextId } }];\n}\n\nreturn [{ json: { ok: true, context_id: contextId } }];\n"
+      },
+      "id": "2",
+      "name": "Validate Input (Enrichment Context Test)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.ok}}",
+              "operation": "isTrue"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF Valid Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        760,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  context_id,\n  source,\n  status,\n  normalized_event->'enrichment_plan' AS enrichment_plan,\n  normalized_event->'enrichment_summary' AS enrichment_summary,\n  normalized_event->'enrichment_refs' AS enrichment_refs,\n  normalized_event->'enrichment_details' AS enrichment_details,\n  normalized_event->'enrichment_error' AS enrichment_error\nFROM aiops_context\nWHERE context_id = NULLIF(NULLIF('{{ $json.context_id }}',''), 'undefined')::uuid\nLIMIT 1;"
+      },
+      "id": "4",
+      "name": "Load Enrichment From Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const ok = $node['Validate Input (Enrichment Context Test)'].json?.ok;\nif (!ok) {\n  return [{ json: $node['Validate Input (Enrichment Context Test)'].json ?? { ok: false, error: 'invalid input' } }];\n}\n\nconst rows = $input.all().map((it) => it.json);\nreturn [{\n  json: {\n    ok: true,\n    data: rows[0] ?? null\n  }\n}];\n"
+      },
+      "id": "5",
+      "name": "Build Response (Enrichment Context Test)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Respond (Enrichment Context Test)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Enrichment Context Test)": {
+      "main": [
+        [
+          {
+            "node": "Validate Input (Enrichment Context Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input (Enrichment Context Test)": {
+      "main": [
+        [
+          {
+            "node": "IF Valid Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Valid Input": {
+      "main": [
+        [
+          {
+            "node": "Load Enrichment From Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond (Enrichment Context Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Enrichment From Context": {
+      "main": [
+        [
+          {
+            "node": "Build Response (Enrichment Context Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response (Enrichment Context Test)": {
+      "main": [
+        [
+          {
+            "node": "Respond (Enrichment Context Test)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

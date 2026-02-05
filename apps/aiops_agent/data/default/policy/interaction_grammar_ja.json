@@ -1,0 +1,27 @@
+{
+  "version": "ja-1",
+  "notes": "チャット上の入力文法（facts）。interaction_parse / initial_reply / feedback_request_render が参照し、本文に固定のコマンド例を埋め込まないためのデータ。",
+  "approval": {
+    "decisions": ["approve", "deny"],
+    "keywords": {
+      "approve": ["approve", "承認", "許可", "ok"],
+      "deny": ["deny", "却下", "拒否", "no"]
+    },
+    "templates": {
+      "approve": "approve <token>",
+      "deny": "deny <token>"
+    },
+    "ack_messages": {
+      "approve": "承認を受け付けました。処理は順番待ちに登録されました。{job_line}",
+      "deny": "承認を拒否しました。"
+    }
+  },
+  "feedback": {
+    "smile_score_range": { "min": 1, "max": 4 },
+    "resolved_values": ["true", "false"],
+    "templates": {
+      "command": "feedback <job_id> <resolved:true|false> <score:1..4> <comment>",
+      "example_short": "feedback <job_id> true 4 ありがとう"
+    }
+  }
+}

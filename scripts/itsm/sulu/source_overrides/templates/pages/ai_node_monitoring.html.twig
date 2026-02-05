@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block style %}
+    {{ parent() }}
+    <link rel="stylesheet" href="/build/itsm-home.css">
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script defer src="/build/itsm-home.js"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="itsm-home">
+        <section class="itsm-panel" style="max-width: 720px; margin: 80px auto;">
+            <h1>{{ content.title|default('AI Node Monitoring') }}</h1>
+            <p>This page is provided in the admin console.</p>
+            <a class="itsm-button itsm-button--primary" href="/admin/#/monitoring/ai-nodes" target="_blank" rel="noopener">Open in Admin</a>
+        </section>
+    </div>
+{% endblock %}

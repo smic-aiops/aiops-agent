@@ -1,0 +1,167 @@
+{
+  "name": "gitlab-issue-rag-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/issue/rag/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  extname\nFROM pg_extension\nWHERE extname = 'vector';\n"
+      },
+      "id": "2",
+      "name": "Check pgvector",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        420,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$items(\"Check pgvector\").length}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF pgvector",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        640,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"ok\": true, \"pgvector\": true, \"issue_docs\": $items(\"Check issue docs metadata\")[0].json} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "4",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) AS rows,\n  COUNT(*) FILTER (WHERE metadata ? 'embedding_error') AS with_embedding_error_key,\n  COUNT(*) FILTER (WHERE metadata ? 'notes_error') AS with_notes_error_key,\n  COUNT(*) FILTER (WHERE metadata->>'embedding_error' IS NOT NULL) AS with_embedding_error_value,\n  COUNT(*) FILTER (WHERE metadata->>'notes_error' IS NOT NULL) AS with_notes_error_value\nFROM itsm_gitlab_issue_documents;\n"
+      },
+      "id": "6",
+      "name": "Check issue docs metadata",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        860,
+        140
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\":false,\"pgvector\":false,\"error\":\"pgvector_not_installed\"}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "5",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        860,
+        260
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check pgvector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check pgvector": {
+      "main": [
+        [
+          {
+            "node": "IF pgvector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF pgvector": {
+      "main": [
+        [
+          {
+            "node": "Check issue docs metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check issue docs metadata": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

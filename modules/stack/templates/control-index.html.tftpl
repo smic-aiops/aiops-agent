@@ -1,0 +1,1155 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Language" content="ja" />
+  <title>サービスコントロール</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+    p { color: #333; }
+    #cards { display: flex; flex-direction: column; gap: 1.5rem; margin: 1rem 0; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+    .card h2 { margin: 0 0 0.5rem; font-size: 1.2rem; }
+    .actions { margin: 0.5rem 0; }
+    button { margin-right: 0.5rem; padding: 0.55rem 0.9rem; }
+    .link {
+      display: inline-block;
+      margin-right: 0.5rem;
+      padding: 0.55rem 0.9rem;
+      background: #0f62fe;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .status { font-weight: bold; margin-top: 0.5rem; }
+    .health { font-size: 0.95rem; color: #444; margin-top: 0.35rem; line-height: 1.4; }
+    .group { margin-bottom: 1.5rem; }
+    .group-title { margin: 0 0 0.25rem; font-size: 1.1rem; color: #222; }
+    .ops-status { display: inline-block; margin: 0.45rem 0 0; padding: 0.25rem 0.6rem; border-radius: 4px; font-weight: 600; font-size: 0.95rem; }
+    .ops-status--active { background: #e6f4ea; color: #0f5132; }
+    .ops-status--pending { background: #f5f5f5; color: #444; }
+    .ops-status--error { background: #fbeaea; color: #842029; }
+    .ops-status--starting { background: #fff4e5; color: #8a4b00; }
+    .ops-status--stopped { background: #f5f5f5; color: #444; }
+    .schedule { margin-top: 0.8rem; padding-top: 0.75rem; border-top: 1px dashed #ddd; display: flex; flex-direction: column; gap: 0.4rem; }
+    .schedule-inputs.hidden { display: none; }
+    .auto-toggle { display: flex; align-items: center; gap: 0.4rem; font-size: 0.95rem; font-weight: 600; }
+    .schedule-inputs { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; font-size: 0.9rem; }
+    .schedule-inputs label { display: flex; align-items: center; gap: 0.2rem; }
+    .schedule-inputs input { padding: 0.25rem 0.35rem; font-size: 0.9rem; }
+    .schedule-rows { display: flex; flex-direction: column; gap: 0.35rem; width: 100%; }
+    .schedule-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+    .schedule-row strong { min-width: 4.5rem; display: inline-block; }
+    .schedule-status { font-size: 0.85rem; color: #444; }
+    .auth-status { font-size: 0.95rem; color: #0f5132; background: #e4f0e5; padding: 0.5rem 0.75rem; border-radius: 6px; border: 1px solid #cfe3ce; margin-bottom: 1rem; }
+    .auth-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: -0.25rem 0 1rem; }
+    .auth-actions button { padding: 0.45rem 0.8rem; }
+    .timezone-note { font-size: 0.9rem; color: #555; margin-top: 0.25rem; }
+    .schedule-hint { font-size: 0.8rem; color: #666; margin-top: 0.35rem; }
+    .credentials {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #d3d7e1;
+      background: #f6f7fb;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    .credentials strong {
+      display: block;
+      font-size: 0.95rem;
+      margin-bottom: 0.35rem;
+    }
+    .credentials div {
+      margin-top: 0.25rem;
+    }
+    .credential-card { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 1rem; }
+    .credential-card p { margin: 0.35rem 0; }
+    .credential-card .credential-label { font-weight: 600; color: #222; }
+    .credential-card.hidden { display: none; }
+    .integrated { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px dashed #d5d8e0; }
+    .integrated-title { font-weight: 700; font-size: 1rem; color: #1f2933; margin: 0 0 0.25rem; }
+    .integrated-note { font-size: 0.9rem; color: #444; margin: 0.3rem 0 0.6rem; }
+    .integrated-card { border: 1px solid #e3e6ef; background: #f8f9ff; border-radius: 6px; padding: 0.75rem; margin-bottom: 0.55rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .integrated-card:last-child { margin-bottom: 0; }
+    .integrated-row { display: flex; flex-direction: column; gap: 0.35rem; }
+    .integrated-meta { display: flex; flex-direction: column; gap: 0.2rem; }
+    .integrated-name { font-weight: 600; color: #1b2330; }
+    .integrated-desc { color: #444; font-size: 0.9rem; }
+    .integrated-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+    .link--ghost { background: #eef2ff; color: #1c3faa; border: 1px solid #d9e2ff; }
+    .realm-links { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; }
+    .realm-label { font-size: 0.85rem; color: #4b5563; font-weight: 600; }
+    .realm-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+  </style>
+</head>
+<body>
+  <h1>サービスコントロール</h1>
+  <p>サービスコントロールAPIで各サービスの起動・停止・状態取得を確認できます。自動起動・停止がオンになっていると、その指定時間中はスケジュールされた起動・停止の制御が優先されるため、通常のアイドル検知による自動停止（アイドル機能）は動作しません。</p>
+  <p class="timezone-note" id="jst-clock">現在時刻 (JST) を読み込み中...</p>
+
+  <div id="auth-status" class="auth-status">認証なしで利用しています</div>
+  <div class="auth-actions" id="auth-actions">
+    <button id="auth-login">ログイン</button>
+    <button id="auth-logout" class="link--ghost">ログアウト</button>
+  </div>
+  <div class="grid" id="cards"></div>
+
+ <script>
+    const API_BASE = "${api_base_url}";
+    const KEYCLOAK_BASE_URL = "${keycloak_base_url}";
+    const KEYCLOAK_REALM = "${keycloak_realm}";
+    const SERVICE_CONTROL_UI_CLIENT_ID = "${service_control_ui_client_id}";
+    const SERVICE_CONTROL_AUTH_ENABLED = ${service_control_jwt_enabled};
+    const N8N_SUBDOMAIN = "${n8n_subdomain}";
+    const CONTROL_SITE_REALMS = ${control_site_realms};
+    const CONTROL_SITE_REALM_SERVICE_HOSTS = ${control_site_realm_service_hosts};
+    const API_BASE_CLEAN = API_BASE ? API_BASE.replace(/\/+$/, '') : '';
+    const KEYCLOAK_BASE_URL_CLEAN = KEYCLOAK_BASE_URL ? KEYCLOAK_BASE_URL.replace(/\/+$/, '') : '';
+    const KEYCLOAK_REALM_CLEAN = KEYCLOAK_REALM ? KEYCLOAK_REALM.replace(/^\/+|\/+$/g, '') : '';
+    const n8nHost = KEYCLOAK_REALM_CLEAN ? `$${KEYCLOAK_REALM_CLEAN}.$${N8N_SUBDOMAIN}` : N8N_SUBDOMAIN;
+    const suluHost = KEYCLOAK_REALM_CLEAN ? `$${KEYCLOAK_REALM_CLEAN}.sulu` : 'sulu';
+    const API_MAX_RETRY = 3;
+    const API_RETRY_BASE_MS = 300;
+    const services = [
+      { key: 'sulu', name: 'Sulu', host: suluHost, path: '/admin/', desc: 'メインサービスのダミー' },
+    ];
+    const integratedServiceChildren = {};
+    const serviceAutoStopCapabilities = ${service_control_autostop_flags};
+    const apiEnabledServices = new Set(${service_control_enabled_svcs});
+    const lockedScheduleServices = new Set(${locked_schedule_services});
+    const UI_LOCALE = 'ja-JP';
+    const UI_TIMEZONE = 'Asia/Tokyo';
+    const timezoneFormatter = new Intl.DateTimeFormat(UI_LOCALE, {
+      dateStyle: 'long',
+      timeStyle: 'medium',
+      timeZone: UI_TIMEZONE,
+    });
+    const MINUTES_PER_DAY = 24 * 60;
+
+    function parseTimeValue(value) {
+      if (typeof value !== 'string') return null;
+      const parts = value.split(':');
+      if (parts.length !== 2) return null;
+      const hours = Number(parts[0]);
+      const minutes = Number(parts[1]);
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+      return hours * 60 + minutes;
+    }
+
+    function formatTimeValue(minutes) {
+      if (typeof minutes !== 'number' || Number.isNaN(minutes)) return '';
+      const normalized = ((Math.round(minutes) % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+      const hours = Math.floor(normalized / 60);
+      const mins = normalized % 60;
+      const hoursStr = hours.toString().padStart(2, '0');
+      const minsStr = mins.toString().padStart(2, '0');
+      return hoursStr + ':' + minsStr;
+    }
+
+    function normalizeTime(value) {
+      const minutes = parseTimeValue(value);
+      return minutes === null ? '' : formatTimeValue(minutes);
+    }
+
+    function getIntegratedChildren(service) {
+      return integratedServiceChildren[service] || [];
+    }
+
+    function mergedTargets(service) {
+      return [service, ...getIntegratedChildren(service)];
+    }
+
+    const DEFAULT_WEEKDAY_START_JST = '17:00';
+    const DEFAULT_WEEKDAY_STOP_JST = '22:00';
+    const DEFAULT_HOLIDAY_START_JST = '08:00';
+    const DEFAULT_HOLIDAY_STOP_JST = '23:00';
+    const DEFAULT_IDLE_MINUTES = 60;
+    const jstClockEl = document.getElementById('jst-clock');
+    function updateJstClock() {
+      if (!jstClockEl) return;
+      jstClockEl.textContent = `現在時刻 (JST): $${timezoneFormatter.format(new Date())}`;
+    }
+    if (jstClockEl) {
+      updateJstClock();
+      setInterval(updateJstClock, 1000);
+    }
+    const servicesWithStatus = services.map(s => {
+      const apiEnabled = apiEnabledServices.has(s.key);
+      return {
+        ...s,
+        apiEnabled,
+        autostopSupported: Boolean(serviceAutoStopCapabilities[s.key]),
+      };
+    });
+    const serviceMap = Object.fromEntries(servicesWithStatus.map(s => [s.key, s]));
+    const integratedChildKeys = new Set(Object.values(integratedServiceChildren).flat());
+    const apiEnabledList = servicesWithStatus.filter(s => s.apiEnabled);
+    const groups = [
+      { title: 'Sulu', items: ['sulu'] },
+    ];
+    const cardsEl = document.getElementById('cards');
+    const scheduleState = new Map();
+    const rootDomain = (() => {
+      const host = window.location.hostname;
+      const parts = host.split('.');
+      if (parts.length >= 3) return parts.slice(1).join('.');
+      return host;
+    })();
+    const PGADMIN_ADMIN_USERNAME = "${pgadmin_admin_username}" || 'admin@pgadmin.' + rootDomain;
+    const PGADMIN_PASSWORD_SSM_PARAMETER = "${pgadmin_password_ssm_parameter}";
+    const authStatusEl = document.getElementById('auth-status');
+    const authActionsEl = document.getElementById('auth-actions');
+    const authLoginButton = document.getElementById('auth-login');
+    const authLogoutButton = document.getElementById('auth-logout');
+    const AUTH_STORAGE_KEY = 'svc_control_auth';
+    const AUTH_STATE_KEY = 'svc_control_auth_state';
+    const AUTH_VERIFIER_KEY = 'svc_control_pkce_verifier';
+
+    function getRealmHosts(serviceKey) {
+      if (!Array.isArray(CONTROL_SITE_REALMS) || CONTROL_SITE_REALMS.length === 0) return [];
+      const out = [];
+      const seen = new Set();
+      for (const realm of CONTROL_SITE_REALMS) {
+        const host = CONTROL_SITE_REALM_SERVICE_HOSTS?.[realm]?.[serviceKey];
+        if (!host || seen.has(host)) continue;
+        seen.add(host);
+        out.push({ realm, host });
+      }
+      return out;
+    }
+
+    function setAuthMessage(message) {
+      if (authStatusEl) {
+        authStatusEl.textContent = message;
+      }
+    }
+
+    function setAuthActionsVisible(visible) {
+      if (authActionsEl) {
+        authActionsEl.style.display = visible ? 'flex' : 'none';
+      }
+    }
+
+    function loadAuthToken() {
+      const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function storeAuthToken(token) {
+      if (!token || !token.access_token) return;
+      const nowMs = Date.now();
+      const expiresIn = Number(token.expires_in || 0);
+      const expiresAt = expiresIn ? (nowMs + Math.max(30, expiresIn - 30) * 1000) : (nowMs + 5 * 60 * 1000);
+      const payload = {
+        access_token: token.access_token,
+        refresh_token: token.refresh_token || '',
+        expires_at: expiresAt
+      };
+      sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    function clearAuthToken() {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+
+    function isTokenValid(token) {
+      if (!token || !token.access_token || !token.expires_at) return false;
+      return token.expires_at > Date.now();
+    }
+
+    function base64UrlEncode(buffer) {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i += 1) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function randomString(length) {
+      const bytes = new Uint8Array(length);
+      crypto.getRandomValues(bytes);
+      let output = '';
+      for (let i = 0; i < bytes.length; i += 1) {
+        output += ('0' + bytes[i].toString(16)).slice(-2);
+      }
+      return output;
+    }
+
+    async function sha256(input) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(input);
+      const digest = await crypto.subtle.digest('SHA-256', data);
+      return digest;
+    }
+
+    async function buildCodeChallenge(verifier) {
+      const digest = await sha256(verifier);
+      return base64UrlEncode(digest);
+    }
+
+    function buildRedirectUri() {
+      return window.location.origin + window.location.pathname;
+    }
+
+    function buildAuthBase() {
+      if (!KEYCLOAK_BASE_URL_CLEAN || !KEYCLOAK_REALM_CLEAN) return '';
+      return KEYCLOAK_BASE_URL_CLEAN + '/realms/' + KEYCLOAK_REALM_CLEAN + '/protocol/openid-connect';
+    }
+
+    async function exchangeAuthCode(code) {
+      const verifier = sessionStorage.getItem(AUTH_VERIFIER_KEY) || '';
+      if (!verifier) {
+        throw new Error('PKCE verifier が見つかりません。');
+      }
+      const tokenUrl = buildAuthBase() + '/token';
+      const redirectUri = buildRedirectUri();
+      const body = new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: SERVICE_CONTROL_UI_CLIENT_ID,
+        code_verifier: verifier,
+        code,
+        redirect_uri: redirectUri
+      });
+      const res = await fetch(tokenUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error_description || data.error || 'トークン取得に失敗しました');
+      }
+      storeAuthToken(data);
+      sessionStorage.removeItem(AUTH_VERIFIER_KEY);
+      sessionStorage.removeItem(AUTH_STATE_KEY);
+    }
+
+    async function handleAuthRedirect() {
+      if (!SERVICE_CONTROL_AUTH_ENABLED) return;
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (!code) return;
+      const state = params.get('state');
+      const expectedState = sessionStorage.getItem(AUTH_STATE_KEY);
+      if (!state || !expectedState || state !== expectedState) {
+        setAuthMessage('認証に失敗しました（state 不一致）。');
+        return;
+      }
+      try {
+        await exchangeAuthCode(code);
+        setAuthMessage('認証済み');
+      } catch (err) {
+        clearAuthToken();
+        setAuthMessage('認証に失敗しました: ' + (err?.message || err));
+      } finally {
+        params.delete('code');
+        params.delete('state');
+        const qs = params.toString();
+        const nextUrl = window.location.pathname + (qs ? '?' + qs : '');
+        history.replaceState({}, document.title, nextUrl);
+      }
+    }
+
+    function updateAuthUi() {
+      if (!SERVICE_CONTROL_AUTH_ENABLED) {
+        setAuthMessage('認証なしで利用しています');
+        setAuthActionsVisible(false);
+        return;
+      }
+      setAuthActionsVisible(true);
+      const token = loadAuthToken();
+      if (isTokenValid(token)) {
+        setAuthMessage('認証済み (realm: ' + KEYCLOAK_REALM_CLEAN + ')');
+      } else {
+        setAuthMessage('認証が必要です。ログインしてください。');
+      }
+    }
+
+    async function startLogin() {
+      if (!SERVICE_CONTROL_AUTH_ENABLED) return;
+      if (!SERVICE_CONTROL_UI_CLIENT_ID) {
+        setAuthMessage('クライアントIDが未設定です。');
+        return;
+      }
+      if (!crypto?.subtle) {
+        setAuthMessage('このブラウザはPKCEに対応していません。');
+        return;
+      }
+      const verifier = randomString(48);
+      const challenge = await buildCodeChallenge(verifier);
+      const state = randomString(12);
+      sessionStorage.setItem(AUTH_VERIFIER_KEY, verifier);
+      sessionStorage.setItem(AUTH_STATE_KEY, state);
+      const redirectUri = buildRedirectUri();
+      const authUrl = buildAuthBase() + '/auth';
+      const params = new URLSearchParams({
+        client_id: SERVICE_CONTROL_UI_CLIENT_ID,
+        response_type: 'code',
+        scope: 'openid',
+        redirect_uri: redirectUri,
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        state
+      });
+      window.location.href = authUrl + '?' + params.toString();
+    }
+
+    function logout() {
+      clearAuthToken();
+      updateAuthUi();
+    }
+
+    if (authLoginButton) {
+      authLoginButton.addEventListener('click', () => {
+        startLogin().catch((err) => {
+          setAuthMessage('ログインに失敗しました: ' + (err?.message || err));
+        });
+      });
+    }
+
+    if (authLogoutButton) {
+      authLogoutButton.addEventListener('click', () => {
+        logout();
+      });
+    }
+
+    handleAuthRedirect()
+      .then(() => updateAuthUi())
+      .catch((err) => {
+        setAuthMessage('認証の初期化に失敗しました: ' + (err?.message || err));
+      });
+
+
+
+
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function retryDelay(attempt) {
+      const jitter = Math.random() * 100;
+      return API_RETRY_BASE_MS * Math.pow(2, attempt) + jitter;
+    }
+
+    function isRetryableStatus(status) {
+      return status >= 500 || status === 429;
+    }
+
+    function log(msg) {
+      console.log(msg);
+    }
+
+    function domKey(service, realm) {
+      return realm ? service + '::' + realm : service;
+    }
+
+    function getRealmKeysForService(service) {
+      const realmHosts = getRealmHosts(service);
+      if (!realmHosts.length) return [];
+      return realmHosts.map(({ realm }) => realm);
+    }
+
+    async function callApi(service, path, method = 'GET', payload = null, realm = null) {
+      if (!API_BASE) {
+        log('API のベース URL が設定されていません。');
+        throw new Error('API のベース URL が設定されていません。');
+      }
+      const base = API_BASE_CLEAN || API_BASE;
+      const qs = new URLSearchParams();
+      qs.set('service', service);
+      if (realm) qs.set('realm', realm);
+      const url = base + path + '?' + qs.toString();
+      const headers = payload !== null ? { 'Content-Type': 'application/json' } : {};
+      if (SERVICE_CONTROL_AUTH_ENABLED) {
+        const token = loadAuthToken();
+        if (!isTokenValid(token)) {
+          clearAuthToken();
+          setAuthMessage('認証が必要です。ログインしてください。');
+          throw new Error('認証が必要です。');
+        }
+        headers.Authorization = 'Bearer ' + token.access_token;
+      }
+      const options = { method };
+      if (Object.keys(headers).length > 0) {
+        options.headers = headers;
+      }
+      if (payload !== null) {
+        options.body = JSON.stringify(payload);
+      }
+      let lastError = null;
+      for (let attempt = 0; attempt < API_MAX_RETRY; attempt += 1) {
+        try {
+          const res = await fetch(url, options);
+          const body = await res.json().catch(() => ({}));
+          if (res.status === 401 || res.status === 403) {
+            if (SERVICE_CONTROL_AUTH_ENABLED) {
+              clearAuthToken();
+              setAuthMessage('認証が必要です。ログインしてください。');
+            }
+            const err = new Error(body.message || res.statusText || 'アクセスが拒否されました');
+            err.retryable = false;
+            throw err;
+          }
+          if (!res.ok) {
+            if (isRetryableStatus(res.status) && attempt < API_MAX_RETRY - 1) {
+              await sleep(retryDelay(attempt));
+              continue;
+            }
+            const err = new Error(body.message || res.statusText);
+            err.retryable = false;
+            throw err;
+          }
+          return body;
+        } catch (err) {
+          lastError = err;
+          const shouldRetry = (err?.retryable ?? true) && attempt < API_MAX_RETRY - 1;
+          if (shouldRetry) {
+            await sleep(retryDelay(attempt));
+            continue;
+          }
+        }
+      }
+      log(`エラー: $${lastError?.message || 'unknown error'}`);
+      throw lastError || new Error('unknown error');
+    }
+
+    function renderHealth(service, realm, data) {
+      const el = document.querySelector(`[data-health="$${domKey(service, realm)}"]`);
+      if (!el) return;
+      if (!data || !data.targetGroupHealth) {
+        el.textContent = 'TG: 情報なし';
+        return;
+      }
+      const sum = data.targetGroupHealth.summary || {};
+      el.textContent = `TG: healthy=$${sum.healthy || 0}, unhealthy=$${sum.unhealthy || 0}, total=$${sum.total || 0}`;
+    }
+
+    function renderKeycloakCredentials(data) {
+      if (!cardsEl) return;
+      const container = cardsEl.querySelector('[data-credentials-keycloak]');
+      if (!container) return;
+      const usernameEl = container.querySelector('[data-keycloak-credential="username"]');
+      const passwordEl = container.querySelector('[data-keycloak-credential="password"]');
+      if (!usernameEl || !passwordEl) return;
+      if (!data) {
+        usernameEl.textContent = '取得失敗';
+        passwordEl.textContent = '取得失敗';
+        return;
+      }
+      usernameEl.textContent = data.username ?? '未設定';
+      passwordEl.textContent = data.password ?? '未設定';
+    }
+
+    function renderOdooCredentials(data) {
+      if (!cardsEl) return;
+      const container = cardsEl.querySelector('[data-credentials-odoo]');
+      if (!container) return;
+      const usernameEl = container.querySelector('[data-odoo-credential="username"]');
+      const passwordEl = container.querySelector('[data-odoo-credential="password"]');
+      if (!usernameEl || !passwordEl) return;
+      if (!data) {
+        usernameEl.textContent = '取得失敗';
+        passwordEl.textContent = '取得失敗';
+        return;
+      }
+      usernameEl.textContent = data.username ?? '未設定';
+      passwordEl.textContent = data.password ?? '未設定';
+    }
+
+    function renderPgadminCredentials(data) {
+      if (!cardsEl) return;
+      const container = cardsEl.querySelector('[data-pgadmin-credentials]');
+      if (!container) return;
+      const usernameEl = container.querySelector('[data-pgadmin-credential="username"]');
+      const passwordEl = container.querySelector('[data-pgadmin-credential="password"]');
+      if (!usernameEl || !passwordEl) return;
+      const fallbackUsername = PGADMIN_ADMIN_USERNAME || 'admin@pgadmin.' + rootDomain;
+      if (!data) {
+        usernameEl.textContent = fallbackUsername || '未設定';
+        const fallbackPassword = API_BASE ? '取得失敗' : (PGADMIN_PASSWORD_SSM_PARAMETER || '非公開');
+        passwordEl.textContent = fallbackPassword;
+        container.classList.remove('hidden');
+        return;
+      }
+      usernameEl.textContent = data.username ?? fallbackUsername ?? '未設定';
+      passwordEl.textContent = data.password ?? '未設定';
+      container.classList.remove('hidden');
+    }
+
+    function updateOpsStatusUI(service, label, variant = 'pending', realm = null) {
+      if (!cardsEl) return;
+      const el = cardsEl.querySelector('[data-ops-status="' + domKey(service, realm) + '"]');
+      if (!el) return;
+      const normalizedVariant = variant || 'pending';
+      el.textContent = '運用ステータス：' + label;
+      el.className = 'ops-status ops-status--' + normalizedVariant;
+    }
+
+    function deriveOpsStatus(summary) {
+      if (!summary) return { label: '状態不明', variant: 'pending' };
+      const healthy = Number(summary.healthy) || 0;
+      const unhealthy = Number(summary.unhealthy) || 0;
+      const total = Number(summary.total) || 0;
+      if (healthy >= 1) {
+        return { label: '稼働中', variant: 'active' };
+      }
+      if (unhealthy >= 1) {
+        return { label: 'エラー', variant: 'error' };
+      }
+      if (total >= 1 && healthy === 0) {
+        return { label: '起動中', variant: 'starting' };
+      }
+      return { label: '停止中', variant: 'stopped' };
+    }
+
+    function applyOpsStatus(service, summary, realm = null) {
+      const derived = deriveOpsStatus(summary);
+      updateOpsStatusUI(service, derived.label, derived.variant, realm);
+    }
+
+    function applyScheduleToUI(service, schedule) {
+      const checkbox = cardsEl.querySelector('[data-action="toggle-auto"][data-service="' + service + '"]');
+      const weekdayStartInput = cardsEl.querySelector('[data-action="set-weekday-start"][data-service="' + service + '"]');
+      const weekdayStopInput = cardsEl.querySelector('[data-action="set-weekday-stop"][data-service="' + service + '"]');
+      const holidayStartInput = cardsEl.querySelector('[data-action="set-holiday-start"][data-service="' + service + '"]');
+      const holidayStopInput = cardsEl.querySelector('[data-action="set-holiday-stop"][data-service="' + service + '"]');
+      const idleInput = cardsEl.querySelector('[data-action="set-idle"][data-service="' + service + '"]');
+      const statusEl = cardsEl.querySelector('[data-schedule-status="' + service + '"]');
+      const enabled = Boolean(schedule && schedule.enabled);
+      const locked = lockedScheduleServices.has(service);
+      const baseStart = normalizeTime((schedule && schedule.start_time) || DEFAULT_WEEKDAY_START_JST) || DEFAULT_WEEKDAY_START_JST;
+      const baseStop = normalizeTime((schedule && schedule.stop_time) || DEFAULT_WEEKDAY_STOP_JST) || DEFAULT_WEEKDAY_STOP_JST;
+      const weekdayStart = normalizeTime((schedule && (schedule.weekday_start_time || schedule.start_time)) || DEFAULT_WEEKDAY_START_JST) || DEFAULT_WEEKDAY_START_JST;
+      const weekdayStop = normalizeTime((schedule && (schedule.weekday_stop_time || schedule.stop_time)) || DEFAULT_WEEKDAY_STOP_JST) || DEFAULT_WEEKDAY_STOP_JST;
+      const holidayStart = normalizeTime((schedule && (schedule.holiday_start_time || schedule.start_time)) || DEFAULT_HOLIDAY_START_JST) || DEFAULT_HOLIDAY_START_JST;
+      const holidayStop = normalizeTime((schedule && (schedule.holiday_stop_time || schedule.stop_time)) || DEFAULT_HOLIDAY_STOP_JST) || DEFAULT_HOLIDAY_STOP_JST;
+      const idleValue = (schedule && schedule.idle_minutes) || DEFAULT_IDLE_MINUTES;
+      if (checkbox) {
+        checkbox.checked = Boolean(enabled);
+        checkbox.disabled = locked;
+      }
+      if (weekdayStartInput) {
+        weekdayStartInput.value = weekdayStart;
+        weekdayStartInput.disabled = locked;
+      }
+      if (weekdayStopInput) {
+        weekdayStopInput.value = weekdayStop;
+        weekdayStopInput.disabled = locked;
+      }
+      if (holidayStartInput) {
+        holidayStartInput.value = holidayStart;
+        holidayStartInput.disabled = locked;
+      }
+      if (holidayStopInput) {
+        holidayStopInput.value = holidayStop;
+        holidayStopInput.disabled = locked;
+      }
+      if (idleInput) {
+        idleInput.value = idleValue;
+        const idleSupported = Boolean(serviceAutoStopCapabilities[service]);
+        idleInput.disabled = locked || !idleSupported;
+      }
+      setScheduleInputsVisibility(service, enabled);
+      updateIdleField(service);
+      if (statusEl) {
+        if (locked) {
+          statusEl.textContent = `自動スケジュールは固定（変更不可）。現在: $${enabled ? "オン" : "オフ"} / 平日 $${weekdayStart}→$${weekdayStop} / 土日祝 $${holidayStart}→$${holidayStop}`;
+        } else {
+          statusEl.textContent = enabled
+            ? `自動 (JST): 平日 $${weekdayStart}→$${weekdayStop} / 土日祝 $${holidayStart}→$${holidayStop} (アイドル $${idleValue}分)`
+            : '自動起動/停止はオフ';
+        }
+      }
+      scheduleState.set(service, {
+        ...schedule,
+        start_time: baseStart,
+        stop_time: baseStop,
+        weekday_start_time: weekdayStart,
+        weekday_stop_time: weekdayStop,
+        holiday_start_time: holidayStart,
+        holiday_stop_time: holidayStop,
+      });
+    }
+
+    async function fetchSchedule(service) {
+      try {
+        const schedule = await callApi(service, '/schedule', 'GET');
+        applyScheduleToUI(service, schedule);
+      } catch {
+        const statusEl = cardsEl.querySelector('[data-schedule-status="' + service + '"]');
+        if (statusEl) statusEl.textContent = 'スケジュール情報を取得できません';
+      }
+    }
+
+    async function fetchKeycloakCredentials() {
+      if (!API_BASE || !apiEnabledServices.has('keycloak')) return;
+      try {
+        const credentials = await callApi('keycloak', '/keycloak-admin-credentials', 'GET');
+        renderKeycloakCredentials(credentials);
+      } catch (err) {
+        console.warn('Keycloak credentials fetch failed', err);
+        renderKeycloakCredentials(null);
+      }
+    }
+
+    async function fetchOdooCredentials() {
+      if (!API_BASE || !apiEnabledServices.has('odoo')) return;
+      try {
+        const credentials = await callApi('odoo', '/odoo-admin-credentials', 'GET');
+        renderOdooCredentials(credentials);
+      } catch (err) {
+        console.warn('Odoo credentials fetch failed', err);
+        renderOdooCredentials(null);
+      }
+    }
+
+    async function fetchPgadminCredentials() {
+      const pgadminEnabled = apiEnabledServices.has('pgadmin');
+      if (!API_BASE || !pgadminEnabled) {
+        renderPgadminCredentials({
+          username: PGADMIN_ADMIN_USERNAME,
+          password: PGADMIN_PASSWORD_SSM_PARAMETER || '非公開'
+        });
+        return;
+      }
+      try {
+        const credentials = await callApi('pgadmin', '/pgadmin-admin-credentials', 'GET');
+        renderPgadminCredentials(credentials);
+      } catch (err) {
+        console.warn('pgAdmin credentials fetch failed', err);
+        renderPgadminCredentials(null);
+      }
+    }
+
+    async function sendScheduleUpdate(service, payload) {
+      const targets = mergedTargets(service);
+      const [primary, ...others] = targets;
+      try {
+        const updated = await callApi(primary, '/schedule', 'POST', payload);
+        applyScheduleToUI(primary, updated);
+        for (const svc of others) {
+          try {
+            const childUpdated = await callApi(svc, '/schedule', 'POST', payload);
+            applyScheduleToUI(svc, childUpdated);
+          } catch (err) {
+            console.warn(`schedule sync failed for $${svc}`, err);
+          }
+        }
+      } catch {
+        const statusEl = cardsEl.querySelector('[data-schedule-status="' + primary + '"]');
+        if (statusEl) statusEl.textContent = 'スケジュール更新に失敗';
+      }
+    }
+
+    async function updateStatus(service, realm = null) {
+      if (service === 'sulu' && !realm) {
+        const realms = getRealmKeysForService(service);
+        if (realms.length > 0) {
+          for (const r of realms) {
+            // eslint-disable-next-line no-await-in-loop
+            await updateStatus(service, r);
+          }
+          return;
+        }
+      }
+      const statusEl = document.querySelector(`[data-status="$${domKey(service, realm)}"]`);
+      if (!statusEl) return;
+      statusEl.textContent = '状態: 取得中...';
+      try {
+        const data = await callApi(service, '/status', 'GET', null, realm);
+        statusEl.textContent = `状態: desired=$${data.desiredCount}, running=$${data.runningCount}`;
+        log(`[$${service}] 状態取得に成功: $${JSON.stringify(data)}`);
+        renderHealth(service, realm, data);
+        applyOpsStatus(service, data?.targetGroupHealth?.summary, realm);
+      } catch (_) {
+        statusEl.textContent = '状態: エラー';
+        renderHealth(service, realm, null);
+        updateOpsStatusUI(service, '取得エラー', 'error', realm);
+      }
+    }
+
+    async function startSvc(service, realm = null) {
+      const related = mergedTargets(service);
+      const statusEl = document.querySelector(`[data-status="$${domKey(service, realm)}"]`);
+      if (statusEl) statusEl.textContent = '起動中...';
+      await callApi(service, '/start', 'POST', null, realm);
+      log(`[$${service}] 起動をリクエストしました`);
+      if (realm) {
+        updateStatus(service, realm);
+      } else {
+        related.forEach(svc => updateStatus(svc));
+      }
+    }
+
+    async function stopSvc(service, realm = null) {
+      const related = mergedTargets(service);
+      const statusEl = document.querySelector(`[data-status="$${domKey(service, realm)}"]`);
+      if (statusEl) statusEl.textContent = '停止中...';
+      await callApi(service, '/stop', 'POST', null, realm);
+      log(`[$${service}] 停止をリクエストしました`);
+      if (realm) {
+        updateStatus(service, realm);
+      } else {
+        related.forEach(svc => updateStatus(svc));
+      }
+    }
+
+    function renderIntegratedChildren(service) {
+      const children = getIntegratedChildren(service);
+      if (!children.length) return '';
+      const cards = children.map(childKey => {
+        const child = serviceMap[childKey];
+        if (!child) return '';
+        const initialOpsStatus = child.apiEnabled ? '確認中' : '未実装';
+        const initialOpsVariant = 'pending';
+        return `
+                  <div class="integrated-card">
+                    <div class="integrated-row">
+                      <div class="integrated-meta">
+                        <div class="integrated-name">$${child.name}</div>
+                        <div class="integrated-desc">$${child.desc || ''}</div>
+                      </div>
+                      <div class="integrated-actions">
+                        <a class="link link--ghost" href="https://$${child.host}.$${rootDomain}$${child.path || ''}" target="_blank" rel="noopener noreferrer">開く</a>
+                        <button data-action="status" data-service="$${child.key}">状態取得</button>
+                      </div>
+                      <div class="ops-status ops-status--$${initialOpsVariant}" data-ops-status="$${child.key}">運用ステータス：$${initialOpsStatus}</div>
+                      <div class="status" data-status="$${child.key}">状態: -</div>
+                      <div class="health" data-health="$${child.key}">TG: -</div>
+                    </div>
+                  </div>
+        `;
+      }).join('');
+      return `
+                  <div class="integrated" data-integrated-parent="$${service}">
+                    <div class="integrated-title">統合サービス（Web と API は同じ ECS サービス）</div>
+                    <div class="integrated-note">起動・停止・スケジュールは Exastro ITA Web の操作が Exastro ITA API にも適用されます。</div>
+                    $${cards}
+                  </div>
+      `;
+    }
+
+    function renderPrimaryLink(service) {
+      if (getRealmHosts(service.key).length > 0) return '';
+      if (!service.host) return '';
+      return `<a class="link" href="https://$${service.host}.$${rootDomain}$${service.path || ''}" target="_blank" rel="noopener noreferrer">開く</a>`;
+    }
+
+    function renderRealmLinks(service) {
+      const realmHosts = getRealmHosts(service.key);
+      if (realmHosts.length) {
+        if (service.key === 'sulu') return '';
+        const links = realmHosts.map(({ realm, host }) => (
+          `<a class="link link--ghost" href="https://$${host}$${service.path || ''}" target="_blank" rel="noopener noreferrer">$${realm}</a>`
+        )).join('');
+        return `
+                  <div class="realm-links">
+                    <span class="realm-label">レルム別URL</span>
+                    <div class="realm-actions">$${links}</div>
+                  </div>
+        `;
+      }
+
+      if (service.key === 'keycloak') {
+        if (!Array.isArray(CONTROL_SITE_REALMS) || CONTROL_SITE_REALMS.length === 0) return '';
+        const links = CONTROL_SITE_REALMS.map((realm) => (
+          `<a class="link link--ghost" href="https://$${service.host}.$${rootDomain}/admin/$${encodeURIComponent(realm)}/console/" target="_blank" rel="noopener noreferrer">$${realm}</a>`
+        )).join('');
+        return `
+                  <div class="realm-links">
+                    <span class="realm-label">レルム別管理画面</span>
+                    <div class="realm-actions">$${links}</div>
+                  </div>
+        `;
+      }
+
+      if (service.key === 'gitlab') {
+        if (!Array.isArray(CONTROL_SITE_REALMS) || CONTROL_SITE_REALMS.length === 0) return '';
+        const links = CONTROL_SITE_REALMS.map((realm) => (
+          `<a class="link link--ghost" href="https://$${service.host}.$${rootDomain}/groups/$${encodeURIComponent(realm)}" target="_blank" rel="noopener noreferrer">$${realm}</a>`
+        )).join('');
+        return `
+                  <div class="realm-links">
+                    <span class="realm-label">レルム別グループ</span>
+                    <div class="realm-actions">$${links}</div>
+                  </div>
+        `;
+      }
+
+      return '';
+    }
+
+    function renderRealmOperations(service) {
+      if (service.key !== 'sulu') return '';
+      const realmHosts = getRealmHosts(service.key);
+      if (!realmHosts.length) return '';
+      const apiEnabled = apiEnabledServices.has(service.key);
+      const cards = realmHosts.map(({ realm, host }) => {
+        const key = domKey(service.key, realm);
+        const initialOpsStatus = apiEnabled ? '確認中' : '未実装';
+        const initialOpsVariant = 'pending';
+        return `
+                  <div class="integrated-card">
+                    <div class="integrated-row">
+                      <div class="integrated-meta">
+                        <div class="integrated-name">Sulu ($${realm})</div>
+                        <div class="integrated-desc">$${service.desc || ''}</div>
+                      </div>
+                      <div class="integrated-actions">
+                        <a class="link link--ghost" href="https://$${host}$${service.path || ''}" target="_blank" rel="noopener noreferrer">開く</a>
+                        <button data-action="start" data-service="$${service.key}" data-realm="$${realm}">起動</button>
+                        <button data-action="stop" data-service="$${service.key}" data-realm="$${realm}">停止</button>
+                        <button data-action="status" data-service="$${service.key}" data-realm="$${realm}">状態取得</button>
+                      </div>
+                      <div class="ops-status ops-status--$${initialOpsVariant}" data-ops-status="$${key}">運用ステータス：$${initialOpsStatus}</div>
+                      <div class="status" data-status="$${key}">状態: -</div>
+                      <div class="health" data-health="$${key}">TG: -</div>
+                    </div>
+                  </div>
+        `;
+      }).join('');
+      return `
+                  <div class="integrated" data-realm-ops="$${service.key}">
+                    <div class="integrated-title">レルム別 操作</div>
+                    <div class="integrated-note">Sulu はレルムごとに ECS サービスが分離されています（起動/停止もレルム単位）。</div>
+                    $${cards}
+                  </div>
+      `;
+    }
+
+    function renderCards() {
+      cardsEl.innerHTML = groups.map(g => `
+        <div class="group">
+          <h2 class="group-title">$${g.title}</h2>
+          <div class="grid">
+            $${g.items.filter(key => !integratedChildKeys.has(key)).map(key => {
+              const s = serviceMap[key];
+              if (!s) return '';
+              const hasRealmOps = s.key === 'sulu' && getRealmHosts(s.key).length > 0;
+              const initialOpsStatus = s.apiEnabled ? '確認中' : '未実装';
+              const initialOpsVariant = 'pending';
+              return `
+        <div class="card">
+                  <h2>$${s.name}</h2>
+                  <div class="ops-status ops-status--$${initialOpsVariant}" data-ops-status="$${s.key}">運用ステータス：$${initialOpsStatus}</div>
+                  <div class="health">$${s.desc || ''}</div>
+                  <div class="actions">
+                    $${hasRealmOps ? '' : renderPrimaryLink(s)}
+                    $${hasRealmOps ? '' : `<button data-action="start" data-service="$${s.key}">起動</button>`}
+                    $${hasRealmOps ? '' : `<button data-action="stop" data-service="$${s.key}">停止</button>`}
+                    $${hasRealmOps ? '' : `<button data-action="status" data-service="$${s.key}">状態取得</button>`}
+                  </div>
+                  $${renderRealmLinks(s)}
+                  $${hasRealmOps ? renderRealmOperations(s) : `<div class="status" data-status="$${s.key}">状態: -</div>`}
+                  <div class="schedule">
+                    <label class="auto-toggle">
+                      <input type="checkbox" data-action="toggle-auto" data-service="$${s.key}">
+                      自動起動・停止
+                    </label>
+                    <div class="schedule-inputs" data-schedule-inputs="$${s.key}">
+                      <div class="schedule-rows">
+                        <div class="schedule-row">
+                          <strong>平日</strong>
+                          <label>起動
+                            <input type="time" data-action="set-weekday-start" data-service="$${s.key}" value="${DEFAULT_WEEKDAY_START_JST}">
+                          </label>
+                          <label>停止
+                            <input type="time" data-action="set-weekday-stop" data-service="$${s.key}" value="${DEFAULT_WEEKDAY_STOP_JST}">
+                          </label>
+                        </div>
+                        <div class="schedule-row">
+                          <strong>土日祝</strong>
+                          <label>起動
+                            <input type="time" data-action="set-holiday-start" data-service="$${s.key}" value="${DEFAULT_HOLIDAY_START_JST}">
+                          </label>
+                          <label>停止
+                            <input type="time" data-action="set-holiday-stop" data-service="$${s.key}" value="${DEFAULT_HOLIDAY_STOP_JST}">
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="schedule-status" data-schedule-status="$${s.key}">スケジュール情報を読み込み中...</div>
+                  </div>
+                  $${s.key === 'keycloak' ? `
+                  <div class="credentials credential-card" data-credentials-keycloak>
+                    <strong>Keycloak 管理アカウント</strong>
+                    <div>ユーザー名：<span data-keycloak-credential="username">取得中...</span></div>
+                    <div>パスワード：<span data-keycloak-credential="password">取得中...</span></div>
+                  </div>
+                  ` : ''}
+                  $${s.key === 'odoo' ? `
+                  <div class="credentials credential-card" data-credentials-odoo>
+                    <strong>Odoo 管理者認証情報</strong>
+                    <div>ユーザー名：<span data-odoo-credential="username">admin</span></div>
+                    <div>パスワード：<span data-odoo-credential="password">取得中...</span></div>
+                  </div>
+                  ` : ''}
+                  $${s.key === 'pgadmin' ? `
+                  <div class="credentials credential-card" data-pgadmin-credentials>
+                    <strong>pgAdmin データベース認証情報</strong>
+                    <div>ユーザー名：<span data-pgadmin-credential="username">取得中...</span></div>
+                    <div>パスワード：<span data-pgadmin-credential="password">取得中...</span></div>
+                  </div>
+                  ` : ''}
+                  $${renderIntegratedChildren(s.key)}
+                  $${hasRealmOps ? '' : `<div class="health" data-health="$${s.key}">TG: -</div>`}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `).join('');
+        servicesWithStatus.forEach(s => {
+          setScheduleInputsVisibility(s.key, false);
+          updateIdleField(s.key);
+          if (!s.apiEnabled) {
+            markServiceApiUnavailable(s.key);
+          }
+        });
+      }
+
+    function updateIdleField(service) {
+      const idleInput = cardsEl.querySelector(`[data-action="set-idle"][data-service="$${service}"]`);
+      if (!idleInput) return;
+      const idleLabel = idleInput.closest('label');
+      const idleSupported = Boolean(serviceAutoStopCapabilities[service]);
+      idleInput.disabled = !idleSupported;
+      if (idleLabel) {
+        idleLabel.classList.toggle('hidden', !idleSupported);
+      }
+    }
+
+    function markServiceApiUnavailable(service) {
+      cardsEl.querySelectorAll(`[data-service="$${service}"]`).forEach(el => {
+        if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement) {
+          el.disabled = true;
+        }
+      });
+      if (service === 'sulu') {
+        const realms = getRealmKeysForService(service);
+        if (realms.length > 0) {
+          realms.forEach((realm) => {
+            const key = domKey(service, realm);
+            const statusEl = cardsEl.querySelector(`[data-status="$${key}"]`);
+            if (statusEl) statusEl.textContent = '状態: API 未対応';
+            const healthEl = cardsEl.querySelector(`[data-health="$${key}"]`);
+            if (healthEl) healthEl.textContent = 'TG: API 未対応';
+            updateOpsStatusUI(service, '未実装', 'pending', realm);
+          });
+        }
+      }
+      const statusEl = cardsEl.querySelector(`[data-status="$${service}"]`);
+      if (statusEl) statusEl.textContent = '状態: API 未対応';
+      const scheduleEl = cardsEl.querySelector(`[data-schedule-status="$${service}"]`);
+      if (scheduleEl) scheduleEl.textContent = 'スケジュール: API 未対応';
+      const healthEl = cardsEl.querySelector(`[data-health="$${service}"]`);
+      if (healthEl) healthEl.textContent = 'TG: API 未対応';
+      updateOpsStatusUI(service, '未実装', 'pending');
+    }
+
+    function setScheduleInputsVisibility(service, visible) {
+      if (!cardsEl) return;
+      const container = cardsEl.querySelector('[data-schedule-inputs="' + service + '"]');
+      if (!container) return;
+      container.classList.toggle('hidden', !visible);
+    }
+
+    function bindEvents() {
+      cardsEl.addEventListener('click', (ev) => {
+        if (!(ev.target instanceof HTMLButtonElement)) return;
+        const action = ev.target.dataset.action;
+        const service = ev.target.dataset.service;
+        const realm = ev.target.dataset.realm || null;
+        if (!action || !service) return;
+        if (!apiEnabledServices.has(service)) return;
+        if (action === 'start') startSvc(service, realm);
+        if (action === 'stop') stopSvc(service, realm);
+        if (action === 'status') updateStatus(service, realm);
+      });
+      cardsEl.addEventListener('change', (ev) => {
+        if (!(ev.target instanceof HTMLInputElement)) return;
+        const action = ev.target.dataset.action;
+        const service = ev.target.dataset.service;
+        if (!action || !service) return;
+        if (!apiEnabledServices.has(service)) return;
+        if (lockedScheduleServices.has(service)) return;
+        if (action === 'toggle-auto') {
+          sendScheduleUpdate(service, { enabled: ev.target.checked });
+          return;
+        }
+        if (action === 'set-idle') {
+          if (!serviceAutoStopCapabilities[service]) return;
+          if (ev.target.value === '') return;
+          sendScheduleUpdate(service, { idle_minutes: Number(ev.target.value) });
+          return;
+        }
+        const converted = ev.target.value ? normalizeTime(ev.target.value) : '';
+        if (!converted) return;
+        if (action === 'set-weekday-start') {
+          sendScheduleUpdate(service, { weekday_start_time: converted });
+        } else if (action === 'set-weekday-stop') {
+          sendScheduleUpdate(service, { weekday_stop_time: converted });
+        } else if (action === 'set-holiday-start') {
+          sendScheduleUpdate(service, { holiday_start_time: converted });
+        } else if (action === 'set-holiday-stop') {
+          sendScheduleUpdate(service, { holiday_stop_time: converted });
+        }
+      });
+    }
+
+    async function refreshServiceData() {
+      // Lambda のスロット枯渇を防ぐためシリアルに呼び出す
+      for (const svc of apiEnabledList) {
+        if (!svc.apiEnabled) continue;
+        try {
+          await updateStatus(svc.key);
+          await fetchSchedule(svc.key);
+        } catch (err) {
+          const msg = (err && err.message) ? err.message : err;
+          log(`サービス $${svc.key} の更新に失敗: $${msg}`);
+        }
+      }
+      if (serviceMap['keycloak']?.apiEnabled) {
+        await fetchKeycloakCredentials();
+      }
+      if (serviceMap['odoo']?.apiEnabled) {
+        await fetchOdooCredentials();
+      }
+      if (serviceMap['pgadmin']?.apiEnabled) {
+        await fetchPgadminCredentials();
+      }
+    }
+
+    (async () => {
+      if (!API_BASE) {
+        renderCards();
+        Array.from(cardsEl.querySelectorAll('button')).forEach(btn => btn.disabled = true);
+        Array.from(cardsEl.querySelectorAll('[data-action="toggle-auto"], [data-action="set-start"], [data-action="set-stop"], [data-action="set-idle"]')).forEach(el => el.disabled = true);
+        Array.from(cardsEl.querySelectorAll('[data-schedule-status]')).forEach(el => el.textContent = 'スケジュール: API が未設定です');
+        Array.from(cardsEl.querySelectorAll('.status')).forEach(el => el.textContent = '状態: API が未設定です');
+      setAuthMessage('サービスコントロール API が未設定です');
+      log('Terraform の service_control_api_base_url を設定するとコントロール API が有効になります。');
+      return;
+    }
+      setAuthMessage('認証なしで利用しています');
+      renderCards();
+      bindEvents();
+      refreshServiceData();
+    })();
+  </script>
+</body>
+</html>

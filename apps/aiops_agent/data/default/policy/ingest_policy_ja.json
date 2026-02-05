@@ -1,0 +1,59 @@
+{
+  "version": "ja-1",
+  "notes": "受信イベントの event_id 抽出と冪等化キー（dedupe_key）算出の facts。意思決定ではなく、ソース別の入力差分をデータ化してコード側の固定ルールを増やさないためのもの。",
+  "dedupe": {
+    "default_key_template": "{source}:{event_id}",
+    "max_key_length": 256
+  },
+  "rate_limit": {
+    "unit": "qps",
+    "default_rps": 2,
+    "default_burst_rps": 5,
+    "ingest_rate_limit_rps": 2,
+    "burst_rps": 5,
+    "default_qps": 2,
+    "default_burst_qps": 5,
+    "tenant_rate_limit_rps": 2,
+    "per_source_rps": {
+      "cloudwatch": 5,
+      "slack": 3,
+      "zulip": 3,
+      "mattermost": 3,
+      "teams": 3
+    },
+    "per_source_qps": {
+      "cloudwatch": 5,
+      "slack": 3,
+      "zulip": 3,
+      "mattermost": 3,
+      "teams": 3
+    }
+  },
+  "payload_limits": {
+    "ingest_payload_max_bytes": 1048576,
+    "ingest_max_bytes": 1048576,
+    "reject_status": 413
+  },
+  "sources": {
+    "slack": {
+      "event_id_paths": ["event_id", "event.event_id", "event.ts", "event.event_ts"],
+      "dedupe_key_template": "{source}:{event_id}"
+    },
+    "zulip": {
+      "event_id_paths": ["message.id", "message_id", "id"],
+      "dedupe_key_template": "{source}:{event_id}"
+    },
+    "cloudwatch": {
+      "event_id_paths": ["id"],
+      "dedupe_key_template": "{source}:{event_id}"
+    },
+    "mattermost": {
+      "event_id_paths": ["post_id", "post.id", "id"],
+      "dedupe_key_template": "{source}:{event_id}"
+    },
+    "teams": {
+      "event_id_paths": ["id"],
+      "dedupe_key_template": "{source}:{event_id}"
+    }
+  }
+}
