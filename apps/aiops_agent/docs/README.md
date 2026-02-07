@@ -13,6 +13,8 @@ flowchart LR
   Adapter <--> ContextStore[(ContextStore（RDS Postgres / aiops_*）)]
   Adapter <--> ApprovalStore[(ApprovalStore（RDS Postgres / aiops_*）)]
   Adapter --> Orchestrator["Orchestrator（n8n /webhook/jobs/*）"]
+  Orchestrator -->|RAG（Embedding）| EmbeddingAPI[Embedding API（OpenAI 等）]
+  Orchestrator -->|RAG（Vector search）| Qdrant[Qdrant（Vector DB）]
   Orchestrator --> JobEngine["JobEngine（n8n DB queue + Cron worker）"]
   JobEngine -. callback .-> Adapter
   Adapter --> Source

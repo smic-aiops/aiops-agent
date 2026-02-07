@@ -78,6 +78,7 @@ terraform -version
 - **データの置き場** – PostgreSQL 15.15（ポート 5432）を VPC 内に作成。パスワード未指定時は自動生成して SSM SecureString に保存。
 - **DNS/ACM/CloudFront/S3** – 既存または新規の Public Hosted Zone を参照し、`control.<zone>` を CloudFront(OAC) + S3 で配信。ACM は us-east-1。
 - **コンテナ/ECR/ECS** – イメージは `ecr_namespace/repo` に push。`create_ecs` が true のときにクラスタやロールを作成。
+- **ワークフロー/RAG/監視（代表）** – n8n をワークフロー基盤として運用し、必要に応じて Qdrant（n8n タスク内サイドカー、EFS 永続化）を RAG の検索先として利用します。Grafana は監視参照の中心として用い、CloudWatch/Athena を datasource として統合します（詳細は `docs/itsm/README.md`）。
 - **タグ** – すべてのリソースに `{environment, platform, app}`（値は `name_prefix`）と `Name = ${name_prefix}-resource` を付与。
 
 ## tfvars（分割運用）

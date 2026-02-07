@@ -30,6 +30,7 @@ flowchart TB
   subgraph Internet[利用者 / 外部入力]
     Operator[運用者（ブラウザ/手動操作）]
     External[外部入力（Webhook / Scheduler / 外部SaaS 等）]
+    EmbeddingAPI[Embedding API（OpenAI 等）]
   end
 
   subgraph Edge[エッジ（DNS + TLS + 配信）]
@@ -47,14 +48,19 @@ flowchart TB
     N8N[n8n（Workflows）]
     Zulip[Zulip]
     GitLab[GitLab]
+    Grafana[Grafana]
     RDS[(RDS: PostgreSQL)]
     EFS[(EFS)]
     Qdrant[Qdrant（Vector DB）]
+    Indexer[GitLab EFS Indexer（ECS Task）]
     SSM[SSM / Secrets Manager]
   end
 
-  subgraph AWSManaged[AWS 管理サービス]
-    EB[EventBridge / CloudWatch（Events/Logs/Metrics）]
+  subgraph AWSManaged[AWS 管理サービス（監視/ログ）]
+    EB[EventBridge]
+    CW[CloudWatch（Logs/Metrics/Alarms）]
+    S3Logs[(S3: Logs Archive)]
+    Athena[Athena / Glue]
   end
 
   %% エッジ（Control Site）
@@ -72,6 +78,7 @@ flowchart TB
   ECS --> N8N
   ECS --> Zulip
   ECS --> GitLab
+  ECS --> Grafana
   ECS --> Qdrant
 
   %% 依存関係（最小）
@@ -79,17 +86,28 @@ flowchart TB
   Keycloak -->|OIDC| Zulip
   Keycloak -->|OIDC| GitLab
   N8N --> RDS
-  GitLab --> EFS
-  EFS --> Qdrant
+  GitLab -->|mirror| EFS
+  Qdrant -->|EFS 永続化| EFS
+  Indexer -->|read| EFS
+  Indexer -->|upsert| Qdrant
+  Indexer -->|Embeddings| EmbeddingAPI
+  N8N -->|Vector search| Qdrant
+  N8N -->|Embeddings| EmbeddingAPI
+  Grafana -->|Datasource| CW
+  Grafana -->|Query| Athena
   ECS -->|env/keys| SSM
-  ECS --> EB
+  ECS --> CW
 
   %% イベント/ワークフロー
   External -->|HTTP| N8N
   N8N -->|API| GitLab
   N8N -->|API| Zulip
+  N8N -->|API| Grafana
+  Grafana -->|Alert Webhook| N8N
   EB -->|Event| N8N
-  N8N -->|AWS API| EB
+  CW -->|Alarm/Event| N8N
+  CW -->|Archive| S3Logs
+  S3Logs --> Athena
 ```
 
 ---

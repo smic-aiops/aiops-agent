@@ -9,14 +9,30 @@
 
 ```mermaid
 flowchart LR
-  Sources[外部ソース（GitLab/Zulip/CloudWatch/CMDB 等）] --> Webhook["n8n Webhook（apps/*/workflows の path）"]
+  Sources[外部ソース（GitLab/Zulip/CloudWatch/Grafana/CMDB 等）] --> Webhook["n8n Webhook（apps/*/workflows の path）"]
   Operator[運用者（手動/検証）] --> Webhook
 
   Webhook --> WF[n8n Workflows（JSON）]
   WF --> Ext[外部 API（GitLab/Zulip/Grafana/AWS 等）]
-  WF --> DB[(DB（必要な場合のみ）)]
+  WF -. optional .-> EmbeddingAPI[Embedding API（OpenAI 等）]
+  WF -. optional .-> Qdrant[Qdrant（Vector DB）]
+  WF --> DB[(DB（Postgres/pgvector 等。必要な場合のみ）)]
   WF --> Evidence[ログ/証跡（OQ/PQ）]
 ```
+
+## アプリ一覧（連携サマリ）
+
+| アプリ | 入力（代表） | 出力/連携（代表） | 主な用途 |
+|---|---|---|---|
+| `aiops_agent` | Zulip/CloudWatch 等 | GitLab/Zulip/Embedding API/Qdrant/Postgres（RDS）/Workflow Manager | 監視・問い合わせの状況整理、提案、（必要なら）承認→実行支援 |
+| `cloudwatch_event_notify` | CloudWatch/SNS | Zulip/GitLab/Grafana | 監視イベントの整形通知、記録、参照リンク付与 |
+| `gitlab_issue_metrics_sync` | Cron / 手動 Webhook | GitLab → S3 | Issue データの集計と履歴出力（KPI/レポート用） |
+| `gitlab_issue_rag` | Cron / 手動 Webhook | GitLab → Embedding API → Postgres（pgvector） | Issue/議論を RAG 用データソース（pgvector）へ同期 |
+| `gitlab_mention_notify` | GitLab Webhook | Zulip（DM 等）/（任意）GitLab API | `@mention` の到達性向上（通知） |
+| `gitlab_push_notify` | GitLab Webhook | Zulip | Push の要約通知 |
+| `workflow_manager` | AIOps Agent 等（Catalog API） | n8n API / GitLab / Service Control | ワークフローカタログ API、サービスリクエスト系ワークフロー |
+| `zulip_gitlab_issue_sync` | Cron / 手動 Webhook | Zulip ↔ GitLab（＋任意 S3） | Zulip の会話と GitLab Issue の同期 |
+| `zulip_stream_sync` | CMDB 等 | Zulip | ストリーム作成/アーカイブの同期 |
 
 ## README（CSV）フォーマット（最小ドキュメントセット）
 

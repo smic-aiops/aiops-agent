@@ -66,6 +66,7 @@ RAG の検索対象は KEDB（`itsm_kedb_documents`）と問題管理DB（`itsm_
 3. `rag_mode=gitlab_management_docs` の場合:
    - 一般管理/サービス管理/技術管理の GitLab EFS mirror（Wiki/MD/ソース）を Qdrant に upsert したコレクションから候補を取得する。
    - 管理ドメイン（`general_management`/`service_management`/`technical_management`）ごとに Qdrant のコレクション alias を分け、n8n 側は alias を切り替えて検索する。
+   - n8n は環境変数 `QDRANT_URL`（Terraform が注入）で、同一 ECS タスク内の Qdrant サイドカーへ接続する。
 4. `rag_mode=problem_management` の場合:
    - `itsm_problem`/`itsm_known_error`/`itsm_workaround` を構造検索する（条件は `rag_router` の出力 `filters` を正とする）。
 5. `rag_mode=web_search` の場合:

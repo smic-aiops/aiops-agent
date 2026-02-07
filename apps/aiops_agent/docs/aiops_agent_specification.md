@@ -264,6 +264,8 @@ Zulip 連携の要求・仕様・実装は `apps/aiops_agent/docs/zulip_chat_bot
 * `rag_filters` は `policy_context.limits.rag_filters` を正としてサニタイズし、許可したキー/値のみを渡す。
 * RAG 参照は `required_roles` 等の権限境界に従い、横断参照の可否はテナント設定により制御する。
 * RAG の SQL は「入力が空でも必ず候補が返る」形（例: `OR true`）にしない。クエリ/filters が与えられない場合は **0 件**になり得ることを正とする（誤文脈の混入防止）。
+* 参照実装では、GitLab 管理ドキュメントのベクトル検索に Qdrant を利用し、n8n は環境変数 `QDRANT_URL`（同一 ECS タスク内サイドカー、EFS 永続化）でアクセスする。
+* embedding 生成は Embedding API（例: OpenAI）を利用し、接続先/モデルは `N8N_EMBEDDING_*` 等の環境変数で構成する（インデクサ側と整合させる）。
 
 #### 2.6.3 CMDB
 

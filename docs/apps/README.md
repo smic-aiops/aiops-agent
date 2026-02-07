@@ -7,6 +7,22 @@ ECS サービスの（再）デプロイやイメージ更新は `docs/itsm/READ
 
 `apps/aiops_agent` などが参照する環境変数は、`terraform.apps.tfvars` の `aiops_agent_environment`（`realm => map(env_key => value)`）でレルム（= 組織）ごとに管理します。
 
+## 周辺サービス連携（Qdrant / Grafana）
+
+apps 配下のワークフローは、n8n から周辺サービス（例: Qdrant / Grafana）へアクセスします。これらは **Terraform（`modules/stack`）で起動・URL 公開・Secrets 注入**される前提です。
+
+### Qdrant（RAG / ベクトル検索）
+
+- AIOps Agent の RAG（GitLab EFS mirror → index → 検索）で Qdrant を利用します。
+- n8n コンテナには、Terraform により `QDRANT_URL`（および `QDRANT_GRPC_URL`）が **環境変数として注入**されます（有効条件: `enable_n8n_qdrant=true` かつ n8n が EFS を利用していること）。
+- インデックス更新（upsert）は n8n ではなく、別のインデクサ（ECS タスク）で行います（運用: `docs/itsm/README.md` を参照）。
+
+### Grafana（参照/通知）
+
+- CloudWatch 監視の参照統一（ダッシュボード/リンク）や、Grafana アラートの通知連携（Webhook）で利用します。
+- apps の一部は Grafana API（Annotation など）を呼び出します（例: `apps/cloudwatch_event_notify`）。
+- Grafana の API token 作成/更新やダッシュボード同期は ITSM 側の運用手順に従います（`docs/itsm/README.md` / `docs/itsm/itsm-platform.md` を参照）。
+
 ### 0) `aiops_n8n_agent_realms`（対象レルムの絞り込み）
 
 `aiops_n8n_agent_realms` は、**AIOps Agent（n8n のワークフロー群）を同期/セットアップする対象レルム（tenant）**を指定するための Terraform 変数です（Terraform の output 名は `N8N_AGENT_REALMS`）。
