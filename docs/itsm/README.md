@@ -86,7 +86,6 @@ gitlab_email_reply_to  = "no-reply@example.com"
 pgadmin_email          = "admin@example.com"
 pgadmin_default_sender = "admin@example.com"
 sulu_admin_email       = "admin@example.com"
-growi_mailer_from      = "admin@example.com"
 
 keycloak_desired_count = 1
 n8n_desired_count      = 1
@@ -95,10 +94,10 @@ gitlab_desired_count   = 1
 
 locked_schedule_services = ["keycloak", "n8n", "zulip", "gitlab"]
 service_control_schedule_overrides = {
-  keycloak = { enabled = true start_time = "00:00" stop_time = "23:59" }
-  n8n = { enabled = true start_time = "00:00" stop_time = "23:59" }
-  zulip = { enabled = true start_time = "00:00" stop_time = "23:59" }
-  gitlab = { enabled = true start_time = "00:00" stop_time = "23:59" }
+  keycloak = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }
+  n8n      = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }
+  zulip    = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }
+  gitlab   = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }
 }
 
 default_realm = "tenant-a"
