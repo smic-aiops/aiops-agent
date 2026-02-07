@@ -96,7 +96,9 @@ gitlab_desired_count   = 1
 locked_schedule_services = ["keycloak", "n8n", "zulip", "gitlab"]
 service_control_schedule_overrides = {
   keycloak = { enabled = true start_time = "00:00" stop_time = "23:59" }
-  gitlab   = { enabled = true start_time = "05:50" stop_time = "20:00" }
+  n8n = { enabled = true start_time = "00:00" stop_time = "23:59" }
+  zulip = { enabled = true start_time = "00:00" stop_time = "23:59" }
+  gitlab = { enabled = true start_time = "00:00" stop_time = "23:59" }
 }
 
 default_realm = "tenant-a"
