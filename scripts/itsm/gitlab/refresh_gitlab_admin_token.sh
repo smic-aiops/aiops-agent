@@ -209,8 +209,6 @@ EXEC_OUTPUT="$(aws ecs execute-command \
   --interactive \
   --command "${ADMIN_CMD}" 2>&1 || true)"
 
-echo "${EXEC_OUTPUT}"
-
 TOKEN_LINE="$(printf '%s\n' "${EXEC_OUTPUT}" | grep -o 'TOKEN=[^[:space:]]\+' | head -n1 || true)"
 TOKEN_NAME_LINE="$(printf '%s\n' "${EXEC_OUTPUT}" | grep -o 'TOKEN_NAME=[^[:space:]]\+' | head -n1 || true)"
 TOKEN_EXPIRES_AT_LINE="$(printf '%s\n' "${EXEC_OUTPUT}" | grep -o 'TOKEN_EXPIRES_AT=[^[:space:]]\+' | head -n1 || true)"
@@ -219,7 +217,8 @@ if [[ -z "${GITLAB_TOKEN_VALUE}" || "${GITLAB_TOKEN_VALUE}" == "TOKEN=" ]]; then
   echo "ERROR: Failed to extract TOKEN from gitlab-rails output." >&2
   exit 1
 fi
-echo "Token value: ${GITLAB_TOKEN_VALUE}"
+masked_token="${GITLAB_TOKEN_VALUE:0:4}...${GITLAB_TOKEN_VALUE: -4}"
+echo "Token value: ${masked_token}"
 if [[ -n "${TOKEN_NAME_LINE}" ]]; then
   echo "Token name: ${TOKEN_NAME_LINE#TOKEN_NAME=}"
 else
