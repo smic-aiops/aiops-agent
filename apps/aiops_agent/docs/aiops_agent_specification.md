@@ -10,7 +10,7 @@
 * **問合せ者**：チャット上で依頼/問い合わせを行うユーザー（ソース側の actor）
 * **アダプター**：受信口。検証・正規化・冪等化・周辺情報収集・承認提示・ジョブ投入・コンテキスト保持・返信投稿を担う
 * **オーケストレーター**：意図解析し、承認要否を判定し、AI Ops ジョブ実行エンジンのツール（ワークフロー）を呼び出す実行主体
-* **AI Ops ジョブ実行エンジン**：ツール棚（組織/ロール単位で公開されるワークフロー群）を提供し、Queue Mode で非同期実行する基盤
+* **AI Ops ジョブ実行エンジン**：ツール棚（組織/ロール単位で公開されるワークフロー群）を提供し、非同期実行する基盤（参照実装: n8n ワークフロー + Postgres キュー + Cron worker。必要に応じて Workflow API を呼び出す）
 * **ワークフロー**：実務担当が定義・公開する自動化手順（例：ログ収集、チケット起票、再起動、設定変更、診断等）
 * **ワークフローカタログ**：ワークフローのメタデータを提供する参照情報  
   例：`workflow_id`, `required_roles`, `required_groups`, `risk_level`, `impact_scope`, `required_confirm`  
@@ -18,7 +18,7 @@
 * **ツール呼び出し（ジョブ実行）**：オーケストレーターが外部ツール（ジョブ実行エンジン等）を呼び出すためのインターフェース（本書では `jobs.Preview`, `jobs.enqueue` を含む）
 * **正規化イベント（NormalizedEvent）**：ソースイベントを共通スキーマに変換したもの。分類（定型/定形外、種別）、優先度、抽出パラメータ、周辺情報参照などを含む
 * **イベントコンテキスト**：返信先に必要な情報（workspace/channel/thread/user 等）
-* **コンテキストストア**：`context_id`/`job_id` を起点に返信先・正規化イベント・保留中承認・ジョブ実行状態を保存し、TTL/保持期間を管理する DB/Redis 層（本プロトタイプは n8n の Postgres インスタンスに `aiops_*` テーブルを同居）
+* **コンテキストストア**：`context_id`/`job_id` を起点に返信先・正規化イベント・保留中承認・ジョブ実行状態を保存し、TTL/保持期間を管理する DB 層（参照実装は n8n の Postgres インスタンスに `aiops_*` テーブルを同居）
 * **承認履歴/評価ストア**：過去の承認結果やユーザー評価を蓄積し、オーケストレーターの意思決定に参照するストア
 * **実行計画（job_plan）**：`jobs.Preview` で組み立てる `{workflow_id, params, summary, required_roles, risk_level, impact_scope}`。複数候補（ランキング）を返すことがある
 * **保留中承認（PendingApproval）**：実行前承認の記録。`approval_id`, `expires_at`, `token_nonce`, `approved_at`, `used_at` 等を持つ。  
@@ -252,6 +252,7 @@ Zulip 連携の要求・仕様・実装は `apps/aiops_agent/docs/zulip_chat_bot
 
 * カタログは実行可能ワークフローと要求権限/実行条件（例：`run_window`, `change_ticket_required`）を保持し、`jobs.Preview` の facts として利用する。
 * ソース・オブ・トゥルースは GitLab のサービス管理プロジェクト内 MD とし、n8n では static data にキャッシュする。
+* 参照実装では GitLab MD を優先し、取得できない場合は Workflow Manager の catalog API（例: `GET /webhook/catalog/workflows/list`）へフォールバックできる。
 * MD には `aiops_approved`（利用承認フラグ）を持たせ、人手で ON/OFF できること。
 * `deploy_workflows.sh` による同期は `workflow_id` 等のメタ更新に限定し、`aiops_approved` は上書きしない。
 * カタログの更新手順と整合性検証（CI）は変更管理に従う。
@@ -276,6 +277,7 @@ Zulip 連携の要求・仕様・実装は `apps/aiops_agent/docs/zulip_chat_bot
 * IAM 連携のキャッシュは `iam_cache_ttl_seconds` を正とする。
 * IAM 連携が利用できない場合の方針は `iam_unavailable_mode`（`deny|allow_with_approval`）を正とする。
 * IdP/IAM 呼び出しには `trace_id` を相関 ID として伝搬し、監査ログと突合できること。
+* 参照実装では `iam_context`（`realm`/`groups`/`roles`）を受信ヘッダ/actor 等のソース情報から構成する（例: `X-AIOPS-REALM`, `X-AIOPS-GROUPS`, `X-AIOPS-ROLES`）。IdP/IAM への問い合わせは構成時のみ（任意）とする。
 
 #### 2.6.5 ジョブ実行
 
@@ -514,7 +516,7 @@ KMS/HMAC で `signature` を計算し、（DB に保存している場合は）`
 ### 3.2 アダプター → オーケストレーター（プレビュー）
 
 * **呼び出し**: `jobs.Preview`
-* **事前処理**: アダプターは IdP/IAM へ問い合わせてユーザーの所属グループ/ロールを収集し、`iam_context` に含めて `jobs.Preview` に渡す。
+* **事前処理**: アダプターは `iam_context`（`realm`/`groups`/`roles`）を受信ヘッダ/actor 等のソース情報から構成して `jobs.Preview` に渡す。IdP/IAM への問い合わせは構成時のみ（任意）とする（参照実装では Zulip の在籍チェックとして Keycloak Admin API を利用可能）。
 * **入力（例）**: `context_id`, `normalized_event`, `iam_context`, `policy_context`
 * **出力（例）**: `candidates[]`, `approval_id`, `approval_token`, `preview_facts`（facts のみ）
 
@@ -754,19 +756,19 @@ n8n の AI ノード（OpenAI 等）の入出力を、Sulu 管理画面（`Monit
 ## 8. コンポーネント共通: スケーラビリティ/可用性
 
 * アダプター: 水平分割（複数レプリカ）＋ LB
-* コンテキストストア: Redis/DB の冗長化（永続性要件で選定）
-* ジョブ実行エンジン: Queue Mode 前提で Worker 数をスケール
+* コンテキストストア: DB の冗長化（参照実装は Postgres。必要に応じて Redis を併用）
+* ジョブ実行エンジン: キュー worker をスケール（参照実装は Postgres キュー + Cron worker）
 * Callback: 再送・冪等処理で少々の重複を吸収
 
 ## 9. コンポーネント別デプロイ構成（例）
 
 * `adapter`: 受信/承認提示/結果通知
 * `orchestrator`: プレビュー/承認要否/トークン生成/ enqueue 検証
-* `context-store`: Postgres/Redis（参照実装は n8n の Postgres に `aiops_*` を同居）
-* `AI Ops ジョブ実行エンジン-main/api`: 受付系（スケール）
-* `AI Ops ジョブ実行エンジン-worker`: 実行系（スケール）
-* `redis`: Queue backend（n8n Queue Mode）
-* `postgres`: n8n のアプリDB/ジョブ実行エンジンの実行/状態保存（参照実装では context-store と同居）
+* `context-store`: Postgres（参照実装は n8n の Postgres に `aiops_*` を同居。必要に応じて Redis を併用）
+* `AI Ops ジョブ実行エンジン（参照実装）`: n8n ワークフロー（enqueue webhook + Cron worker）+ Postgres キュー（`aiops_job_queue`）
+* `AI Ops ジョブ実行エンジン（拡張例）`: main/api（受付系）と worker（実行系）を分離してスケール
+* `redis`: （任意）Queue backend（n8n Queue Mode を採用する場合）
+* `postgres`: n8n のアプリDB/実行状態保存（参照実装では context-store と同居）
 
 ## 10. コンポーネント共通: 運用ポリシー（例）
 
@@ -782,7 +784,7 @@ n8n の AI ノード（OpenAI 等）の入出力を、Sulu 管理画面（`Monit
 
 ### 10.1 障害復旧（DR/BCP）方針
 
-* **対象と前提**: 本節は AI Ops 基盤（RDS/Redis/Queue/Context Store/承認トークン）を対象とする。機能ごとの耐障害性はサービス個別の設計に従う。
+* **対象と前提**: 本節は AI Ops 基盤（RDS/Queue/Context Store/承認トークン）を対象とする（Redis は採用時のみ）。機能ごとの耐障害性はサービス個別の設計に従う。
 * **RTO/RPO（目標値を明記）**:
   * RTO: <目標値>（例: 重大障害時に復旧完了までの許容時間）
   * RPO: <目標値>（例: データ損失許容時間）
@@ -790,13 +792,13 @@ n8n の AI ノード（OpenAI 等）の入出力を、Sulu 管理画面（`Monit
 * **RDS（PostgreSQL）バックアップ**:
   * 自動バックアップ + PITR を有効化し、スナップショットの保持期間を明文化する。
   * バックアップ検証（リストア演習）を定期実施し、結果を台帳に保存する。
-* **Redis/Queue のバックアップ方針**:
-  * Queue/Redis は一時状態（再生成可能）として扱う。永続化が必要な状態は RDS に記録する。
-  * Redis を永続化する構成に変更する場合は、スナップショット/AOF 方針と復元手順を追記する。
+* **Queue/Redis のバックアップ方針**:
+  * Queue は一時状態（再生成可能）として扱う。永続化が必要な状態は RDS に記録する。
+  * Redis を採用する場合は、永続化（スナップショット/AOF）方針と復元手順を追記する。
 * **リージョン障害時のフェイルオーバー手順（概要）**:
   * 事前に DR リージョンへ必要な IaC/SSM/Secrets を同期しておき、切替時は Terraform で最小差分の再構成を行う。
   * RDS はスナップショットから復元（またはリードレプリカ昇格）し、接続先を更新する。
-  * Queue/Redis は再初期化し、再処理可能なイベントを再投入する。
+  * Queue は再初期化し、再処理可能なイベントを再投入する（Redis を採用している場合も同様）。
   * 切替後の動作確認（health check、代表ジョブ実行、通知経路）を Runbook に明記する。
 * **context_id / approval_id を跨ぐ再実行の整合性**:
   * `context_id` と `approval_id` は 1 リクエスト単位で不変とし、再送時は `dedupe_key` で同一判定する。

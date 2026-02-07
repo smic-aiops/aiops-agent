@@ -6,7 +6,7 @@
 
 ## 1. 対象
 
-CloudWatch からのイベント通知やチャット基盤のイベントを起点に、LLM と AI Ops ジョブ実行エンジン（ワークフロー API、n8n Queue Mode）でワークフローを非同期実行し、チャット元へ返信する統合基盤。
+CloudWatch からのイベント通知やチャット基盤のイベントを起点に、LLM と AI Ops ジョブ実行エンジン（Workflow API、n8n（Postgres キュー + Cron worker））でワークフローを非同期実行し、チャット元へ返信する統合基盤。
 
 ## 2. 目的
 
@@ -55,7 +55,7 @@ DQ の合否・デグレ判定は `apps/aiops_agent/data/default/policy/decision
 - CloudWatch からのイベント通知やチャットプラットフォームからのイベント受信（Webhook / Bot / Event API）
 - アダプターによるイベント正規化・認証検証・冪等化・周辺情報収集
 - LLM による意図解析（intent/params）およびツール呼び出し（ジョブ実行）
-- AI Ops ジョブ実行エンジン Queue Mode によるジョブ実行（`job_id`/内部実行IDの追跡）
+- AI Ops ジョブ実行エンジン（参照実装: Postgres キュー + Cron worker）によるジョブ実行（`job_id`/内部実行IDの追跡）
 - AI Ops ジョブ実行エンジン → アダプターへの完了通知（Webhook）とチャット返信投稿
 - Zulip の受信口は `/ingest/zulip`（テナント分岐を含む）に集約し、承認/評価も同じ口で処理できること（詳細な入力制約は仕様書に委譲）。
 - Bot が複数/マルチテナントになる場合の Webhook 配置（単一 n8n に集約するか、レルム単位で n8n を分割するか等）は `deployment_mode` 等の設定値として定義し、本文に「必要/奨励」の判断を書かない。
@@ -150,5 +150,5 @@ Unified Decision（論理）を担う Chat/LLM 呼び出し（`adapter.*` およ
 ### 5.7 スケーラビリティ/可用性
 
 - アダプターは水平分割（複数レプリカ）可能な構成とする。
-- AI Ops ジョブ実行エンジンは Queue Mode 前提で Worker 数をスケールする。
+- AI Ops ジョブ実行エンジンはキュー（参照実装: Postgres キュー + Cron worker）前提で Worker 数をスケールする。
 - Callback は再送・冪等処理で重複を吸収できること。

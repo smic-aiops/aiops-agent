@@ -21,21 +21,26 @@
 ```mermaid
 flowchart LR
   Source[ソース（Slack/Zulip/Mattermost 等 / CloudWatch 等）] --> Adapter[アダプター（n8n）]
-  Adapter <--> ContextStore[(コンテキストストア（n8n Postgres（RDS）/Redis）)]
-  Adapter <--> ApprovalStore[(承認履歴/評価ストア)]
-  Adapter <--> EscalationTable[(エスカレーション表（GitLab MD + Cache）)]
+
+  Adapter <--> ContextStore[(コンテキストストア（n8n Postgres（RDS）, aiops_*）)]
+  Adapter <--> ApprovalStore[(承認履歴/評価ストア（n8n Postgres（RDS）, aiops_*）)]
+  Adapter <--> EscalationTable[(エスカレーション表（GitLab MD + n8n static data cache）)]
+
+  Adapter -->|Zulip: 在籍チェック（任意）| IdP[IdP（Keycloak Admin API）]
   Adapter --> Orchestrator[オーケストレーター（n8n）]
   Orchestrator <--> ContextStore
   Orchestrator <--> ApprovalStore
-  Orchestrator --> IdP[IdP/IAM]
-  Orchestrator --> CatalogCache[(ワークフローカタログ（GitLab MD + Cache）)]
-  Adapter --> External[周辺情報収集（ログ/API）]
-  Adapter --> CMDB[(CMDB（Postgres（RDS））)]
+
+  Orchestrator --> CatalogCache[(ワークフローカタログ（GitLab MD + cache、fallback: Workflow Manager API）)]
+  Orchestrator --> External[周辺情報収集（Embedding API / Qdrant / Postgres）]
+
+  Adapter --> CMDB[(CMDB/Runbook（GitLab MD）)]
   GitLab[(GitLab サービス管理プロジェクト)] --> EscalationTable
   GitLab --> CatalogCache
   GitLab --> CMDB
-	  CMDB_UI[CMDB UI（任意）] -. sync .-> CMDB
-  Orchestrator --> JobEngine[AI Ops ジョブ実行エンジン（ワークフロー API、n8n Queue）]
+  WorkflowManager[(Workflow Manager（/webhook/catalog/...）)] --> CatalogCache
+
+  Orchestrator --> JobEngine[AI Ops ジョブ実行エンジン（n8n + Postgres キュー + Cron worker）]
   JobEngine -->|callback| Adapter
   Adapter --> Source
 ```
@@ -59,7 +64,7 @@ flowchart LR
   Preview --> Pending[保留中承認]
   Pending --> Adapter
   Adapter --> Enqueue[オーケストレーター（jobs.enqueue）]
-  Enqueue --> JobEngine[AI Ops ジョブ実行エンジン（ワークフロー API、n8n Queue）]
+  Enqueue --> JobEngine[AI Ops ジョブ実行エンジン（n8n + Postgres キュー + Cron worker）]
   JobEngine --> Adapter
   Adapter --> Source
 ```
@@ -122,9 +127,9 @@ sequenceDiagram
 * 受信/プレビュー/返信/承認/評価/コールバックはワークフローを分割し、責務境界を明確にする。
 * LLM 呼び出しは用途別プロンプトごとに Chat ノードを分け、入出力スキーマは仕様書に合わせる。
 * `jobs.Preview`/`jobs.enqueue`/RAG/DB 参照は Tool/HTTP/DB ノードで統一し、facts を後段へ渡す。
-* ContextStore/承認/評価は Postgres/Redis に寄せ、冪等性と永続化を担保する。
+* ContextStore/承認/評価は Postgres（`aiops_*`）に寄せ、冪等性と永続化を担保する（参照実装では Redis は使わない）。
 * ソース別の投稿・認証はサブフロー化し、チャット基盤ごとの差異を局所化する。
-* エスカレーション表とワークフローカタログは GitLab MD を正とし、n8n static data にキャッシュしてレート制限と遅延を抑える。
+* エスカレーション表とワークフローカタログは GitLab MD を正とし、n8n static data にキャッシュしてレート制限と遅延を抑える。ワークフローカタログは取得不能時に Workflow Manager の catalog API へフォールバックできる。
 
 ### 2.3 オーケストレーター（設計の要点）
 
@@ -146,7 +151,7 @@ sequenceDiagram
 flowchart LR
   Source["Source（Slack/Zulip/CloudWatch）"] --> Adapter["Adapter（n8n Webhook/Chat）"]
   Adapter --> Orchestrator["Orchestrator（n8n jobs.Preview/enqueue）"]
-  Orchestrator --> JobEngine["AI Ops Job Engine（Workflow API / n8n Queue）"]
+  Orchestrator --> JobEngine["AI Ops Job Engine（Workflow API / n8n DB queue worker）"]
   JobEngine -. callback .-> Callback["Callback（job_id status）"]
   Callback --> Reply["Reply to Source（chat post）"]
   Reply --> Source

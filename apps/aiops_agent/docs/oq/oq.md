@@ -171,7 +171,7 @@ python3 apps/aiops_agent/scripts/send_stub_event.py --base-url "<adapter_base_ur
 - `apps/aiops_agent/docs/oq/oq_usecase_06_llm_provider_switch.md`: PLaMo/OpenAI 切替時も `jobs/preview` が成功すること
 - `apps/aiops_agent/docs/oq/oq_usecase_07_security_auth.md`: 不正署名/トークンで 401/403 を返し、胚後続処理が走らないこと
 - `apps/aiops_agent/docs/oq/oq_usecase_08_policy_context_guardrails.md`: `policy_context.rules/defaults/fallbacks` に従う語彙ガードとフォールバック
-- `apps/aiops_agent/docs/oq/oq_usecase_09_queue_mode_worker.md`: Queue Mode の worker が `queued→running→finished` を辿ること
+- `apps/aiops_agent/docs/oq/oq_usecase_09_queue_mode_worker.md`: 参照実装のジョブキュー worker（Postgres キュー + Cron worker）が `queued→running→success/failed` を辿ること
 - `apps/aiops_agent/docs/oq/oq_usecase_10_zulip_primary_hello.md`: Zulip こんにちはで返信確認
 - `apps/aiops_agent/docs/oq/oq_usecase_11_intent_clarification.md`: 曖昧入力の意図確認（質問を 1〜2 個に絞る）
 - `apps/aiops_agent/docs/oq/oq_usecase_12_zulip_topic_context.md`: Zulip topic context（短文時の直近メッセージ付与）
@@ -360,12 +360,12 @@ callback が完了した後、次を確認します。
   - 語彙外の値が出ない
   - 失敗時は `fallbacks` が適用される
 
-### シナリオ 9（Queue Mode）: worker 実行の確認
+### シナリオ 9（ジョブキュー）: worker 実行の確認（参照実装: Postgres キュー + Cron worker）
 
 - 目的：stub ではなく実ジョブ実行で Queue/Worker の動作を確認する
 - 手順（例）：
-  - JobEngine を Queue Mode の Worker で稼働させる
-  - `required_confirm=false` のケースを 1 件流し、`status` が `queued`→`started`→`finished` と遷移することを確認する
+  - JobEngine の Cron worker を稼働させる（`apps/aiops_agent/workflows/aiops_job_engine_queue.json`）
+  - `required_confirm=false` のケースを 1 件流し、`status` が `queued`→`running`→`success/failed` と遷移することを確認する
 - 期待結果：
   - `aiops_job_queue.status` の遷移が確認できる
   - `aiops_job_results` に結果が残る
@@ -968,10 +968,12 @@ PLaMo / OpenAI など異なる LLM プロバイダ間で `jobs/preview` が成�
 
 ---
 
-### OQ-USECASE-09: Queue Mode worker 実行確認（source: `oq_usecase_09_queue_mode_worker.md`）
+### OQ-USECASE-09: ジョブキュー worker 実行確認（参照実装: Postgres キュー + Cron worker）（source: `oq_usecase_09_queue_mode_worker.md`）
 
 #### 目的
-Queue Mode の worker が実ジョブを処理し、`aiops_job_queue.status` が `queued→running→finished` の順の遷移を辿ることや、結果が `aiops_job_results` へ保存されることを確認する。
+参照実装の worker（Postgres キュー + Cron worker）が実ジョブを処理し、`aiops_job_queue.status` が `queued→running→success/failed` の順に遷移することや、結果が `aiops_job_results` へ保存されることを確認する。
+
+参照実装では n8n Queue Mode（Redis）ではなく、`aiops_job_queue` を Postgres に保持し、Cron worker が `SKIP LOCKED` で dequeue して処理する方式です。
 
 #### 前提
 - `apps/aiops_agent/workflows/aiops_job_engine_queue.json` の Cron worker が起動済み（`triggerTimes.everyMinute` 等）
@@ -983,8 +985,8 @@ Queue Mode の worker が実ジョブを処理し、`aiops_job_queue.status` が
 
 #### 期待出力
 - `aiops_job_queue.status` が `queued` → `running`（`started_at` 記録）→ `success`/`failed` に遷移
-- `aiops_job_results` に `job_id`/`status`/`result_payload` が保存され、`trace_id` が含まれる
-- `aiops_adapter_callback` に `callback` が届き、`aiops_context.normalized_event` に `job_id` と `result_payload` が追記される
+- `aiops_adapter_callback` が callback を受信し、`aiops_job_results` に `job_id`/`status`/`result_payload` が upsert され、`trace_id` が追跡できる
+- `aiops_context.normalized_event` に `job_id` と `result_payload` が追記される
 - Cron worker の実行ログ（`aiops_job_engine_queue` の `Start`/`Execute Job` nodes）に `trace_id` などが残る
 
 #### 手順
@@ -1001,7 +1003,7 @@ Queue Mode の worker が実ジョブを処理し、`aiops_job_queue.status` が
 #### 失敗時の切り分け
 - `status` が `queued` のまま停止する場合は Cron node の `Lock` / DB 接続を確認
 - `status=failed` になった場合は `aiops_job_engine_queue` の `error_payload`/`last_error` を SQL で調査
-- `callback` が来ない場合は `aiops_job_results` に `status` が記録されているか確認
+- `callback` が来ない場合は `aiops_job_queue.callback_url` と `aiops_adapter_callback` の Webhook/ログを確認（`aiops_job_results` は callback 経由で記録される）
 
 #### 関連
 - `apps/aiops_agent/workflows/aiops_job_engine_queue.json`
