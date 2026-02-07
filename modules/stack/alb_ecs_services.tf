@@ -228,7 +228,7 @@ resource "aws_lb_target_group" "n8n" {
 }
 
 resource "aws_lb_target_group" "qdrant" {
-  for_each = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_efs_id != null ? local.qdrant_realm_hosts : {}
+  for_each = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_has_efs_effective ? local.qdrant_realm_hosts : {}
 
   name_prefix = "qdr-"
   port        = local.qdrant_realm_http_ports[each.key]
@@ -634,7 +634,7 @@ resource "aws_lb_listener_rule" "n8n" {
 }
 
 resource "aws_lb_listener_rule" "qdrant" {
-  for_each = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_efs_id != null ? local.qdrant_realm_hosts : {}
+  for_each = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_has_efs_effective ? local.qdrant_realm_hosts : {}
 
   listener_arn = aws_lb_listener.https[0].arn
   priority     = local.qdrant_listener_priority_by_realm[each.key]
@@ -705,7 +705,7 @@ resource "aws_lb_listener_rule" "n8n_http" {
 }
 
 resource "aws_lb_listener_rule" "qdrant_http" {
-  for_each = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_efs_id != null ? local.qdrant_realm_hosts : {}
+  for_each = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_has_efs_effective ? local.qdrant_realm_hosts : {}
 
   listener_arn = aws_lb_listener.http[0].arn
   priority     = local.qdrant_listener_priority_by_realm[each.key]
@@ -1810,7 +1810,7 @@ resource "aws_route53_record" "n8n" {
 }
 
 resource "aws_route53_record" "qdrant" {
-  for_each = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_efs_id != null ? local.qdrant_realm_hosts : {}
+  for_each = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_has_efs_effective ? local.qdrant_realm_hosts : {}
 
   zone_id         = local.hosted_zone_id
   name            = each.value
@@ -2015,7 +2015,7 @@ resource "aws_ecs_service" "n8n" {
   }
 
   dynamic "load_balancer" {
-    for_each = var.enable_n8n_qdrant && local.n8n_efs_id != null ? local.qdrant_realm_http_ports : {}
+    for_each = var.enable_n8n_qdrant && local.n8n_has_efs_effective ? local.qdrant_realm_http_ports : {}
     content {
       target_group_arn = aws_lb_target_group.qdrant[load_balancer.key].arn
       container_name   = "qdrant-${load_balancer.key}"

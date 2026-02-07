@@ -185,6 +185,35 @@ terraform output
 
 削除（利用後）:
 
+注意: EFS 関連リソースは `modules/stack/efs.tf` で `lifecycle.prevent_destroy = true`（10 箇所）になっているため、そのままでは `terraform destroy` で削除できません。
+環境削除時は、事前に以下の書き換えを行ってから destroy を実行してください。
+
+- 対象: `modules/stack/efs.tf`
+- 変更: `prevent_destroy = true` → `prevent_destroy = false`（10 箇所すべて）
+
+注意: S3 バケット側に `force_destroy` が無いと、バケット内にオブジェクト（versioning 有効時は過去バージョン含む）が残っている限り `terraform destroy` が失敗します。
+環境削除時は、事前に以下 3 リソースへ **一時的に** `force_destroy = true` を追加してください（versioning が有効でも全バージョン削除まで行わせます）。
+
+- `modules/stack/alb_access_logs.tf` の `aws_s3_bucket.alb_access_logs`: `bucket = local.alb_access_logs_bucket_name` の直下に `force_destroy = true`
+- `modules/stack/service_control_metrics_stream.tf` の `aws_s3_bucket.service_control_metrics`: `bucket = local.service_control_metrics_bucket_name` の直下に `force_destroy = true`
+- `modules/stack/service_logs_firehose.tf` の `aws_s3_bucket.service_logs`: `bucket = local.service_logs_bucket_name_by_service[each.key]` の直下に `force_destroy = true`
+
+注意: RDS の削除保護（deletion protection）が有効だと、`terraform destroy` は更新せずに削除を試みて失敗することがあります。
+先に `deletion_protection = false` に更新するため、`module.stack.aws_db_instance.this[0]` だけ `-target` で apply してから destroy を実行してください。
+
+```bash
+# tfvars で rds_deletion_protection = false にしたうえで、RDS だけ先に更新する
+terraform apply \
+  -var-file=terraform.env.tfvars \
+  -var-file=terraform.itsm.tfvars \
+  -var-file=terraform.apps.tfvars \
+  -target=module.stack.aws_db_instance.this[0] \
+  --auto-approve
+```
+
+削除実行後は、誤削除防止のため `modules/stack/efs.tf` の `prevent_destroy` を `true` に戻してください（`git restore modules/stack/efs.tf` など）。
+同様に、S3 の `force_destroy` 追加も一時対応なので、削除完了後に元へ戻してください（例: `git restore modules/stack/alb_access_logs.tf modules/stack/service_control_metrics_stream.tf modules/stack/service_logs_firehose.tf`）。
+
 ```bash
 terraform destroy -var-file=terraform.env.tfvars -var-file=terraform.itsm.tfvars -var-file=terraform.apps.tfvars
 ```

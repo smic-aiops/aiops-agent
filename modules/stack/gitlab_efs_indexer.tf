@@ -3,7 +3,9 @@ locals {
     var.create_ecs
     && var.create_n8n
     && var.enable_gitlab_efs_indexer
-    && local.n8n_efs_id != null
+    # local.n8n_efs_id is often unknown during the first plan (fresh bootstrap).
+    # Use a plan-stable predicate instead.
+    && local.n8n_has_efs_effective
     && local.n8n_qdrant_enabled
   )
 

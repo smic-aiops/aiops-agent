@@ -3,7 +3,7 @@
 本ファイルは `../setup-guide.md` から **itsm 関連**の内容を抜き出して整理したものです。
 
 ## 関連プロンプト（変更管理対象）
-- `ai/prompts/itsm/itil4_usecase_enrichment.md`（ITIL4 ユースケース集の拡張）
+- `ai/prompts/itsm/itsm_usecase_enrichment.md`（ITSM ユースケース集の拡張）
 
 ## セットアップ（サマリ）
 1. tfvars を用意（`terraform.env.tfvars` / `terraform.itsm.tfvars` / `terraform.apps.tfvars`）。

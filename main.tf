@@ -19,6 +19,12 @@ terraform {
 
 locals {
   name_prefix_effective = coalesce(var.name_prefix, "${var.environment}-${var.platform}")
+  ecr_namespace_effective_raw = coalesce(
+    trimspace(var.ecr_namespace != null ? var.ecr_namespace : "") != "" ? trimspace(var.ecr_namespace) : null,
+    local.name_prefix_effective
+  )
+  # Normalize for ECR repository naming. Keep it simple/stable: lower + replace invalid chars with "-".
+  ecr_namespace_effective = trim(lower(replace(local.ecr_namespace_effective_raw, "/[^0-9A-Za-z._-]/", "-")), "-._")
   default_realm_effective = coalesce(
     var.default_realm != null && var.default_realm != "" ? var.default_realm : null,
     local.name_prefix_effective
@@ -68,6 +74,7 @@ module "stack" {
   platform                                             = var.platform
   region                                               = var.region
   hosted_zone_name                                     = var.hosted_zone_name
+  ecr_namespace                                        = local.ecr_namespace_effective
   vpc_cidr                                             = var.vpc_cidr
   public_subnets                                       = var.public_subnets
   private_subnets                                      = var.private_subnets
@@ -208,7 +215,6 @@ module "stack" {
   grafana_api_tokens_by_realm                          = var.grafana_api_tokens_by_realm
   grafana_athena_output_bucket_name                    = var.grafana_athena_output_bucket_name
   enable_gitlab_autostop                               = var.enable_gitlab_autostop
-  ecr_namespace                                        = var.ecr_namespace
   keycloak_base_url                                    = var.keycloak_base_url
   keycloak_admin_username                              = var.keycloak_admin_username
   keycloak_admin_password                              = var.keycloak_admin_password

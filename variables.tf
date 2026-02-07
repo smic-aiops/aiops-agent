@@ -300,9 +300,9 @@ variable "aws_profile" {
 }
 
 variable "ecr_namespace" {
-  description = "ECR repository namespace/prefix"
+  description = "ECR repository namespace/prefix (defaults to name_prefix when unset)"
   type        = string
-  default     = "aiops"
+  default     = null
 }
 
 variable "ecr_repo_alpine" {

@@ -4,7 +4,9 @@ locals {
     && var.create_n8n
     && var.create_gitlab
     && var.enable_gitlab_efs_mirror
-    && local.n8n_efs_id != null
+    # local.n8n_efs_id is often unknown during the first plan (fresh bootstrap).
+    # Use a plan-stable predicate instead.
+    && local.n8n_has_efs_effective
     && local.gitlab_admin_token_write_enabled
     && length(var.gitlab_efs_mirror_project_paths) > 0
   )

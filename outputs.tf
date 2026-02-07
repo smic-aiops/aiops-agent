@@ -132,7 +132,7 @@ output "single_realm_services" {
 
 output "ecr_namespace" {
   description = "ECR namespace/prefix"
-  value       = var.ecr_namespace
+  value       = local.ecr_namespace_effective
   sensitive   = true
 }
 
@@ -253,25 +253,25 @@ output "ecr_repo_xray_daemon" {
 output "ecr_repositories" {
   description = "ECR repositories (namespace/repo)"
   value = {
-    n8n         = "${var.ecr_namespace}/${var.ecr_repo_n8n}"
-    zulip       = "${var.ecr_namespace}/${var.ecr_repo_zulip}"
-    sulu        = "${var.ecr_namespace}/${var.ecr_repo_sulu}"
-    sulu_nginx  = "${var.ecr_namespace}/${var.ecr_repo_sulu_nginx}"
-    gitlab      = "${var.ecr_namespace}/${var.ecr_repo_gitlab}"
-    grafana     = "${var.ecr_namespace}/${var.ecr_repo_grafana}"
-    odoo        = "${var.ecr_namespace}/${var.ecr_repo_odoo}"
-    keycloak    = "${var.ecr_namespace}/${var.ecr_repo_keycloak}"
-    pgadmin     = "${var.ecr_namespace}/${var.ecr_repo_pgadmin}"
-    exastro_web = "${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_web_server}"
-    exastro_api = "${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_api_admin}"
-    alpine      = "${var.ecr_namespace}/${var.ecr_repo_alpine}"
-    redis       = "${var.ecr_namespace}/${var.ecr_repo_redis}"
-    memcached   = "${var.ecr_namespace}/${var.ecr_repo_memcached}"
-    rabbitmq    = "${var.ecr_namespace}/${var.ecr_repo_rabbitmq}"
-    mongo       = "${var.ecr_namespace}/${var.ecr_repo_mongo}"
-    python      = "${var.ecr_namespace}/${var.ecr_repo_python}"
-    qdrant      = "${var.ecr_namespace}/${var.ecr_repo_qdrant}"
-    xray_daemon = "${var.ecr_namespace}/${var.ecr_repo_xray_daemon}"
+    n8n         = "${local.ecr_namespace_effective}/${var.ecr_repo_n8n}"
+    zulip       = "${local.ecr_namespace_effective}/${var.ecr_repo_zulip}"
+    sulu        = "${local.ecr_namespace_effective}/${var.ecr_repo_sulu}"
+    sulu_nginx  = "${local.ecr_namespace_effective}/${var.ecr_repo_sulu_nginx}"
+    gitlab      = "${local.ecr_namespace_effective}/${var.ecr_repo_gitlab}"
+    grafana     = "${local.ecr_namespace_effective}/${var.ecr_repo_grafana}"
+    odoo        = "${local.ecr_namespace_effective}/${var.ecr_repo_odoo}"
+    keycloak    = "${local.ecr_namespace_effective}/${var.ecr_repo_keycloak}"
+    pgadmin     = "${local.ecr_namespace_effective}/${var.ecr_repo_pgadmin}"
+    exastro_web = "${local.ecr_namespace_effective}/${var.ecr_repo_exastro_it_automation_web_server}"
+    exastro_api = "${local.ecr_namespace_effective}/${var.ecr_repo_exastro_it_automation_api_admin}"
+    alpine      = "${local.ecr_namespace_effective}/${var.ecr_repo_alpine}"
+    redis       = "${local.ecr_namespace_effective}/${var.ecr_repo_redis}"
+    memcached   = "${local.ecr_namespace_effective}/${var.ecr_repo_memcached}"
+    rabbitmq    = "${local.ecr_namespace_effective}/${var.ecr_repo_rabbitmq}"
+    mongo       = "${local.ecr_namespace_effective}/${var.ecr_repo_mongo}"
+    python      = "${local.ecr_namespace_effective}/${var.ecr_repo_python}"
+    qdrant      = "${local.ecr_namespace_effective}/${var.ecr_repo_qdrant}"
+    xray_daemon = "${local.ecr_namespace_effective}/${var.ecr_repo_xray_daemon}"
   }
   sensitive = true
 }
@@ -279,25 +279,25 @@ output "ecr_repositories" {
 output "ecr_image_uris" {
   description = "ECR image URIs (latest tag) for pushing/pulling"
   value = {
-    n8n         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_n8n}:latest"
-    zulip       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_zulip}:latest"
-    sulu        = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu}:latest"
-    sulu_nginx  = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu_nginx}:latest"
-    gitlab      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab}:latest"
-    grafana     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_grafana}:latest"
-    odoo        = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_odoo}:latest"
-    keycloak    = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_keycloak}:latest"
-    pgadmin     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_pgadmin}:latest"
-    exastro_web = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_web_server}:latest"
-    exastro_api = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_api_admin}:latest"
-    alpine      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_alpine}:latest"
-    redis       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_redis}:latest"
-    memcached   = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_memcached}:latest"
-    rabbitmq    = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_rabbitmq}:latest"
-    mongo       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_mongo}:latest"
-    python      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_python}:latest"
-    qdrant      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_qdrant}:latest"
-    xray_daemon = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_xray_daemon}:latest"
+    n8n         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_n8n}:latest"
+    zulip       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_zulip}:latest"
+    sulu        = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_sulu}:latest"
+    sulu_nginx  = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_sulu_nginx}:latest"
+    gitlab      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_gitlab}:latest"
+    grafana     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_grafana}:latest"
+    odoo        = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_odoo}:latest"
+    keycloak    = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_keycloak}:latest"
+    pgadmin     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_pgadmin}:latest"
+    exastro_web = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_exastro_it_automation_web_server}:latest"
+    exastro_api = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_exastro_it_automation_api_admin}:latest"
+    alpine      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_alpine}:latest"
+    redis       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_redis}:latest"
+    memcached   = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_memcached}:latest"
+    rabbitmq    = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_rabbitmq}:latest"
+    mongo       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_mongo}:latest"
+    python      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_python}:latest"
+    qdrant      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_qdrant}:latest"
+    xray_daemon = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${local.ecr_namespace_effective}/${var.ecr_repo_xray_daemon}:latest"
   }
   sensitive = true
 }

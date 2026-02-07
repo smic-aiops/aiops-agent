@@ -7,6 +7,13 @@ ITSM x AI Ops x AI Agent を組み合わせた運用のアイデアと手順を�
 
 用語の読み替えは `docs/glossary.md` を参照してください。
 
+## 留意点（作成・検証モデル / Codex の制約）
+
+- 本リポジトリは **ChatGPT 5.2** で作成されています。
+- 本リポジトリの拡張を含む動作検証も **ChatGPT 5.2** で実施されています。
+- **ChatGPT 5.2** では自律的拡張（自律的に作業を進める振る舞い）が機能しますが、**ChatGPT 5.2 Codex** では自律拡張プロンプト類は想定動作になりません（作業確認のために中断が多いため）。このため **自律的機能拡張の実施には実質的に人手が必要**になります。
+- 自律拡張を行う場合は、まず ChatGPT に `ai/prompts/itsm/itsm_usecase_enrichment.md` の実行を指示し、ユースケース追加（`scripts/itsm/gitlab/templates/*/docs/usecases/` と各 `usecase_guide.md.tpl` の更新）まで実施します。その後 `apps/*/data/default/prompt/system.md` などの「実行指示（system prompt）」を与えることで、以降は原則としてモデルが自律的に拡張を進める前提です。
+
 ## 1. 目的と対象（スコープ）
 
 ### 1.1 目的
@@ -24,6 +31,18 @@ ITSM x AI Ops x AI Agent を組み合わせた運用のアイデアと手順を�
 ### 1.3 非対象（外部前提・外部依存）
 
 - AI モデルを稼働させるための API キー（OpenAI 互換 API Key 等）は本リポジトリでは提供しません（利用者側で用意）。
+
+## OpenAI API Key の購入（課金有効化）と発行
+
+OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform で課金（支払い方法/クレジット）を有効化したうえで発行する Secret Key** です。
+
+1. OpenAI Platform（`platform.openai.com`）へログインする（未作成ならアカウント作成）。
+2. Billing（課金）で支払い方法を設定する。
+   - ChatGPT（`chatgpt.com`）のサブスク課金と、API（`platform.openai.com`）の課金は別管理です。
+3. 必要に応じてクレジット購入（prepaid）または利用上限（budget）を設定する。
+4. API Keys から **Secret Key を発行**し、安全な場所に保管する（作成後に再表示できない前提で扱う）。
+
+本リポジトリでの設定方法（`terraform.apps.tfvars` の `OPENAI_MODEL_API_KEY` / SSM パラメータ運用など）は `docs/apps/README.md` を参照してください。
 
 ## 2. システム概要（System Description）
 

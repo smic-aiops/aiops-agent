@@ -597,7 +597,7 @@ variable "qdrant_image_tag" {
 variable "enable_gitlab_efs_mirror" {
   description = "Whether to enable GitLab project mirror into the n8n EFS (under /<n8n_filesystem_path>/qdrant/<realm>/gitlab/...)"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "gitlab_efs_mirror_interval_seconds" {
@@ -628,7 +628,7 @@ variable "gitlab_efs_mirror_project_paths" {
 variable "enable_gitlab_efs_indexer" {
   description = "Whether to enable periodic indexing of mirrored GitLab repositories into Qdrant (per realm) via ECS + Step Functions loop"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "gitlab_efs_indexer_interval_seconds" {

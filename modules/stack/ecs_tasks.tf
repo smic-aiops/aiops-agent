@@ -828,7 +828,7 @@ resource "aws_ecs_task_definition" "n8n" {
   task_role_arn            = aws_iam_role.ecs_task[0].arn
 
   dynamic "volume" {
-    for_each = local.n8n_efs_id != null ? [1] : []
+    for_each = local.n8n_has_efs_effective ? [1] : []
     content {
       name = "n8n-data"
       efs_volume_configuration {
@@ -844,7 +844,7 @@ resource "aws_ecs_task_definition" "n8n" {
   }
 
   container_definitions = jsonencode(concat(
-    local.n8n_efs_id != null ? [
+    local.n8n_has_efs_effective ? [
       merge(local.ecs_base_container, {
         name       = "n8n-fs-init"
         image      = local.alpine_image_3_19
@@ -955,7 +955,7 @@ resource "aws_ecs_task_definition" "n8n" {
         })
       })
     ],
-    (local.n8n_qdrant_enabled && local.n8n_efs_id != null) ? [
+    (local.n8n_qdrant_enabled && local.n8n_has_efs_effective) ? [
       for realm in local.n8n_realms : merge(local.ecs_base_container, {
         name  = "qdrant-${realm}"
         image = local.qdrant_image
@@ -976,7 +976,7 @@ resource "aws_ecs_task_definition" "n8n" {
           { name = "QDRANT__SERVICE__GRPC_PORT", value = tostring(local.qdrant_realm_grpc_ports[realm]) },
           { name = "QDRANT__STORAGE__STORAGE_PATH", value = local.qdrant_realm_paths[realm] }
         ]
-        mountPoints = local.n8n_efs_id != null ? [
+        mountPoints = local.n8n_has_efs_effective ? [
           {
             sourceVolume  = "n8n-data"
             containerPath = var.n8n_filesystem_path
@@ -1026,7 +1026,7 @@ resource "aws_ecs_task_definition" "n8n" {
             N8N_OBSERVER_URL = "https://${local.sulu_realm_hosts[realm]}/api/n8n/observer/events"
           } : {},
           local.n8n_gitlab_token_env_by_realm[realm],
-          (local.n8n_qdrant_enabled && local.n8n_efs_id != null) ? {
+          (local.n8n_qdrant_enabled && local.n8n_has_efs_effective) ? {
             QDRANT_URL      = "http://127.0.0.1:${local.qdrant_realm_http_ports[realm]}"
             QDRANT_GRPC_URL = "http://127.0.0.1:${local.qdrant_realm_grpc_ports[realm]}"
           } : {},
@@ -1080,7 +1080,7 @@ resource "aws_ecs_task_definition" "n8n" {
             exec "$${n8n_bin}" start
           EOT
       ]
-      mountPoints = local.n8n_efs_id != null ? [
+      mountPoints = local.n8n_has_efs_effective ? [
         {
           sourceVolume  = "n8n-data"
           containerPath = var.n8n_filesystem_path
@@ -1093,13 +1093,13 @@ resource "aws_ecs_task_definition" "n8n" {
         })
       })
       dependsOn = concat(
-        local.n8n_efs_id != null ? [
+        local.n8n_has_efs_effective ? [
           {
             containerName = "n8n-fs-init"
             condition     = "COMPLETE"
           }
         ] : [],
-        (local.n8n_qdrant_enabled && local.n8n_efs_id != null) ? [
+        (local.n8n_qdrant_enabled && local.n8n_has_efs_effective) ? [
           {
             containerName = "qdrant-${realm}"
             condition     = "START"

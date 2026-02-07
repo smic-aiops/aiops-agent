@@ -105,8 +105,10 @@ locals {
     for realm, host in local.n8n_realm_hosts :
     realm => "https://${host}/webhook"
   }
-  alb_dns_name_effective = try(aws_lb.app[0].dns_name, null)
-  aiops_adapter_base_url_value_by_realm = local.alb_dns_name_effective != null ? {
+  # NOTE: Keep for_each keys stable at plan time (fresh bootstrap) by avoiding
+  # an unknown-dependent conditional map. Values may remain unknown until apply.
+  alb_dns_name_effective = try(aws_lb.app[0].dns_name, "")
+  aiops_adapter_base_url_value_by_realm = var.create_ecs && var.create_n8n ? {
     for realm, port in local.n8n_realm_ports :
     realm => "http://${local.alb_dns_name_effective}:${port}/webhook"
   } : {}

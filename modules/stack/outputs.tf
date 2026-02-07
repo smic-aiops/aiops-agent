@@ -171,7 +171,7 @@ output "service_urls" {
   description = "Endpoints for user-facing services"
   value = {
     n8n         = var.create_ecs && var.create_n8n && local.n8n_primary_host != null ? "https://${local.n8n_primary_host}" : null
-    qdrant      = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_efs_id != null && local.qdrant_primary_host != null ? "https://${local.qdrant_primary_host}" : null
+    qdrant      = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_has_efs_effective && local.qdrant_primary_host != null ? "https://${local.qdrant_primary_host}" : null
     zulip       = var.create_ecs && var.create_zulip ? "https://${local.zulip_host}" : null
     exastro     = local.exastro_service_enabled ? "https://${local.exastro_web_host}" : null
     pgadmin     = var.create_ecs && var.create_pgadmin ? "https://${local.pgadmin_host}" : null
@@ -287,7 +287,7 @@ output "n8n_realm_urls" {
 
 output "qdrant_realm_urls" {
   description = "Qdrant URLs per realm (https://<realm>.qdrant.<domain>)"
-  value = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_efs_id != null ? {
+  value = var.create_ecs && var.create_n8n && var.enable_n8n_qdrant && local.n8n_has_efs_effective ? {
     for realm, host in local.qdrant_realm_hosts : realm => "https://${host}"
   } : {}
   sensitive = true
