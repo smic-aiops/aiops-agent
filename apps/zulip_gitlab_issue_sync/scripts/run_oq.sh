@@ -158,7 +158,38 @@ if [[ -z "${ZULIP_BASE_URL}" ]]; then
   ZULIP_BASE_URL="$(terraform_output_json service_urls | jq -r '.zulip // empty')"
 fi
 
-N8N_API_KEY="$(terraform_output n8n_api_key)"
+resolve_n8n_api_key_for_realm() {
+  local realm="$1"
+  local realm_key=""
+  if [[ -n "${realm}" ]]; then
+    realm_key="$(tr '[:lower:]-' '[:upper:]_' <<<"${realm}")"
+  fi
+
+  local v=""
+  if [[ -n "${realm_key}" ]]; then
+    v="$(printenv "N8N_API_KEY_${realm_key}" 2>/dev/null || true)"
+  fi
+  if [[ -z "${v}" ]]; then
+    v="${N8N_API_KEY:-}"
+  fi
+
+  if [[ -z "${v}" ]]; then
+    v="$(
+      terraform_output_json n8n_api_keys_by_realm 2>/dev/null \
+        | jq -r --arg realm "${realm}" '.[$realm] // empty' 2>/dev/null \
+        || true
+    )"
+  fi
+
+  if [[ -z "${v}" ]]; then
+    # Fallback for legacy setups (may not authorize Public API).
+    v="$(terraform_output_optional n8n_api_key)"
+  fi
+
+  printf '%s' "${v}"
+}
+
+N8N_API_KEY="$(resolve_n8n_api_key_for_realm "${REALM}")"
 export N8N_BASE_URL N8N_API_KEY
 
 zulip_api_base_url() {

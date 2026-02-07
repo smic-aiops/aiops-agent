@@ -196,6 +196,7 @@ fi
 
 failures=0
 failed_apps=()
+deployed_ok_apps=()
 
 run_app_deploy() {
   local app="$1"
@@ -210,27 +211,43 @@ run_app_deploy() {
   if ! "${deploy_script}"; then
     echo "!! ${app}: deploy failed" >&2
     failures=$((failures + 1))
-    failed_apps+=("${app}")
+    failed_apps+=("${app} (deploy)")
     return 1
   fi
 
-  if is_truthy "${WITH_TESTS}"; then
-    local oq="${REPO_ROOT}/apps/${app}/scripts/run_oq.sh"
-    if [[ -x "${oq}" ]]; then
-      echo "==> ${app}: OQ"
-      if ! "${oq}"; then
-        echo "!! ${app}: OQ failed" >&2
-        failures=$((failures + 1))
-        failed_apps+=("${app} (oq)")
-        return 1
-      fi
-    fi
+  deployed_ok_apps+=("${app}")
+}
+
+run_app_oq() {
+  local app="$1"
+  local oq="${REPO_ROOT}/apps/${app}/scripts/run_oq.sh"
+  if [[ ! -x "${oq}" ]]; then
+    return 0
+  fi
+
+  if is_truthy "${ACTIVATE}" && ! is_truthy "${DRY_RUN}"; then
+    # Give n8n a moment to register webhooks after activation before running OQ.
+    sleep "${N8N_POST_DEPLOY_SLEEP_SEC:-5}"
+  fi
+
+  echo "==> ${app}: OQ"
+  if ! "${oq}"; then
+    echo "!! ${app}: OQ failed" >&2
+    failures=$((failures + 1))
+    failed_apps+=("${app} (oq)")
+    return 1
   fi
 }
 
 for app in "${FINAL_APPS[@]}"; do
   run_app_deploy "${app}" || true
 done
+
+if is_truthy "${WITH_TESTS}"; then
+  for app in "${deployed_ok_apps[@]}"; do
+    run_app_oq "${app}" || true
+  done
+fi
 
 if [[ "${failures}" -gt 0 ]]; then
   echo "Some deployments failed:" >&2

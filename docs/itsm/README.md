@@ -5,6 +5,9 @@
 ## 関連プロンプト（変更管理対象）
 - `ai/prompts/itsm/itsm_usecase_enrichment.md`（ITSM ユースケース集の拡張）
 
+## 比較資料
+- `docs/itsm/features_comparison.md`（市販ITSM との機能対照表・未提供時の実装案）
+
 ## セットアップ（サマリ）
 1. tfvars を用意（`terraform.env.tfvars` / `terraform.itsm.tfvars` / `terraform.apps.tfvars`）。
 2. （必要に応じて）コンテナイメージを pull/build して ECR へ push。
@@ -91,13 +94,11 @@ keycloak_desired_count = 1
 n8n_desired_count      = 1
 zulip_desired_count    = 1
 gitlab_desired_count   = 1
+sulu_desired_count   = 1
 
-locked_schedule_services = ["keycloak", "n8n", "zulip", "gitlab"]
+locked_schedule_services = []
 service_control_schedule_overrides = {
-  keycloak = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }
-  n8n      = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }
-  zulip    = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }
-  gitlab   = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }
+  sulu   = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }
 }
 
 default_realm = "tenant-a"

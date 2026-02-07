@@ -326,6 +326,14 @@ print(json.dumps([{"base_url": sys.argv[1]}]))
 PY
 }
 
+json_string() {
+  local value="$1"
+  python3 - <<'PY' "${value}"
+import json, sys
+print(json.dumps(sys.argv[1]))
+PY
+}
+
 find_existing_bot_info() {
   local bots_resp="$1"
   local expected_email="$2"
@@ -712,6 +720,7 @@ for realm in "${realms[@]}"; do
     exit 1
   fi
   services_json="$(services_json_for_base_url "${payload_url}")"
+  payload_url_json="$(json_string "${payload_url}")"
 
   short_name="$(short_name_for_realm "${realm}")"
   short_name="$(printf '%s' "${short_name}" | cut -c1-30)"
@@ -787,6 +796,7 @@ for realm in "${realms[@]}"; do
     log "realm ${realm}: updating services.base_url for existing outgoing webhook bot (bot_id=${existing_bot_id}, short_name=${short_name})"
     resp="$(curl -sS -u "${ZULIP_ADMIN_EMAIL}:${realm_admin_key}" -X PATCH "${api_base}/bots/${existing_bot_id}" \
       --data-urlencode "services=${services_json}" \
+      --data-urlencode "service_payload_url=${payload_url_json}" \
       --data-urlencode "full_name=${full_name}")"
     result="$(printf '%s\n' "${resp}" | jq -r '.result // empty' 2>/dev/null || echo "")"
     if [ "${result}" != "success" ]; then
@@ -807,6 +817,7 @@ for realm in "${realms[@]}"; do
           --data-urlencode "full_name=${fn}" \
           --data-urlencode "short_name=${sn}" \
           --data-urlencode "services=${services_json}" \
+          --data-urlencode "service_payload_url=${payload_url_json}" \
           -d "bot_type=3" \
           -d "interface_type=1" \
           "${api_base}/bots"
@@ -824,6 +835,7 @@ for realm in "${realms[@]}"; do
             --data-urlencode "full_name=${fn}" \
             --data-urlencode "short_name=${sn}" \
             --data-urlencode "services=${services_json}" \
+            --data-urlencode "service_payload_url=${payload_url_json}" \
             -d "bot_type=3" \
             -d "interface_type=1" \
             "${api_base}/bots"

@@ -214,6 +214,79 @@ TARGET_REALMS=()
 API_BODY=""
 API_STATUS=""
 
+sha256_hex() {
+  local input="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    printf '%s' "${input}" | sha256sum | awk '{print $1}'
+    return 0
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "${input}" | shasum -a 256 | awk '{print $1}'
+    return 0
+  fi
+  if command -v openssl >/dev/null 2>&1; then
+    printf '%s' "${input}" | openssl dgst -sha256 | awk '{print $NF}'
+    return 0
+  fi
+  echo "sha256_hex requires sha256sum, shasum, or openssl" >&2
+  exit 1
+}
+
+compute_webhook_id() {
+  local wf_name="$1"
+  local node_id="$2"
+  local http_method="$3"
+  local path="$4"
+  sha256_hex "${wf_name}:${node_id}:${http_method}:${path}" | cut -c1-32
+}
+
+ensure_webhook_ids() {
+  local wf_name="$1"
+  local input_json="$2"
+
+  local fixes
+  fixes="$(
+    jq -r '
+      (.nodes // [])
+      | map(select(.type == "n8n-nodes-base.webhook"))
+      | map(select((.webhookId // null) == null or (.webhookId|tostring) == "" or (.webhookId|tostring) == "null"))
+      | map([.id, (.parameters.httpMethod // ""), (.parameters.path // "")] | @tsv)
+      | .[]
+    ' <<<"${input_json}" 2>/dev/null || true
+  )"
+
+  if [[ -z "${fixes}" ]]; then
+    printf '%s' "${input_json}"
+    return 0
+  fi
+
+  local out="${input_json}"
+  local line node_id http_method path webhook_id
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    node_id="$(cut -f1 <<<"${line}")"
+    http_method="$(cut -f2 <<<"${line}")"
+    path="$(cut -f3 <<<"${line}")"
+    webhook_id="$(compute_webhook_id "${wf_name}" "${node_id}" "${http_method}" "${path}")"
+    out="$(
+      jq -c --arg node_id "${node_id}" --arg wid "${webhook_id}" '
+        .nodes = (
+          (.nodes // [])
+          | map(
+              if .type == "n8n-nodes-base.webhook" and (.id|tostring) == $node_id then
+                .webhookId = $wid
+              else
+                .
+              end
+            )
+        )
+      ' <<<"${out}"
+    )"
+  done <<<"${fixes}"
+
+  printf '%s' "${out}"
+}
+
 api_call() {
   local method="$1"
   local path="$2"
@@ -335,6 +408,7 @@ for realm in "${TARGET_REALMS[@]}"; do
     wf_count="$(jq -r 'length' <<<"${wf_matches}")"
     if [ "${wf_count}" = "0" ]; then
       payload="$(jq -c '.' "${file}")"
+      payload="$(ensure_webhook_ids "${wf_name}" "${payload}")"
       api_call "POST" "/workflows" "${payload}"
       expect_2xx "POST /workflows (${wf_name})"
       wf_id="$(jq -r '.id // empty' <<<"${API_BODY}")"
@@ -349,6 +423,7 @@ for realm in "${TARGET_REALMS[@]}"; do
       existing="${API_BODY}"
       desired="$(jq -c '.' "${file}")"
       merged="$(merge_payload "${desired}" "${existing}")"
+      merged="$(ensure_webhook_ids "${wf_name}" "${merged}")"
       api_call "PUT" "/workflows/${wf_id}" "${merged}"
       expect_2xx "PUT /workflows/${wf_id} (${wf_name})"
       echo "[n8n] updated: ${wf_name} -> ${wf_id}"
@@ -377,11 +452,27 @@ for realm in "${TARGET_REALMS[@]}"; do
 
   test_url="${N8N_PUBLIC_API_BASE_URL%/}/webhook/${TEST_WEBHOOK_PATH#//}"
   resp_file="$(mktemp)"
-  status="$(curl -sS -o "${resp_file}" -w "%{http_code}" \
-    ${N8N_CURL_INSECURE:+-k} \
-    -H "Content-Type: application/json" \
-    --data "${TEST_PAYLOAD}" \
-    "${test_url}")"
+  attempt=1
+  max_attempts="${N8N_WEBHOOK_TEST_RETRY_COUNT:-10}"
+  sleep_seconds="${N8N_WEBHOOK_TEST_RETRY_SLEEP_SEC:-2}"
+  while true; do
+    status="$(curl -sS -o "${resp_file}" -w "%{http_code}" \
+      ${N8N_CURL_INSECURE:+-k} \
+      -H "Content-Type: application/json" \
+      --data "${TEST_PAYLOAD}" \
+      "${test_url}")"
+
+    if [[ "${status}" == 2* ]]; then
+      break
+    fi
+    if [[ ("${status}" == "404" || "${status}" == "502" || "${status}" == "503" || "${status}" == "504") && "${attempt}" -lt "${max_attempts}" ]]; then
+      echo "[n8n] test webhook retry ${attempt}/${max_attempts} (HTTP ${status})" >&2
+      sleep "${sleep_seconds}"
+      attempt=$((attempt + 1))
+      continue
+    fi
+    break
+  done
 
   echo "[n8n] test webhook: ${test_url} (HTTP ${status})"
   cat "${resp_file}"

@@ -20,8 +20,8 @@ Options:
 
 Resolution order:
   - realms: terraform output N8N_AGENT_REALMS (or --realms)
-  - zulip base url: env N8N_ZULIP_API_BASE_URL or terraform output N8N_ZULIP_API_BASE_URL (fallback: terraform output zulip_api_mess_base_urls_yaml)
-  - expected bot email: env N8N_ZULIP_BOT_EMAIL or terraform output N8N_ZULIP_BOT_EMAIL
+  - zulip base url: env N8N_ZULIP_API_BASE_URLS_YAML (or legacy N8N_ZULIP_API_BASE_URL) or terraform output N8N_ZULIP_API_BASE_URLS_YAML (fallback: terraform output zulip_api_mess_base_urls_yaml)
+  - expected bot email: env N8N_ZULIP_BOT_EMAILS_YAML (or legacy N8N_ZULIP_BOT_EMAIL) or terraform output N8N_ZULIP_BOT_EMAILS_YAML (fallback: terraform output zulip_mess_bot_emails_yaml)
   - admin credentials: terraform output zulip_admin_email_input + zulip_admin_api_keys_yaml
 USAGE
 }
@@ -112,11 +112,14 @@ resolve_admin_key_for_realm() {
 
 resolve_zulip_url_for_realm() {
   local realm="$1"
-  local yaml="${N8N_ZULIP_API_BASE_URL:-}"
+  local yaml="${N8N_ZULIP_API_BASE_URLS_YAML:-${N8N_ZULIP_API_BASE_URL:-}}"
   if [[ -z "$yaml" ]]; then
-    yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+    yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URLS_YAML)"
+    if [[ -z "$yaml" || "$yaml" == "null" ]]; then
+      yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+    fi
   fi
-  if [[ -z "$yaml" ]]; then
+  if [[ -z "$yaml" || "$yaml" == "null" ]]; then
     yaml="$(tf_output_raw zulip_api_mess_base_urls_yaml)"
   fi
   parse_simple_yaml_get "$yaml" "$realm"
@@ -124,11 +127,27 @@ resolve_zulip_url_for_realm() {
 
 resolve_expected_bot_email_for_realm() {
   local realm="$1"
-  local yaml="${N8N_ZULIP_BOT_EMAIL:-}"
+  local yaml="${N8N_ZULIP_BOT_EMAILS_YAML:-${N8N_ZULIP_BOT_EMAIL:-}}"
   if [[ -z "$yaml" ]]; then
-    yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
+    yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAILS_YAML)"
+    if [[ -z "$yaml" || "$yaml" == "null" ]]; then
+      yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
+    fi
   fi
-  parse_simple_yaml_get "$yaml" "$realm"
+  if [[ -z "$yaml" || "$yaml" == "null" ]]; then
+    yaml="$(tf_output_raw zulip_mess_bot_emails_yaml)"
+  fi
+  local email
+  email="$(parse_simple_yaml_get "$yaml" "$realm")"
+  if [[ -n "$email" ]]; then
+    printf '%s' "$email"
+    return
+  fi
+  if [[ -n "$yaml" && "$yaml" != "null" && "$yaml" != *":"* && "$yaml" != *$'\n'* ]]; then
+    printf '%s' "$yaml"
+    return
+  fi
+  printf '%s' ""
 }
 
 verify_realm() {

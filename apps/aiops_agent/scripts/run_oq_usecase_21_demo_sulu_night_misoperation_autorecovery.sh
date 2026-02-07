@@ -66,6 +66,10 @@ tf_output_raw() {
 }
 
 tf_output_json() {
+  if [[ $# -gt 0 ]]; then
+    terraform -chdir="${REPO_ROOT}" output -json "$1" 2>/dev/null || echo 'null'
+    return
+  fi
   terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null || echo 'null'
 }
 

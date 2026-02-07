@@ -176,6 +176,29 @@ gitlab_create_group_access_token() {
   echo "${token}"
 }
 
+emit_realm_token_stdout() {
+  local realm="$1"
+  local token_value="$2"
+
+  # Default: redact secrets on stdout to avoid leaking credentials in logs.
+  # Set GITLAB_REALM_TOKEN_STDOUT_MODE=plain to print the real token values (NOT recommended).
+  # Set GITLAB_REALM_TOKEN_STDOUT_MODE=none to suppress stdout lines entirely.
+  local mode="${GITLAB_REALM_TOKEN_STDOUT_MODE:-redacted}"
+  case "${mode}" in
+    plain)
+      echo "${realm}=${token_value}"
+      ;;
+    redacted)
+      echo "${realm}=***REDACTED***"
+      ;;
+    none)
+      ;;
+    *)
+      echo "${realm}=***REDACTED***"
+      ;;
+  esac
+}
+
 update_tfvars_yaml_map() {
   local tfvars_path="$1"
   local var_name="$2"
@@ -446,7 +469,7 @@ for realm in "${realms[@]}"; do
   fi
   if is_truthy "${DRY_RUN:-false}"; then
     token_value="DRY_RUN_TOKEN_${realm}"
-    echo "${realm}=${token_value}"
+    emit_realm_token_stdout "${realm}" "${token_value}"
   else
     token_value="$(gitlab_create_group_access_token \
       "${group_id}" \
@@ -454,7 +477,7 @@ for realm in "${realms[@]}"; do
       "${GITLAB_REALM_TOKEN_SCOPES}" \
       "${GITLAB_REALM_TOKEN_EXPIRES_AT}" \
       "${GITLAB_REALM_TOKEN_ACCESS_LEVEL}")"
-    echo "${realm}=${token_value}"
+    emit_realm_token_stdout "${realm}" "${token_value}"
   fi
   realm_token_entries+="${realm}=${token_value}"$'\n'
 

@@ -161,25 +161,26 @@ main() {
     N8N_URL_ARGS=(--n8n-url "${N8N_URL}")
   fi
 
+  # 0) Usecase 05 (trace_id propagation across workflows)
+  # Run first to avoid job-queue backlog from other scenarios.
+  run_step "oq-usecase-05" \
+    bash apps/aiops_agent/scripts/run_oq_usecase_05_trace_id_propagation.sh --execute --realm "${REALM}" ${N8N_URL_ARGS[@]+"${N8N_URL_ARGS[@]}"} --evidence-dir "${EVIDENCE_DIR}/oq_05"
+
   # 1) OQ runner (bulk ingest/pattern cases)
   run_step "oq-runner" \
     bash apps/aiops_agent/scripts/run_oq_runner.sh --execute --realm "${REALM}" ${N8N_URL_ARGS[@]+"${N8N_URL_ARGS[@]}"} --evidence-dir "${EVIDENCE_DIR}/oq_runner"
 
-  # 1b) Usecase 10 (Zulip primary hello)
+  # 2) Usecase 10 (Zulip primary hello)
   run_step "oq-usecase-10" \
     bash apps/aiops_agent/scripts/run_oq_zulip_primary_hello.sh --execute --realm "${REALM}" --evidence-dir "${EVIDENCE_DIR}/oq_10"
 
-  # 1c) Usecase 13 (Zulip conversation continuity)
+  # 3) Usecase 13 (Zulip conversation continuity)
   run_step "oq-usecase-13" \
     bash apps/aiops_agent/scripts/run_oq_zulip_conversation_continuity.sh --execute --realm "${REALM}" --evidence-dir "${EVIDENCE_DIR}/oq_13"
 
-  # 2) Usecase 02/03/11/12 (monitoring/feedback/intent/topic-context)
+  # 4) Usecase 02/03/11/12 (monitoring/feedback/intent/topic-context)
   run_step "oq-usecases-02-03-11-12" \
     bash apps/aiops_agent/scripts/run_oq_usecases_02_03_11_12.sh --execute --realm "${REALM}" ${N8N_URL_ARGS[@]+"${N8N_URL_ARGS[@]}"} --evidence-dir "${EVIDENCE_DIR}/oq_02_03_11_12"
-
-  # 3) Usecase 05 (trace_id propagation across workflows)
-  run_step "oq-usecase-05" \
-    bash apps/aiops_agent/scripts/run_oq_usecase_05_trace_id_propagation.sh --execute --realm "${REALM}" ${N8N_URL_ARGS[@]+"${N8N_URL_ARGS[@]}"} --evidence-dir "${EVIDENCE_DIR}/oq_05"
 
   # 4) Usecase 08 (policy_context guardrails)
   run_step "oq-usecase-08" \

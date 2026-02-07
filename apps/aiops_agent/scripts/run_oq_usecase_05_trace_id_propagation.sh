@@ -93,6 +93,10 @@ tf_output_raw() {
 }
 
 tf_output_json() {
+  if [[ $# -gt 0 ]]; then
+    terraform -chdir="${REPO_ROOT}" output -json "$1" 2>/dev/null || echo 'null'
+    return
+  fi
   terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null || echo 'null'
 }
 
@@ -454,7 +458,11 @@ main() {
     summary_args+=("${wf_name}_workflow_id=${wf_id}")
 
     log "wait for execution containing trace_id: ${wf_name}"
-    exec_id="$(wait_for_execution_id_by_trace_id_since "${wf_id}" "${started_epoch}" "${trace_id}" 40 2 || true)"
+    if [[ "${wf_name}" == "aiops-adapter-callback" ]]; then
+      exec_id="$(wait_for_execution_id_by_trace_id_since "${wf_id}" "${started_epoch}" "${trace_id}" 120 2 || true)"
+    else
+      exec_id="$(wait_for_execution_id_by_trace_id_since "${wf_id}" "${started_epoch}" "${trace_id}" 40 2 || true)"
+    fi
     if [[ -z "${exec_id}" ]]; then
       warn "execution not found by trace_id: ${wf_name}"
       ok=0

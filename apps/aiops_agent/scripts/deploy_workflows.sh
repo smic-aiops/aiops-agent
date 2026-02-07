@@ -93,11 +93,11 @@ DRY_RUN="${N8N_DRY_RUN:-false}"
 VALIDATE_LLM_SCHEMAS="${N8N_VALIDATE_LLM_SCHEMAS:-true}"
 
 if is_truthy "${VALIDATE_LLM_SCHEMAS}"; then
-  schema_args=()
   if is_truthy "${DRY_RUN}"; then
-    schema_args+=("--dry-run")
+    bash "${REPO_ROOT}/apps/aiops_agent/scripts/validate_llm_schemas.sh" --dry-run
+  else
+    bash "${REPO_ROOT}/apps/aiops_agent/scripts/validate_llm_schemas.sh"
   fi
-  bash "${REPO_ROOT}/apps/aiops_agent/scripts/validate_llm_schemas.sh" "${schema_args[@]}"
 fi
 
 urlencode() {
@@ -1343,6 +1343,7 @@ resolve_db_from_tf() {
   fi
 
   if [[ -n "${DB_PASSWORD_COMMAND}" && -z "${DB_PASSWORD}" ]]; then
+    resolve_aws_profile_from_tf
     DB_PASSWORD="$(bash -c "${DB_PASSWORD_COMMAND}")"
     DB_PASSWORD="${DB_PASSWORD//$'\n'/}"
   fi

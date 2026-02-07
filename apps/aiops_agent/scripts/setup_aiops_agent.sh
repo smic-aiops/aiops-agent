@@ -284,33 +284,44 @@ check_zulip_bot_setup() {
     return
   fi
   local base_urls_yaml emails_yaml tokens_yaml base_url email token
-  base_urls_yaml="$(terraform_output_raw N8N_ZULIP_API_BASE_URL)"
-  emails_yaml="$(terraform_output_raw N8N_ZULIP_BOT_EMAIL)"
+  base_urls_yaml="$(terraform_output_raw N8N_ZULIP_API_BASE_URLS_YAML)"
+  if [[ -z "${base_urls_yaml}" || "${base_urls_yaml}" == "null" ]]; then
+    base_urls_yaml="$(terraform_output_raw N8N_ZULIP_API_BASE_URL)"
+  fi
+
+  emails_yaml="$(terraform_output_raw N8N_ZULIP_BOT_EMAILS_YAML)"
+  if [[ -z "${emails_yaml}" || "${emails_yaml}" == "null" ]]; then
+    emails_yaml="$(terraform_output_raw N8N_ZULIP_BOT_EMAIL)"
+  fi
   if [[ -z "${emails_yaml}" || "${emails_yaml}" == "null" ]]; then
     emails_yaml="$(terraform_output_raw zulip_mess_bot_emails_yaml)"
   fi
-  tokens_yaml="$(terraform_output_raw N8N_ZULIP_BOT_TOKEN)"
+
+  tokens_yaml="$(terraform_output_raw N8N_ZULIP_BOT_TOKENS_YAML)"
+  if [[ -z "${tokens_yaml}" || "${tokens_yaml}" == "null" ]]; then
+    tokens_yaml="$(terraform_output_raw N8N_ZULIP_BOT_TOKEN)"
+  fi
   if [[ -z "${tokens_yaml}" || "${tokens_yaml}" == "null" ]]; then
     tokens_yaml="$(terraform_output_raw zulip_mess_bot_tokens_yaml)"
   fi
 
   base_url="$(mapping_get "${base_urls_yaml}" "${tenant}")"
   if [[ -z "${base_url}" ]]; then
-    log "AIOps Zulip base URL missing for tenant=${tenant} (terraform output N8N_ZULIP_API_BASE_URL)"
+    log "AIOps Zulip base URL missing for tenant=${tenant} (terraform output N8N_ZULIP_API_BASE_URLS_YAML/N8N_ZULIP_API_BASE_URL)"
   else
     log "AIOps Zulip base URL found for tenant=${tenant}: ${base_url}"
   fi
 
   email="$(mapping_get "${emails_yaml}" "${tenant}")"
   if [[ -z "${email}" ]]; then
-    log "AIOps Zulip bot email missing for tenant=${tenant} (terraform output N8N_ZULIP_BOT_EMAIL/zulip_mess_bot_emails_yaml)"
+    log "AIOps Zulip bot email missing for tenant=${tenant} (terraform output N8N_ZULIP_BOT_EMAILS_YAML/N8N_ZULIP_BOT_EMAIL/zulip_mess_bot_emails_yaml)"
   else
     log "AIOps Zulip bot email found for tenant=${tenant}: ${email}"
   fi
 
   token="$(mapping_get "${tokens_yaml}" "${tenant}")"
   if [[ -z "${token}" ]]; then
-    log "AIOps Zulip bot token missing for tenant=${tenant} (terraform output N8N_ZULIP_BOT_TOKEN/zulip_mess_bot_tokens_yaml)"
+    log "AIOps Zulip bot token missing for tenant=${tenant} (terraform output N8N_ZULIP_BOT_TOKENS_YAML/N8N_ZULIP_BOT_TOKEN/zulip_mess_bot_tokens_yaml)"
   else
     log "AIOps Zulip bot token found for tenant=${tenant}"
   fi

@@ -61,7 +61,9 @@ resolve_cloudwatch_webhook_secret() {
     return 0
   fi
 
-  terraform_output_json aiops_cloudwatch_webhook_secret_by_realm | python3 -c 'import json,sys; realm=sys.argv[1];\ntry:\n  data=json.load(sys.stdin) or {}\nexcept Exception:\n  data={}\nif isinstance(data, dict):\n  print(data.get(realm) or data.get(\"default\") or \"\")\nelse:\n  print(\"\")' "${REALM}"
+  terraform_output_json aiops_cloudwatch_webhook_secret_by_realm \
+    | jq -r --arg realm "${REALM}" '.[$realm] // .default // empty' 2>/dev/null \
+    || true
 }
 
 if [[ -z "${REALM}" ]]; then

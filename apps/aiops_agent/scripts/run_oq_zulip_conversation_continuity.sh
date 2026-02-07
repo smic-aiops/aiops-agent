@@ -113,14 +113,20 @@ resolve_zulip_url_for_realm() {
   local yaml=""
 
   if [[ "${USE_TERRAFORM_OUTPUT}" == "1" ]]; then
-    yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+    yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URLS_YAML)"
+    if [[ -z "${yaml}" || "${yaml}" == "null" ]]; then
+      yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+    fi
     [[ -n "${yaml}" ]] && url="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     if [[ -z "${url}" ]]; then
       yaml="$(tf_output_raw zulip_api_mess_base_urls_yaml)"
       [[ -n "${yaml}" ]] && url="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     fi
+    if [[ -z "${url}" ]]; then
+      url="$(tf_output_json | jq -r '.service_urls.value.zulip // empty' 2>/dev/null || true)"
+    fi
   else
-    yaml="${N8N_ZULIP_API_BASE_URL:-}"
+    yaml="${N8N_ZULIP_API_BASE_URLS_YAML:-${N8N_ZULIP_API_BASE_URL:-}}"
     [[ -n "${yaml}" ]] && url="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     if [[ -z "${url}" ]]; then
       yaml="${ZULIP_API_MESS_BASE_URL:-}"
@@ -161,14 +167,30 @@ resolve_bot_email_for_realm() {
   local realm="$1"
   local email=""
   local yaml=""
-  yaml="${N8N_ZULIP_BOT_EMAIL:-}"
+  yaml="${N8N_ZULIP_BOT_EMAILS_YAML:-}"
+  if [[ -z "${yaml}" ]]; then
+    yaml="${N8N_ZULIP_BOT_EMAIL:-}"
+  fi
   if [[ -z "${yaml}" && "${USE_TERRAFORM_OUTPUT}" == "1" ]]; then
-    yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
+    yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAILS_YAML)"
+    if [[ -z "${yaml}" || "${yaml}" == "null" ]]; then
+      yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
+    fi
   fi
-  if [[ -n "${yaml}" ]]; then
+
+  if [[ -n "${yaml}" && "${yaml}" != "null" ]]; then
     email="$(parse_simple_yaml_get "${yaml}" "${realm}")"
+    if [[ -n "${email}" ]]; then
+      printf '%s' "${email}"
+      return
+    fi
+    if [[ "${yaml}" != *":"* && "${yaml}" != *$'\n'* ]]; then
+      printf '%s' "${yaml}"
+      return
+    fi
   fi
-  printf '%s' "${email}"
+
+  printf '%s' ""
 }
 
 random_hex() {

@@ -53,6 +53,58 @@ require_cmd() {
   done
 }
 
+tf_output_raw_optional() {
+  terraform -chdir="${REPO_ROOT}" output -raw "$1" 2>/dev/null || true
+}
+
+parse_simple_yaml_get() {
+  local yaml_text="$1"
+  local key="$2"
+  python3 - <<'PY' "$yaml_text" "$key"
+import sys
+raw = sys.argv[1]
+key = sys.argv[2]
+for line in raw.splitlines():
+    s = line.strip()
+    if not s or s.startswith("#") or ":" not in s:
+        continue
+    k, v = s.split(":", 1)
+    if k.strip() == key:
+        print(v.strip().strip("'\""))
+        sys.exit(0)
+print("")
+PY
+}
+
+resolve_zulip_outgoing_token_for_realm() {
+  local realm="$1"
+
+  if [[ -n "${N8N_ZULIP_OUTGOING_TOKEN:-}" ]]; then
+    printf '%s' "${N8N_ZULIP_OUTGOING_TOKEN}"
+    return 0
+  fi
+
+  local yaml="${N8N_ZULIP_OUTGOING_TOKENS_YAML:-}"
+  if [[ -z "${yaml}" && "${USE_TERRAFORM_OUTPUT}" == "1" ]]; then
+    yaml="$(tf_output_raw_optional zulip_outgoing_tokens_yaml)"
+  fi
+  if [[ -z "${yaml}" && "${USE_TERRAFORM_OUTPUT}" == "1" ]]; then
+    yaml="$(tf_output_raw_optional N8N_ZULIP_OUTGOING_TOKENS_YAML)"
+  fi
+
+  if [[ -z "${yaml}" || "${yaml}" == "null" ]]; then
+    printf ''
+    return 0
+  fi
+
+  local v
+  v="$(parse_simple_yaml_get "${yaml}" "${realm}")"
+  if [[ -z "${v}" ]]; then
+    v="$(parse_simple_yaml_get "${yaml}" "default")"
+  fi
+  printf '%s' "${v}"
+}
+
 resolve_n8n_base_url() {
   if [[ -n "${N8N_URL:-}" ]]; then
     printf '%s' "${N8N_URL}"
@@ -119,8 +171,9 @@ main() {
   fi
   mkdir -p "${EVIDENCE_DIR}"
 
-  if [[ -z "${N8N_ZULIP_OUTGOING_TOKEN:-}" && "${USE_TERRAFORM_OUTPUT}" == "1" ]]; then
-    export N8N_ZULIP_OUTGOING_TOKEN="$(terraform -chdir="${REPO_ROOT}" output -raw N8N_ZULIP_OUTGOING_TOKEN 2>/dev/null || true)"
+  if [[ -z "${N8N_ZULIP_OUTGOING_TOKEN:-}" ]]; then
+    export N8N_ZULIP_OUTGOING_TOKEN
+    N8N_ZULIP_OUTGOING_TOKEN="$(resolve_zulip_outgoing_token_for_realm "${realm}")"
   fi
 
   python3 apps/aiops_agent/scripts/send_stub_event.py \

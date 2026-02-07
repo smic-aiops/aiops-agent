@@ -12,13 +12,13 @@ locals {
   service_control_ssm_path = "/${local.name_prefix}/service-control"
   default_service_control_schedule = {
     for svc in local.service_control_services : svc => {
-      enabled            = contains(["keycloak", "n8n", "zulip"], svc)
-      start_time         = "17:00"
-      stop_time          = "22:00"
-      weekday_start_time = "17:00"
-      weekday_stop_time  = "22:00"
-      holiday_start_time = "08:00"
-      holiday_stop_time  = "23:00"
+      enabled            = contains(["keycloak", "n8n", "zulip", "gitlab"], svc)
+      start_time         = "00:00"
+      stop_time          = "23:59"
+      weekday_start_time = "00:00"
+      weekday_stop_time  = "23:59"
+      holiday_start_time = "00:00"
+      holiday_stop_time  = "23:59"
       idle_minutes       = 60
     }
   }

@@ -44,8 +44,10 @@ Env overrides:
   ZULIP_ADMIN_EMAIL
   ZULIP_ADMIN_API_KEY
   ZULIP_ADMIN_API_KEYS_YAML
+  N8N_ZULIP_API_BASE_URLS_YAML
   N8N_ZULIP_API_BASE_URL
   ZULIP_API_MESS_BASE_URL
+  N8N_ZULIP_BOT_EMAILS_YAML
   N8N_ZULIP_BOT_EMAIL
   N8N_ZULIP_OUTGOING_BOT_EMAIL
   N8N_ZULIP_OUTGOING_BOT_EMAILS_YAML
@@ -215,12 +217,15 @@ resolve_zulip_url_for_realm() {
   local url=""
   local yaml=""
   if [[ "${USE_TERRAFORM_OUTPUT}" == "1" ]]; then
-    yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+    yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URLS_YAML)"
+    if [[ -z "${yaml}" || "${yaml}" == "null" ]]; then
+      yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+    fi
     if [[ -n "${yaml}" ]]; then
       url="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     fi
     if [[ -z "${url}" ]]; then
-      yaml="${N8N_ZULIP_API_BASE_URL:-}"
+      yaml="${N8N_ZULIP_API_BASE_URLS_YAML:-${N8N_ZULIP_API_BASE_URL:-}}"
       [[ -n "${yaml}" ]] && url="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     fi
     if [[ -z "${url}" ]]; then
@@ -232,10 +237,13 @@ resolve_zulip_url_for_realm() {
       [[ -n "${yaml}" ]] && url="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     fi
   else
-    yaml="${N8N_ZULIP_API_BASE_URL:-}"
+    yaml="${N8N_ZULIP_API_BASE_URLS_YAML:-${N8N_ZULIP_API_BASE_URL:-}}"
     [[ -n "${yaml}" ]] && url="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     if [[ -z "${url}" ]]; then
-      yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+      yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URLS_YAML)"
+      if [[ -z "${yaml}" || "${yaml}" == "null" ]]; then
+        yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+      fi
       [[ -n "${yaml}" ]] && url="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     fi
     if [[ -z "${url}" ]]; then
@@ -246,6 +254,9 @@ resolve_zulip_url_for_realm() {
       yaml="$(tf_output_raw zulip_api_mess_base_urls_yaml)"
       [[ -n "${yaml}" ]] && url="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     fi
+  fi
+  if [[ -z "${url}" && "${USE_TERRAFORM_OUTPUT}" == "1" ]]; then
+    url="$(tf_output_json | jq -r '.service_urls.value.zulip // empty' 2>/dev/null || true)"
   fi
   if [[ -z "${url}" && -n "${ZULIP_REALM_URL_TEMPLATE:-}" ]]; then
     url="$(python3 - <<'PY' "${ZULIP_REALM_URL_TEMPLATE}" "${realm}"
@@ -309,9 +320,13 @@ resolve_bot_email_for_realm() {
   local realm="$1"
   local yaml=""
   local email=""
+
   if [[ "${USE_TERRAFORM_OUTPUT}" == "1" ]]; then
-    yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
-    if [[ -n "${yaml}" ]]; then
+    yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAILS_YAML)"
+    if [[ -z "${yaml}" || "${yaml}" == "null" ]]; then
+      yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
+    fi
+    if [[ -n "${yaml}" && "${yaml}" != "null" ]]; then
       email="$(parse_simple_yaml_get "${yaml}" "${realm}")"
       if [[ -n "${email}" ]]; then
         printf '%s' "${email}"
@@ -319,18 +334,40 @@ resolve_bot_email_for_realm() {
       fi
     fi
   fi
-  yaml="${N8N_ZULIP_BOT_EMAIL:-}"
-  if [[ -n "${yaml}" ]]; then
+
+  yaml="${N8N_ZULIP_BOT_EMAILS_YAML:-}"
+  if [[ -z "${yaml}" ]]; then
+    yaml="${N8N_ZULIP_BOT_EMAIL:-}"
+  fi
+  if [[ -n "${yaml}" && "${yaml}" != "null" ]]; then
     email="$(parse_simple_yaml_get "${yaml}" "${realm}")"
     if [[ -n "${email}" ]]; then
       printf '%s' "${email}"
       return
     fi
+    if [[ "${yaml}" != *":"* && "${yaml}" != *$'\n'* ]]; then
+      printf '%s' "${yaml}"
+      return
+    fi
   fi
-  yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
-  if [[ -n "${yaml}" ]]; then
-    parse_simple_yaml_get "${yaml}" "${realm}"
+
+  yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAILS_YAML)"
+  if [[ -z "${yaml}" || "${yaml}" == "null" ]]; then
+    yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
   fi
+  if [[ -n "${yaml}" && "${yaml}" != "null" ]]; then
+    email="$(parse_simple_yaml_get "${yaml}" "${realm}")"
+    if [[ -n "${email}" ]]; then
+      printf '%s' "${email}"
+      return
+    fi
+    if [[ "${yaml}" != *":"* && "${yaml}" != *$'\n'* ]]; then
+      printf '%s' "${yaml}"
+      return
+    fi
+  fi
+
+  echo ""
 }
 
 resolve_outgoing_bot_email_for_realm() {
@@ -752,7 +789,7 @@ main() {
   local bot_email
   bot_email="$(resolve_bot_email_for_realm "${realm}")"
   if [[ -z "${bot_email}" ]]; then
-    warn "AIOps bot email not found for realm=${realm}. Set N8N_ZULIP_BOT_EMAIL."
+    warn "AIOps bot email not found for realm=${realm}. Set N8N_ZULIP_BOT_EMAILS_YAML (or legacy N8N_ZULIP_BOT_EMAIL)."
     exit 1
   fi
 

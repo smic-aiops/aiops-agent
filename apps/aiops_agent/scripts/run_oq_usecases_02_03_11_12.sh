@@ -90,7 +90,59 @@ tf_output_raw() {
 }
 
 tf_output_json() {
+  if [[ $# -gt 0 ]]; then
+    terraform -chdir="${REPO_ROOT}" output -json "$1" 2>/dev/null || echo 'null'
+    return
+  fi
   terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null || echo 'null'
+}
+
+parse_simple_yaml_get() {
+  local yaml_text="$1"
+  local key="$2"
+  python3 - <<'PY' "$yaml_text" "$key"
+import sys
+raw = sys.argv[1]
+key = sys.argv[2]
+for line in raw.splitlines():
+    s = line.strip()
+    if not s or s.startswith("#") or ":" not in s:
+        continue
+    k, v = s.split(":", 1)
+    if k.strip() == key:
+        print(v.strip().strip("'\""))
+        sys.exit(0)
+print("")
+PY
+}
+
+resolve_zulip_outgoing_token_for_realm() {
+  local realm="$1"
+
+  if [[ -n "${N8N_ZULIP_OUTGOING_TOKEN:-}" ]]; then
+    printf '%s' "${N8N_ZULIP_OUTGOING_TOKEN}"
+    return 0
+  fi
+
+  local yaml="${N8N_ZULIP_OUTGOING_TOKENS_YAML:-}"
+  if [[ -z "${yaml}" ]]; then
+    yaml="$(tf_output_raw zulip_outgoing_tokens_yaml)"
+  fi
+  if [[ -z "${yaml}" || "${yaml}" == "null" ]]; then
+    yaml="$(tf_output_raw N8N_ZULIP_OUTGOING_TOKENS_YAML)"
+  fi
+
+  if [[ -z "${yaml}" || "${yaml}" == "null" ]]; then
+    printf ''
+    return 0
+  fi
+
+  local v
+  v="$(parse_simple_yaml_get "${yaml}" "${realm}")"
+  if [[ -z "${v}" ]]; then
+    v="$(parse_simple_yaml_get "${yaml}" "default")"
+  fi
+  printf '%s' "${v}"
 }
 
 now_utc_compact() {
@@ -476,11 +528,59 @@ source = (
   or parsed_chat_core.get("source")
   or (parsed_chat_core.get("reply_target") or {}).get("source")
 )
+
+KNOWN_SOURCES = {"zulip", "cloudwatch", "slack", "mattermost", "teams"}
+
+def find_source():
+  for node_name in run.keys():
+    data = node_last_json(node_name)
+    if not isinstance(data, dict):
+      continue
+
+    direct = data.get("source") or (data.get("reply_target") or {}).get("source")
+    if isinstance(direct, str) and direct.strip() and direct.strip() in KNOWN_SOURCES:
+      return direct.strip()
+
+    ne = data.get("normalized_event")
+    if isinstance(ne, dict):
+      s = ne.get("source")
+      if isinstance(s, str) and s.strip() and s.strip() in KNOWN_SOURCES:
+        return s.strip()
+
+  return None
+
+if isinstance(source, str):
+  source = source.strip()
+if not source or source not in KNOWN_SOURCES:
+  source = find_source()
+if not source:
+  source = "unknown"
 normalized = (
   use_reply.get("normalized_event") if isinstance(use_reply.get("normalized_event"), dict)
   else (parsed_chat_core.get("normalized_event") if isinstance(parsed_chat_core.get("normalized_event"), dict) else {})
 )
-topic_ctx = normalized.get("zulip_topic_context") if isinstance(normalized.get("zulip_topic_context"), dict) else None
+
+def find_zulip_topic_context():
+  best = None
+  best_count = -1
+  for node_name in run.keys():
+    data = node_last_json(node_name)
+    if not isinstance(data, dict):
+      continue
+    ne = data.get("normalized_event")
+    if not isinstance(ne, dict):
+      continue
+    ztc = ne.get("zulip_topic_context")
+    if not isinstance(ztc, dict):
+      continue
+    msgs = ztc.get("messages")
+    count = len(msgs) if isinstance(msgs, list) else 0
+    if count > best_count:
+      best = ztc
+      best_count = count
+  return best
+
+topic_ctx = find_zulip_topic_context()
 
 UUID_RE = re.compile(r"^[0-9a-fA-F-]{36}$")
 
@@ -654,7 +754,11 @@ PY
   fi
 
   export N8N_ZULIP_TENANT="${realm}"
-  export N8N_ZULIP_OUTGOING_TOKEN="$(tf_output_raw N8N_ZULIP_OUTGOING_TOKEN)"
+  export N8N_ZULIP_OUTGOING_TOKEN="$(resolve_zulip_outgoing_token_for_realm "${realm}")"
+  if [[ -z "${N8N_ZULIP_OUTGOING_TOKEN}" ]]; then
+    warn "could not resolve Zulip outgoing token (set N8N_ZULIP_OUTGOING_TOKEN or terraform output zulip_outgoing_tokens_yaml)"
+    exit 1
+  fi
 
   local ingest_wf_id
   ingest_wf_id="$(find_workflow_id_by_name "aiops-adapter-ingest")"
@@ -685,6 +789,7 @@ PY
     --scenario normal \
     --trace-id "${trace_cw}" \
     --event-id "${event_cw}" \
+    --cloudwatch-alarm-name "sulu-updown" \
     --timeout-sec 20 \
     --evidence-dir "${EVIDENCE_DIR}"
 

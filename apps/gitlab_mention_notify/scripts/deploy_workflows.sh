@@ -175,6 +175,79 @@ SKIP_API_WHEN_DRY_RUN="${SKIP_API_WHEN_DRY_RUN:-true}"
 API_BODY=""
 API_STATUS=""
 
+sha256_hex() {
+  local input="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    printf '%s' "${input}" | sha256sum | awk '{print $1}'
+    return 0
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    printf '%s' "${input}" | shasum -a 256 | awk '{print $1}'
+    return 0
+  fi
+  if command -v openssl >/dev/null 2>&1; then
+    printf '%s' "${input}" | openssl dgst -sha256 | awk '{print $NF}'
+    return 0
+  fi
+  echo "sha256_hex requires sha256sum, shasum, or openssl" >&2
+  exit 1
+}
+
+compute_webhook_id() {
+  local wf_name="$1"
+  local node_id="$2"
+  local http_method="$3"
+  local path="$4"
+  sha256_hex "${wf_name}:${node_id}:${http_method}:${path}" | cut -c1-32
+}
+
+ensure_webhook_ids() {
+  local wf_name="$1"
+  local input_json="$2"
+
+  local fixes
+  fixes="$(
+    jq -r '
+      (.nodes // [])
+      | map(select(.type == "n8n-nodes-base.webhook"))
+      | map(select((.webhookId // null) == null or (.webhookId|tostring) == "" or (.webhookId|tostring) == "null"))
+      | map([.id, (.parameters.httpMethod // ""), (.parameters.path // "")] | @tsv)
+      | .[]
+    ' <<<"${input_json}" 2>/dev/null || true
+  )"
+
+  if [[ -z "${fixes}" ]]; then
+    printf '%s' "${input_json}"
+    return 0
+  fi
+
+  local out="${input_json}"
+  local line node_id http_method path webhook_id
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    node_id="$(cut -f1 <<<"${line}")"
+    http_method="$(cut -f2 <<<"${line}")"
+    path="$(cut -f3 <<<"${line}")"
+    webhook_id="$(compute_webhook_id "${wf_name}" "${node_id}" "${http_method}" "${path}")"
+    out="$(
+      jq -c --arg node_id "${node_id}" --arg wid "${webhook_id}" '
+        .nodes = (
+          (.nodes // [])
+          | map(
+              if .type == "n8n-nodes-base.webhook" and (.id|tostring) == $node_id then
+                .webhookId = $wid
+              else
+                .
+              end
+            )
+        )
+      ' <<<"${out}"
+    )"
+  done <<<"${fixes}"
+
+  printf '%s' "${out}"
+}
+
 api_call() {
   local method="$1"
   local path="$2"
@@ -317,6 +390,7 @@ for realm in "${TARGET_REALMS[@]}"; do
     wf_count="$(jq -r 'length' <<<"${wf_matches}")"
     if [ "${wf_count}" = "0" ]; then
       payload="$(jq -c '.' "${file}")"
+      payload="$(ensure_webhook_ids "${wf_name}" "${payload}")"
       if is_truthy "${DRY_RUN}"; then
         echo "[n8n] create: ${wf_name} (${file})"
         continue
@@ -335,6 +409,7 @@ for realm in "${TARGET_REALMS[@]}"; do
       existing="${API_BODY}"
       desired="$(jq -c '.' "${file}")"
       merged="$(merge_payload "${desired}" "${existing}")"
+      merged="$(ensure_webhook_ids "${wf_name}" "${merged}")"
       if is_truthy "${DRY_RUN}"; then
         echo "[n8n] update: ${wf_name} (${wf_id}) (${file})"
         continue
