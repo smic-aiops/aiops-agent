@@ -19,6 +19,79 @@
 | 09 | 運用 Runbook |
 | 10 | 継続的アシュアランスとバリデーションサマリ |
 
+## 構成図（Mermaid）
+
+本リポジトリの「全体像」を俯瞰するための最小構成です。詳細は `docs/infra/README.md`（Terraform）と `apps/README.md`（n8n ワークフロー）を参照してください。
+
+```mermaid
+flowchart TB
+  %% 全体（最小）: エッジ配信 + アプリ基盤（ECS） + ワークフロー（n8n）
+
+  subgraph Internet[利用者 / 外部入力]
+    Operator[運用者（ブラウザ/手動操作）]
+    External[外部入力（Webhook / Scheduler / 外部SaaS 等）]
+  end
+
+  subgraph Edge[エッジ（DNS + TLS + 配信）]
+    Route53[Route53（Hosted Zone）]
+    ACM[ACM（CloudFront 用 / us-east-1）]
+    WAF[WAF]
+    CF[CloudFront]
+    ControlSite[(S3: Control Site)]
+  end
+
+  subgraph VPC[VPC 内（ECS + データストア）]
+    ALB[ALB]
+    ECS[ECS Cluster]
+    Keycloak[Keycloak（OIDC）]
+    N8N[n8n（Workflows）]
+    Zulip[Zulip]
+    GitLab[GitLab]
+    RDS[(RDS: PostgreSQL)]
+    EFS[(EFS)]
+    Qdrant[Qdrant（Vector DB）]
+    SSM[SSM / Secrets Manager]
+  end
+
+  subgraph AWSManaged[AWS 管理サービス]
+    EB[EventBridge / CloudWatch（Events/Logs/Metrics）]
+  end
+
+  %% エッジ（Control Site）
+  Operator -->|DNS| Route53
+  Route53 --> CF
+  ACM --> CF
+  WAF --> CF
+  CF --> ControlSite
+
+  %% サービス（ALB + ECS）
+  Route53 --> ALB
+  WAF --> ALB
+  ALB --> ECS
+  ECS --> Keycloak
+  ECS --> N8N
+  ECS --> Zulip
+  ECS --> GitLab
+  ECS --> Qdrant
+
+  %% 依存関係（最小）
+  Keycloak -->|OIDC| N8N
+  Keycloak -->|OIDC| Zulip
+  Keycloak -->|OIDC| GitLab
+  N8N --> RDS
+  GitLab --> EFS
+  EFS --> Qdrant
+  ECS -->|env/keys| SSM
+  ECS --> EB
+
+  %% イベント/ワークフロー
+  External -->|HTTP| N8N
+  N8N -->|API| GitLab
+  N8N -->|API| Zulip
+  EB -->|Event| N8N
+  N8N -->|AWS API| EB
+```
+
 ---
 
 # 4. AI ガバナンス構造（アプリ配下）
