@@ -9,6 +9,10 @@
 - そのため、実行前に Terraform の state が参照できること（`terraform output` が取得できること）が前提です。
 - tfvars を更新するタイプのスクリプトは、更新後に `terraform apply -refresh-only` を実行して **tfvars/state の整合**を取り、SSM/環境変数へ反映しやすくします（スクリプト個別の仕様に従います）。
 - `DRY_RUN=true`（または同等のフラグ）に対応するスクリプトは、API 反映や書き込みをせず「何をするか」だけを表示します（未対応スクリプトもあります）。
+- **キー受け渡し（refresh 系の基本）**:
+  - パターン A（サービス注入）: `refresh_*.sh` が **キーを発行/取得 → tfvars へ記録 → `terraform apply -refresh-only` → SSM SecureString へ反映 → ECS `secrets` でコンテナ環境変数へ注入**
+  - パターン B（運用スクリプト用）: `refresh_*.sh` が **キーを発行/取得 → tfvars へ記録 → `terraform output`（sensitive）として参照 → `apps/*/scripts/*.sh` が Public API 呼び出しに使用**
+  - 注意: tfvars に平文で書かれる値があります（例: `pg_db_password`, `gitlab_admin_token` 等）。**Git へコミットしない**でください。
 
 ## 目的別スクリプト一覧
 
@@ -139,6 +143,7 @@
 ### 運用補助（scripts/）
 
 - `scripts/itsm/refresh_all_secure.sh` - `scripts/` 配下の `refresh_*.sh` を順次実行（ログ収集/フィルタ/DRY_RUN）
+  - 補足: 各 `refresh_*.sh` が発行/出力する secrets がログに混ざる可能性があります。`LOG_DIR`（既定: `/tmp/aiops-secure-refresh-*`）の取り扱いに注意してください。
 - `scripts/plan_apply_all_tfvars.sh` - 既存 tfvars を検出して `terraform plan/apply` をまとめて実行
 - `scripts/apps/deploy_all_workflows.sh` - `apps/*/scripts/deploy_workflows.sh` をまとめて実行（`--with-tests` で `run_oq.sh` も実行）
 - `scripts/apps/create_oq_evidence_run_md.sh` - OQ の証跡 Markdown を作成（出力: `apps/<app>/docs/oq/evidence/evidence_run_YYYY-MM-DD.md`、`--dry-run` 対応）
@@ -171,6 +176,9 @@
 
 - 目的: `terraform output` の `pg_db_password` を取得し、`terraform.env.tfvars` の `pg_db_password` に反映する
 - 注意: `terraform.env.tfvars` に **平文で書き込み**ます（コミット禁止）
+- キー受け渡し:
+  - `terraform output pg_db_password` → `terraform.env.tfvars: pg_db_password`
+  - 用途: Terraform の再 apply や運用スクリプトで参照するための **端末側の安定化**（ECS へ注入するキーではありません）
 - 実行後に `terraform apply -refresh-only --auto-approve` を実行します（tfvars/state の整合維持）
 - 環境変数で上書きできる項目:
   - `TFVARS_FILE`（既定: `terraform.env.tfvars`）
@@ -251,6 +259,32 @@
 - 副作用:
   - 実行後に `terraform apply -refresh-only` を実行します（tfvars/state/SSM の整合用）。
 
+### `scripts/itsm/n8n/refresh_n8n_api_key.sh`
+
+- 目的: n8n にログインして API key をレルムごとに発行し、`terraform.itsm.tfvars` の `n8n_api_keys_by_realm` を更新します。
+- キー受け渡し（運用スクリプト用 / パターン B）:
+  - `n8n_api_keys_by_realm`（tfvars）→ `terraform output -json n8n_api_keys_by_realm`（sensitive）→ `apps/*/scripts/deploy_workflows.sh` が各レルムの n8n Public API 呼び出しに使用
+- 注意:
+  - `n8n_api_keys_by_realm` は運用端末側の同期スクリプトが使う認証情報です（ECS へ注入する `N8N_API_KEY` とは別系統）。
+
+### `scripts/itsm/n8n/refresh_zulip_bot.sh`
+
+- 目的: Zulip Outgoing Webhook bot（bot_type=3）を作成/更新し、`terraform.itsm.tfvars` の `zulip_outgoing_tokens_yaml` / `zulip_outgoing_bot_emails_yaml` を更新します。
+- キー受け渡し（サービス注入 / パターン A）:
+  - `zulip_outgoing_tokens_yaml`（tfvars, YAML）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/aiops/zulip/outgoing_token/<realm>`
+  - 主な利用: n8n に `N8N_ZULIP_OUTGOING_TOKEN` として注入（Zulip からの outgoing webhook 検証）
+
+## Keycloak（SSO/OIDC）
+
+### `scripts/itsm/keycloak/refresh_keycloak_realm.sh`
+
+- 目的: Keycloak のレルム/クライアントを作成・更新し、必要な OIDC 設定（client_id/client_secret 等）を tfvars/SSM へ反映します。
+- キー受け渡し（サービス注入 / パターン A）:
+  - `terraform.itsm.tfvars` の `*_oidc_idps_yaml`（例: `gitlab_oidc_idps_yaml`, `zulip_oidc_idps_yaml`, `grafana_oidc_idps_yaml` など）を更新
+  - `terraform apply -refresh-only` により、各サービスの OIDC client_id/client_secret 等を SSM パラメータへ反映し、ECS `secrets` 経由で注入
+- 注意:
+  - `service-control` の client_id/client_secret はスクリプトが SSM に直接書き込みます（他サービスは Terraform 反映が正）。
+
 ## GitLab（トークン/レルム連携）
 
 ### `scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
@@ -264,8 +298,25 @@
   - 明示的に指定する場合は `TOKEN_EXPIRES_AT=YYYY-MM-DD`
 - 挙動:
   - 同名トークンがある場合は削除して再作成（`TOKEN_DELETE_EXISTING=false` で無効化）
+- キー受け渡し:
+  - `gitlab_admin_token`（tfvars）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/gitlab/admin/token`
+  - 主な利用: GitLab EFS mirror / indexer 等の ECS タスクに `GITLAB_TOKEN` として注入（また、運用スクリプトが `terraform output` で参照）
 - 注意:
   - 秘密情報のため Git へコミットしないでください。
+
+### `scripts/itsm/gitlab/refresh_realm_group_tokens_with_bot_cleanup.sh`
+
+- 目的: レルム単位の GitLab グループアクセストークンを再発行し、`terraform.itsm.tfvars` の `gitlab_realm_admin_tokens_yaml` を更新します（旧トークン削除時に group bot を `delete|block`）。
+- キー受け渡し:
+  - `gitlab_realm_admin_tokens_yaml`（tfvars, YAML）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/n8n/gitlab/token/<realm>`
+  - 主な利用: n8n に `GITLAB_TOKEN` として注入（GitLab API 参照/書き込みのワークフローで利用）
+
+### `scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh`
+
+- 目的: GitLab Webhook secret をレルム単位で生成/更新し、`terraform.itsm.tfvars` の `gitlab_webhook_secrets_yaml` を更新します。
+- キー受け渡し:
+  - `gitlab_webhook_secrets_yaml`（tfvars, YAML）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/n8n/gitlab/webhook_secret/<realm>`
+  - 主な利用: n8n に `GITLAB_WEBHOOK_SECRET` として注入（GitLab Webhook の `x-gitlab-token` 検証）
 
 ### `scripts/itsm/gitlab/ensure_realm_groups.sh`
 
@@ -280,6 +331,22 @@
   - 既定は作成日 + 364 日（`GITLAB_REALM_TOKEN_EXPIRES_DAYS` で上書き可能）
 - 反映確認:
   - `terraform output -json gitlab_realm_admin_tokens_yaml`（sensitive のため取り扱い注意）
+
+## Zulip（管理者 API キー）
+
+### `scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh`
+
+- 目的: Zulip コンテナ（DB）から管理者 API キーを取得し、`terraform.itsm.tfvars` の `zulip_admin_api_key` を更新します（単一キー運用）。
+- キー受け渡し:
+  - `zulip_admin_api_key`（tfvars）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/zulip/admin/api_key`
+  - 主な利用: n8n に `ZULIP_ADMIN_API_KEY` として注入（Zulip Bot 作成/管理などの管理系処理）
+
+### `scripts/itsm/zulip/refresh_zulip_admin_api_keys.sh`
+
+- 目的: レルムごとの Zulip 管理者 API キーを更新し、`terraform.itsm.tfvars` の `zulip_admin_api_keys_yaml` を更新します（レルム別キー運用）。
+- キー受け渡し:
+  - `zulip_admin_api_keys_yaml`（tfvars, YAML）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/zulip/admin/api_key/<realm>`
+  - 主な利用: n8n に `ZULIP_ADMIN_API_KEY` として注入（レルム別に Zulip 管理 API を利用）
 
 ## Grafana（イメージ/管理者情報/ダッシュボード同期）
 
@@ -309,6 +376,13 @@
   - `GF_ADMIN_USER_PARAM`, `GF_ADMIN_PASS_PARAM`
   - `GRAFANA_ADMIN_URL`, `CONTROL_SITE_URL`
 
+### `scripts/itsm/grafana/refresh_grafana_api_tokens.sh`
+
+- 目的: レルムごとの Grafana サービスアカウント token を作成/更新し、`terraform.itsm.tfvars` の `grafana_api_tokens_by_realm` を更新します。
+- キー受け渡し:
+  - `grafana_api_tokens_by_realm`（tfvars, HCL map）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/grafana/api_token/<realm>`
+  - 主な利用: n8n に `GRAFANA_API_KEY` として注入（Annotation 等の Grafana API 呼び出し）
+
 ### `scripts/itsm/grafana/sync_usecase_dashboards.sh`
 
 - 事前条件:
@@ -320,6 +394,15 @@
   - `GRAFANA_CURL_INSECURE`（TLS 検証を無効化）
   - `GRAFANA_DRY_RUN`（`true` で API を叩かずに実行内容のみ表示）
   - `GRAFANA_DASHBOARD_OVERWRITE`（デフォルト: `true`）
+
+## Sulu（管理者ユーザー）
+
+### `scripts/itsm/sulu/refresh_sulu_admin_user.sh`
+
+- 目的: Sulu コンテナ内で管理者ユーザーを作成/リセットし、`terraform.itsm.tfvars` の `sulu_admin_password` を更新します。
+- キー受け渡し（運用者ログイン用 / パターン B）:
+  - `sulu_admin_password`（tfvars）→ `terraform output -raw sulu_admin_password`（sensitive）→ 管理画面ログインに使用
+  - 注意: Sulu の内部ユーザー作成はアプリ内で完結しており、Terraform が SSM/ECS へ注入するキーではありません（tfvars は「運用上の保管場所」）。
 
 ## tfvars を更新するスクリプト（一覧）
 
