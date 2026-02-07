@@ -99,7 +99,7 @@ variable "keycloak_base_url" {
 variable "default_realm" {
   description = "Keycloak realm used for service logins when Keycloak is deployed via this repo (defaults to name_prefix)"
   type        = string
-  default     = "master"
+  default     = "aiops"
 }
 
 variable "enable_zulip_alb_oidc" {
@@ -111,21 +111,24 @@ variable "enable_zulip_alb_oidc" {
 variable "realms" {
   description = "List of realm names used by scripts/tools (optional; does not affect infra unless explicitly wired)"
   type        = list(string)
-  default     = ["master"]
+  default     = ["aiops"]
 }
 
+# Keycloak Clients Setting : In Scope
 variable "multi_realm_services" {
   description = "Services that support multi-realm provisioning (tfvars-only list; used by scripts/tools)"
   type        = list(string)
   default     = ["sulu", "odoo", "gitlab", "zulip", "exastro", "grafana"]
 }
 
+# Keycloak Clients Setting : Out of Scope
 variable "none_realm_services" {
   description = "Services that do not require realms (tfvars-only list; used by scripts/tools)"
   type        = list(string)
   default     = ["n8n", "keycloak"]
 }
 
+# Keycloak Clients Setting : Only for default realm
 variable "single_realm_services" {
   description = "Services that use a single shared realm (tfvars-only list; used by scripts/tools)"
   type        = list(string)
@@ -374,7 +377,7 @@ variable "aiops_n8n_activate" {
 variable "aiops_n8n_agent_realms" {
   description = "Realm list used to decide where to install AIOps Agent in n8n (empty means no targeting)."
   type        = list(string)
-  default     = []
+  default     = ["aiops"]
 }
 
 variable "n8n_api_key_parameter_name" {
