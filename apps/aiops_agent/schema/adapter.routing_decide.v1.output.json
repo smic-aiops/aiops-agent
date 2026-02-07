@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.routing_decide.v1.output.json",
+  "title": "adapter.routing_decide.v1 output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "selected_policy_id": { "type": ["string", "null"] },
+    "selected_escalation_level": { "type": "integer" },
+    "routing": { "type": "object", "additionalProperties": true },
+    "needs_manual_triage": { "type": "boolean" },
+    "escalate_now": { "type": "boolean" },
+    "clarifying_questions": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number" },
+    "rationale": { "type": "string" }
+  },
+  "required": [
+    "selected_policy_id",
+    "selected_escalation_level",
+    "routing",
+    "needs_manual_triage",
+    "escalate_now",
+    "clarifying_questions",
+    "confidence",
+    "rationale"
+  ]
+}
+

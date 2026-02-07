@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.job_result_reply.v1.output.json",
+  "title": "adapter.job_result_reply.v1 output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "body": { "type": "string" },
+    "followup_suggestion": { "type": "string" },
+    "retry_plan": { "type": "string" },
+    "confidence": { "type": "number" }
+  },
+  "required": ["body", "confidence"]
+}
+

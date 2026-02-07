@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.routing_decide.v1.input.json",
+  "title": "adapter.routing_decide.v1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "normalized_event": { "type": "object" },
+    "routing_candidates": { "type": "array", "items": { "type": "object" } },
+    "context_age_minutes": { "type": ["number", "null"] },
+    "reply_target": { "type": ["object", "null"] },
+    "policy_context": { "type": "object" }
+  },
+  "required": ["normalized_event", "routing_candidates", "policy_context"]
+}
+

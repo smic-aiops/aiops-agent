@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.interaction_parse.v1.output.json",
+  "title": "adapter.interaction_parse.v1 output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "event_kind": { "type": "string" },
+    "approval": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "decision": { "type": "string" },
+            "approval_token": { "type": "string" }
+          },
+          "required": ["decision"]
+        }
+      ]
+    },
+    "feedback": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "job_id": { "type": "string" },
+            "resolved": { "type": "boolean" },
+            "smile_score": { "type": "integer" },
+            "comment": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "classification": { "type": "object", "additionalProperties": true },
+    "priority": { "type": "object", "additionalProperties": true },
+    "extracted_params": { "type": "object", "additionalProperties": true },
+    "enrichment_plan": { "type": "object", "additionalProperties": true },
+    "next_action": { "type": "string" },
+    "required_confirm": { "type": "boolean" },
+    "missing_params": { "type": "array", "items": { "type": "string" } },
+    "initial_reply": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "content": { "type": "string" },
+        "needs_clarification": { "type": "boolean" },
+        "clarifying_questions": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["content", "needs_clarification", "clarifying_questions"]
+    },
+    "tool_calls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "tool": { "type": "string" },
+          "args": { "type": "object" }
+        },
+        "required": ["tool", "args"]
+      }
+    },
+    "rag_route": { "type": "object", "additionalProperties": true },
+    "needs_clarification": { "type": "boolean" },
+    "clarifying_questions": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number" },
+    "rationale": { "type": "string" }
+  },
+  "required": [
+    "event_kind",
+    "approval",
+    "feedback",
+    "classification",
+    "priority",
+    "extracted_params",
+    "enrichment_plan",
+    "next_action",
+    "required_confirm",
+    "missing_params",
+    "initial_reply",
+    "tool_calls",
+    "rag_route",
+    "needs_clarification",
+    "clarifying_questions",
+    "confidence",
+    "rationale"
+  ]
+}
+

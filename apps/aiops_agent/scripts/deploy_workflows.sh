@@ -28,6 +28,7 @@ set -euo pipefail
 #   DB_PASSWORD_COMMAND        : command to resolve password (defaults to terraform output rds_postgresql password_get_command or password_parameter via SSM)
 #   N8N_PROMPT_DIR        : directory that stores prompt files (default: apps/aiops_agent/data/default/prompt)
 #   N8N_PROMPT_LOCK       : "true" to keep existing prompt text when updating workflows (default: false)
+#   N8N_VALIDATE_LLM_SCHEMAS : "true" (default) to validate apps/aiops_agent/schema/*.{input,output}.json against workflow prompt_key usage
 #   N8N_POLICY_DIR        : directory that stores policy files (default: apps/aiops_agent/data/default/policy)
 #   N8N_AGENT_REALMS      : comma/space-separated realm list (default: terraform output N8N_AGENT_REALMS)
 #   N8N_REALM_DATA_DIR_BASE : base dir for realm-specific prompt/policy overrides (default: apps/aiops_agent/data)
@@ -89,6 +90,15 @@ if [[ -f "${REPO_ROOT}/scripts/lib/setup_log.sh" ]]; then
 fi
 
 DRY_RUN="${N8N_DRY_RUN:-false}"
+VALIDATE_LLM_SCHEMAS="${N8N_VALIDATE_LLM_SCHEMAS:-true}"
+
+if is_truthy "${VALIDATE_LLM_SCHEMAS}"; then
+  schema_args=()
+  if is_truthy "${DRY_RUN}"; then
+    schema_args+=("--dry-run")
+  fi
+  bash "${REPO_ROOT}/apps/aiops_agent/scripts/validate_llm_schemas.sh" "${schema_args[@]}"
+fi
 
 urlencode() {
   printf '%s' "$1" | jq -sRr @uri

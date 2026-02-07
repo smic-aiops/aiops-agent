@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/orchestrator.preview.v1.input.json",
+  "title": "orchestrator.preview.v1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "context_id": { "type": ["string", "null"] },
+    "actor": { "type": ["object", "null"] },
+    "normalized_event": { "type": "object" },
+    "iam_context": { "type": ["object", "null"] },
+    "policy_context": { "type": ["object", "null"] },
+    "rag_route": { "type": ["object", "null"] },
+    "rag_mode": { "type": ["string", "null"] },
+    "rag_filters": { "type": ["object", "null"] },
+    "candidate_source": { "type": ["string", "null"] },
+    "candidate": { "type": ["object", "null"] },
+    "candidate_list": { "type": ["array", "null"] },
+    "catalog": { "type": ["object", "null"] },
+    "feedback": { "type": ["object", "null"] },
+    "approval_history": { "type": ["object", "null"] }
+  },
+  "required": ["normalized_event"]
+}
+

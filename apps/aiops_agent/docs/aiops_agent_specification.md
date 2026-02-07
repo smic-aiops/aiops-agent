@@ -86,7 +86,7 @@
 
 * 正規化イベントは `metadata.schema_version` を保持し、未指定の場合は `policy_context.defaults.schema_version` を適用する。
 * API の破壊的変更はバージョンを分離する（例：`/v1` → `/v2`）。互換性方針の判断基準は `policy_context.version` と同期して運用する。
-* LLM 入出力は `prompt_key` と JSON Schema を 1 対 1 で紐付け、スキーマは `apps/aiops_agent/schema/*.json` としてバージョン管理する。
+* LLM 入出力は `prompt_key` と JSON Schema を 1 対 1 で紐付け、スキーマは `apps/aiops_agent/schema/<prompt_key>.{input,output}.json` としてバージョン管理する（整合性チェック: `apps/aiops_agent/scripts/validate_llm_schemas.sh`）。
 
 #### 2.1.4 運用モード（時間帯/メンテ/劣化）
 

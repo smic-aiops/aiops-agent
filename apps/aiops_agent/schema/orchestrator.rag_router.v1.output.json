@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/orchestrator.rag_router.v1.output.json",
+  "title": "orchestrator.rag_router.v1 output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "rag_mode": { "type": "string" },
+    "reason": { "type": "string" },
+    "query": { "type": "string" },
+    "top_k": { "type": "integer" },
+    "filters": { "type": "object", "additionalProperties": true },
+    "needs_clarification": { "type": "boolean" },
+    "clarifying_questions": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number" }
+  },
+  "required": [
+    "rag_mode",
+    "reason",
+    "query",
+    "top_k",
+    "filters",
+    "needs_clarification",
+    "clarifying_questions",
+    "confidence"
+  ]
+}
+

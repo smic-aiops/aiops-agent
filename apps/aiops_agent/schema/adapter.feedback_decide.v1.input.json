@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.feedback_decide.v1.input.json",
+  "title": "adapter.feedback_decide.v1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "policy_context": { "type": "object" },
+    "feedback": { "type": "object" },
+    "job_result": { "type": "object" },
+    "context": { "type": "object" }
+  },
+  "required": ["policy_context", "feedback", "job_result", "context"]
+}
+

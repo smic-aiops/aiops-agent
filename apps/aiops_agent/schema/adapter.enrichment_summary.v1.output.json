@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.enrichment_summary.v1.output.json",
+  "title": "adapter.enrichment_summary.v1 output (context summary)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "summary": { "type": "string" },
+    "confidence": { "type": "number" },
+    "notes": { "type": "string" }
+  },
+  "required": ["summary", "confidence"]
+}
+

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.feedback_request_render.v1.output.json",
+  "title": "adapter.feedback_request_render.v1 output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "feedback_request_text": { "type": "string" },
+    "needs_clarification": { "type": "boolean" },
+    "clarifying_question": { "type": "string" },
+    "confidence": { "type": "number" },
+    "rationale": { "type": "string" }
+  },
+  "required": ["feedback_request_text", "needs_clarification", "confidence", "rationale"]
+}
+

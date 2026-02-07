@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.feedback_decide.v1.output.json",
+  "title": "adapter.feedback_decide.v1 output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "case_status": { "type": "string" },
+    "followups": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number" },
+    "rationale": { "type": "string" }
+  },
+  "required": ["case_status", "followups", "confidence", "rationale"]
+}
+

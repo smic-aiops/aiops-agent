@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.enrichment_plan.v1.output.json",
+  "title": "adapter.enrichment_plan.v1 output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "enrichment_plan": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "can_proceed_without_enrichment": { "type": "boolean" },
+        "targets": { "type": "array", "items": { "type": "object" } },
+        "chat_context": { "type": "object" },
+        "system_context": { "type": "object" },
+        "notes": { "type": "string" }
+      },
+      "required": ["can_proceed_without_enrichment", "targets", "chat_context", "system_context"]
+    },
+    "needs_clarification": { "type": "boolean" },
+    "clarifying_questions": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number" },
+    "rationale": { "type": "string" }
+  },
+  "required": ["enrichment_plan", "needs_clarification", "clarifying_questions", "confidence", "rationale"]
+}
+

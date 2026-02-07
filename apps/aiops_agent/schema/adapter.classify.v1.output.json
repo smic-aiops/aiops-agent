@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.classify.v1.output.json",
+  "title": "adapter.classify.v1 output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "form": { "type": "string" },
+    "category": { "type": "string" },
+    "subtype": { "type": "string" },
+    "impacted_resources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "impact": { "type": "string" },
+    "urgency": { "type": "string" },
+    "priority": { "type": "string" },
+    "extracted_params": { "type": "object", "additionalProperties": true },
+    "needs_clarification": { "type": "boolean" },
+    "clarifying_questions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "confidence": { "type": "number" },
+    "rationale": { "type": "string" }
+  },
+  "required": [
+    "form",
+    "category",
+    "subtype",
+    "impacted_resources",
+    "impact",
+    "urgency",
+    "priority",
+    "extracted_params",
+    "needs_clarification",
+    "clarifying_questions",
+    "confidence",
+    "rationale"
+  ]
+}
+

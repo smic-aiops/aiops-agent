@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/orchestrator.preview.v1.output.json",
+  "title": "orchestrator.preview.v1 output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "candidates": { "type": "array", "items": { "type": "object" } },
+    "next_action": { "type": "string" },
+    "required_confirm": { "type": "boolean" },
+    "missing_params": { "type": "array", "items": { "type": "string" } },
+    "clarifying_questions": { "type": "array", "items": { "type": "string" } },
+    "confirmation_summary": { "type": "string" },
+    "confidence": { "type": "number" },
+    "rationale": { "type": "string" }
+  },
+  "required": [
+    "candidates",
+    "next_action",
+    "required_confirm",
+    "missing_params",
+    "clarifying_questions",
+    "confirmation_summary",
+    "confidence",
+    "rationale"
+  ]
+}
+

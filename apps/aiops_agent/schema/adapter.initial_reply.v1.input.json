@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.initial_reply.v1.input.json",
+  "title": "adapter.initial_reply.v1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "policy_context": { "type": "object" },
+    "context": { "type": "object" },
+    "preview": { "type": "object" },
+    "approval": { "type": "object" },
+    "enqueue": { "type": "object" }
+  },
+  "required": ["policy_context", "context", "preview"]
+}
+

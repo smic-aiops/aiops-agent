@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/orchestrator.rag_router.v1.input.json",
+  "title": "orchestrator.rag_router.v1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "policy_context": { "type": "object" },
+    "normalized_event": { "type": "object" }
+  },
+  "required": ["policy_context", "normalized_event"]
+}
+

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.feedback_request_render.v1.input.json",
+  "title": "adapter.feedback_request_render.v1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "policy_context": { "type": "object" },
+    "source": { "type": "string" },
+    "job_id": { "type": ["string", "null"] },
+    "capabilities": { "type": "object" }
+  },
+  "required": ["policy_context", "source", "capabilities"]
+}
+

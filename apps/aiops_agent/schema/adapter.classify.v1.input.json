@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/aiops-agent/schema/adapter.classify.v1.input.json",
+  "title": "adapter.classify.v1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "normalized_event": { "type": "object" },
+    "actor": { "type": "object" },
+    "reply_target": { "type": "object" },
+    "iam_context": { "type": "object" },
+    "policy_context": { "type": "object" }
+  },
+  "required": ["normalized_event", "policy_context"]
+}
+
