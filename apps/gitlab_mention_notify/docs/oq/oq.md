@@ -4,6 +4,16 @@
 
 GitLab の webhook 受信から、Zulip DM 通知までの外部接続（GitLab→n8n、n8n→GitLab API、n8n→Zulip API）を再現性のある方法で確認します。
 
+## 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  GitLab[GitLab（Group Webhook: Issue/Note/Wiki 等）] --> Webhook["n8n Webhook<br/>POST /webhook/gitlab/mention/notify"]
+  Webhook --> WF[Workflow: gitlab_mention_notify.json]
+  WF -. optional .-> GitLabAPI[GitLab API（追加情報/マッピング取得）]
+  WF --> Zulip[Zulip API（DM 送信）]
+```
+
 ## 接続パターン（外部アクセス）
 
 - GitLab → n8n Webhook: `POST /webhook/gitlab/mention/notify`

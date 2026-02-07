@@ -49,6 +49,24 @@ ITSM のサービスリクエストを n8n ワークフローとして実装し�
     - サービス制御（例）
       - `POST /webhook/sulu/service-control`
 
+### 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Client[クライアント（AIOps Agent 等）] --> List["n8n Webhook<br/>GET /webhook/catalog/workflows/list"]
+  Client --> Get["n8n Webhook<br/>GET /webhook/catalog/workflows/get?name=..."]
+  List --> WList[Workflow: aiops_workflows_list.json]
+  Get --> WGet[Workflow: aiops_workflows_get.json]
+  WList --> N8NAPI[n8n API（workflow list/get）]
+  WGet --> N8NAPI
+
+  Operator[オペレーター] --> ServiceCatalogSync["n8n Webhook<br/>GET /webhook/tests/gitlab/service-catalog-sync"]
+  ServiceCatalogSync --> GitLab[GitLab API（サービスカタログ同期）]
+
+  Operator --> ServiceControl["n8n Webhook<br/>POST /webhook/sulu/service-control"]
+  ServiceControl --> SCAPI[Service Control API（Sulu 起動/停止）]
+```
+
 ### 接続通信表（Workflow Manager ⇄ ソース）
 #### Workflow Manager → ソース名（送信/参照）
 | ソース名 | 主目的 | 方式/エンドポイント例 | 認証（例） | 伝達内容（サマリ） |

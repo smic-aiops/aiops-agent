@@ -1,5 +1,21 @@
 # OQ（運用適格性確認）: n8n 上で完結する受信/E2E テストシナリオ
 
+## 構成図（Mermaid / OQ 観点）
+
+本書の OQ は `aiops-oq-runner`（n8n）から OQ 用スタブ入力を流し、受信（ingest）〜 Preview/enqueue 〜 callback までを n8n + Postgres（`aiops_*`）で相関できることを確認します。
+
+```mermaid
+flowchart LR
+  OQ["OQ Runner（n8n）<br/>/webhook/aiops-agent/oq/runner"] --> Ingest["Adapter Ingest（n8n）<br/>/webhook/ingest/{source}"]
+  Ingest <--> ContextStore[(ContextStore（RDS Postgres / aiops_*）)]
+  Ingest <--> ApprovalStore[(ApprovalStore（RDS Postgres / aiops_*）)]
+  Ingest --> Preview["Orchestrator（n8n）<br/>/webhook/jobs/preview"]
+  Preview --> Enqueue["Orchestrator（n8n）<br/>/webhook/jobs/enqueue"]
+  Enqueue --> JobEngine["JobEngine Queue（n8n）<br/>/webhook/jobs/job-engine/enqueue"]
+  JobEngine -. callback .-> Callback["Adapter Callback（n8n）<br/>/webhook/callback/job-engine"]
+  Callback --> Reply["Adapter Reply（n8n）<br/>チャット/通知へ返信"]
+```
+
 ## 送信スタブで受信を検証（補助）
 
 AI Ops アダプターの「受信（/ingest）」は、運用投入前に OQ（Operational Qualification: 運用適格性確認）として、再現性のある入力で検証できます。

@@ -45,6 +45,19 @@ GitLab の Push イベントを ITSM/開発運用の通知として取り込み�
     - テスト: `POST /webhook/gitlab/push/notify/test`
       - `apps/gitlab_push_notify/scripts/deploy_workflows.sh` が、同期後に（`TEST_WEBHOOK=true` の場合）呼び出す
 
+### 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  GitLab[GitLab（Project Webhook: Push）] --> Webhook["n8n Webhook<br/>POST /webhook/gitlab/push/notify"]
+  Operator[オペレーター] --> TestWebhook["n8n Webhook<br/>POST /webhook/gitlab/push/notify/test"]
+
+  Webhook --> WF[Workflow: gitlab_push_notify.json]
+  TestWebhook --> TestWF[Workflow: gitlab_push_notify_test.json]
+
+  WF --> Zulip[Zulip API（Stream 通知）]
+```
+
 ### 接続通信表（GitLab Push Notify ⇄ ソース）
 #### GitLab Push Notify → ソース名（送信/参照）
 | ソース名 | 主目的 | 方式/エンドポイント例 | 認証（例） | 伝達内容（サマリ） |

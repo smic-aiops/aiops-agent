@@ -4,6 +4,24 @@
 
 サービスリクエスト系ワークフローと、ワークフローカタログ API（`/webhook/catalog/workflows/list`, `/webhook/catalog/workflows/get`）の外部接続（n8n API/GitLab/Service Control）を確認します。
 
+## 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Client[クライアント（AIOps Agent 等）] --> List["n8n Webhook<br/>GET /webhook/catalog/workflows/list"]
+  Client --> Get["n8n Webhook<br/>GET /webhook/catalog/workflows/get?name=..."]
+  List --> WList[Workflow: aiops_workflows_list.json]
+  Get --> WGet[Workflow: aiops_workflows_get.json]
+  WList --> N8NAPI[n8n API（workflow list/get）]
+  WGet --> N8NAPI
+
+  Operator[オペレーター] --> ServiceCatalogSync["n8n Webhook<br/>GET /webhook/tests/gitlab/service-catalog-sync"]
+  ServiceCatalogSync --> GitLab[GitLab API（サービスカタログ同期）]
+
+  Operator --> ServiceControl["n8n Webhook<br/>POST /webhook/sulu/service-control"]
+  ServiceControl --> SCAPI[Service Control API（Sulu 起動/停止）]
+```
+
 補足:
 - Zulip↔GitLab Issue 同期は `apps/zulip_gitlab_issue_sync/docs/oq/oq.md` を参照してください。
 - GitLab Issue メトリクス集計→S3 出力は `apps/gitlab_issue_metrics_sync/docs/oq/oq.md` を参照してください。

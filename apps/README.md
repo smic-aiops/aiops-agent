@@ -5,6 +5,19 @@
 また、本リポジトリの apps 配下の開発・運用は **GAMP5 2nd（2022）× CSA × AI** の考え方（リスクベース、最小文書、構成管理）に沿って行います。
 特に AI を含む部分（LLM プロンプト/ポリシー/ワークフロー等）は「構成（Configuration）」として扱い、変更管理と再検証（必要最小限の OQ/PQ）を前提とします。
 
+## 共通の構成図（Mermaid）
+
+```mermaid
+flowchart LR
+  Sources[外部ソース（GitLab/Zulip/CloudWatch/CMDB 等）] --> Webhook["n8n Webhook（apps/*/workflows の path）"]
+  Operator[運用者（手動/検証）] --> Webhook
+
+  Webhook --> WF[n8n Workflows（JSON）]
+  WF --> Ext[外部 API（GitLab/Zulip/Grafana/AWS 等）]
+  WF --> DB[(DB（必要な場合のみ）)]
+  WF --> Evidence[ログ/証跡（OQ/PQ）]
+```
+
 ## README（CSV）フォーマット（最小ドキュメントセット）
 
 Computerized System Validation（CSV）の最小ドキュメントセットとして、README は以下の構成（見出し/目的/内容）を採用します（GAMP® 5 第2版、CSA ベース、IQ/OQ/PQ を含む）。

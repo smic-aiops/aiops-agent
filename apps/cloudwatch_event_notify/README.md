@@ -45,6 +45,21 @@ AWS の監視イベント（CloudWatch Alarm/SNS 等）を ITSM のインシデ�
     - テスト: `POST /webhook/cloudwatch/notify/test`
       - `apps/cloudwatch_event_notify/scripts/deploy_workflows.sh` が、同期後に（`TEST_WEBHOOK=true` の場合）呼び出す
 
+### 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  CW[CloudWatch / EventBridge / SNS] --> Webhook["n8n Webhook<br/>POST /webhook/cloudwatch/notify"]
+  Operator[オペレーター] --> TestWebhook["n8n Webhook<br/>POST /webhook/cloudwatch/notify/test"]
+
+  Webhook --> WF[Workflow: cloudwatch_event_notify.json]
+  TestWebhook --> TestWF[Workflow: cloudwatch_event_notify_test.json]
+
+  WF --> Zulip[Zulip API（通知）]
+  WF --> GitLab[GitLab API（Issue 作成）]
+  WF --> Grafana[Grafana API（Annotation 作成）]
+```
+
 ### 接続通信表（CloudWatch Event Notify ⇄ ソース）
 #### CloudWatch Event Notify → ソース名（送信/参照）
 | ソース名 | 主目的 | 方式/エンドポイント例 | 認証（例） | 伝達内容（サマリ） |

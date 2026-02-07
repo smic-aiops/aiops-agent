@@ -41,9 +41,26 @@ GitLab 上の Issue/議論を検索可能な知識ベース（pgvector）とし�
   - n8n（Cron / Webhook）→ GitLab API →（chunk + embedding）→ PostgreSQL（pgvector）
 - スケジュール（既定）
   - 2 時間ごと（cron: `0 */2 * * *`）
-- Webhook（テスト）
+- Webhook（OQ / テスト）
   - n8n の Webhook ベース URL を `https://n8n.example.com/webhook` とした場合:
+    - OQ: `POST /webhook/gitlab/issue/rag/sync/oq`
     - テスト: `POST /webhook/gitlab/issue/rag/test`
+
+### 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Cron[Cron（n8n）] --> WF[Workflow: gitlab_issue_rag_sync.json]
+  Operator[オペレーター] --> OQWebhook["n8n Webhook<br/>POST /webhook/gitlab/issue/rag/sync/oq"]
+  Operator --> TestWebhook["n8n Webhook<br/>POST /webhook/gitlab/issue/rag/test"]
+
+  OQWebhook --> WF
+  TestWebhook --> TestWF[Workflow: gitlab_issue_rag_test.json]
+
+  WF --> GitLab[GitLab API（Issue/notes 取得）]
+  WF -. optional .-> Embedding[Embedding API（ベクトル生成）]
+  WF --> Pg[(RDS Postgres（pgvector）)]
+```
 
 ### 接続通信表（GitLab Issue RAG Sync ⇄ ソース）
 #### GitLab Issue RAG Sync → ソース名（送信/参照）

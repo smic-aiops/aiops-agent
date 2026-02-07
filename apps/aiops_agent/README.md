@@ -50,6 +50,19 @@ ITSM/AI Ops のユースケースにおいて、チャット/イベント入力�
   - プロンプト本文: `apps/aiops_agent/data/default/prompt/`
   - 注入の正: `apps/aiops_agent/scripts/deploy_workflows.sh`（`prompt_map` / `policy_map`）
 
+### 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Source[ソース（Zulip/Slack/CloudWatch 等）] --> Adapter["Adapter（n8n）<br/>/webhook/ingest/*"]
+  Adapter <--> ContextStore[(ContextStore（RDS Postgres / aiops_*）)]
+  Adapter <--> ApprovalStore[(ApprovalStore（RDS Postgres / aiops_*）)]
+  Adapter --> Orchestrator["Orchestrator（n8n）<br/>/webhook/jobs/preview /webhook/jobs/enqueue"]
+  Orchestrator --> JobEngine["JobEngine Queue（n8n）<br/>/webhook/jobs/job-engine/enqueue"]
+  JobEngine -. callback .-> Callback["Adapter Callback（n8n）<br/>/webhook/callback/job-engine"]
+  Callback --> Source
+```
+
 ### ディレクトリ構成
 - `apps/aiops_agent/workflows/`: AIOps Agent のワークフロー定義（JSON）
 - `apps/aiops_agent/scripts/`: 同期（アップロード）・DB seed 取り込み・DQ/IQ/OQ テスト補助

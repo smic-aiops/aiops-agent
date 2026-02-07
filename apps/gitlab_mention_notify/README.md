@@ -51,6 +51,16 @@ GitLab 上の議論（Issue/コメント/Push/Wiki 等）で発生した `@menti
   - n8n の Webhook ベース URL を `https://n8n.example.com/webhook` とした場合:
     - メイン: `POST /webhook/gitlab/mention/notify`
 
+### 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  GitLab[GitLab（Group Webhook）] --> Webhook["n8n Webhook<br/>POST /webhook/gitlab/mention/notify"]
+  Webhook --> WF[Workflow: gitlab_mention_notify.json]
+  WF -. optional .-> GitLabAPI[GitLab API（追加情報/マッピング取得）]
+  WF --> Zulip[Zulip API（DM/指定宛先へ通知）]
+```
+
 ### 接続通信表（GitLab Mention Notify ⇄ ソース）
 #### GitLab Mention Notify → ソース名（送信/参照）
 | ソース名 | 主目的 | 方式/エンドポイント例 | 認証（例） | 伝達内容（サマリ） |

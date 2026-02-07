@@ -4,6 +4,21 @@
 
 GitLab Issue のメトリクス集計が成立し、結果が S3 に出力されることを確認します。
 
+## 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Cron[Cron（n8n）] --> WF[Workflow: gitlab_issue_metrics_sync.json]
+  Operator[オペレーター] --> OQWebhook["n8n Webhook<br/>POST /webhook/gitlab/issue/metrics/sync/oq"]
+  Operator --> TestWebhook["n8n Webhook<br/>POST /webhook/gitlab/issue/metrics/sync/test"]
+
+  OQWebhook --> WF
+  TestWebhook --> TestWF[Workflow: gitlab_issue_metrics_sync_test.json]
+
+  WF --> GitLab[GitLab API（Issue 取得）]
+  WF --> S3[(S3（集計結果の履歴出力）)]
+```
+
 ## 前提
 
 - n8n に次のワークフローが同期済みであること

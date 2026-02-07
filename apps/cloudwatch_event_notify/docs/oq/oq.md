@@ -4,6 +4,21 @@
 
 - `apps/cloudwatch_event_notify/docs/oq/oq_cloudwatch_event_notify.md`
 
+## 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  CW[CloudWatch / EventBridge / SNS] --> Webhook["n8n Webhook<br/>POST /webhook/cloudwatch/notify"]
+  Operator[オペレーター] --> TestWebhook["n8n Webhook<br/>POST /webhook/cloudwatch/notify/test"]
+
+  Webhook --> WF[Workflow: cloudwatch_event_notify.json]
+  TestWebhook --> TestWF[Workflow: cloudwatch_event_notify_test.json]
+
+  WF --> Zulip[Zulip API（通知）]
+  WF --> GitLab[GitLab API（Issue 作成）]
+  WF --> Grafana[Grafana API（Annotation 作成）]
+```
+
 <!-- OQ_SCENARIOS_BEGIN -->
 ## OQ シナリオ（詳細）
 

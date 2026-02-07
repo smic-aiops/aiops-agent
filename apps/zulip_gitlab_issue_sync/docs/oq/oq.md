@@ -4,6 +4,17 @@
 
 Zulip↔GitLab の Issue/コメント同期が成立し、結果が Zulip へ通知されることを確認します。
 
+## 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Operator[オペレーター] --> OQWebhook["n8n Webhook（OQ 用）<br/>POST /webhook/zulip/gitlab/issue/sync/oq"]
+  Operator --> WF[Workflow: zulip_gitlab_issue_sync.json]
+  OQWebhook --> WF
+  WF <--> Zulip[Zulip API（メッセージ取得/投稿）]
+  WF <--> GitLab[GitLab API（Issue/notes 操作）]
+```
+
 ## 前提
 
 - n8n に次のワークフローが同期済みであること

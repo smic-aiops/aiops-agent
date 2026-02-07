@@ -4,6 +4,22 @@
 
 GitLab API からの取得、embedding API 呼び出し、RDS Postgres（pgvector）への upsert までの外部接続を確認します。
 
+## 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Cron[Cron（n8n）] --> WF[Workflow: gitlab_issue_rag_sync.json]
+  Operator[オペレーター] --> OQWebhook["n8n Webhook<br/>POST /webhook/gitlab/issue/rag/sync/oq"]
+  Operator --> TestWebhook["n8n Webhook<br/>POST /webhook/gitlab/issue/rag/test"]
+
+  OQWebhook --> WF
+  TestWebhook --> TestWF[Workflow: gitlab_issue_rag_test.json]
+
+  WF --> GitLab[GitLab API（Issue/notes 取得）]
+  WF -. optional .-> Embedding[Embedding API（ベクトル生成）]
+  WF --> Pg[(RDS Postgres（pgvector）)]
+```
+
 ## シナリオ別 OQ
 
 - シナリオ1（Issue + notes 取得/整形）: `apps/gitlab_issue_rag/docs/oq/oq_s1_fetch_format.md`

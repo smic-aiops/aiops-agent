@@ -4,6 +4,19 @@
 
 CMDB 等からの入力（Webhook）と、Zulip ストリーム作成/アーカイブの外部接続を確認します。
 
+## 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Client[クライアント（CMDB 等）] --> Webhook["n8n Webhook<br/>POST /webhook/zulip/streams/sync"]
+  Operator[オペレーター] --> TestWebhook["n8n Webhook<br/>POST /webhook/zulip/streams/sync/test"]
+
+  Webhook --> WF[Workflow: zulip_stream_sync.json]
+  TestWebhook --> TestWF[Workflow: zulip_stream_sync_test.json]
+
+  WF --> Zulip[Zulip API（Stream 作成/アーカイブ）]
+```
+
 ## 接続パターン（外部アクセス）
 
 - 入力 → n8n Webhook: `POST /webhook/zulip/streams/sync`

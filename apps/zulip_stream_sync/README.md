@@ -45,6 +45,19 @@
     - テスト: `POST /webhook/zulip/streams/sync/test`
       - `apps/zulip_stream_sync/scripts/deploy_workflows.sh` が、同期後に（`TEST_WEBHOOK=true` の場合）呼び出す
 
+### 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Client[クライアント（CMDB 等）] --> Webhook["n8n Webhook<br/>POST /webhook/zulip/streams/sync"]
+  Operator[オペレーター] --> TestWebhook["n8n Webhook<br/>POST /webhook/zulip/streams/sync/test"]
+
+  Webhook --> WF[Workflow: zulip_stream_sync.json]
+  TestWebhook --> TestWF[Workflow: zulip_stream_sync_test.json]
+
+  WF --> Zulip[Zulip API（Stream 作成/アーカイブ）]
+```
+
 ### 接続通信表（Zulip Stream Sync ⇄ ソース）
 #### Zulip Stream Sync → ソース名（送信/参照）
 | ソース名 | 主目的 | 方式/エンドポイント例 | 認証（例） | 伝達内容（サマリ） |

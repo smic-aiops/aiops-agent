@@ -4,6 +4,19 @@
 
 GitLab の push webhook 受信から Zulip 通知までの外部接続（GitLab→n8n、n8n→Zulip API）を確認します。
 
+## 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  GitLab[GitLab（Push Webhook）] --> Webhook["n8n Webhook<br/>POST /webhook/gitlab/push/notify"]
+  Operator[オペレーター] --> TestWebhook["n8n Webhook<br/>POST /webhook/gitlab/push/notify/test"]
+
+  Webhook --> WF[Workflow: gitlab_push_notify.json]
+  TestWebhook --> TestWF[Workflow: gitlab_push_notify_test.json]
+
+  WF --> Zulip[Zulip API（Stream 通知）]
+```
+
 ## 接続パターン（外部アクセス）
 
 - GitLab → n8n Webhook: `POST /webhook/gitlab/push/notify`

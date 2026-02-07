@@ -3,6 +3,21 @@
 本ディレクトリは AIOps Agent のドキュメントを「要求・仕様・設計・実装・利用方法」に分離して管理します。
 意思決定（語彙/条件分岐/閾値/優先順位/フォールバック等）は `policy_context` と各プロンプト本文を正とし、ドキュメントは参照関係とデータフローの説明に留めます。
 
+## 構成図（Mermaid / 実装対応）
+
+`apps/aiops_agent/docs/aiops_agent_design.md` の Mermaid 図が正（詳細）です。ここでは参照用に最小構成だけを示します。
+
+```mermaid
+flowchart LR
+  Source[ソース（Zulip/Slack/CloudWatch 等）] --> Adapter["Adapter（n8n /webhook/ingest/*）"]
+  Adapter <--> ContextStore[(ContextStore（RDS Postgres / aiops_*）)]
+  Adapter <--> ApprovalStore[(ApprovalStore（RDS Postgres / aiops_*）)]
+  Adapter --> Orchestrator["Orchestrator（n8n /webhook/jobs/*）"]
+  Orchestrator --> JobEngine["JobEngine（n8n DB queue + Cron worker）"]
+  JobEngine -. callback .-> Adapter
+  Adapter --> Source
+```
+
 ## 読み分け
 
 - 要求（What/Why）: `apps/aiops_agent/docs/app_requirements.md`

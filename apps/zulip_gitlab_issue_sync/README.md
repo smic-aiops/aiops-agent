@@ -46,6 +46,19 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
   - n8n の Webhook ベース URL を `https://n8n.example.com/webhook` とした場合:
     - OQ: `POST /webhook/zulip/gitlab/issue/sync/oq`
 
+### 構成図（Mermaid / 現行実装）
+
+```mermaid
+flowchart LR
+  Cron[Cron（n8n）] --> WF[Workflow: zulip_gitlab_issue_sync.json]
+  Operator[オペレーター] --> OQWebhook["n8n Webhook（OQ 用）<br/>POST /webhook/zulip/gitlab/issue/sync/oq"]
+  OQWebhook --> WF
+
+  WF <--> Zulip[Zulip API（メッセージ取得/投稿）]
+  WF <--> GitLab[GitLab API（Issue/notes 操作）]
+  WF -. optional .-> S3[(S3（任意: events/metrics）)]
+```
+
 ### 接続通信表（Zulip GitLab Issue Sync ⇄ ソース）
 #### Zulip GitLab Issue Sync → ソース名（送信/参照）
 | ソース名 | 主目的 | 方式/エンドポイント例 | 認証（例） | 伝達内容（サマリ） |
