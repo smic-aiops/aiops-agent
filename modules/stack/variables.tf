@@ -1131,7 +1131,7 @@ variable "enable_service_control" {
 variable "locked_schedule_services" {
   description = "Service IDs locked from schedule editing in the control site UI"
   type        = list(string)
-  default     = ["keycloak", "n8n", "zulip"]
+  default     = []
 }
 
 variable "service_control_lambda_reserved_concurrency" {
