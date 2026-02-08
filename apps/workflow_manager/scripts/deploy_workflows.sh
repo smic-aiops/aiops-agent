@@ -1626,23 +1626,80 @@ PY
   ZULIP_BASIC_CRED_NAME="${ZULIP_BASIC_CREDENTIAL_NAME}"
 }
 
-resolve_openai_from_tf() {
-  if [[ -n "${OPENAI_MODEL}" && -n "${OPENAI_BASE_URL}" && -n "${OPENAI_API_KEY_PARAM}" ]]; then
+resolve_openai_api_key_param_for_realm() {
+  local realm="$1"
+  if ! command -v terraform >/dev/null 2>&1; then
     return
   fi
+  local json
+  json="$(terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null | jq -c '.openai_model_api_key_param_by_realm.value // {}' 2>/dev/null || true)"
+  if [[ -z "${json}" || "${json}" == "null" ]]; then
+    return
+  fi
+  jq -r --arg realm "${realm}" '.[$realm] // .default // empty' <<<"${json}"
+}
 
+resolve_openai_model_param_for_realm() {
+  local realm="$1"
+  if ! command -v terraform >/dev/null 2>&1; then
+    return
+  fi
+  local json
+  json="$(terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null | jq -c '.openai_model_param_by_realm.value // {}' 2>/dev/null || true)"
+  if [[ -z "${json}" || "${json}" == "null" ]]; then
+    return
+  fi
+  jq -r --arg realm "${realm}" '.[$realm] // .default // empty' <<<"${json}"
+}
+
+resolve_openai_base_url_param_for_realm() {
+  local realm="$1"
+  if ! command -v terraform >/dev/null 2>&1; then
+    return
+  fi
+  local json
+  json="$(terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null | jq -c '.openai_base_url_param_by_realm.value // {}' 2>/dev/null || true)"
+  if [[ -z "${json}" || "${json}" == "null" ]]; then
+    return
+  fi
+  jq -r --arg realm "${realm}" '.[$realm] // .default // empty' <<<"${json}"
+}
+
+resolve_openai_from_tf() {
   if ! command -v terraform >/dev/null 2>&1; then
     return
   fi
 
-  if [[ -z "${OPENAI_MODEL}" ]]; then
-    OPENAI_MODEL="$(terraform -chdir="${REPO_ROOT}" output -raw openai_model 2>/dev/null || true)"
-  fi
-  if [[ -z "${OPENAI_BASE_URL}" ]]; then
-    OPENAI_BASE_URL="$(terraform -chdir="${REPO_ROOT}" output -raw openai_base_url 2>/dev/null || true)"
-  fi
+  local realm="${N8N_ENV_REALM:-default}"
+
   if [[ -z "${OPENAI_API_KEY_PARAM}" ]]; then
-    OPENAI_API_KEY_PARAM="$(terraform -chdir="${REPO_ROOT}" output -raw openai_model_api_key_param 2>/dev/null || true)"
+    OPENAI_API_KEY_PARAM="$(resolve_openai_api_key_param_for_realm "${realm}")"
+    if [[ -z "${OPENAI_API_KEY_PARAM}" ]]; then
+      OPENAI_API_KEY_PARAM="$(terraform -chdir="${REPO_ROOT}" output -raw openai_model_api_key_param 2>/dev/null || true)"
+    fi
+  fi
+  if [[ "${OPENAI_API_KEY_PARAM}" == "null" ]]; then
+    OPENAI_API_KEY_PARAM=""
+  fi
+
+  local model_param=""
+  if [[ -z "${OPENAI_MODEL}" ]]; then
+    model_param="$(resolve_openai_model_param_for_realm "${realm}")"
+    if [[ -n "${model_param}" ]]; then
+      OPENAI_MODEL="$(ssm_get_parameter_value "${model_param}")"
+    fi
+  fi
+
+  local base_url_param=""
+  if [[ -z "${OPENAI_BASE_URL}" ]]; then
+    base_url_param="$(resolve_openai_base_url_param_for_realm "${realm}")"
+    if [[ -n "${base_url_param}" ]]; then
+      OPENAI_BASE_URL="$(ssm_get_parameter_value "${base_url_param}")"
+    fi
+  fi
+
+  if [[ -z "${OPENAI_MODEL_API_KEY}" && -n "${OPENAI_API_KEY_PARAM}" ]]; then
+    OPENAI_MODEL_API_KEY="$(ssm_get_parameter_value "${OPENAI_API_KEY_PARAM}")"
   fi
 
   if [[ "${OPENAI_MODEL}" == "null" ]]; then
@@ -1651,8 +1708,8 @@ resolve_openai_from_tf() {
   if [[ "${OPENAI_BASE_URL}" == "null" ]]; then
     OPENAI_BASE_URL=""
   fi
-  if [[ "${OPENAI_API_KEY_PARAM}" == "null" ]]; then
-    OPENAI_API_KEY_PARAM=""
+  if [[ "${OPENAI_MODEL_API_KEY}" == "null" ]]; then
+    OPENAI_MODEL_API_KEY=""
   fi
 }
 
@@ -1671,6 +1728,90 @@ resolve_aws_profile_from_tf() {
   fi
 }
 
+resolve_aws_region_from_tf() {
+  if [[ -n "${AWS_REGION:-}" || -n "${AWS_DEFAULT_REGION:-}" ]]; then
+    return
+  fi
+  if ! command -v terraform >/dev/null 2>&1; then
+    return
+  fi
+  local region=""
+  region="$(terraform -chdir="${REPO_ROOT}" output -raw region 2>/dev/null || true)"
+  region="${region//$'\n'/}"
+  if [[ -n "${region}" && "${region}" != "null" ]]; then
+    export AWS_REGION="${region}"
+    export AWS_DEFAULT_REGION="${region}"
+  fi
+}
+
+ssm_get_parameter_value() {
+  local name="$1"
+  if [[ -z "${name}" ]]; then
+    return
+  fi
+  if ! command -v aws >/dev/null 2>&1; then
+    return
+  fi
+  resolve_aws_profile_from_tf
+  resolve_aws_region_from_tf
+  AWS_PAGER="" aws ssm get-parameter --with-decryption --name "${name}" --query Parameter.Value --output text 2>/dev/null || true
+}
+
+build_openai_credential_payload() {
+  local name="$1"
+  local api_key="$2"
+  local base_url="${3:-}"
+  local variant="${4:-minimal}" # full|no_base|minimal
+
+  case "${variant}" in
+    full)
+      jq -c -n \
+        --arg name "${name}" \
+        --arg key "${api_key}" \
+        --arg base_url "${base_url}" \
+        '{
+          name: $name,
+          type: "openAiApi",
+          data: {
+            apiKey: $key,
+            headerName: "Authorization",
+            headerValue: ("Bearer " + $key)
+          }
+        }
+        | (if ($base_url | length) > 0 then .data.baseUrl = $base_url else . end)'
+      ;;
+    no_base)
+      jq -c -n \
+        --arg name "${name}" \
+        --arg key "${api_key}" \
+        '{
+          name: $name,
+          type: "openAiApi",
+          data: {
+            apiKey: $key,
+            headerName: "Authorization",
+            headerValue: ("Bearer " + $key)
+          }
+        }'
+      ;;
+    minimal)
+      jq -c -n \
+        --arg name "${name}" \
+        --arg key "${api_key}" \
+        '{
+          name: $name,
+          type: "openAiApi",
+          data: {
+            apiKey: $key
+          }
+        }'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 ensure_openai_credentials() {
   if [[ -n "${OPENAI_CRED_ID}" && -n "${OPENAI_CRED_NAME}" ]]; then
     return
@@ -1684,12 +1825,7 @@ ensure_openai_credentials() {
   local api_key_param="${OPENAI_API_KEY_PARAM}"
 
   if [[ -z "${api_key}" && -n "${api_key_param}" ]]; then
-    if ! command -v aws >/dev/null 2>&1; then
-      echo "[n8n] aws CLI is required to fetch ${api_key_param} from SSM." >&2
-      exit 1
-    fi
-    local fetched=""
-    :
+    api_key="$(ssm_get_parameter_value "${api_key_param}")"
   fi
 
   if [[ -z "${api_key}" ]]; then
@@ -1706,34 +1842,77 @@ ensure_openai_credentials() {
 
   require_var "OPENAI_CREDENTIAL_NAME" "${OPENAI_CREDENTIAL_NAME}"
 
-  local payload
-  payload="$(jq -n \
-    --arg name "${OPENAI_CREDENTIAL_NAME}" \
-    --arg key "${api_key}" \
-    '{
-      name: $name,
-      type: "openAiApi",
-      data: {
-        apiKey: $key
-      }
-    }')"
+  local variants=()
+  if [[ -n "${OPENAI_BASE_URL}" ]]; then
+    variants=("full" "no_base" "minimal")
+  else
+    variants=("no_base" "minimal")
+  fi
 
   local existing_id="${OPENAI_CREDENTIAL_ID}"
-  if [[ -z "${existing_id}" ]]; then
-    api_call "GET" "/credentials?limit=200"
-    expect_2xx "GET /credentials"
-    existing_id="$(jq -r --arg name "${OPENAI_CREDENTIAL_NAME}" '(.data // []) | map(select(.name == $name and .type == "openAiApi")) | .[0].id // empty' <<<"${API_BODY}")"
+  if [[ -z "${existing_id}" ]] && is_truthy "${N8N_REST_CREDENTIALS_FALLBACK:-true}"; then
+    existing_id="$(rest_find_credential_id "${OPENAI_CREDENTIAL_NAME}" "openAiApi" || true)"
   fi
 
   local cred_id=""
   if [[ -n "${existing_id}" ]]; then
-    api_call "PATCH" "/credentials/${existing_id}" "${payload}"
-    expect_2xx "PATCH /credentials (${OPENAI_CREDENTIAL_NAME})"
-    cred_id="${existing_id}"
+    local v payload patched="false"
+    for v in "${variants[@]}"; do
+      payload="$(build_openai_credential_payload "${OPENAI_CREDENTIAL_NAME}" "${api_key}" "${OPENAI_BASE_URL}" "${v}")"
+      api_call "PATCH" "/credentials/${existing_id}" "${payload}"
+      if [[ "${API_STATUS}" == 2* ]]; then
+        cred_id="${existing_id}"
+        patched="true"
+        break
+      fi
+      if [[ "${API_STATUS}" == "405" ]]; then
+        if is_truthy "${N8N_REST_CREDENTIALS_FALLBACK:-true}" && rest_upsert_credential "${existing_id}" "${payload}" "${OPENAI_CREDENTIAL_NAME}" "openAiApi"; then
+          cred_id="${existing_id}"
+          patched="true"
+          break
+        fi
+        break
+      fi
+      if [[ "${API_STATUS}" == "400" ]]; then
+        continue
+      fi
+      break
+    done
+    if [[ "${patched}" != "true" ]]; then
+      echo "[n8n] PATCH /credentials (${OPENAI_CREDENTIAL_NAME}) failed (HTTP ${API_STATUS})" >&2
+      echo "${API_BODY}" >&2
+      exit 1
+    fi
   else
-    api_call "POST" "/credentials" "${payload}"
-    expect_2xx "POST /credentials (${OPENAI_CREDENTIAL_NAME})"
-    cred_id="$(jq -r '.data.id // .id // empty' <<<"${API_BODY}")"
+    local v payload created="false" rest_id=""
+    for v in "${variants[@]}"; do
+      payload="$(build_openai_credential_payload "${OPENAI_CREDENTIAL_NAME}" "${api_key}" "${OPENAI_BASE_URL}" "${v}")"
+      api_call "POST" "/credentials" "${payload}"
+      if [[ "${API_STATUS}" == 2* ]]; then
+        cred_id="$(jq -r '.data.id // .id // empty' <<<"${API_BODY}")"
+        created="true"
+        break
+      fi
+      if [[ "${API_STATUS}" == "405" ]]; then
+        if is_truthy "${N8N_REST_CREDENTIALS_FALLBACK:-true}"; then
+          rest_id="$(rest_upsert_credential "" "${payload}" "${OPENAI_CREDENTIAL_NAME}" "openAiApi" || true)"
+          if [[ -n "${rest_id}" ]]; then
+            cred_id="${rest_id}"
+            created="true"
+          fi
+        fi
+        break
+      fi
+      if [[ "${API_STATUS}" == "400" ]]; then
+        continue
+      fi
+      break
+    done
+    if [[ "${created}" != "true" ]]; then
+      echo "[n8n] POST /credentials (${OPENAI_CREDENTIAL_NAME}) failed (HTTP ${API_STATUS})" >&2
+      echo "${API_BODY}" >&2
+      exit 1
+    fi
   fi
   require_var "credential_id" "${cred_id}"
   echo "[n8n] ensured OpenAI credential: ${OPENAI_CREDENTIAL_NAME} -> ${cred_id}"

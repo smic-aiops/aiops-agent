@@ -47,7 +47,7 @@
   },
   "approval": {
     "approval_token": "...",
-    "approval_base_url": "https://example.com"  // 任意（本プロトタイプでは原則未使用）
+    "approval_base_url": "https://example.com/webhook"  // 任意（ある場合は承認リンク生成に利用）
   },
   "enqueue": {
     "job_id": "..." // auto_enqueue の場合にあることが多い
@@ -59,6 +59,9 @@
 - 承認案内の方式は `policy_context.rules.initial_reply.approval_guidance` と `context.source_capabilities` を正とする。
 - 承認コマンドの例は `policy_context.interaction_grammar.approval.templates` を正とする。
 - 承認コマンドの補助文は `policy_context.defaults.initial_reply.approval_command_hint` を正とする。
+- `approval.approval_base_url` があり、かつ `context.source_capabilities.supports_links=true` の場合は、**クリック可能な承認リンク**も併記する（承認トークンの出力可否は `policy_context.rules.common.pii_handling.allow_fields` を正とする）。
+  - approve: `<approval_base_url>/approval/click?decision=approve&token=<approval_token>`
+  - deny: `<approval_base_url>/approval/click?decision=deny&token=<approval_token>`
 - `clarifying_questions` が空の場合の汎用質問は `policy_context.defaults.initial_reply.fallback_questions` を正とする。
 - 追加質問の上限は `policy_context.limits.initial_reply.max_clarifying_questions` を正とする。
 - `job_plan.next_action=ask_clarification` の場合は、質問は **1〜2個**に絞り（上限は `policy_context.limits.initial_reply.max_clarifying_questions`）、詰問にならないようにする。

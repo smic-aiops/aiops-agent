@@ -13,6 +13,7 @@
 
 - 環境の使い方（ITSM 利用者向け）: `docs/usage-guide.md`
   - 最終決定は Zulip のトピック上で行い、決定メッセージは `/decision` で明示する（証跡は GitLab Issue に残す）
+  - AIOpsAgent の承認リンク（approve/deny）が提示された場合、リンククリックで確定した内容も `/decision` として扱われる。過去の承認（決定）サマリは `/decisions` で参照する
   - 例外的に GitLab 側で決定を記録する場合は、先頭に `[DECISION]` / `決定:` を付けると Zulip に通知される（環境設定が必要）
 
 ## セットアップ（サマリ）
@@ -41,9 +42,6 @@ bash scripts/itsm/zulip/generate_realm_creation_link_for_zulip.sh
 
 bash scripts/itsm/update_terraform_itsm_tfvars_auth_flags.sh
 
-# tfvars/SSM の更新（必要に応じて）
-bash scripts/itsm/refresh_all_secure.sh
-
 # GitLab（レルム用のグループ/初期プロジェクト作成）
 bash scripts/itsm/gitlab/ensure_realm_groups.sh
 bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh
@@ -57,8 +55,8 @@ bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh --files-only
 bash scripts/plan_apply_all_tfvars.sh
 
 
-# n8n ワークフロー同期（+ OQ）
-bash scripts/apps/deploy_all_workflows.sh --with-tests
+# n8n ワークフロー同期（ベースライン）
+bash scripts/apps/deploy_all_workflows.sh
 
 # サービス再起動（必要に応じて）
 bash scripts/itsm/run_all_redeploy.sh
@@ -74,6 +72,18 @@ bash scripts/itsm/gitlab/check_gitlab_efs_rag_pipeline.sh
 
 # URL 確認
 terraform output -json service_urls
+```
+
+## 改善ステージ（任意）
+
+ベースラインのセットアップ完了後に、運用成熟（安全/再現性/回帰）を高めたい場合に実行します。
+
+```bash
+# tfvars/SSM の更新（必要に応じて）
+bash scripts/itsm/refresh_all_secure.sh
+
+# apps の同期後に OQ も実行（回帰テスト + 証跡）
+bash scripts/apps/deploy_all_workflows.sh --with-tests
 ```
 
 ## セットアップ（詳細）

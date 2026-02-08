@@ -179,7 +179,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $json?.[0] ?? $json ?? {};\nconst replyTarget = row.reply_target;\nif (!replyTarget) throw new Error('reply_target not found');\n\nconst enqueue = $node['Call Orchestrator Enqueue']?.json ?? {};\nconst jobId = enqueue.job_id ?? null;\nconst source = replyTarget.source ?? 'unknown';\nconst decision = $node['Validate Pending Approval'].json?.decision;\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nlet decisionPolicyDoc = null;\ntry {\n  decisionPolicyDoc = JSON.parse(\"__POLICY__DECISION__\");\n} catch (error) {\n  decisionPolicyDoc = null;\n}\n\nconst ackFallbacks = decisionPolicyDoc?.fallbacks?.approval_ack_messages ?? {};\nconst ackTemplate = interactionGrammar?.approval?.ack_messages?.[decision]\n  ?? ackFallbacks?.[decision]\n  ?? '';\nconst jobLine = jobId && decision !== 'deny' ? `\nJob ID: ${jobId}` : '';\nconst content = String(ackTemplate).split('{job_line}').join(jobLine);\n\nreturn [{\n  json: {\n    reply_target: replyTarget,\n    content,\n    source,\n    job_id: jobId,\n    context_id: enqueue.context_id ?? $node['Validate Pending Approval'].json?.context_id\n  }\n}];\n"
+        "jsCode": "const row = $json?.[0] ?? $json ?? {};\nconst replyTarget = row.reply_target;\nif (!replyTarget) throw new Error('reply_target not found');\n\nconst enqueue = $node['Call Orchestrator Enqueue']?.json ?? {};\nconst jobId = enqueue.job_id ?? null;\nconst source = replyTarget.source ?? 'unknown';\nconst decision = String($node['Validate Pending Approval'].json?.decision ?? '').trim().toLowerCase();\nconst approvalId = $node['Parse Approval Token']?.json?.approval_id ?? row.approval_id ?? null;\nconst contextId = enqueue.context_id ?? $node['Validate Pending Approval'].json?.context_id ?? row.context_id ?? null;\nconst actor = $node['Validate Pending Approval'].json?.actor ?? $node['Parse Approval Token'].json?.actor ?? {};\nconst jobPlan = $node['Validate Pending Approval'].json?.job_plan ?? null;\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nlet decisionPolicyDoc = null;\ntry {\n  decisionPolicyDoc = JSON.parse(\"__POLICY__DECISION__\");\n} catch (error) {\n  decisionPolicyDoc = null;\n}\n\nconst ackFallbacks = decisionPolicyDoc?.fallbacks?.approval_ack_messages ?? {};\nconst ackTemplate = interactionGrammar?.approval?.ack_messages?.[decision]\n  ?? ackFallbacks?.[decision]\n  ?? '';\n\nconst isTruthy = (value) => {\n  const v = String(value ?? '').trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n};\n\nconst decisionPrefix = String($env.AIOPS_ZULIP_DECISION_PREFIX || '/decision').trim() || '/decision';\nconst asDecision = isTruthy($env.AIOPS_ZULIP_APPROVAL_AS_DECISION ?? 'true');\n\nconst actorName = String(actor?.name ?? actor?.full_name ?? actor?.username ?? actor?.email ?? '').trim();\nconst actorLine = actorName ? `- 承認者: ${actorName}` : null;\n\nconst workflowId = String(jobPlan?.workflow_id ?? jobPlan?.workflowId ?? '').trim();\nconst jobSummary = String(jobPlan?.summary ?? '').trim();\nconst workflowLine = workflowId ? `- 対象: ${workflowId}${jobSummary ? ` (${jobSummary})` : ''}` : null;\n\nlet content = '';\nif (source === 'zulip' && asDecision) {\n  const verb = (decision === 'deny') ? '却下' : '承認';\n  const headParts = [decisionPrefix, `AIOpsAgent 実行${verb}`];\n  if (workflowId) headParts.push(`workflow=${workflowId}`);\n  const head = headParts.join(' ');\n\n  const lines = [\n    head,\n    actorLine,\n    approvalId ? `- approval_id: ${approvalId}` : null,\n    contextId ? `- context_id: ${contextId}` : null,\n    jobId ? `- job_id: ${jobId}` : null,\n    workflowLine,\n  ].filter(Boolean);\n\n  content = lines.join('\\n');\n} else {\n  const jobLine = jobId && decision !== 'deny' ? `\nJob ID: ${jobId}` : '';\n  content = String(ackTemplate).split('{job_line}').join(jobLine);\n}\n\nreturn [{\n  json: {\n    reply_target: replyTarget,\n    content,\n    source,\n    decision,\n    approval_id: approvalId,\n    job_id: jobId,\n    context_id: contextId,\n  }\n}];\n"
       },
       "id": "12",
       "name": "Build Approval Ack",
@@ -1187,6 +1187,49 @@
         2140,
         300
       ]
+    },
+    {
+      "parameters": {
+        "path": "approval/click",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-approval-click",
+      "name": "Webhook (Approval Click)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE aiops_approval_history\nSET comment = NULLIF(({{ JSON.stringify($json.content || '') }}::jsonb #>> '{}'), '')\nWHERE approval_history_id = {{$json.approval_id}}::uuid;"
+      },
+      "id": "update-approval-history-comment",
+      "name": "Update Approval History Comment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        2700,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $items('Build Approval Ack');\n"
+      },
+      "id": "restore-items-after-approval-history-comment",
+      "name": "Restore Items After Approval History Comment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2920,
+        420
+      ]
     }
   ],
   "connections": {
@@ -1302,17 +1345,6 @@
         [
           {
             "node": "Debug Log After: Load Context -> Build Approval Ack",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Approval Ack": {
-      "main": [
-        [
-          {
-            "node": "Debug Log After: Build Approval Ack -> IF Zulip Source",
             "type": "main",
             "index": 0
           }
@@ -1986,6 +2018,50 @@
         [
           {
             "node": "Load Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook (Approval Click)": {
+      "main": [
+        [
+          {
+            "node": "Parse Approval Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Approval Ack": {
+      "main": [
+        [
+          {
+            "node": "Update Approval History Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Approval History Comment": {
+      "main": [
+        [
+          {
+            "node": "Restore Items After Approval History Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Items After Approval History Comment": {
+      "main": [
+        [
+          {
+            "node": "IF Zulip Source",
             "type": "main",
             "index": 0
           }

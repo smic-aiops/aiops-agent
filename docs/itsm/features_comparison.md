@@ -52,7 +52,7 @@
 | 27 | ITSM | Release Management（リリース） | GitLab（マイルストーン/Issue） | 市販ITSM: ○<br>本システム: △ | リリースカレンダ→外部カレンダー同期（n8n）と、リリース条件（テスト結果）自動チェックを追加。 |
 | 28 | ITSM | Request Fulfillment（サービス要求） | `apps/workflow_manager`（カタログAPI）+ GitLab | 市販ITSM: ○<br>本システム: △ | Sulu ポータルのフォーム→カタログAPI→実行フロー（n8n）を標準提供。 |
 | 29 | ITSM | Service Catalog（カタログ） | `apps/workflow_manager`（Workflow Manager） + GitLab（カタログ同期） | 市販ITSM: ○<br>本システム: △ | カタログ定義（YAML）→GitLab表示→Suluフォーム生成→n8n実行、をテンプレ化。 |
-| 30 | ITSM | 承認（Approvals） | n8n + GitLab（承認コメント/ラベル） | 市販ITSM: ○<br>本システム: △ | `apps/aiops_agent` の承認履歴（seed/DB）を拡張し、署名/HMACと監査証跡を強化。 |
+| 30 | ITSM | 承認（Approvals） | n8n +（会話: Zulip / 証跡: DB+GitLab） | 市販ITSM: ○<br>本システム: △ | `apps/aiops_agent` の承認導線（`/webhook/approval/click`）を前提に、Zulip 上では承認結果を `/decision` として扱い、`/decisions` で履歴サマリを参照できるよう拡張（証跡は `aiops_approval_history` と GitLab へ）。 |
 | 31 | ITSM | SLA/OLA/UC | なし（運用で代替） | 市販ITSM: ○<br>本システム: × | GitLab Issue の `created_at`/ラベルからSLA計測→Grafana可視化→期限通知（n8n）を実装。 |
 | 32 | ITSM | エスカレーション（自動割当/通知） | n8n（通知/分岐） | 市販ITSM: △<br>本システム: △ | 当番表（On-call）を外部（Google Calendar等）から取り込み、Zulip/メールへエスカレを自動化。 |
 | 33 | ITSM | インシデント⇄CI紐付け | GitLab CMDB（`cmdb/`）+ Issueリンク | 市販ITSM: ○<br>本システム: △ | CI参照を「CI ID（固定）」に統一し、Issueテンプレに必須項目として組み込む。 |

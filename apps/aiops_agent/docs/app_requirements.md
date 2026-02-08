@@ -42,6 +42,7 @@ CloudWatch からのイベント通知やチャットのイベント（メッセ
 - UC-AIOPS-OFF-011（DQ-OFF-011/medium）: GitLab Wiki 等のナレッジ検索を想定し、RAG 参照の意思決定（preview facts）を行う
 - UC-AIOPS-OFF-012（DQ-OFF-012/medium）: RAG から得た候補（candidate）をプレビューに反映し、次アクションの根拠を整える
 - UC-AIOPS-OFF-013（DQ-OFF-013/medium）: 解決済みの対応内容をナレッジ化（再利用可能なFAQ/手順/注意点）し、GitLab の docs/ 等へ記録できるように誘導する（ITIL4 テンプレ: `14_knowledge_management`）
+- UC-AIOPS-OFF-014（追加/medium）: 承認リンク（クリック）による approve/deny を **Zulip 上の決定**として扱い、証跡（承認履歴）を保存し、Zulip から `/decisions` で時系列サマリを参照できる
 
 ## 2.2 DQ ゲート連携（要求）
 

@@ -115,6 +115,7 @@
 補足:
 - `/decision` で始まる投稿は、`apps/zulip_gitlab_issue_sync` が GitLab Issue に `### 決定（Zulip）` として証跡コメントを残します（環境により無効な場合があります）。
 - チケットをクローズ/再オープンしたい場合は、同一トピックで `/close ...` / `/reopen ...` を投稿します（GitLab Issue の状態へ反映されます）。
+- AIOpsAgent の承認導線（approve/deny）がリンクで提示された場合、**リンククリックで確定した内容も `/decision` として扱われ**、同一トピックへ決定ログが投稿されます。過去の承認（決定）を一覧したい場合は `/decisions` を投稿します（AIOpsAgent が時系列サマリを返します）。
 - GitLab 側で決定を記録して関係者へ通知したい場合は、Issue 本文またはコメントの先頭を `[DECISION]` または `決定:` にします（Zulip の該当トピックへ通知されます。Zulip URL を復元できない場合は通知されません）。
 
 ---

@@ -96,9 +96,17 @@ n8n の Webhook ベース URL を `https://n8n.example.com/webhook` とした場
   - `POST /webhook/jobs/enqueue`
 - 承認・フィードバック・コールバック
   - `POST /webhook/approval/confirm`
+  - `GET /webhook/approval/click`（承認リンク: `decision=approve|deny` + `token`）
   - `POST /webhook/feedback/preview`
   - `POST /webhook/feedback/job`
   - `POST /webhook/callback/job-engine`
+
+### Zulip での参照（決定履歴）
+
+- 承認リンク（approve/deny）で確定した内容は、Zulip の同一スレッドで `/decision` として投稿され、承認履歴（`aiops_approval_history`）にも記録される。
+- 過去の承認（決定）を時系列で参照したい場合は、Zulip で `/decisions` を投稿する（AIOpsAgent がサマリを返す）。
+  - 既定の表示件数: `AIOPS_DECISION_HISTORY_LIMIT`（既定 20）
+  - `/decision` 化の挙動: `AIOPS_ZULIP_APPROVAL_AS_DECISION`（既定 true）, `AIOPS_ZULIP_DECISION_PREFIX`（既定 `/decision`）
 
 ### 同期（n8n Public API へ upsert）
 ワークフロー・資格情報（Postgres/AWS/Zulip/OpenAI など）・プロンプト/ポリシー注入をまとめて同期する。

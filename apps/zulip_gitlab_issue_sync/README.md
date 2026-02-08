@@ -53,6 +53,7 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
   - `/decision`
   - `[DECISION]`（大小は問わない）
   - `決定:`
+- 補足: AIOpsAgent の承認導線（approve/deny）がリンクで提示された場合、リンククリックで確定した内容も同一トピックへ `/decision` として投稿される想定（= 本ルールで証跡化される）。
 - 設定:
   - `ZULIP_GITLAB_DECISION_PREFIXES`（カンマ区切り、既定: `/decision,[decision],[DECISION],決定:`）
   - `ZULIP_GITLAB_DECISION_LABEL`（任意。設定した場合、決定が初めて記録されたタイミングで Issue にラベルを付与）

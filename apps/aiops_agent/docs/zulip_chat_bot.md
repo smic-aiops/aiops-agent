@@ -66,6 +66,15 @@ Zulip の Outgoing Webhook（bot_type=3）は、受信側が Webhook の **HTTP 
   - **quick_reply（即時返信）**: 挨拶/雑談/用語の簡単な説明/軽い案内など、短時間で返せる場合は HTTP レスポンスで返信して完結する。
   - **defer（遅延返信）**: Web検索・重い LLM 処理・ジョブ実行・承認確定（approve/deny）など時間がかかる場合は、まず HTTP レスポンスで「後でメッセンジャーでお伝えします。」を返し、その後に Bot API（`mess` / bot_type=1）で結果を通知する。
 
+### 2.4 承認リンク（クリック）と決定扱い
+
+- AIOpsAgent が `required_confirm=true` の場合、承認コマンド（`approve <token>` / `deny <token>`）に加えて、**クリック可能な承認リンク**を提示できる（`approval_base_url` がある場合）。
+- 承認リンク（例）:
+  - approve: `<approval_base_url>/approval/click?decision=approve&token=<approval_token>`
+  - deny: `<approval_base_url>/approval/click?decision=deny&token=<approval_token>`
+- リンククリックで確定した approve/deny は、Zulip の同一トピックへ `/decision` として投稿される（決定ログ）。この `/decision` は `apps/zulip_gitlab_issue_sync` により GitLab Issue へ証跡化される想定。
+- 過去の承認（決定）サマリは、Zulip で `/decisions` を投稿して参照する（AIOpsAgent が時系列一覧を返す）。
+
 ## 3. セットアップ
 
 ### 3.1 n8n から Zulip へ送信するための準備
