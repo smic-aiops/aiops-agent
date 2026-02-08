@@ -16,7 +16,7 @@
   - `terraform fmt -recursive` を実行し、インデントは 2 スペース、変数/locals は snake_case を使ってください。
   - 命名は `name_prefix = ${environment}-${platform}` に合わせ、タグは `{environment, platform, app}` に加えてリソースの役割を付与します（例: `${name_prefix}-private-rt`）。
   - シェルスクリプト: `set -euo pipefail` を維持し、変数はクォートし、AWS プロファイルは `terraform output` 経由で解決してください。
-  - シェルスクリプト: `OPENAI_*` は `.tfvars` を直接読まず、必ず `terraform output`（SSM パラメータ名）→ `aws ssm get-parameter` で解決してください。
+  - シェルスクリプト: 必要な環境のための引数は `.tfvars` を直接読まず、必ず `terraform output`（必要なら SSM パラメータ名）→ `aws ssm get-parameter` で解決してください。
   - Dockerfile: マルチステージビルドを優先し、モジュールのデフォルトに合わせて `ARG` を設定してください。
 
   ## テスト指針
