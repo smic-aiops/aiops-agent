@@ -156,11 +156,12 @@
 
 ### `scripts/infra/update_env_tfvars_from_outputs.sh`
 
-- 目的: `terraform output` にある `vpc_id` / `internet_gateway_id` / `nat_gateway_id` を `terraform.env.tfvars` に反映
-- 実行タイミング: 既存環境の修正（VPC 周辺やネットワーク変更）に入る前
+- 目的: ネットワークを参照モード（`existing_*_id`）へ移行する場合に、`terraform output` の `vpc_id` / `internet_gateway_id` / `nat_gateway_id` を `terraform.env.tfvars` に記録する
+- 実行タイミング: **参照モードへ移行したいときのみ**（通常の新規構築/通常運用では必須ではありません）
 - 補足:
   - `terraform output` が空なら、スクリプト内で `terraform apply -refresh-only` を実行して再取得します。
-  - 反映後も `terraform apply -refresh-only` が走るため、state と tfvars の整合が取りやすくなります。
+  - `--migrate` を指定すると `terraform state rm`（VPC/IGW/NAT/EIP）→ tfvars 追記 → `terraform apply -refresh-only` を行います（AWS リソースは消しませんが、Terraform の管理対象から外れます）。
+  - `--migrate` なしの場合、state にネットワークリソースが存在すると `existing_*_id` の書き込みをスキップします（書き込むと destroy を誘発し得るため）。
 
 ### `scripts/infra/show_rds_postgresql_connection.sh`
 

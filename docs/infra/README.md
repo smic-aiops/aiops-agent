@@ -112,11 +112,16 @@ private_subnets = [
 ```
 
 ### 設定の安定化（ステップ1 apply 後）
-初回 apply 後に、次のスクリプトで `terraform.env.tfvars` へ安定化用の値を追記します。
+初回 apply 後に、次のスクリプトで `terraform.env.tfvars` を更新します（目的に応じて実行します）。
 
 ```bash
-# VPC/IGW/NAT の existing_* を terraform output から反映
-bash scripts/infra/update_env_tfvars_from_outputs.sh
+# （任意）ネットワークを参照モード（existing_*_id）へ移行する場合のみ
+# - VPC/IGW/NAT(+EIP) を Terraform の管理対象から外し、既存 ID を tfvars に記録する
+# - 内部で terraform state rm を行うため、実行意図を明確にしてから実行する
+# まずは差分確認（推奨）
+bash scripts/infra/update_env_tfvars_from_outputs.sh --dry-run
+
+bash scripts/infra/update_env_tfvars_from_outputs.sh --migrate
 
 # RDS master パスワード（pg_db_password）を SSM から反映（平文で保存されるのでコミット禁止）
 bash scripts/infra/refresh_rds_master_password_tfvars.sh
@@ -124,6 +129,10 @@ bash scripts/infra/refresh_rds_master_password_tfvars.sh
 
 ### terraform.env.tfvars（インフラ）の安定化後の例（ステップ2）
 上記スクリプト実行後の `terraform.env.tfvars` は、例えば次のようになります。
+
+注意:
+- `existing_*_id` は **参照モードへ移行した場合**に追記されます（通常の新規構築では必須ではありません）。
+- `pg_db_password` は平文です（コミット禁止）。
 
 ```hcl
 aws_profile              = "AdministratorAccess-xxxxxxxxxx"
@@ -144,6 +153,7 @@ private_subnets = [
   { name = "${name_prefix}-private-1a" cidr = "172.24.96.0/20" az = "ap-northeast-1a" },
   { name = "${name_prefix}-private-1d" cidr = "172.24.112.0/20" az = "ap-northeast-1d" },
 ]
+# 参照モードへ移行した場合のみ
 existing_vpc_id              = "vpc-xxxxxxxxxxxxxxxxx"
 existing_internet_gateway_id = "igw-xxxxxxxxxxxxxxxxx"
 existing_nat_gateway_id      = "nat-xxxxxxxxxxxxxxxxx"
@@ -154,7 +164,7 @@ pg_db_password               = "xxxxxxxxxxxxxxxxxxxxxxxx"
 
 ## スクリプト（Terraform / tfvars 運用）
 - `scripts/plan_apply_all_tfvars.sh` - 既定の tfvars 分割構成で `fmt/validate/plan/apply` を順に実行する。
-- `scripts/infra/update_env_tfvars_from_outputs.sh` - `terraform output` から VPC/IGW/NAT の既存 ID を `terraform.env.tfvars` に反映する。
+- `scripts/infra/update_env_tfvars_from_outputs.sh` - ネットワークを参照モード（`existing_*_id`）へ移行する場合に、`terraform.env.tfvars` を更新する（`--migrate` で `terraform state rm` を実行）。
 
 ## 共通ライブラリ（他スクリプトから呼び出し）
 - `scripts/lib/aws_profile_from_tf.sh` - tfvars から AWS プロファイルを解決する。
@@ -180,9 +190,11 @@ terraform output
 5. `terraform fmt -recursive` と `terraform validate` で整形・検証。
 6. `terraform plan -var-file=terraform.env.tfvars -var-file=terraform.itsm.tfvars -var-file=terraform.apps.tfvars -refresh` で差分を確認。
 7. `terraform apply -var-file=terraform.env.tfvars -var-file=terraform.itsm.tfvars -var-file=terraform.apps.tfvars --auto-approve` で基盤を作成。
-8. 初回 apply 後に `bash scripts/infra/update_env_tfvars_from_outputs.sh` を実行し、`terraform.env.tfvars` に `existing_*` を反映する（次回以降の再適用で VPC/IGW/NAT を再作成しないため）。
-9. 続けて `bash scripts/infra/refresh_rds_master_password_tfvars.sh` を実行し、`terraform.env.tfvars` に `pg_db_password` を反映する（平文で保存されるためコミット禁止）。
-10. 仕上げに `terraform plan/apply` をもう一度実行し、差分が安定していることを確認する。
+8. （任意）**ネットワークを参照モード（`existing_*_id`）へ移行したい場合のみ**、まず `bash scripts/infra/update_env_tfvars_from_outputs.sh --dry-run` で確認し、問題なければ `bash scripts/infra/update_env_tfvars_from_outputs.sh --migrate` を実行する（`terraform state rm` → `terraform.env.tfvars` 更新 → `terraform apply -refresh-only`）。  
+   - 目的: state 破損時などに「ネットワークを誤って作り直す/壊す」リスクを下げ、VPC/IGW/NAT を Terraform の管理対象から外して **既存 ID 参照**へ寄せる。  
+   - 注意: 以後、`terraform destroy` してもネットワークは削除されません（手動削除が必要）。
+9. `bash scripts/infra/refresh_rds_master_password_tfvars.sh` を実行し、`terraform.env.tfvars` に `pg_db_password` を反映する（平文で保存されるためコミット禁止）。
+10. 仕上げに `terraform plan/apply` をもう一度実行し、差分が安定していることを確認する（通常は差分なし）。
 
 削除（利用後）:
 

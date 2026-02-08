@@ -7,6 +7,7 @@
 
 ## 比較資料
 - `docs/itsm/features_comparison.md`（市販ITSM との機能対照表・未提供時の実装案）
+- `docs/itsm/data-model.md`（統合データモデル：テーブル/参照/ACL の設計）
 
 ## セットアップ（サマリ）
 1. tfvars を用意（`terraform.env.tfvars` / `terraform.itsm.tfvars` / `terraform.apps.tfvars`）。
@@ -204,17 +205,26 @@ terraform output -raw service_control_api_base_url
 ## 追加スクリプト（SSM/パスワード同期）
 以下は新規追加した運用補助スクリプトです。すべて AWS CLI と Terraform outputs を前提に動作します。
 
-### 既存環境の修正前に tfvars（terraform.env.tfvars）を更新する
-一度構築した環境を修正する前に、**既存 VPC/IGW/NAT の ID を tfvars に反映してから**作業を進めます。既存リソースの ID が古いままだと、意図せず新規作成や置換が発生するためです（詳細は `../infra/README.md` も参照）。
+### （任意）ネットワークを参照モード（existing_*_id）へ移行する
+VPC/IGW/NAT を Terraform の管理対象から外し、`terraform.env.tfvars` に `existing_*_id` を記録して **既存 ID 参照**へ寄せたい場合に実行します（詳細は `../infra/README.md` も参照）。
 
 - 仕様: [`docs/scripts.md`](../scripts.md)
 
-使い方（通常）:
+使い方:
 
 ```bash
 aws sso login --profile "$(terraform output -raw aws_profile)"
-bash scripts/infra/update_env_tfvars_from_outputs.sh
+
+# まずは差分確認（推奨）
+bash scripts/infra/update_env_tfvars_from_outputs.sh --dry-run
+
+# 参照モードへ移行（terraform state rm を行うため注意）
+bash scripts/infra/update_env_tfvars_from_outputs.sh --migrate
 ```
+
+注意:
+- `--migrate` は `terraform state rm` を内部で実行します（AWS リソースは消しませんが、Terraform の管理対象から外れます）。
+- 以後 `terraform destroy` をしてもネットワーク（VPC/IGW/NAT/EIP）は削除されません（手動削除が必要）。
 
 ### n8n イメージの更新（ECR へ push / ECS を再デプロイ）
 n8n のコンテナイメージ更新は、次のスクリプトで行います（Terraform の `output` を参照して AWS Profile / ECR 名 / Tag などを自動解決します）。

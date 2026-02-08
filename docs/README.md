@@ -1,23 +1,15 @@
-# 3. ドキュメント層（`docs/`）
+# ドキュメント（`docs/`）
 
-`docs/` ディレクトリには、**監査対応（audit-facing）および提供物（delivery-facing）のドキュメント**を格納します。  
-すべての文書は Markdown で記述し、実装成果物（コード/設定/ワークフロー等）とリンクします。
+`docs/` には、**監査対応（audit-facing）および提供物（delivery-facing）のドキュメント**を格納します。  
+すべての文書は Markdown で記述し、実装成果物（コード/設定/ワークフロー等）と相互リンクします。
 
-## フォルダの意図
+## 入口（まずここ）
 
-| フォルダ | 目的 |
-|---|---|
-| 00 | 提供概要およびリリース要約 |
-| 01 | CSA ポリシー、アシュアランス計画、ガバナンス |
-| 02 | 意図した使用（Intended Use）、システムスコープ、アーキテクチャ |
-| 03 | リスクマネジメント（CSA + NIST AI RMF） |
-| 04 | AI ガバナンスおよび振る舞い定義 |
-| 05 | IaC 設計と構成（設定）説明 |
-| 06 | OSS アシュアランスとサプライチェーン管理 |
-| 07 | 検証戦略と証跡インデックス |
-| 08 | IQ / OQ / PQ サマリ（必要な場合） |
-| 09 | 運用 Runbook |
-| 10 | 継続的アシュアランスとバリデーションサマリ |
+- インフラ（Terraform）: `docs/infra/README.md`
+- ITSM（サービス）: `docs/itsm/README.md`
+- apps（n8n ワークフロー同期）: `docs/apps/README.md`（全体像は `apps/README.md`）
+- スクリプト仕様（副作用/入出力）: `docs/scripts.md`
+- 用語: `docs/glossary.md`
 
 ## 構成図（Mermaid）
 
@@ -112,7 +104,7 @@ flowchart TB
 
 ---
 
-# 4. AI ガバナンス構造（アプリ配下）
+## AI ガバナンス構造（アプリ配下）
 
 AI 関連の成果物は分離し、**変更管理下の構成アイテム（controlled configuration items）**として管理します。
 
@@ -135,7 +127,7 @@ AI 関連の成果物は分離し、**変更管理下の構成アイテム（con
 
 ---
 
-# 5. Infrastructure as Code（`infra/`）
+## Infrastructure as Code（`infra/`）
 
 Terraform コードは、**システム構成の権威ある定義（authoritative system configuration）**を表します。
 
@@ -154,7 +146,7 @@ Terraform コードは、**システム構成の権威ある定義（authoritati
 
 ---
 
-# 6. 証跡管理（`evidence/`）
+## 証跡管理（`evidence/`）
 
 証跡（evidence）成果物は、**ログ、自動テスト結果、客観的記録**を重視することで CSA の原則を支えます。
 
@@ -166,7 +158,7 @@ Terraform コードは、**システム構成の権威ある定義（authoritati
 
 ---
 
-# 7. Git ベースの変更管理
+## Git ベースの変更管理
 
 ## ブランチ戦略
 
@@ -188,7 +180,7 @@ Pull Request は **変更管理記録（change control records）**として扱�
 
 ---
 
-# 8. 人による監督（CODEOWNERS）
+## 人による監督（CODEOWNERS）
 
 重要領域は、明示的な承認を必須とします。
 
@@ -200,7 +192,7 @@ Pull Request は **変更管理記録（change control records）**として扱�
 
 ---
 
-# 9. リリースとバリデーションのベースライン
+## リリースとバリデーションのベースライン
 
 リリースは次で構成します。
 
@@ -215,7 +207,7 @@ Git tag は **バリデート済みベースライン（validated baselines）**
 
 ---
 
-# 10. コンプライアンス上の位置付け
+## コンプライアンス上の位置付け
 
 - **GAMP® 5 第2版**  
   ライフサイクル構造と構成分類を提供する

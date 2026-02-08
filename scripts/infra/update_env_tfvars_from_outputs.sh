@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+DRY_RUN="${DRY_RUN:-}"
+MIGRATE_TO_EXISTING_NETWORK="${MIGRATE_TO_EXISTING_NETWORK:-}"
+
 tf_output_raw() {
   local output
   if output="$(terraform -chdir="${REPO_ROOT}" output -raw "$1" 2>/dev/null)"; then
@@ -16,6 +19,48 @@ TFVARS_FILE="${TFVARS_FILE:-terraform.env.tfvars}"
 SKIP_TERRAFORM="${SKIP_TERRAFORM:-}"
 FORCE_WRITE_EXISTING_NETWORK_IDS="${FORCE_WRITE_EXISTING_NETWORK_IDS:-}"
 refreshed_once=false
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  scripts/infra/update_env_tfvars_from_outputs.sh [options]
+
+Options:
+  -n, --dry-run        Print planned actions only (no file writes / no terraform apply/state rm).
+                       Note: Reads terraform outputs to compute existing_*_id values when available.
+  --migrate            Switch to existing_*_id mode even if resources exist in state.
+                       This removes VPC/IGW/NAT(+EIP) from terraform state (state rm)
+                       to avoid "destroy" plans, then writes existing_*_id to tfvars,
+                       and runs terraform apply -refresh-only.
+
+Env overrides:
+  TFVARS_FILE                     Target tfvars file (default: terraform.env.tfvars)
+  SKIP_TERRAFORM                  Skip terraform calls (not recommended)
+  FORCE_WRITE_EXISTING_NETWORK_IDS Force writing existing_*_id even if state has resources
+  MIGRATE_TO_EXISTING_NETWORK     Same as --migrate (truthy)
+  DRY_RUN                         Same as --dry-run (truthy)
+USAGE
+}
+
+is_truthy() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|y|Y|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -n|--dry-run) DRY_RUN="true"; shift ;;
+    --migrate) MIGRATE_TO_EXISTING_NETWORK="true"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *)
+      echo "ERROR: Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
 
 terraform_refresh_only() {
   local tfvars_args=()
@@ -56,8 +101,17 @@ if [[ -z "${vpc_id}" && -z "${igw_id}" && -z "${nat_id}" ]]; then
     echo "       Unset SKIP_TERRAFORM and retry, or run terraform apply -refresh-only manually first." >&2
     exit 1
   fi
+  if is_truthy "${DRY_RUN}"; then
+    echo "[dry-run] terraform output is empty; would run terraform apply -refresh-only --auto-approve and retry." >&2
+    echo "[dry-run] no changes made." >&2
+    exit 0
+  fi
   echo "WARN: terraform output is empty; refreshing state and retrying." >&2
-  terraform_refresh_only
+  if is_truthy "${DRY_RUN}"; then
+    echo "[dry-run] would run terraform apply -refresh-only --auto-approve" >&2
+  else
+    terraform_refresh_only
+  fi
   refreshed_once=true
   read_outputs
 fi
@@ -68,11 +122,17 @@ terraform_state_has() {
   if [[ -n "${SKIP_TERRAFORM}" ]]; then
     return 1
   fi
-  terraform -chdir="${REPO_ROOT}" state list 2>/dev/null | rg -q --fixed-string "${addr}"
+  if is_truthy "${DRY_RUN}"; then
+    return 1
+  fi
+  terraform -chdir="${REPO_ROOT}" state list 2>/dev/null | rg -q --fixed-strings "${addr}"
 }
 
 should_write_existing_network_id() {
   local addr="$1"
+  if is_truthy "${MIGRATE_TO_EXISTING_NETWORK}"; then
+    return 0
+  fi
   if [[ -n "${FORCE_WRITE_EXISTING_NETWORK_IDS}" ]]; then
     return 0
   fi
@@ -80,6 +140,29 @@ should_write_existing_network_id() {
     return 1
   fi
   return 0
+}
+
+terraform_state_rm_if_present() {
+  local addr="$1"
+  if ! terraform_state_has "${addr}"; then
+    return 0
+  fi
+  if is_truthy "${DRY_RUN}"; then
+    echo "[dry-run] would run terraform state rm ${addr}" >&2
+    return 0
+  fi
+  echo "Running terraform state rm ${addr}" >&2
+  terraform -chdir="${REPO_ROOT}" state rm "${addr}" >/dev/null
+}
+
+terraform_state_rm_best_effort() {
+  local addr="$1"
+  if is_truthy "${DRY_RUN}"; then
+    echo "[dry-run] would run terraform state rm ${addr}" >&2
+    return 0
+  fi
+  echo "Running terraform state rm ${addr} (best-effort)" >&2
+  terraform -chdir="${REPO_ROOT}" state rm "${addr}" >/dev/null 2>&1 || true
 }
 
 if [[ -n "${vpc_id}" ]]; then
@@ -121,6 +204,23 @@ if [[ "${updated_any}" != "true" ]]; then
     echo "       If you intended to migrate network resources to 'existing_*_id' mode, set FORCE_WRITE_EXISTING_NETWORK_IDS=true and retry." >&2
   fi
   exit 1
+fi
+
+if is_truthy "${MIGRATE_TO_EXISTING_NETWORK}"; then
+  if [[ -n "${SKIP_TERRAFORM}" ]]; then
+    echo "ERROR: --migrate requires terraform (SKIP_TERRAFORM is set)." >&2
+    exit 1
+  fi
+  echo "[migrate] switching to existing_*_id mode: removing VPC/IGW/NAT/EIP from terraform state (no destroy)" >&2
+  terraform_state_rm_best_effort "module.stack.aws_nat_gateway.this[0]"
+  terraform_state_rm_best_effort "module.stack.aws_eip.nat[0]"
+  terraform_state_rm_best_effort "module.stack.aws_internet_gateway.this[0]"
+  terraform_state_rm_best_effort "module.stack.aws_vpc.this[0]"
+fi
+
+if is_truthy "${DRY_RUN}"; then
+  echo "[dry-run] would update ${TFVARS_FILE} with existing_*_id values from terraform outputs." >&2
+  exit 0
 fi
 
 python3 - "${TFVARS_FILE}" <<'PY'
