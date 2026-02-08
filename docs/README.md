@@ -39,6 +39,8 @@ flowchart TB
     ECS[ECS Cluster]
     Keycloak[Keycloak（OIDC）]
     N8N[n8n（Workflows）]
+    ExastroWeb[Exastro ITA Web]
+    ExastroAPI[Exastro ITA API]
     Zulip[Zulip]
     GitLab[GitLab]
     Grafana[Grafana]
@@ -69,6 +71,8 @@ flowchart TB
   ALB --> ECS
   ECS --> Keycloak
   ECS --> N8N
+  ECS --> ExastroWeb
+  ECS --> ExastroAPI
   ECS --> Zulip
   ECS --> GitLab
   ECS --> Grafana
@@ -76,6 +80,8 @@ flowchart TB
 
   %% 依存関係（最小）
   Keycloak -->|OIDC| N8N
+  Keycloak -->|OIDC| ExastroWeb
+  Keycloak -->|OIDC| ExastroAPI
   Keycloak -->|OIDC| Zulip
   Keycloak -->|OIDC| GitLab
   N8N --> RDS
@@ -93,6 +99,7 @@ flowchart TB
 
   %% イベント/ワークフロー
   External -->|HTTP| N8N
+  N8N -->|API| ExastroAPI
   N8N -->|API| GitLab
   N8N -->|API| Zulip
   N8N -->|API| Grafana
