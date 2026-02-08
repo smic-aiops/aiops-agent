@@ -23,6 +23,7 @@ set -euo pipefail
 #   N8N_DB_ALLOW_UNAUTHORIZED_CERTS : "true" to allow self-signed/untrusted certs for Postgres credential (default: true)
 #   N8N_AWS_CREDENTIAL_NAME    : name for the n8n AWS credential (default: aiops-aws)
 #   N8N_AWS_CREDENTIAL_ID      : existing AWS credential ID to update instead of creating
+#   N8N_FORCE_AWS_CREDENTIAL   : "true" to ensure the AWS credential exists even if no awsS3 nodes are found (bootstrap helper)
 #   TFVARS_FILE                : terraform.itsm.tfvars path (default: terraform.itsm.tfvars)
 #   DB_HOST/DB_PORT/DB_NAME    : override Postgres connection details for credential injection
 #   DB_USER/DB_PASSWORD        : override Postgres credentials for credential injection

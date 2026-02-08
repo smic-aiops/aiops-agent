@@ -2,7 +2,8 @@
 set -euo pipefail
 
 DRY_RUN="${DRY_RUN:-}"
-MIGRATE_TO_EXISTING_NETWORK="${MIGRATE_TO_EXISTING_NETWORK:-}"
+DEFAULT_MIGRATE="${DEFAULT_MIGRATE:-true}"
+MIGRATE_TO_EXISTING_NETWORK="${MIGRATE_TO_EXISTING_NETWORK:-${DEFAULT_MIGRATE}}"
 
 tf_output_raw() {
   local output
@@ -38,6 +39,7 @@ Env overrides:
   SKIP_TERRAFORM                  Skip terraform calls (not recommended)
   FORCE_WRITE_EXISTING_NETWORK_IDS Force writing existing_*_id even if state has resources
   MIGRATE_TO_EXISTING_NETWORK     Same as --migrate (truthy)
+  DEFAULT_MIGRATE                 Default of MIGRATE_TO_EXISTING_NETWORK when unset (default: true)
   DRY_RUN                         Same as --dry-run (truthy)
 USAGE
 }
