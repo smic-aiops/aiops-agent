@@ -28,6 +28,45 @@
 関連ドキュメント:
 - [GitLab更新イベントの@メンション通知（Zulip DM）](../../apps/gitlab_mention_notify/README.md)
 
+## OSS 一覧（バージョン）
+
+本ドキュメントで扱う OSS の一覧です。バージョンは Terraform 変数の **デフォルト値**に基づきます（`terraform.*.tfvars` で上書き可能）。運用時は `terraform output` も確認してください。
+
+| OSS | バージョン | 備考 |
+| --- | --- | --- |
+| Keycloak | 26.4.7 | `keycloak_image_tag` のデフォルト値 |
+| Zulip | 11.4-0 | `zulip_image_tag` のデフォルト値 |
+| n8n | 1.122.4 | `n8n_image_tag` のデフォルト値 |
+| Qdrant | v1.16.3 | `qdrant_image_tag` のデフォルト値 |
+| GitLab | 17.11.7-ce.0 | `gitlab_omnibus_image_tag` のデフォルト値 |
+| Exastro ITA Web | exastro/exastro-it-automation-web-server:2.7.0 | `exastro_it_automation_web_server_image_tag` のデフォルト値 |
+| Exastro ITA API | exastro/exastro-it-automation-api-admin:2.7.0 | `exastro_it_automation_api_admin_image_tag` のデフォルト値 |
+| Grafana | 12.3.1 | `grafana_image_tag` のデフォルト値 |
+
+## apps/ 配下のアプリ一覧（別表）
+
+apps 配下のディレクトリアプリを一覧化します。詳細は各アプリの README を参照してください。
+
+| アプリ | 概要 | 参照 |
+| --- | --- | --- |
+| aiops_agent | AIOps Agent のワークフロー群 | `apps/aiops_agent/README.md` |
+| workflow_manager | サービスリクエスト管理のワークフロー群 | `apps/workflow_manager/README.md` |
+| cloudwatch_event_notify | CloudWatch イベント通知のワークフロー | `apps/cloudwatch_event_notify/README.md` |
+| gitlab_issue_metrics_sync | GitLab Issue メトリクス同期 | `apps/gitlab_issue_metrics_sync/README.md` |
+| gitlab_issue_rag | GitLab Issue の RAG 連携 | `apps/gitlab_issue_rag/README.md` |
+| gitlab_mention_notify | GitLab メンション通知 | `apps/gitlab_mention_notify/README.md` |
+| gitlab_push_notify | GitLab Push 通知 | `apps/gitlab_push_notify/README.md` |
+| zulip_gitlab_issue_sync | Zulip ↔ GitLab Issue 同期 | `apps/zulip_gitlab_issue_sync/README.md` |
+| zulip_stream_sync | Zulip ストリーム同期 | `apps/zulip_stream_sync/README.md` |
+
+## ITIL4プラクティス別 OSS機能特徴一覧（網羅版）
+
+OSS ごとの機能特徴を ITIL4 プラクティスカテゴリでグルーピングし、順次追記します。  
+構成要素: **カテゴリ / 利用が想定される主なプラクティス名 / アプリ名 / 機能特徴/機能特徴名 / 内容**
+
+- CSV: `docs/itsm/itsm_oss_features.csv`
+
+
 ## 共通メッセージング仕様（Zulip / n8n / Qdrant / GitLab / クラウド側ログ基盤 / Exastro ITA）
 
 誰でも追えるように、プラクティスをまたいでツール間がどうメッセージ交換するか（イベント→起票→通知→証跡化）を共通仕様としてまとめる。

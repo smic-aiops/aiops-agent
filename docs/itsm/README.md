@@ -83,6 +83,9 @@ terraform output -json service_urls
 bash scripts/itsm/refresh_all_secure.sh
 
 # apps の同期後に OQ も実行（回帰テスト + 証跡）
+# - `--with-tests` を使う場合は、事前に GitLab 側の ITSM ブートストラップ
+#   （`scripts/itsm/gitlab/ensure_realm_groups.sh` / `scripts/itsm/gitlab/itsm_bootstrap_realms.sh`）
+#   が済んでいることを確認してください。
 bash scripts/apps/deploy_all_workflows.sh --with-tests
 ```
 

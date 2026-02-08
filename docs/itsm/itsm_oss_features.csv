@@ -1,0 +1,1143 @@
+ユースケース,カテゴリ,利用が想定される主なプラクティス名（複数）,アプリ名（複数）,機能特徴/機能特徴名（複数）,内容（複数）,"本レポジトリシステムでの実現（⭕️ 大体単体で可能, 🔺 一部単体で可能, ❌他アプリ・基盤と連携で可能, – 不可能）",本レポジトリシステムでの実現状況,"市販ITSM（市販ITSM）での実現（⭕️ 大体単体で可能, 🔺 一部単体で可能, ❌他アプリ・基盤と連携で可能, – 不可能）",市販ITSM（市販ITSM）での実装状況
+アーキテクチャ管理のKPI/指標定義,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理のガバナンスと方針運用の整備,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理のステークホルダー/関係者調整,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理のツール/データ整備,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理のリスク/例外レビュー,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理のリスクと例外の管理,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理のレビュー/監査の実施,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理のロードマップ策定,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の主要関係者の合意形成,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の変更影響の分析,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の定期レビュー/報告,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の実行計画の策定,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の役割/責任（RACI）定義,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の意思決定基準の明文化,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の成果物の記録/版管理,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の指標の定義と可視化,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の改善施策の優先順位付け,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の教育/オンボーディング,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の教育/展開/浸透,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の方針/ポリシー策定,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の標準/ガイドライン整備,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の現状評価/ギャップ分析,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の目標/ターゲット設定,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+アーキテクチャ管理の運用手順と標準の整備,一般管理,アーキテクチャ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（エンタープライズアーキテクチャ）
+サプライヤ管理のKPI/指標定義,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理のガバナンスと方針運用の整備,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理のステークホルダー/関係者調整,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理のツール/データ整備,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理のリスク/例外レビュー,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理のリスクと例外の管理,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理のレビュー/監査の実施,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理のロードマップ策定,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の主要関係者の合意形成,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の変更影響の分析,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の定期レビュー/報告,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の実行計画の策定,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の役割/責任（RACI）定義,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の意思決定基準の明文化,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の成果物の記録/版管理,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の指標の定義と可視化,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の改善施策の優先順位付け,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の教育/オンボーディング,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の教育/展開/浸透,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の方針/ポリシー策定,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の標準/ガイドライン整備,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の現状評価/ギャップ分析,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の目標/ターゲット設定,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サプライヤ管理の運用手順と標準の整備,一般管理,サプライヤ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC（第三者リスク）
+サービス財務管理のKPI/指標定義,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理のガバナンスと方針運用の整備,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理のステークホルダー/関係者調整,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理のツール/データ整備,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理のリスク/例外レビュー,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理のリスクと例外の管理,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理のレビュー/監査の実施,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理のロードマップ策定,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の主要関係者の合意形成,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の変更影響の分析,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の定期レビュー/報告,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の実行計画の策定,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の役割/責任（RACI）定義,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の意思決定基準の明文化,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の成果物の記録/版管理,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の指標の定義と可視化,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の改善施策の優先順位付け,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の教育/オンボーディング,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の教育/展開/浸透,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の方針/ポリシー策定,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の標準/ガイドライン整備,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の現状評価/ギャップ分析,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の目標/ターゲット設定,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+サービス財務管理の運用手順と標準の整備,一般管理,サービス財務管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（投資/予算/可視化）
+セキュア運用,一般管理,情報セキュリティ管理,n8n,NODES_EXCLUDE; Isolation,危険ノード排除や外部通信抑止,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+トピック作成権限,一般管理,ガバナンス; 情報セキュリティ管理,Zulip,Topic creation permissions,トピック新規作成の権限を制御,⭕️,本レポジトリシステム内で実現,🔺,GRC（ガバナンス）; SecOps/GRCで一部
+トークン設計,一般管理,情報セキュリティ管理,Keycloak,Client scopes; Protocol mappers,クレーム/ロールをトークンへマッピング,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+プロジェクト管理のKPI/指標定義,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理のガバナンスと方針運用の整備,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理のステークホルダー/関係者調整,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理のツール/データ整備,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理のリスク/例外レビュー,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理のリスクと例外の管理,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理のレビュー/監査の実施,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理のロードマップ策定,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の主要関係者の合意形成,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の変更影響の分析,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の定期レビュー/報告,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の実行計画の策定,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の役割/責任（RACI）定義,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の意思決定基準の明文化,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の成果物の記録/版管理,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の指標の定義と可視化,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の改善施策の優先順位付け,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の教育/オンボーディング,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の教育/展開/浸透,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の方針/ポリシー策定,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の標準/ガイドライン整備,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の現状評価/ギャップ分析,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の目標/ターゲット設定,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+プロジェクト管理の運用手順と標準の整備,一般管理,プロジェクト管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+ポートフォリオ管理のKPI/指標定義,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理のガバナンスと方針運用の整備,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理のステークホルダー/関係者調整,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理のツール/データ整備,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理のリスク/例外レビュー,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理のリスクと例外の管理,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理のレビュー/監査の実施,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理のロードマップ策定,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の主要関係者の合意形成,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の変更影響の分析,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の定期レビュー/報告,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の実行計画の策定,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の役割/責任（RACI）定義,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の意思決定基準の明文化,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の成果物の記録/版管理,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の指標の定義と可視化,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の改善施策の優先順位付け,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の教育/オンボーディング,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の教育/展開/浸透,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の方針/ポリシー策定,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の標準/ガイドライン整備,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の現状評価/ギャップ分析,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の目標/ターゲット設定,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+ポートフォリオ管理の運用手順と標準の整備,一般管理,ポートフォリオ管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（ポートフォリオ管理）
+マイルストーン,一般管理,プロジェクト管理,GitLab,Milestones,期限/目標で作業を整理,⭕️,本レポジトリシステム内で実現,🔺,SPM（プロジェクト管理）
+マルチテナント認証,一般管理,情報セキュリティ管理,Keycloak,Realm,レルム単位でユーザー/ロール/グループを分離,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+メッセージ削除,一般管理,ガバナンス,Zulip,Delete message,メッセージ削除（完全削除/内容削除）,⭕️,本レポジトリシステム内で実現,🔺,GRC（ガバナンス）
+メッセージ編集,一般管理,ガバナンス,Zulip,Edit message,メッセージ編集を許可/制御,⭕️,本レポジトリシステム内で実現,🔺,GRC（ガバナンス）
+ユーザーフェデレーション,一般管理,情報セキュリティ管理,Keycloak,User federation,LDAP/AD など外部ディレクトリ連携,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+リスク管理のKPI/指標定義,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理のガバナンスと方針運用の整備,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理のステークホルダー/関係者調整,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理のツール/データ整備,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理のリスク/例外レビュー,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理のリスクと例外の管理,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理のレビュー/監査の実施,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理のロードマップ策定,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の主要関係者の合意形成,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の変更影響の分析,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の定期レビュー/報告,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の実行計画の策定,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の役割/責任（RACI）定義,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の意思決定基準の明文化,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の成果物の記録/版管理,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の指標の定義と可視化,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の改善施策の優先順位付け,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の教育/オンボーディング,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の教育/展開/浸透,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の方針/ポリシー策定,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の標準/ガイドライン整備,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の現状評価/ギャップ分析,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の目標/ターゲット設定,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リスク管理の運用手順と標準の整備,一般管理,リスク管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（リスク管理）
+リリース証跡,一般管理,ガバナンス; 監査,GitLab,Release evidence,リリースの証跡(JSON)を保存,⭕️,本レポジトリシステム内で実現,🔺,GRC（ガバナンス）; GRC（監査管理）
+レジストリ認証,一般管理,情報セキュリティ管理,GitLab,Container registry auth,トークン/ユーザでレジストリ認証,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+ワークスペース,一般管理,ガバナンス,Exastro ITA Web / Exastro ITA API,Workspace,構成情報/設計情報の作業領域,⭕️,本レポジトリシステム内で実現,🔺,GRC（ガバナンス）
+人材・タレント管理のKPI/指標定義,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理のガバナンスと方針運用の整備,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理のステークホルダー/関係者調整,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理のツール/データ整備,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理のリスク/例外レビュー,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理のリスクと例外の管理,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理のレビュー/監査の実施,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理のロードマップ策定,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の主要関係者の合意形成,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の変更影響の分析,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の定期レビュー/報告,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の実行計画の策定,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の役割/責任（RACI）定義,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の意思決定基準の明文化,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の成果物の記録/版管理,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の指標の定義と可視化,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の改善施策の優先順位付け,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の教育/オンボーディング,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の教育/展開/浸透,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の方針/ポリシー策定,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の標準/ガイドライン整備,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の現状評価/ギャップ分析,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の目標/ターゲット設定,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+人材・タレント管理の運用手順と標準の整備,一般管理,人材・タレント管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,❌,人事/タレント管理は別システムが前提
+任意承認,一般管理,ガバナンス,GitLab,Merge request approvals (optional),Freeは任意承認でレビュー支援,⭕️,本レポジトリシステム内で実現,🔺,GRC（ガバナンス）
+外部IdP連携,一般管理,情報セキュリティ管理,Keycloak,Identity providers,OIDC/SAML IdP をブローカー連携,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+多要素認証,一般管理,情報セキュリティ管理,Keycloak,WebAuthn; OTP,WebAuthn/OTP を2FAとして利用,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+実行データ保持,一般管理,測定および報告,n8n,EXECUTIONS_DATA_SAVE_ON_ERROR; PRUNE,実行データ保存/削除の制御,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+情報セキュリティ管理のKPI/指標定義,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理のガバナンスと方針運用の整備,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理のステークホルダー/関係者調整,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理のツール/データ整備,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理のリスク/例外レビュー,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理のリスクと例外の管理,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理のレビュー/監査の実施,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理のロードマップ策定,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の主要関係者の合意形成,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の変更影響の分析,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の定期レビュー/報告,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の実行計画の策定,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の役割/責任（RACI）定義,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の意思決定基準の明文化,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の成果物の記録/版管理,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の指標の定義と可視化,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の改善施策の優先順位付け,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の教育/オンボーディング,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の教育/展開/浸透,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の方針/ポリシー策定,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の標準/ガイドライン整備,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の現状評価/ギャップ分析,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の目標/ターゲット設定,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+情報セキュリティ管理の運用手順と標準の整備,一般管理,情報セキュリティ管理,Keycloak; GitLab,OIDC/OAuth2/SAML; Roles/Groups; Policy docs,統合認証/アクセス制御/監査ポリシーの管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+戦略管理のKPI/指標定義,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理のガバナンスと方針運用の整備,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理のステークホルダー/関係者調整,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理のツール/データ整備,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理のリスク/例外レビュー,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理のリスクと例外の管理,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理のレビュー/監査の実施,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理のロードマップ策定,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の主要関係者の合意形成,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の変更影響の分析,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の定期レビュー/報告,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の実行計画の策定,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の役割/責任（RACI）定義,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の意思決定基準の明文化,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の成果物の記録/版管理,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の指標の定義と可視化,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の改善施策の優先順位付け,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の教育/オンボーディング,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の教育/展開/浸透,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の方針/ポリシー策定,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の標準/ガイドライン整備,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の現状評価/ギャップ分析,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の目標/ターゲット設定,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+戦略管理の運用手順と標準の整備,一般管理,戦略管理,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+権限継承,一般管理,情報セキュリティ管理,Keycloak,Groups; Role mapping,グループにロールを割当て継承管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+権限設計,一般管理,情報セキュリティ管理,Keycloak,Roles,レルム/クライアントロールを定義して権限を管理,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+機密チケット,一般管理,情報セキュリティ管理,GitLab,Confidential issues,機密Issueで閲覧権限を制限,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+測定および報告のKPI/指標定義,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告のガバナンスと方針運用の整備,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告のステークホルダー/関係者調整,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告のツール/データ整備,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告のリスク/例外レビュー,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告のリスクと例外の管理,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告のレビュー/監査の実施,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告のロードマップ策定,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の主要関係者の合意形成,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の変更影響の分析,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の定期レビュー/報告,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の実行計画の策定,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の役割/責任（RACI）定義,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の意思決定基準の明文化,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の成果物の記録/版管理,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の指標の定義と可視化,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の改善施策の優先順位付け,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の教育/オンボーディング,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の教育/展開/浸透,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の方針/ポリシー策定,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の標準/ガイドライン整備,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の現状評価/ギャップ分析,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の目標/ターゲット設定,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+測定および報告の運用手順と標準の整備,一般管理,測定および報告,Grafana; GitLab; n8n; gitlab_issue_metrics_sync,Dashboards; Annotations; Issue metrics sync,KPI/運用指標の可視化と履歴出力,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+監査イベント,一般管理,情報セキュリティ管理,Keycloak,Event logs,ユーザー/管理イベントの記録と監査,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+知識管理のKPI/指標定義,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理のガバナンスと方針運用の整備,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理のステークホルダー/関係者調整,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理のツール/データ整備,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理のリスク/例外レビュー,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理のリスクと例外の管理,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理のレビュー/監査の実施,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理のロードマップ策定,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の主要関係者の合意形成,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の変更影響の分析,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の定期レビュー/報告,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の実行計画の策定,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の役割/責任（RACI）定義,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の意思決定基準の明文化,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の成果物の記録/版管理,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の指標の定義と可視化,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の改善施策の優先順位付け,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の教育/オンボーディング,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の教育/展開/浸透,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の方針/ポリシー策定,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の標準/ガイドライン整備,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の現状評価/ギャップ分析,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の目標/ターゲット設定,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+知識管理の運用手順と標準の整備,一般管理,知識管理,GitLab; n8n; Qdrant; gitlab_issue_rag,Markdown/Issues; Vector upsert; Similarity search,ナレッジの版管理と検索性向上,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ）
+管理権限分離,一般管理,情報セキュリティ管理,Keycloak,Admin roles,管理権限をロールで分離,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+組織変更管理のKPI/指標定義,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理のガバナンスと方針運用の整備,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理のステークホルダー/関係者調整,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理のツール/データ整備,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理のリスク/例外レビュー,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理のリスクと例外の管理,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理のレビュー/監査の実施,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理のロードマップ策定,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の主要関係者の合意形成,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の変更影響の分析,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の定期レビュー/報告,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の実行計画の策定,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の役割/責任（RACI）定義,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の意思決定基準の明文化,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の成果物の記録/版管理,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の指標の定義と可視化,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の改善施策の優先順位付け,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の教育/オンボーディング,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の教育/展開/浸透,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の方針/ポリシー策定,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の標準/ガイドライン整備,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の現状評価/ギャップ分析,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の目標/ターゲット設定,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+組織変更管理の運用手順と標準の整備,一般管理,組織変更管理,GitLab; Zulip,Issues; Topics; Markdown,変更/周知の記録と合意形成,⭕️,本レポジトリシステム内で実現,🔺,ITSM/ワークフローで一部
+統合認証・SSO,一般管理,情報セキュリティ管理,Keycloak,OIDC; OAuth2; SAML,OIDC/OAuth2/SAML を IdP として提供しSSO連携を実現,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+継続的改善のKPI/指標定義,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善のガバナンスと方針運用の整備,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善のステークホルダー/関係者調整,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善のツール/データ整備,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善のリスク/例外レビュー,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善のリスクと例外の管理,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善のレビュー/監査の実施,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善のロードマップ策定,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の主要関係者の合意形成,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の変更影響の分析,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の定期レビュー/報告,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の実行計画の策定,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の役割/責任（RACI）定義,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の意思決定基準の明文化,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の成果物の記録/版管理,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の指標の定義と可視化,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の改善施策の優先順位付け,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の教育/オンボーディング,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の教育/展開/浸透,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の方針/ポリシー策定,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の標準/ガイドライン整備,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の現状評価/ギャップ分析,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の目標/ターゲット設定,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+継続的改善の運用手順と標準の整備,一般管理,継続的改善,GitLab,Issues; Boards; Milestones; Markdown,方針/計画/記録の管理,⭕️,本レポジトリシステム内で実現,🔺,継続的改善管理で一部
+編集履歴,一般管理,ガバナンス,Zulip,Edit history,編集/移動の履歴を参照,⭕️,本レポジトリシステム内で実現,🔺,GRC（ガバナンス）
+資格情報管理,一般管理,情報セキュリティ管理,n8n,Credentials encryption,資格情報を暗号化して保存,⭕️,本レポジトリシステム内で実現,🔺,SecOps/GRCで一部
+関係管理のKPI/指標定義,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理のガバナンスと方針運用の整備,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理のステークホルダー/関係者調整,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理のツール/データ整備,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理のリスク/例外レビュー,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理のリスクと例外の管理,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理のレビュー/監査の実施,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理のロードマップ策定,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の主要関係者の合意形成,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の変更影響の分析,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の定期レビュー/報告,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の実行計画の策定,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の役割/責任（RACI）定義,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の意思決定基準の明文化,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の成果物の記録/版管理,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の指標の定義と可視化,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の改善施策の優先順位付け,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の教育/オンボーディング,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の教育/展開/浸透,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の方針/ポリシー策定,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の標準/ガイドライン整備,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の現状評価/ギャップ分析,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の目標/ターゲット設定,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+関係管理の運用手順と標準の整備,一般管理,関係管理,Zulip; GitLab; zulip_gitlab_issue_sync,Topics; Issues; Sync workflows,関係者コミュニケーションと記録の連携,⭕️,本レポジトリシステム内で実現,🔺,CSM（関係/ケース管理）
+IT資産管理のSLA/目標管理,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理のエスカレーション/連携,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理のデータ品質の維持,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理のナレッジの更新,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理のレポート/振り返り,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理のレポートの標準化,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の依存関係の整理,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の分類/優先度付け,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の受付/登録,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の品質保証/監査,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の実行/処理,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の承認/レビュー,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の改善施策の実施,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の方針/標準定義,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の標準テンプレートの整備,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の継続的改善,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の自動化/効率化,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の調査/分析,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の通知/コミュニケーション,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の運用手順の整備,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+IT資産管理の関係者合意の形成,サービス管理,IT資産管理,GitLab; n8n,CMDB/Issues; Sync workflows,資産台帳の維持/更新,⭕️,本レポジトリシステム内で実現,🔺,ITAM（資産管理）
+アラートルール管理,サービス管理,監視およびイベント管理,Grafana,Alert rules (interval/for/labels),評価間隔/継続時間/ラベル設定,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+アラート定義,サービス管理,監視およびイベント管理,Grafana,Alert rules,条件/クエリでアラートを定義,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+アラート履歴,サービス管理,監視およびイベント管理,Grafana,Alert rule versions,ルールのバージョン管理(OSSは制限) ,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+インシデント管理のSLA/目標管理,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理のエスカレーション/連携,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理のデータ品質の維持,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理のナレッジの更新,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理のレポート/振り返り,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理のレポートの標準化,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の依存関係の整理,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の分類/優先度付け,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の受付/登録,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の品質保証/監査,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の実行/処理,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の承認/レビュー,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の改善施策の実施,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の方針/標準定義,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の標準テンプレートの整備,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の継続的改善,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の自動化/効率化,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の調査/分析,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の通知/コミュニケーション,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の運用手順の整備,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+インシデント管理の関係者合意の形成,サービス管理,インシデント管理,GitLab; Zulip; n8n; Grafana; cloudwatch_event_notify; aiops_agent,Issues; Topics; Alerting; Webhooks; AIOps triage,監視イベント起点の起票/通知/一次対応,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+サービスカタログ管理のSLA/目標管理,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理のエスカレーション/連携,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理のデータ品質の維持,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理のナレッジの更新,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理のレポート/振り返り,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理のレポートの標準化,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の依存関係の整理,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の分類/優先度付け,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の受付/登録,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の品質保証/監査,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の実行/処理,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の承認/レビュー,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の改善施策の実施,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の方針/標準定義,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の標準テンプレートの整備,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の継続的改善,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の自動化/効率化,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の調査/分析,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の通知/コミュニケーション,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の運用手順の整備,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスカタログ管理の関係者合意の形成,サービス管理,サービスカタログ管理,workflow_manager; GitLab,Catalog API; Markdown,サービスカタログの整備,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスカタログ）
+サービスデスクのSLA/目標管理,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクのエスカレーション/連携,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクのデータ品質の維持,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクのナレッジの更新,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクのレポート/振り返り,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクのレポートの標準化,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの依存関係の整理,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの分類/優先度付け,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの受付/登録,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの品質保証/監査,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの実行/処理,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの承認/レビュー,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの改善施策の実施,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの方針/標準定義,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの標準テンプレートの整備,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの継続的改善,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの自動化/効率化,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの調査/分析,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの通知/コミュニケーション,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの運用手順の整備,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスデスクの関係者合意の形成,サービス管理,サービスデスク,GitLab; Zulip; n8n; workflow_manager; zulip_gitlab_issue_sync,Issues; Topics; Webhooks; Catalog API; Sync workflows,受付/起票/通知/会話同期,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+サービスレベル管理のSLA/目標管理,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理のエスカレーション/連携,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理のデータ品質の維持,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理のナレッジの更新,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理のレポート/振り返り,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理のレポートの標準化,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の依存関係の整理,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の分類/優先度付け,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の受付/登録,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の品質保証/監査,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の実行/処理,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の承認/レビュー,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の改善施策の実施,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の方針/標準定義,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の標準テンプレートの整備,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の継続的改善,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の自動化/効率化,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の調査/分析,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の通知/コミュニケーション,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の運用手順の整備,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービスレベル管理の関係者合意の形成,サービス管理,サービスレベル管理,GitLab; Grafana; n8n; gitlab_issue_metrics_sync,Issue metrics; Dashboards; Reports sync,SLA/OLAの集計と可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（SLA/SLM）
+サービス妥当性確認およびテストのSLA/目標管理,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストのエスカレーション/連携,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストのデータ品質の維持,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストのナレッジの更新,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストのレポート/振り返り,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストのレポートの標準化,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの依存関係の整理,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの分類/優先度付け,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの受付/登録,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの品質保証/監査,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの実行/処理,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの承認/レビュー,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの改善施策の実施,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの方針/標準定義,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの標準テンプレートの整備,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの継続的改善,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの自動化/効率化,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの調査/分析,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの通知/コミュニケーション,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの運用手順の整備,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス妥当性確認およびテストの関係者合意の形成,サービス管理,サービス妥当性確認およびテスト,GitLab; n8n,CI/CD pipelines; Webhook automation,検証結果の集約,⭕️,本レポジトリシステム内で実現,🔺,DevOps/テスト連携で一部
+サービス構成管理のSLA/目標管理,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理のエスカレーション/連携,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理のデータ品質の維持,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理のナレッジの更新,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理のレポート/振り返り,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理のレポートの標準化,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の依存関係の整理,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の分類/優先度付け,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の受付/登録,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の品質保証/監査,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の実行/処理,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の承認/レビュー,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の改善施策の実施,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の方針/標準定義,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の標準テンプレートの整備,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の継続的改善,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の自動化/効率化,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の調査/分析,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の通知/コミュニケーション,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の運用手順の整備,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス構成管理の関係者合意の形成,サービス管理,サービス構成管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CMDB (Git repo); Parameter sheets; Sync workflows,構成情報の登録/同期,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+サービス継続管理のSLA/目標管理,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理のエスカレーション/連携,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理のデータ品質の維持,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理のナレッジの更新,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理のレポート/振り返り,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理のレポートの標準化,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の依存関係の整理,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の分類/優先度付け,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の受付/登録,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の品質保証/監査,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の実行/処理,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の承認/レビュー,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の改善施策の実施,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の方針/標準定義,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の標準テンプレートの整備,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の継続的改善,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の自動化/効率化,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の調査/分析,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の通知/コミュニケーション,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の運用手順の整備,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス継続管理の関係者合意の形成,サービス管理,サービス継続管理,GitLab; Grafana,Docs; Dashboards,継続計画の記録と可視化,⭕️,本レポジトリシステム内で実現,🔺,GRC/IRM（継続/リスク管理）
+サービス要求管理のSLA/目標管理,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理のエスカレーション/連携,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理のデータ品質の維持,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理のナレッジの更新,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理のレポート/振り返り,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理のレポートの標準化,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の依存関係の整理,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の分類/優先度付け,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の受付/登録,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の品質保証/監査,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の実行/処理,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の承認/レビュー,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の改善施策の実施,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の方針/標準定義,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の標準テンプレートの整備,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の継続的改善,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の自動化/効率化,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の調査/分析,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の通知/コミュニケーション,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の運用手順の整備,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス要求管理の関係者合意の形成,サービス管理,サービス要求管理,workflow_manager; n8n; GitLab; Zulip,Catalog API; Workflows; Issues; Topics,要求受付/ワークフロー実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）
+サービス設計のSLA/目標管理,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計のエスカレーション/連携,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計のデータ品質の維持,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計のナレッジの更新,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計のレポート/振り返り,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計のレポートの標準化,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の依存関係の整理,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の分類/優先度付け,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の受付/登録,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の品質保証/監査,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の実行/処理,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の承認/レビュー,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の改善施策の実施,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の方針/標準定義,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の標準テンプレートの整備,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の継続的改善,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の自動化/効率化,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の調査/分析,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の通知/コミュニケーション,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の運用手順の整備,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+サービス設計の関係者合意の形成,サービス管理,サービス設計,GitLab,Markdown; Issues; Merge requests,設計文書/レビュー,⭕️,本レポジトリシステム内で実現,🔺,SPM（戦略/ロードマップ）
+スケジュール実行,サービス管理,変更管理,Exastro ITA Web / Exastro ITA API,Conductor schedule,予約実行で作業を自動化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理）
+スケジュール実行,サービス管理,変更管理; 測定および報告,n8n,Schedule Trigger,Cron相当の定期実行トリガ,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理）; ITSM標準（レポート/分析）
+スコープラベル,サービス管理,変更管理; プロジェクト管理,GitLab,Scoped labels,key::valueで排他ラベル運用,⭕️,本レポジトリシステム内で実現,🔺,ITSM標準（変更管理）; SPM（プロジェクト管理）
+トピック解決管理,サービス管理,インシデント管理,Zulip,Resolve topics permissions,トピック解決の権限を制御,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）
+トピック追跡,サービス管理,サービスデスク,Zulip,Follow topics,重要トピックのフォロー/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+トピック運用,サービス管理,サービスデスク,Zulip,General chat topic; Require topics,トピック必須/一般チャットのみの設定,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+パネル共有,サービス管理,測定および報告,Grafana,Panel share; Snapshot,パネルの共有/スナップショット,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+パラメータ管理,サービス管理,サービス構成管理,Exastro ITA Web / Exastro ITA API,Parameter Sheet,構成パラメータを表形式で管理,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）
+ビジネス分析のSLA/目標管理,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析のエスカレーション/連携,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析のデータ品質の維持,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析のナレッジの更新,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析のレポート/振り返り,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析のレポートの標準化,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の依存関係の整理,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の分類/優先度付け,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の受付/登録,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の品質保証/監査,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の実行/処理,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の承認/レビュー,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の改善施策の実施,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の方針/標準定義,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の標準テンプレートの整備,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の継続的改善,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の自動化/効率化,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の調査/分析,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の通知/コミュニケーション,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の運用手順の整備,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ビジネス分析の関係者合意の形成,サービス管理,ビジネス分析,GitLab; Grafana,Issues; Dashboards,要求/価値の分析,⭕️,本レポジトリシステム内で実現,🔺,SPM（需要/分析）
+ファイル共有,サービス管理,コミュニケーション,Zulip,File uploads,ファイル添付と共有,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（通知/ポータル）
+ボード運用,サービス管理,サービスデスク; 変更管理,GitLab,Issue boards,ボードで作業の可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）; ITSM標準（変更管理）
+ライブラリパネル,サービス管理,測定および報告,Grafana,Library panels,共通パネルを再利用,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+ラベル運用,サービス管理,サービス構成管理; 変更管理,GitLab,Labels,ラベルで分類/優先度/フィルタ,⭕️,本レポジトリシステム内で実現,⭕️,CMDB（構成管理）; ITSM標準（変更管理）
+リアクション,サービス管理,コミュニケーション,Zulip,Emoji reactions,絵文字リアクションで合意/確認,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（通知/ポータル）
+リリース管理,サービス管理,リリース管理,GitLab,Releases,リリースの作成/配布を管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理のSLA/目標管理,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理のエスカレーション/連携,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理のデータ品質の維持,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理のナレッジの更新,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理のレポート/振り返り,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理のレポートの標準化,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の依存関係の整理,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の分類/優先度付け,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の受付/登録,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の品質保証/監査,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の実行/処理,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の承認/レビュー,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の改善施策の実施,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の方針/標準定義,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の標準テンプレートの整備,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の継続的改善,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の自動化/効率化,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の調査/分析,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の通知/コミュニケーション,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の運用手順の整備,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+リリース管理の関係者合意の形成,サービス管理,リリース管理,GitLab; n8n; Exastro ITA Web / Exastro ITA API; gitlab_push_notify,Releases; Pipelines; Deploy automation; Notifications,リリース計画/実行/通知,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（リリース管理）
+会話の整理,サービス管理,サービスデスク; インシデント管理,Zulip,Topics; Topic list,チャンネル内をトピック単位で整理し一覧表示,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）; ITSM標準（インシデント管理）
+可用性管理のSLA/目標管理,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理のエスカレーション/連携,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理のデータ品質の維持,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理のナレッジの更新,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理のレポート/振り返り,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理のレポートの標準化,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の依存関係の整理,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の分類/優先度付け,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の受付/登録,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の品質保証/監査,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の実行/処理,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の承認/レビュー,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の改善施策の実施,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の方針/標準定義,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の標準テンプレートの整備,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の継続的改善,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の自動化/効率化,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の調査/分析,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の通知/コミュニケーション,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の運用手順の整備,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可用性管理の関係者合意の形成,サービス管理,可用性管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（可用性/監視）
+可視化ダッシュボード,サービス管理,測定および報告,Grafana,Dashboards; Panels,ダッシュボード/パネルで指標を可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+問題管理のSLA/目標管理,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理のエスカレーション/連携,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理のデータ品質の維持,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理のナレッジの更新,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理のレポート/振り返り,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理のレポートの標準化,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の依存関係の整理,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の分類/優先度付け,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の受付/登録,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の品質保証/監査,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の実行/処理,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の承認/レビュー,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の改善施策の実施,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の方針/標準定義,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の標準テンプレートの整備,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の継続的改善,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の自動化/効率化,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の調査/分析,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の通知/コミュニケーション,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の運用手順の整備,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+問題管理の関係者合意の形成,サービス管理,問題管理,GitLab; Zulip,Issues; Labels; Topics,原因分析/既知エラー管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（問題管理）
+変更イネーブルメントのSLA/目標管理,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントのエスカレーション/連携,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントのデータ品質の維持,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントのナレッジの更新,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントのレポート/振り返り,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントのレポートの標準化,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの依存関係の整理,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの分類/優先度付け,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの受付/登録,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの品質保証/監査,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの実行/処理,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの承認/レビュー,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの改善施策の実施,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの方針/標準定義,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの標準テンプレートの整備,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの継続的改善,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの自動化/効率化,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの調査/分析,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの通知/コミュニケーション,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの運用手順の整備,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+変更イネーブルメントの関係者合意の形成,サービス管理,変更イネーブルメント,GitLab; n8n; Exastro ITA Web / Exastro ITA API; workflow_manager,Issues; Workflow gates; Conductor/Movement,変更受付〜承認〜実行連携,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（変更管理/承認）
+実行履歴,サービス管理,測定および報告,Exastro ITA Web / Exastro ITA API,Conductor Work History,実行履歴/結果/エラーを管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+容量・パフォーマンス管理のSLA/目標管理,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理のエスカレーション/連携,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理のデータ品質の維持,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理のナレッジの更新,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理のレポート/振り返り,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理のレポートの標準化,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の依存関係の整理,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の分類/優先度付け,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の受付/登録,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の品質保証/監査,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の実行/処理,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の承認/レビュー,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の改善施策の実施,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の方針/標準定義,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の標準テンプレートの整備,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の継続的改善,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の自動化/効率化,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の調査/分析,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の通知/コミュニケーション,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の運用手順の整備,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+容量・パフォーマンス管理の関係者合意の形成,サービス管理,容量・パフォーマンス管理,Grafana,Dashboards; Alerts; Data sources,可用性/性能の可視化,⭕️,本レポジトリシステム内で実現,🔺,ITOM（キャパシティ/性能）
+探索分析,サービス管理,測定および報告,Grafana,Open in Explore,Exploreで詳細分析,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+業務自動化,サービス管理,サービス要求管理; 変更管理,n8n,Workflows; Nodes,ノードで処理を組み合わせワークフロー化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービス要求）; ITSM標準（変更管理）
+注釈可視化,サービス管理,測定および報告,Grafana,Annotations queries,ダッシュボード設定で注釈クエリ,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+注釈運用,サービス管理,測定および報告,Grafana,Annotations,注釈を付与してイベント可視化,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+監視およびイベント管理のSLA/目標管理,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理のエスカレーション/連携,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理のデータ品質の維持,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理のナレッジの更新,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理のレポート/振り返り,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理のレポートの標準化,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の依存関係の整理,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の分類/優先度付け,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の受付/登録,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の品質保証/監査,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の実行/処理,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の承認/レビュー,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の改善施策の実施,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の方針/標準定義,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の標準テンプレートの整備,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の継続的改善,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の自動化/効率化,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の調査/分析,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の通知/コミュニケーション,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の運用手順の整備,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+監視およびイベント管理の関係者合意の形成,サービス管理,監視およびイベント管理,Grafana; n8n; cloudwatch_event_notify,Alert rules; Contact points; Webhooks,アラート検知と通知整形,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+課題管理,サービス管理,インシデント管理; 問題管理,GitLab,Issues,Issueを作成し状態/担当を管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（インシデント管理）; ITSM標準（問題管理）
+通知抑制,サービス管理,サービスデスク,Zulip,Mute topic/channel,トピック/チャンネルのミュート,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（サービスデスク）
+API運用,技術管理,ソフトウェア開発および管理,n8n,API Playground,セルフホストでAPIを試験可能,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+Alertmanager連携,技術管理,監視およびイベント管理,Grafana,Alertmanager data source,Alertmanagerをデータソースとして接続,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+CI/CD基盤,技術管理,ソフトウェア開発および管理,GitLab,CI/CD pipelines,パイプラインでビルド/テスト/デプロイ,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+CLI運用,技術管理,ソフトウェア開発および管理,n8n,CLI commands,CLIでワークフロー実行/インポート,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+DB構成,技術管理,インフラストラクチャおよびプラットフォーム管理,n8n,SQLite; Postgres,SQLite/Postgresのサポート,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+HNSW索引,技術管理,インフラストラクチャおよびプラットフォーム管理,Qdrant,HNSW indexing,近傍検索用のインデックス管理,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+アプリ連携管理,技術管理,ソフトウェア開発および管理,Keycloak,Clients,アプリ/サービスをクライアントとして登録し認証連携,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+アラートプロビジョニング,技術管理,インフラストラクチャおよびプラットフォーム管理,Grafana,Provision alerting (file/API),ファイル/APIでアラート設定を管理,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+アラート連携,技術管理,監視およびイベント管理,Grafana,Alerting provisioning HTTP API,HTTP APIでアラート資源を操作,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+インスタンスイベント連携,技術管理,監視およびイベント管理,n8n,n8n Trigger,ワークフロー更新/起動イベントをトリガ,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+インフラ/プラットフォーム管理のBCPの見直し,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のBCP対応,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のDNS/証明書更新管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のDNS/証明書管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のDR計画策定,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のDR訓練の計画,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のID連携/認証基盤連携,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のIaCの標準テンプレ管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のKubernetes運用,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のOS標準化/管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のアクセス制御設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のアクセス境界の設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のアラート運用,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のイメージ管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のインシデント対応準備,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のインフラ標準化/設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のオペレーション監視,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のオンプレリソース管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のキャッシュ/ストレージ最適化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のキャパシティ計画,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のクラウドサービスの適用判断,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のクラウドリソース管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のコスト管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のコスト配賦の設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のコンテナ基盤管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のコンプライアンス監査対応,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のサプライヤ連携管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のサーバ/VM管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のサービスカタログとの同期,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のサービスカタログ連携,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のサービスポートフォリオ連携,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のスケーリングルールの見直し,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のスケーリング設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のストレージ設計/管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のセキュリティパッチ適用計画,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のセキュリティベースライン更新,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のセキュリティベースライン適用,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のテナント分離設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のデータ保護/暗号化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のネットワークセグメンテーション,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のネットワークセグメント設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のネットワークルーティング管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のネットワーク方針の策定,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のネットワーク設計/管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のバックアップの検証,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のバックアップ設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のバックアップ運用,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のパッチ管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のパッチ適用状況の可視化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のパフォーマンスチューニング,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のプラットフォームSLA管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のプラットフォームロードマップ,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のプラットフォームロードマップ策定,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のプラットフォーム方針策定,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のプラットフォーム監査対応,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のプロビジョニング自動化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のベンダ契約のレビュー,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のベンダ評価/契約管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のミドルウェア標準化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のメトリクス収集の統一,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のメンテナンスウィンドウ管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のリソース最適化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のリソース棚卸し,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のログのPIIマスキング,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のログ保持の最適化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のログ保管/アーカイブ設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理のロードバランサ設定管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の仮想化基盤管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の依存基盤のSLA確認,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の冗長化設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の可用性/冗長性のレビュー,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の可用性設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の基盤更新計画,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の基盤構成の標準化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の変更影響評価,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の容量予測,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の容量予測の更新,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の廃止資産の手続き,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の復旧手順整備,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の復旧時間の測定,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の性能テストの実施,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の性能監視,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の技術スタック棚卸し,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の新技術評価,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の新技術評価の実施,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の暗号化方針の適用,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の構成ドリフトの監視,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の構成ドリフト検知,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の構成リポジトリの保守,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の構成リポジトリ管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の構成変更の承認,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の構成変更の承認運用,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の構成管理の統制,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の標準テンプレート管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の標準構成審査,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の権限棚卸しの運用,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の機器更改計画,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の無効資産の廃止,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の環境の分離/隔離設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の環境分離設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の監査ログの集約,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の監査ログ収集,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の監視/ログ設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の監視アラートのチューニング,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の監視指標の標準化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の脆弱性スキャンの運用,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の脆弱性対応,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の証明書期限監視,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の負荷分散設定,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の資産ライフサイクル管理,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の資産台帳の整備,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の運用KPIの定義,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の運用KPI設計,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の運用SLOの策定,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の運用手順標準化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の運用自動化,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の運用自動化の導入,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の障害復旧手順の更新,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+インフラ/プラットフォーム管理の障害復旧訓練,技術管理,インフラストラクチャおよびプラットフォーム管理,Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak,Parameter sheets; Conductor; Dashboards; SSO,構成/運用の標準化と監視,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+コレクション管理,技術管理,ナレッジ管理（検索性向上）,Qdrant,Collections,コレクション作成/管理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ/検索）
+コンテナ管理,技術管理,ソフトウェア開発および管理,GitLab,Container registry,コンテナイメージの保管/検索,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+サービスアカウント,技術管理,ソフトウェア開発および管理,Keycloak,Service accounts,クライアントのサービスアカウントロールで機械認証,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+スクロール取得,技術管理,ナレッジ管理（検索性向上）,Qdrant,Scroll points,条件付きでポイントをページング取得,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ/検索）
+スナップショット,技術管理,インフラストラクチャおよびプラットフォーム管理,Qdrant,Snapshots,コレクションのスナップショット取得,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+ソフトウェア開発管理のAPIライフサイクル管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のAPI設計管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のCIパイプライン設計,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のCI設計の標準化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のDORA指標の追跡,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のDORA指標管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のIDE/ツール統一,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のOSS利用の審査,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のOSS利用管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のSLA要件反映,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のアーキテクチャ整合性の確認,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のアーティファクト管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のインシデント学習の反映,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のコードレビュー運用,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のコード品質監視,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のコード所有者の管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のコード所有者管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のコード規約の適用,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のコード規約の遵守,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のサポート終了管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のセキュリティ要件の実装,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のセキュリティ要件反映,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のツールチェーンの標準化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のテストカバレッジ向上,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のテストカバレッジ管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のテストデータ管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のテスト戦略の策定,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のデプロイ連携の設計,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のデプロイ連携設計,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のドキュメント整備,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のドキュメント更新サイクル,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のドキュメント管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のバックポート管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のバージョニング方針,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のパイプライン高速化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のパッケージの署名/検証,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のパッケージ管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のビルドキャッシュ最適化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のビルド成果物の管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のビルド自動化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のブランチ/マージ戦略統一,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のブランチ戦略設計,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のホットフィックス管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のマージ戦略統一,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のユーザ受入テスト支援,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のライセンス遵守,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のライセンス遵守の確認,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリファクタリング計画,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリースノート作成,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリースブランチ管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリース凍結の運用,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリース凍結対応,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリース判定,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリース基準の明確化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリース後の監視連携,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリース後フォロー,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリース準備チェック,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリース計画管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のリリース頻度管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のレビューSLAの運用,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のレビューSLA管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理のレビューガイドライン整備,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の依存脆弱性対応,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の依存関係の定期更新,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の依存関係管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の再発防止策の実装,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の分岐の最小化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の単体テスト自動化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の品質ゲートの設計,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の品質ゲート運用,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の品質メトリクス管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の品質レポート,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の品質レポートの共有,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の品質指標の可視化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の変更リスク評価,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の変更履歴の管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の変更履歴管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の実装ガイドライン整備,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の性能テスト実行,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の性能要件の実装,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の性能要件反映,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の技術負債の可視化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の技術負債管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の環境依存の排除,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の環境依存の管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の監視/運用連携の設計,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の秘密情報の管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の秘密情報管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の統合テスト自動化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の継続的改善,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の継続的改善の計画,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の脆弱性修正の優先順位付け,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の脆弱性修正リリース,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の自動化率の改善,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の要件管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の設定の外部化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の設定管理,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の設計レビュー,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の負荷試験,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の負荷試験の運用,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の運用フィードバック反映,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の運用手順への反映,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の運用要件反映,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の開発KPIの定義,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の開発プロセスの評価,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の開発プロセス標準化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の開発指標の可視化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の開発標準の策定,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の開発環境の標準化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の開発生産性可視化,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の開発者オンボーディング,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の障害対応の開発連携,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の静的解析の導入,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の非機能テストの計画,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ソフトウェア開発管理の非機能テスト設計,技術管理,ソフトウェア開発および管理,GitLab,Repository; Merge requests; CI/CD; Issues,開発・レビュー・CI/CD,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ダッシュボードプロビジョニング,技術管理,インフラストラクチャおよびプラットフォーム管理,Grafana,Provision dashboards,ファイルでダッシュボードを管理,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+デプロイメント管理のアプリ/インフラの同時展開,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のアラート連携,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のアーティファクト署名確認,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のカナリアデプロイ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のコンテナイメージ配布,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のサードパーティリリース連携,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のサーバ再起動/サービス再起動,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のステージング環境への配置,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のスモークテスト連携,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のセキュリティパッチ展開,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のダークローンチ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のテスト環境への配置,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のテナント別のリリース計画,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のテナント別ロールアウト,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイに伴うDB変更の管理,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイメントのSLA管理,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイメントのトレーサビリティ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイメントの監査証跡,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイメントスケジュール管理,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイメント前検証,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイメント手順標準化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイメント自動化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイメント計画の策定,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイ候補の選定,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイ前のリスク評価,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイ失敗の検知と回復,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイ失敗時の切り戻し,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイ後の影響観測,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイ成功判定,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデプロイ運用の継続的改善,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のデータベースマイグレーション連携,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のドキュメント同時更新,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のバックアウト手順のリハーサル,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のバージョン互換性の担保,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のバージョン管理,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のパイプライン連携,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のビッグバンデプロイ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のフィーチャーフラグ切替,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のフェーズドデプロイ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のブルーグリーンデプロイ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のブループリント管理,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のホットフィックス展開,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のポストデプロイ検証,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のメンテナンス告知,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のライセンス配布,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリハーサル/予行,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリースKPIの追跡,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリースウィンドウ調整,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリースカレンダーの同期,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリースコミュニケーション標準化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリースノート連携,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリースパッケージの標準化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリース後レビュー,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリース成果の測定,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリース承認ログの保持,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリリース資産の署名/検証,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のリージョン別の展開計画,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のログ取得,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のローリングデプロイ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のロールバック基準の明確化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のロールバック実行,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のロールバック計画,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理のロールフォワード戦略,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の一時的な監視強化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の不要コンポーネントの撤去,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の並列展開/逐次展開,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の事前影響範囲の説明,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の依存サービスの互換性確認,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の依存サービスの同期,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の依存モジュールの更新管理,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の依存関係確認,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の健全性チェック,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の再実行/再配布の管理,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の再現性検証,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の品質チェックリスト運用,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の地域別ロールアウト,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の変更凍結の運用,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の変更凍結期間の考慮,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の変更差分の最小化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の対象環境の識別,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の展開ウィンドウの最適化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の展開履歴管理,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の展開工数の削減,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の展開後の検証レポート,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の展開後の監視強化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の展開範囲の限定,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の展開順序制御,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の影響の可視化と通知,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の影響評価,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の復旧手順整備,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の成果物のプロモーション,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の成果物の保管/廃棄,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の手動ゲート,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の承認ゲートの設置,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の承認ログ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の本番環境への配置,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の構成の同期,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の構成変更の影響確認,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の構成変更の適用,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の構成差分の自動検知,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の段階的ユーザ通知,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の段階的ロールアウト,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の段階的承認フロー,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の環境クリーンアップ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の環境差分の最小化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の環境設定のパラメータ化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の監査証跡保持,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の監視連携,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の緊急リリース,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の緊急展開の特例運用,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の自動テストとの連携,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の複数環境の同期,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の設定のバックアップ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の設定配布,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の通知配信,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の運用ウィンドウの確保,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の運用停止/停止時間の最小化,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の運用引き継ぎ,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の運用手順書更新,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の配布対象の棚卸し,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+デプロイメント管理の開発環境への配置,技術管理,デプロイメント管理,GitLab; Exastro ITA Web / Exastro ITA API; n8n,CI/CD pipelines; Conductor/Movement; Webhook automation,デプロイ計画/実行/ロールバック,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+データソースプロビジョニング,技術管理,インフラストラクチャおよびプラットフォーム管理,Grafana,Provision data sources,データソース設定をコード管理,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+トリガ/アクション設計,技術管理,ソフトウェア開発および管理,n8n,Triggers; Actions,イベント駆動でトリガ/アクションを構成,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ノード分類管理,技術管理,ソフトウェア開発および管理,n8n,Core/Cluster/Community nodes,コア/クラスタ/コミュニティノードを使い分け,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+バッチ検索,技術管理,ナレッジ管理（検索性向上）,Qdrant,Batch search,複数検索をまとめて処理,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ/検索）
+パッケージ管理,技術管理,ソフトウェア開発および管理,GitLab,Generic packages registry,成果物をパッケージとして管理,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+ファイルAPI連携,技術管理,ソフトウェア開発および管理,Zulip,Upload file API,APIでファイルアップロード,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+フロー設計,技術管理,デプロイメント管理,Exastro ITA Web / Exastro ITA API,Conductor Class,Conductorのテンプレ/設計を管理,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+ベクトル基盤,技術管理,ナレッジ管理（検索性向上）,Qdrant,REST API; gRPC,REST/gRPC APIでベクトルDBを操作,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ/検索）
+ペイロード更新,技術管理,ナレッジ管理（検索性向上）,Qdrant,Payload set/overwrite/clear,ペイロードの部分更新/置換/削除,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ/検索）
+ポイント管理,技術管理,ナレッジ管理（検索性向上）,Qdrant,Points; Upsert,ベクトルポイントの登録/更新,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ/検索）
+マージレビュー,技術管理,ソフトウェア開発および管理,GitLab,Merge requests,MRでコードレビューと議論,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+メタデータ管理,技術管理,ナレッジ管理（検索性向上）,Qdrant,Collection metadata,コレクションへメタデータ付与,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ/検索）
+メタ情報取得,技術管理,ソフトウェア開発および管理,n8n,n8n metadata,$envや実行メタ情報へアクセス,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+メッセージ取得API,技術管理,ソフトウェア開発および管理,Zulip,Get messages API; Narrow,APIでメッセージ取得/絞り込み,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+リアルタイム連携,技術管理,監視およびイベント管理,Zulip,Real-time events API,イベントキューでリアルタイム連携,⭕️,本レポジトリシステム内で実現,🔺,ITOM（イベント管理）
+リリースAPI,技術管理,ソフトウェア開発および管理,GitLab,Releases API; Release links API,リリース情報をAPIで取得/連携,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+レコメンド,技術管理,ナレッジ管理（検索性向上）,Qdrant,Recommend API,正/負例による推薦検索,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ/検索）
+件数把握,技術管理,測定および報告,Qdrant,Count API,条件付きのポイント件数を取得,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（レポート/分析）
+作業フロー自動化,技術管理,デプロイメント管理,Exastro ITA Web / Exastro ITA API,Conductor,複数作業を組み合わせたワークフロー,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+実行タイムアウト,技術管理,インフラストラクチャおよびプラットフォーム管理,n8n,EXECUTIONS_TIMEOUT,ワークフロー実行のタイムアウト設定,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+実行ノード制御,技術管理,デプロイメント管理,Exastro ITA Web / Exastro ITA API,Conductor nodes,分岐/並列/停止などノード制御,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+実行モード,技術管理,インフラストラクチャおよびプラットフォーム管理,n8n,EXECUTIONS_MODE,regular/queue の実行モード切替,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+実行対象管理,技術管理,デプロイメント管理,Exastro ITA Web / Exastro ITA API,Operation,ターゲット/パラメータを持つ実行単位,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+検索API,技術管理,ナレッジ管理（検索性向上）,Qdrant,Query API; Search,k-NN検索/類似検索を実行,⭕️,本レポジトリシステム内で実現,⭕️,ITSM標準（ナレッジ/検索）
+構成管理,技術管理,インフラストラクチャおよびプラットフォーム管理,n8n,Environment variables,環境変数で設定を管理,⭕️,本レポジトリシステム内で実現,🔺,ITOMで可視化/連携
+構成自動化,技術管理,デプロイメント管理,Exastro ITA Web / Exastro ITA API,Movement,自動化の最小単位として作業を定義,⭕️,本レポジトリシステム内で実現,❌,DevOps/CI/CD連携が前提
+注釈API連携,技術管理,ソフトウェア開発および管理,Grafana,Annotations API,APIで注釈を登録/取得,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+自動マージ,技術管理,ソフトウェア開発および管理,GitLab,Auto-merge,条件満たしで自動マージ,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提
+課題API,技術管理,ソフトウェア開発および管理,GitLab,Issues API,APIでIssueの作成/更新/参照,⭕️,本レポジトリシステム内で実現,❌,DevOps/開発ツール連携が前提

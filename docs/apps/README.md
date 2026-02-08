@@ -161,6 +161,9 @@ bash scripts/apps/deploy_all_workflows.sh --activate
 ## 前提・注意点
 
 - 各アプリの同期処理は **n8n へのアクセス**と、**必要な認証情報（例: n8n API key）**が前提です。
+- `--with-tests`（OQ 実行）を使う場合や、ITSM/AIOps Agent の初回セットアップ直後は、事前に ITSM ブートストラップ（GitLab 側のレルム用グループ/初期プロジェクト反映）を済ませてください:
+  - `bash scripts/itsm/gitlab/ensure_realm_groups.sh`
+  - `bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh`
 - `terraform output` が古い/空の場合は、先に `terraform apply -refresh-only -var-file=...` で出力を更新してください（var-file の順序は `docs/infra/README.md` を参照）。
 - 本スクリプトは「ワークフロー同期のオーケストレーション」です。サービス再起動（ECS force new deployment）やイメージ更新は扱いません。
 

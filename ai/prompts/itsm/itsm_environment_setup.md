@@ -3,8 +3,16 @@
 ## 目的
 このリポジトリ（`infra/` + `itsm/` + `apps/`）で、ITSM サービス群と AIOps Agent（n8n ワークフロー同期）を新規にセットアップするための、**対話型の実行手順**を生成する。
 
+## 最重要ルール（判断ミス防止）
+1. **質問が完了し、オペレータの回答が揃うまでコマンドを実行しない。**
+2. `terraform.env.tfvars` / `terraform.itsm.tfvars` / `terraform.apps.tfvars` を **オペレータの明示的な許可なく新規作成・編集しない。**
+   - 許可が得られるまでは「雛形（例）」を提示するだけにする。
+3. AWS へ影響する操作（例: `aws sso login` / `terraform plan` / `terraform apply` / 各種 `refresh_*.sh`）は、**事前に実行コマンドを提示し、オペレータが「実行してよい」と回答した場合のみ**進める。
+4. 前提が不足している場合は推測して進めず、**不足項目を質問して停止**する。
+
 ## 入力（最初にオペレータへ質問すること）
-- 対象環境: `environment` / `platform`（命名: `name_prefix = ${environment}-${platform}`）
+- AWS プロファイル名: `aws_profile`（`terraform.env.tfvars` に設定）
+- 対象環境: `environment` / `platform`（命名: `name_prefix = "<environment>-<platform>"`）
 - 対象リージョン（通常）: `ap-northeast-1`
 - DNS: 使う Hosted Zone（既存 or 新規）、公開ドメイン、`control.<zone>` を作るか
 - テナント（realm）:
@@ -14,10 +22,13 @@
 - 管理者メールアドレス群（Keycloak/Zulip/n8n/GitLab/pgAdmin/Sulu/Growi 等）
 - 稼働方針:
   - desired count（最小構成で良いか）
-  - 自動起動/停止やスケジュール（使うか、初期は止めておくか）
-- 既存リソース再利用の有無:
+  - 自動起動/停止やスケジュール（使うか、初期は止めておくか） デフォルト { sulu = { enabled = true, start_time = "00:00", stop_time = "23:59", idle_minutes = 0 }}
+  - 既存リソース再利用の有無:
   - 既存 VPC/RDS/Hosted Zone を参照するか
   - 既に ECR にイメージがあるか（pull/build/push が必要か）
+ 
+## 入力（tfvars 生成後にオペレータへ質問すること）
+- OpenAI API キー: `OPENAI_MODEL_API_KEY`（`terraform.apps.tfvars` / `aiops_agent_environment` に設定）
 
 ## 参照（必読）
 - インフラ: `docs/infra/README.md`
@@ -29,6 +40,7 @@
 - Terraform state はローカル（`terraform.tfstate`）前提。**共有/配布しない**。並列実行もしない。
 - `terraform.env.tfvars` / `terraform.itsm.tfvars` / `terraform.apps.tfvars` に秘密情報を書いた場合は、**絶対に Git にコミットしない**。
   - 例: `pg_db_password`、`OPENAI_MODEL_API_KEY`、各種 admin password/token
+- `.tfvars` 内では `${...}` のような補間（変数/locals 参照）は使えない。`name_prefix` などは **確定値の文字列**で書く（例: `name_prefix = "prod-example"`）。
 - コマンドの `-var-file` の順序は固定:
   - `-var-file=terraform.env.tfvars -var-file=terraform.itsm.tfvars -var-file=terraform.apps.tfvars`
 - 可能なスクリプトは `DRY_RUN=true`（または `--dry-run`）で事前確認してから実行する。
@@ -37,6 +49,11 @@
 次の 2 点を必ず出力する。
 1. オペレータがそのまま実行できる「チェックリスト + コマンド列」（段階ごとに区切る）
 2. 検証ポイント（何をもって完了とするか、どの `terraform output` を見るか）
+
+## 対話の進め方（フォーマット）
+- まず「入力（最初にオペレータへ質問すること）」を **番号付きで質問**し、オペレータの回答を待つ。
+- 回答が揃ったら、tfvars へ反映する差分（追記/更新箇所）を短く要約して提示し、**反映してよいか確認**してから反映する。
+- その後、`aws sso login` を含む実行コマンド列を提示し、**実行してよいか確認**してから実行する（またはオペレータに実行を依頼する）。
 
 ## 進め方（対話手順）
 ### 0) 事前チェック
@@ -59,7 +76,6 @@ aws sso login --profile "$(terraform output -raw aws_profile)"
 ```bash
 aws sso login --profile "<terraform.env.tfvars の aws_profile>"
 ```
-
 ### 2) tfvars を用意する
 1. `terraform.env.tfvars`（インフラ側）
 2. `terraform.itsm.tfvars`（サービス/運用設定）
@@ -70,25 +86,19 @@ aws sso login --profile "<terraform.env.tfvars の aws_profile>"
 - 管理者メール（`*_admin_email` 系）
 - `aiops_n8n_agent_realms`
 - `aiops_agent_environment`（各 realm の OpenAI 設定）
-
-補助:
-- `terraform.apps.tfvars` に realm スケルトンを作る（Terraform outputs がまだ無い初回は `REALMS_CSV` / `N8N_AGENT_REALMS_CSV` を渡す）:
-
-```bash
-DRY_RUN=true REALMS_CSV="<realm1,realm2>" N8N_AGENT_REALMS_CSV="<realm1>" \
-  bash scripts/apps/export_aiops_agent_environment_to_tfvars.sh
-REALMS_CSV="<realm1,realm2>" N8N_AGENT_REALMS_CSV="<realm1>" \
-  bash scripts/apps/export_aiops_agent_environment_to_tfvars.sh
-```
+-  `terraform.env.tfvars` が存在している。
+-  `terraform.itsm.tfvars` が存在している。
+-  `terraform.apps.tfvars` が存在している。
 
 ### 3) Terraform 初期化と差分確認
-1. 初回または provider 更新後は init をやり直す:
+1. 初回または provider 更新後は init をやり直す。動作しない場合、ユーザーに実行を依頼する。: 
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl
 terraform init -upgrade
 terraform fmt -recursive
 terraform validate
+
 ```
 
 2. plan（分割 tfvars）:
@@ -100,17 +110,7 @@ terraform plan \
   -var-file=terraform.apps.tfvars
 ```
 
-### 4) （必要な場合のみ）イメージを pull/build/push
-要否を確認し、必要なら実行する（既に ECR に必要 tag があるならスキップ）。
-
-```bash
-bash scripts/itsm/run_all_pull.sh
-bash scripts/itsm/run_all_build.sh
-```
-
-サービス単位の更新が必要な場合は `docs/itsm/README.md` と `docs/scripts.md` の該当スクリプトに従う。
-
-### 5) apply（インフラ + サービス）
+### 4) apply（インフラ + サービス）
 1. まとめて apply（推奨: スクリプト）
 
 ```bash
@@ -145,6 +145,16 @@ terraform output
 
 - 差分が安定するまで `plan/apply` を再実行する（必要な場合）。
 
+### 5) （必要な場合のみ）イメージを pull/build/push
+要否を確認し、必要なら実行する（既に ECR に必要 tag があるならスキップ）。
+
+```bash
+bash scripts/itsm/run_all_pull.sh
+bash scripts/itsm/run_all_build.sh
+```
+
+サービス単位の更新が必要な場合は `docs/itsm/README.md` と `docs/scripts.md` の該当スクリプトに従う。
+
 ### 6) Keycloak 初期設定（ログイン確認とレルム反映）
 ```bash
 bash scripts/itsm/keycloak/show_keycloak_admin_credentials.sh
@@ -165,7 +175,9 @@ bash scripts/itsm/refresh_all_secure.sh
 bash scripts/itsm/run_all_redeploy.sh
 ```
 
-### 8) GitLab 初期投入（必要に応じて）
+### 8) ITSM ブートストラップ（GitLab 初期投入）
+`scripts/apps/deploy_all_workflows.sh --with-tests`（OQ を含む）を行う前に、**先に** GitLab 側のレルム用グループ/初期プロジェクト（テンプレ）を反映しておく（テストが参照する前提を揃えるため）。
+
 ```bash
 bash scripts/itsm/gitlab/ensure_realm_groups.sh
 bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh

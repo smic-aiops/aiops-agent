@@ -16,6 +16,13 @@
 
 本リポジトリの「全体像」を俯瞰するための最小構成です。詳細は `docs/infra/README.md`（Terraform）と `apps/README.md`（n8n ワークフロー）を参照してください。
 
+### 主要要素（連携の要点）
+
+- **構成実行基盤は 2 系統**です。  
+  - **n8n 上の `workflow_manager`**：サービスリクエスト管理ワークフローの実行基盤  
+  - **Exastro ITA Web / Exastro ITA API**：既存基盤連携の実行基盤
+- **CMDB 連携の中核**として、Exastro ITA API の構成情報を **n8n が差分化 → GitLab CMDB（`cmdb/`）へ同期**します（通知は Zulip）。
+
 ```mermaid
 flowchart TB
   %% 全体（最小）: エッジ配信 + アプリ基盤（ECS） + ワークフロー（n8n）
