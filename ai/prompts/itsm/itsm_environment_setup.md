@@ -118,11 +118,12 @@ bash scripts/plan_apply_all_tfvars.sh
 terraform output
 ```
 
-2. 初回構築後の安定化（既存参照や password 反映が必要な場合）
-- 既存 VPC 等の参照を `terraform.env.tfvars` へ反映:
+2. 初回構築後の安定化（必須）
+- **必須**: ネットワークを参照モード（`existing_*_id`）へ移行し、`terraform.env.tfvars` へ反映する（内部で `terraform state rm` → `terraform apply -refresh-only` を行う）。まずは `DRY_RUN=true` で確認してから実行する:
 
 ```bash
 aws sso login --profile "$(terraform output -raw aws_profile)"
+DRY_RUN=true bash scripts/infra/update_env_tfvars_from_outputs.sh
 bash scripts/infra/update_env_tfvars_from_outputs.sh
 ```
 
@@ -169,13 +170,83 @@ bash scripts/itsm/update_terraform_itsm_tfvars_auth_flags.sh --dry-run
 bash scripts/itsm/update_terraform_itsm_tfvars_auth_flags.sh
 ```
 
-### 7) セキュア情報の反映（必要に応じて）と再デプロイ
+### 7) Zulip 初期セットアップ（必須）
+Zulip 初期セットアップが未完了だと、Zulip 系ワークフロー/OQ が **`ZULIP_*` 不足**で失敗するため、**n8n ワークフロー同期（テスト込み）の前に必ず**実施する。
+
+1. （新規の組織/realm を作る場合）作成リンクを生成し、ブラウザで組織作成 + 管理者ユーザー作成を完了する:
+
+```bash
+bash scripts/itsm/zulip/generate_realm_creation_link_for_zulip.sh
+```
+
+2. DB から Zulip 管理者 API キーを取得して tfvars/SSM に反映:
+
+```bash
+bash scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh
+```
+
+3. n8n 側が参照する Zulip bot トークン等（Outgoing Webhook bot）を作成/更新して tfvars を更新:
+
+```bash
+bash scripts/itsm/n8n/refresh_zulip_bot.sh
+```
+
+4. tfvars 更新内容を AWS（SSM 等）へ反映し、n8n が新しい設定を読むように再デプロイして収束させる（推奨の収束順）:
+
+```bash
+terraform apply \
+  -var-file=terraform.env.tfvars \
+  -var-file=terraform.itsm.tfvars \
+  -var-file=terraform.apps.tfvars \
+  --auto-approve
+
+bash scripts/itsm/n8n/redeploy_n8n.sh
+```
+
+### 8) （必要な場合は必須）GitLab/n8n/Grafana/Sulu の refresh（ワークフロー同期・OQ 前）
+次の `refresh_*.sh` は、未実施だと **ワークフロー同期や OQ が失敗**しやすい（または管理 UI に入れない）ため、該当する機能を使う場合は **n8n ワークフロー同期（特に `--with-tests`）の前に必ず**実行する。
+
+- n8n Public API key（同期スクリプトが `X-N8N-API-KEY` を要求するため）:
+
+```bash
+bash scripts/itsm/n8n/refresh_n8n_api_key.sh
+```
+
+- GitLab 管理者トークン（GitLab 連携ワークフロー/OQ が参照するため）:
+
+```bash
+bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh
+```
+
+- GitLab Webhook secret（GitLab Webhook 受信系ワークフロー/OQ が検証に使うため）:
+
+```bash
+bash scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh
+```
+
+- Grafana API token（Grafana API を呼ぶワークフロー/スクリプトを使う場合）:
+
+```bash
+bash scripts/itsm/grafana/refresh_grafana_api_tokens.sh
+```
+
+- Sulu 管理者ユーザー（Sulu を運用する場合）:
+
+```bash
+bash scripts/itsm/sulu/refresh_sulu_admin_user.sh
+```
+
+注意:
+- `refresh_n8n_api_key.sh` が `HTTP 401` 等で失敗する場合、n8n の初回セットアップ（owner 作成）が未完了の可能性がある。`docs/itsm/README.md` の n8n トラブルシュートを確認する。
+- `refresh_*.sh` が `terraform.itsm.tfvars` を更新した場合は、**最後に** `terraform apply` と必要なサービス再デプロイで収束させる（例: n8n の secrets 注入が必要な場合は `redeploy_n8n.sh`）。
+
+### 9) セキュア情報の反映（必要に応じて）と再デプロイ
 ```bash
 bash scripts/itsm/refresh_all_secure.sh
 bash scripts/itsm/run_all_redeploy.sh
 ```
 
-### 8) ITSM ブートストラップ（GitLab 初期投入）
+### 10) ITSM ブートストラップ（GitLab 初期投入）
 `scripts/apps/deploy_all_workflows.sh --with-tests`（OQ を含む）を行う前に、**先に** GitLab 側のレルム用グループ/初期プロジェクト（テンプレ）を反映しておく（テストが参照する前提を揃えるため）。
 
 ```bash
@@ -194,7 +265,7 @@ bash scripts/itsm/gitlab/start_gitlab_efs_mirror.sh
 bash scripts/itsm/gitlab/check_gitlab_efs_rag_pipeline.sh
 ```
 
-### 9) n8n ワークフロー同期（apps デプロイ）と OQ
+### 11) n8n ワークフロー同期（apps デプロイ）と OQ
 1. `aiops_n8n_agent_realms` が正しいことを確認する（`docs/apps/README.md`）。
 2. 同期とテスト（OQ）:
 
@@ -204,7 +275,7 @@ bash scripts/apps/deploy_all_workflows.sh --with-tests
 
 必要なら `--dry-run`、`--only`、`--activate` を併用する。
 
-### 10) セットアップ状況の確認
+### 12) セットアップ状況の確認
 ```bash
 bash scripts/report_setup_status.sh
 terraform output -json service_urls

@@ -164,6 +164,16 @@ bash scripts/apps/deploy_all_workflows.sh --activate
 - `--with-tests`（OQ 実行）を使う場合や、ITSM/AIOps Agent の初回セットアップ直後は、事前に ITSM ブートストラップ（GitLab 側のレルム用グループ/初期プロジェクト反映）を済ませてください:
   - `bash scripts/itsm/gitlab/ensure_realm_groups.sh`
   - `bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh`
+- `--with-tests`（OQ 実行）で GitLab 連携の OQ/ワークフローを通す場合、事前に GitLab のトークン/secret を `refresh_*.sh` で揃えてください（未実施だと `GITLAB_*` 不足で失敗しやすい）:
+  - `bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
+  - `bash scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh`
+- n8n への同期スクリプトは `X-N8N-API-KEY` を要求するため、**事前に API key を用意**してください（未発行なら `bash scripts/itsm/n8n/refresh_n8n_api_key.sh`。手動で渡す場合は `N8N_API_KEY` 環境変数でも可）。
+- Zulip 連携を含むワークフロー/OQ を通したい場合は、事前に Zulip 初期セットアップ（組織/管理者ユーザー作成 → API key 反映 → n8n bot 反映 → terraform apply → n8n 再デプロイ）を完了させてください:
+  - `bash scripts/itsm/zulip/generate_realm_creation_link_for_zulip.sh`（新規組織/realm の場合）
+  - `bash scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh`
+  - `bash scripts/itsm/n8n/refresh_zulip_bot.sh`
+  - `terraform apply -var-file=terraform.env.tfvars -var-file=terraform.itsm.tfvars -var-file=terraform.apps.tfvars --auto-approve`
+  - `bash scripts/itsm/n8n/redeploy_n8n.sh`
 - `terraform output` が古い/空の場合は、先に `terraform apply -refresh-only -var-file=...` で出力を更新してください（var-file の順序は `docs/infra/README.md` を参照）。
 - 本スクリプトは「ワークフロー同期のオーケストレーション」です。サービス再起動（ECS force new deployment）やイメージ更新は扱いません。
 

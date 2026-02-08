@@ -1,11 +1,31 @@
 # aiops-agent
 
+[![CI](https://github.com/smic-aiops/aiops-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/smic-aiops/aiops-agent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ITSM x AI Ops x AI Agent を組み合わせた運用のアイデアと手順を、**GAMP® 5 第2版（2022）/ CSA / NIST AI RMF** の観点で説明しやすい形で整理したリポジトリです。
 
 本リポジトリは「最小で試す」ためのプロトタイプであり、規制対応を“自動的に満たす”ことを保証するものではありません。  
 ただし、**変更管理下の構成**・**リスクベースの検証**・**証跡の保全**・**人による監督**を「実装とドキュメントの導線」として揃えることを重視します。
 
 用語の読み替えは `docs/glossary.md` を参照してください。
+
+## 由来（成果物の位置付け）
+
+本リポジトリは **SMIC AIOps 分科会**の検討・検証の成果物として作成・公開しています（OSS として再利用できるよう、手順/構成/証跡導線を優先して整備しています）。
+
+## OSS としての基本情報
+
+- ライセンス: MIT（`LICENSE`）
+- 変更履歴: `CHANGELOG.md`
+- コントリビューション: `CONTRIBUTING.md`
+- サポート: `SUPPORT.md`
+- セキュリティ報告: `SECURITY.md`
+- 行動規範: `CODE_OF_CONDUCT.md`
+- ガバナンス: `GOVERNANCE.md`
+
+> 注意: このリポジトリは AWS 上に実リソースを作成します。検証でも課金が発生します。  
+> また、Embedding/LLM API（OpenAI 等）を使う場合は API 利用料が発生します。
 
 ## 留意点（作成・検証モデル / Codex の制約）
 

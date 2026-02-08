@@ -21,13 +21,20 @@
 2. （必要に応じて）コンテナイメージを pull/build して ECR へ push。
 3. `terraform apply` でインフラとサービスをデプロイ。
 4. Keycloak の初期ログイン確認 → レルム/クライアント設定を反映。
-5. サービスの各種 Key/トークンを生成・反映し、必要なら再デプロイ。
-6. `terraform output` で URL 等を確認し、動作確認。
+5. Zulip の初期セットアップ（組織/管理者ユーザー作成 → API key 反映 → n8n bot 反映 → terraform apply → n8n 再デプロイ）を完了させる。
+6. （必要な場合は必須）n8n/GitLab/Grafana/Sulu の `refresh_*.sh` を実行して、ワークフロー同期/OQ に必要なキー類を揃える（未実施だと失敗しやすい）。
+7. サービスの各種 Key/トークンを生成・反映し、必要なら再デプロイ。
+7. `terraform output` で URL 等を確認し、動作確認。
 
 最小の実行例:
 
 ```bash
 aws sso login --profile "$(terraform output -raw aws_profile)"
+
+# （必須）ネットワークを参照モード（existing_*_id）へ移行して `terraform.env.tfvars` を安定化
+# - 内部で terraform state rm → terraform apply -refresh-only を行うため、まずは DRY_RUN で確認する
+DRY_RUN=true bash scripts/infra/update_env_tfvars_from_outputs.sh
+bash scripts/infra/update_env_tfvars_from_outputs.sh
 
 # （任意）イメージ更新が必要な場合のみ
 bash scripts/itsm/run_all_pull.sh
@@ -39,6 +46,31 @@ bash scripts/itsm/keycloak/refresh_keycloak_realm.sh
 
 # Zulip（新しい組織/realm を作る場合: 作成リンクを生成）
 bash scripts/itsm/zulip/generate_realm_creation_link_for_zulip.sh
+
+# Zulip 初期セットアップ（必須）
+# - Zulip 系ワークフロー/OQ は `ZULIP_*` が揃っていないと失敗するため、
+#   n8n ワークフロー同期（特に `--with-tests`）の前に必ず収束させる。
+bash scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh
+bash scripts/itsm/n8n/refresh_zulip_bot.sh
+
+# （必要な場合は必須）ワークフロー同期/OQ 前に揃える refresh（例）
+# - n8n API key（同期スクリプトが必要とする）
+bash scripts/itsm/n8n/refresh_n8n_api_key.sh
+# - GitLab 管理者トークン / Webhook secret（GitLab 連携ワークフロー/OQ が必要とする）
+bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh
+bash scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh
+# - Grafana API token（Grafana API を使うワークフロー/スクリプトがある場合）
+bash scripts/itsm/grafana/refresh_grafana_api_tokens.sh
+# - Sulu 管理者ユーザー（Sulu を運用する場合）
+bash scripts/itsm/sulu/refresh_sulu_admin_user.sh
+
+# tfvars 更新を AWS（SSM 等）に反映し、n8n が新しい設定を読むように再デプロイして収束
+terraform apply \
+  -var-file=terraform.env.tfvars \
+  -var-file=terraform.itsm.tfvars \
+  -var-file=terraform.apps.tfvars \
+  --auto-approve
+bash scripts/itsm/n8n/redeploy_n8n.sh
 
 bash scripts/itsm/update_terraform_itsm_tfvars_auth_flags.sh
 
@@ -224,8 +256,8 @@ terraform output -raw service_control_api_base_url
 ## 追加スクリプト（SSM/パスワード同期）
 以下は新規追加した運用補助スクリプトです。すべて AWS CLI と Terraform outputs を前提に動作します。
 
-### （任意）ネットワークを参照モード（existing_*_id）へ移行する
-VPC/IGW/NAT を Terraform の管理対象から外し、`terraform.env.tfvars` に `existing_*_id` を記録して **既存 ID 参照**へ寄せたい場合に実行します（詳細は `../infra/README.md` も参照）。
+### （必須）ネットワークを参照モード（existing_*_id）へ移行する
+VPC/IGW/NAT を Terraform の管理対象から外し、`terraform.env.tfvars` に `existing_*_id` を記録して **既存 ID 参照**へ寄せます（詳細は `../infra/README.md` も参照）。
 
 - 仕様: [`docs/scripts.md`](../scripts.md)
 
@@ -235,14 +267,14 @@ VPC/IGW/NAT を Terraform の管理対象から外し、`terraform.env.tfvars` �
 aws sso login --profile "$(terraform output -raw aws_profile)"
 
 # まずは差分確認（推奨）
-bash scripts/infra/update_env_tfvars_from_outputs.sh --dry-run
+DRY_RUN=true bash scripts/infra/update_env_tfvars_from_outputs.sh
 
-# 参照モードへ移行（terraform state rm を行うため注意）
-bash scripts/infra/update_env_tfvars_from_outputs.sh --migrate
+# 参照モードへ移行（terraform state rm → terraform apply -refresh-only を行うため注意）
+bash scripts/infra/update_env_tfvars_from_outputs.sh
 ```
 
 注意:
-- `--migrate` は `terraform state rm` を内部で実行します（AWS リソースは消しませんが、Terraform の管理対象から外れます）。
+- 本スクリプトは既定で参照モードへ移行します（内部で `terraform state rm` → `terraform apply -refresh-only` を実行します）。無効化したい場合は `DEFAULT_MIGRATE=false` または `MIGRATE_TO_EXISTING_NETWORK=false` を指定してください。
 - 以後 `terraform destroy` をしてもネットワーク（VPC/IGW/NAT/EIP）は削除されません（手動削除が必要）。
 
 ### n8n イメージの更新（ECR へ push / ECS を再デプロイ）

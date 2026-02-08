@@ -150,8 +150,8 @@ Terraform コードは、**システム構成の権威ある定義（authoritati
 
 - Terraform のモジュール化設計
 - 環境分離（dev / stg / prod）
-- ロック付きのリモート state
-- セキュリティおよび policy-as-code をサポート
+- **状態管理（state）**: 既定はローカルの `terraform.tfstate`（Git 管理しない）。必要に応じてリモート backend（例: S3 + DynamoDB）へ移行可能（本リポジトリは移行手順を同梱していません）
+- セキュリティ（WAF / OIDC / SSM 等）を前提に、公開範囲・権限・秘密情報注入を明確化する
 
 `docs/infra/README.md` では、以下を説明します。
 
@@ -195,9 +195,12 @@ Pull Request は **変更管理記録（change control records）**として扱�
 
 ---
 
-## 人による監督（CODEOWNERS）
+## 人による監督（CODEOWNERS / 任意）
 
-重要領域は、明示的な承認を必須とします。
+重要領域に対して明示的な承認（レビュー）を必須にしたい場合は、GitHub の CODEOWNERS を利用できます。
+本リポジトリでは **デフォルトでは CODEOWNERS を同梱していません**（運用に合わせて追加してください）。
+
+例（運用方針に合わせて調整）:
 
 - `infra/**` → Platform / Cloud Owner
 - `ai/prompts/**` → QA + AI Responsible
@@ -212,11 +215,12 @@ Pull Request は **変更管理記録（change control records）**として扱�
 リリースは次で構成します。
 
 1. `main` へのマージ
-2. CI/CD による Terraform apply
-3. 検証（verification）の実行
-4. リリースノートの更新
-5. Git tag の作成
-6. Validation Summary Report の更新
+2. CI による静的チェック（例: Terraform fmt/validate）
+3. （必要に応じて）オペレータによる Terraform apply
+4. 検証（verification）の実行
+5. リリースノートの更新
+6. Git tag の作成
+7. Validation Summary Report の更新
 
 Git tag は **バリデート済みベースライン（validated baselines）**を表します。
 
