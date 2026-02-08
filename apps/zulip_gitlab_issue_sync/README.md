@@ -36,6 +36,7 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
 **内容**
 - Intended Use（意図した使用）
   - Zulip の対象 stream/topic を入力として、GitLab Issue の作成/更新/クローズ/再オープンを行い、結果を Zulip へ通知する。
+  - Zulip 上での最終決定を「決定メッセージ」として扱い、GitLab Issue に証跡（決定ログ）を残す（決定の正は Zulip、経緯記録/証跡は GitLab）。
   - （任意）S3 へイベント/メトリクスをエクスポートし、日次の振り返り等に利用できる形にする。
 - 高レベル構成
   - n8n（Cron / Webhook）→ Zulip API / GitLab API →（同期結果通知）→ Zulip
@@ -45,6 +46,50 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
 - Webhook（OQ）
   - n8n の Webhook ベース URL を `https://n8n.example.com/webhook` とした場合:
     - OQ: `POST /webhook/zulip/gitlab/issue/sync/oq`
+
+### 決定（Zulip）→証跡（GitLab）
+
+- ルール（既定）: Zulip メッセージ本文が次のいずれかで始まる場合、そのメッセージを **決定** として扱い、GitLab Issue に `### 決定（Zulip）` コメントを記録する
+  - `/decision`
+  - `[DECISION]`（大小は問わない）
+  - `決定:`
+- 設定:
+  - `ZULIP_GITLAB_DECISION_PREFIXES`（カンマ区切り、既定: `/decision,[decision],[DECISION],決定:`）
+  - `ZULIP_GITLAB_DECISION_LABEL`（任意。設定した場合、決定が初めて記録されたタイミングで Issue にラベルを付与）
+
+### 決定（GitLab）→通知（Zulip）
+
+Zulip を見ていない関係者へ到達させるため、GitLab 側で「決定」を記録したときに **Zulip へ通知**します。
+
+- ルール（既定）: GitLab Issue の本文更新、または Issue コメント（Note）で、**最初の非空行**が次で始まる場合に「決定」として扱う
+  - `[DECISION]`
+  - `決定:`
+  - `DECISION:`
+- 通知先:
+  - 原則: 当該 Issue に含まれる Zulip の `#narrow/stream/.../topic/...` URL から stream/topic を復元し、同じトピックへ投稿
+  - 例外: Zulip URL が見つからない（手動作成 Issue 等）場合は、`GITLAB_DECISION_FALLBACK_STREAM` / `GITLAB_DECISION_FALLBACK_TOPIC` に投稿（未設定ならスキップ）
+- ループ防止:
+  - Zulip→GitLab 同期が作る `### 決定（Zulip）` / `### Zulip更新` などの証跡コメントは通知対象外（無限ループを避ける）
+
+#### 連携ワークフロー（n8n）
+
+- ワークフロー: `apps/zulip_gitlab_issue_sync/workflows/gitlab_decision_notify.json`
+- Webhook: `POST /webhook/gitlab/decision/notify`
+  - GitLab Group Webhook の送信先に設定し、Issue events / Note events を有効化
+
+#### 環境変数（ワークフロー実行時）
+
+必須:
+- `GITLAB_WEBHOOK_SECRET`（単一値）または `GITLAB_WEBHOOK_SECRETS_YAML` / `GITLAB_WEBHOOK_SECRETS_JSON`（realm map。`x-gitlab-token` で検証）
+- Zulip（mess bot、送信用）:
+  - （realm map 推奨）`N8N_ZULIP_API_BASE_URL` / `N8N_ZULIP_BOT_EMAIL` / `N8N_ZULIP_BOT_TOKEN`
+  - （fallback）`ZULIP_BASE_URL` / `ZULIP_BOT_EMAIL` / `ZULIP_API_KEY`（または `ZULIP_BOT_API_KEY`）
+
+任意:
+- `GITLAB_DECISION_PREFIXES`（既定: `[DECISION],決定:,DECISION:`）
+- `GITLAB_DECISION_NOTIFY_DRY_RUN=true`（Zulip 投稿をせず解析だけ確認）
+- `GITLAB_DECISION_FALLBACK_STREAM` / `GITLAB_DECISION_FALLBACK_TOPIC`（Zulip URL を復元できない場合の通知先）
+- `ZULIP_REALM_URL_TEMPLATE` / `HOSTED_ZONE_NAME`（`N8N_ZULIP_API_BASE_URL` を realm map で解決できない場合の Zulip URL 推定）
 
 ### 構成図（Mermaid / 現行実装）
 

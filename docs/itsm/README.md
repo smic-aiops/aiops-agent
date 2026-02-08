@@ -9,6 +9,12 @@
 - `docs/itsm/features_comparison.md`（市販ITSM との機能対照表・未提供時の実装案）
 - `docs/itsm/data-model.md`（統合データモデル：テーブル/参照/ACL の設計）
 
+## 利用者向け（作法）
+
+- 環境の使い方（ITSM 利用者向け）: `docs/usage-guide.md`
+  - 最終決定は Zulip のトピック上で行い、決定メッセージは `/decision` で明示する（証跡は GitLab Issue に残す）
+  - 例外的に GitLab 側で決定を記録する場合は、先頭に `[DECISION]` / `決定:` を付けると Zulip に通知される（環境設定が必要）
+
 ## セットアップ（サマリ）
 1. tfvars を用意（`terraform.env.tfvars` / `terraform.itsm.tfvars` / `terraform.apps.tfvars`）。
 2. （必要に応じて）コンテナイメージを pull/build して ECR へ push。

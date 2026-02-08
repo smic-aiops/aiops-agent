@@ -101,6 +101,22 @@
 - Sulu のログは CloudWatch Logs `/aws/ecs/<realm>/<name_prefix>-sulu/<container>` に14日保持（`ecs_logs_retention_days` で変更可）。プレフィックスは `redis` `loupe` `init-db` `php` `nginx` `sulu-fs-init`。コンテナ内や EFS にはログを残していません。
 - CloudWatch アラーム（特にアイドル停止やエラー）はチーム通知に入れておくと安心。
 
+### ITSM の作法（最終決定 = Zulip / 証跡 = GitLab）
+
+- 速度重視のため、**最終決定は Zulip のトピック上**で行います（会話の流れの中で決め切る）。
+- 監査/再現性のため、**経緯記録/証跡は GitLab Issue** に残します（自動同期が有効な場合、n8n が記録します）。
+
+#### 決定メッセージの書き方（推奨）
+
+- 決定の投稿はメッセージ先頭を `/decision` にする（例: `/decision 〜〜を実施する。根拠: <URL>`）
+- 決定の本文には、最低限「何を/いつから/対象/根拠リンク」を含める
+- PII/機微情報は Zulip に貼らない（必要なら GitLab の Confidential Issue に限定）
+
+補足:
+- `/decision` で始まる投稿は、`apps/zulip_gitlab_issue_sync` が GitLab Issue に `### 決定（Zulip）` として証跡コメントを残します（環境により無効な場合があります）。
+- チケットをクローズ/再オープンしたい場合は、同一トピックで `/close ...` / `/reopen ...` を投稿します（GitLab Issue の状態へ反映されます）。
+- GitLab 側で決定を記録して関係者へ通知したい場合は、Issue 本文またはコメントの先頭を `[DECISION]` または `決定:` にします（Zulip の該当トピックへ通知されます。Zulip URL を復元できない場合は通知されません）。
+
 ---
 
 ## 7. 連絡先・担当

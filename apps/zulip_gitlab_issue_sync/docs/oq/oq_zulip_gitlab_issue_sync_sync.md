@@ -9,6 +9,8 @@
 ## 受け入れ基準
 
 - Zulip 側の投稿/スレッドと GitLab Issue/コメントが同期される（作成/更新/クローズ等の差分が反映される）
+- 決定メッセージ（例: `/decision`）が GitLab Issue に「決定（Zulip）」として証跡記録される
+- GitLab 側の決定（例: `[DECISION]` / `決定:`）が Zulip の該当トピックへ通知される
 - 同期結果（サマリ）が Zulip へ通知される
 - 実行結果として `ok=true` 相当の完了（ワークフロー失敗で終了しない）となる
 
@@ -26,6 +28,29 @@
   - GitLab 側で Issue/コメントの作成/更新が行われる（必要な差分があれば）
   - Zulip 側へ結果が投稿される（対象 stream/topic/DM のいずれか）
   - n8n 実行が失敗終了しない
+
+### TC-02: 決定メッセージの証跡化（OQ）
+
+- 前提:
+  - TC-01 と同じ
+  - 同期対象の topic に対し、決定メッセージ（例: `/decision ...`）が投稿できる
+- 実行:
+  - Zulip に `/decision 決定内容...` を投稿（同一 topic）
+  - n8n から `Zulip GitLab Issue Sync` を手動実行
+- 期待:
+  - GitLab Issue のコメントに `### 決定（Zulip）` が追記され、Zulip メッセージ URL が含まれる
+  - Zulip 側へ「決定をGitLabへ証跡として記録しました」相当の通知が投稿される
+
+### TC-03: GitLab 決定の Zulip 通知（OQ）
+
+- 前提:
+  - `apps/zulip_gitlab_issue_sync/workflows/gitlab_decision_notify.json` が n8n に同期済み
+  - GitLab の Group Webhook が `POST /webhook/gitlab/decision/notify` を指し、Issue events / Note events が有効
+  - Zulip のトピック URL（`#narrow/stream/.../topic/...`）が GitLab Issue 本文に含まれている（Zulip 起票由来なら通常含まれる）
+- 実行:
+  - GitLab Issue のコメント先頭に `[DECISION] ...` または `決定: ...` を投稿
+- 期待:
+  - Zulip の該当 stream/topic へ「GitLab で決定が記載されました」相当の通知が投稿される
 
 ## 証跡（evidence）
 

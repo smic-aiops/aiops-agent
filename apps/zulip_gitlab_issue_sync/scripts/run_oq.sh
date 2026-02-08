@@ -9,6 +9,8 @@ Options:
   --realm <realm>         Target realm (default: terraform output default_realm)
   --n8n-base-url <url>    Override n8n base URL (default: terraform output)
   --prepare-test-user     Post 1 /oq-seed message as the realm bot to a cust-* stream/topic before running OQ
+  --prepare-decision      When used with --prepare-test-user, also post 1 /decision message in the same topic
+  --decision-content <t>  Decision message content (default: auto-generate)
   --zulip-base-url <url>  Override Zulip base URL (default: terraform output service_urls.zulip)
   --test-user-email <e>   Test user email (default: auto-generate)
   --test-user-name <n>    Test user full name (default: auto-generate)
@@ -26,12 +28,14 @@ N8N_BASE_URL=""
 ZULIP_BASE_URL=""
 DRY_RUN=false
 PREPARE_TEST_USER=false
+PREPARE_DECISION=false
 TEST_USER_EMAIL=""
 TEST_USER_NAME=""
 TEST_USER_PASSWORD=""
 TEST_STREAM_NAME=""
 TEST_TOPIC=""
 TEST_CONTENT=""
+DECISION_CONTENT=""
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
@@ -46,6 +50,10 @@ while [[ $# -gt 0 ]]; do
       ZULIP_BASE_URL="$2"; shift 2 ;;
     --prepare-test-user)
       PREPARE_TEST_USER=true; shift ;;
+    --prepare-decision)
+      PREPARE_DECISION=true; shift ;;
+    --decision-content)
+      DECISION_CONTENT="$2"; shift 2 ;;
     --test-user-email)
       TEST_USER_EMAIL="$2"; shift 2 ;;
     --test-user-name)
@@ -268,11 +276,16 @@ zulip_prepare_test_user_and_seed_message() {
   stream="${TEST_STREAM_NAME:-}"
   topic="${TEST_TOPIC:-OQ-${ts}}"
   content="${TEST_CONTENT:-/oq-seed OQ seed message ${ts}}"
+  local decision_content
+  decision_content="${DECISION_CONTENT:-/decision OQ decision seed ${ts}}"
 
   if ${DRY_RUN}; then
     echo "[dry-run] zulip: seed message as realm bot (uses terraform output N8N_ZULIP_BOT_* for realm=${REALM})"
     echo "[dry-run] zulip: subscribe (POST ${api_base}/users/me/subscriptions) stream=<cust-*>"
     echo "[dry-run] zulip: send message (POST ${api_base}/messages) stream=<cust-*> topic=${topic}"
+    if ${PREPARE_DECISION}; then
+      echo "[dry-run] zulip: send decision message (POST ${api_base}/messages) stream=<cust-*> topic=${topic}"
+    fi
     return 0
   fi
  
@@ -339,6 +352,23 @@ zulip_prepare_test_user_and_seed_message() {
       msg="$(jq -r '.msg // .message // empty' <<<"${send_resp}" 2>/dev/null || true)"
       echo "Zulip send message (bot) failed: ${msg:-unknown_error}" >&2
       return 1
+    fi
+
+    if ${PREPARE_DECISION}; then
+      local decision_resp decision_result
+      decision_resp="$(/usr/bin/curl -sS -u "${bot_email}:${bot_token}" \
+        -X POST "${api_base}/messages" \
+        --data-urlencode "type=stream" \
+        --data-urlencode "to=${stream}" \
+        --data-urlencode "topic=${topic}" \
+        --data-urlencode "content=${decision_content}" || true)"
+      decision_result="$(jq -r '.result // empty' <<<"${decision_resp}" 2>/dev/null || true)"
+      if [[ "${decision_result}" != "success" ]]; then
+        local msg
+        msg="$(jq -r '.msg // .message // empty' <<<"${decision_resp}" 2>/dev/null || true)"
+        echo "Zulip send decision message (bot) failed: ${msg:-unknown_error}" >&2
+        return 1
+      fi
     fi
 
     echo "zulip_test_seeded=true mode=realm_bot stream=${stream} topic=${topic} email=${bot_email}"

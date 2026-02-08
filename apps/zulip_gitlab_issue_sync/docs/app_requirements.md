@@ -19,12 +19,14 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
 - UC-ZG-03: Issue 状態（クローズ/再オープン等）を同期し、Zulip 側へ結果を通知する（Issue→会話の反映を含む）
 - UC-ZG-04: 誤同期を抑制する（stream 名/ID 制約、マッピング/ルール、アンカー/差分同期で漏れ・重複を抑える）
 - UC-ZG-05: （任意）イベント/メトリクスを S3 へエクスポートし、日次振り返り等に利用できる形にする
+- UC-ZG-06: Zulip 上の「最終決定」を決定メッセージとして扱い、GitLab Issue に証跡（決定ログ）を残す（決定の正は Zulip、証跡は GitLab）
 
 ## 3. スコープ
 
 ### 3.1 対象（In Scope）
 
 - Zulip の対象 stream/topic を入力として GitLab Issue を作成/更新/クローズ/再オープンする
+- Zulip の決定メッセージ（例: `/decision`）を検出し、GitLab Issue に「決定（Zulip）」コメントとして記録する
 - 同期結果を Zulip へ通知する
 - 定期実行（Cron）および OQ 用の手動実行（Webhook）を提供する
 - （任意）S3 へイベント/メトリクスをエクスポートできる
@@ -39,7 +41,7 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
 
 - 入力: 定期同期（Cron）または手動実行（Webhook）
 - 処理: Zulip 取得/解析 → GitLab Issue 同期 → 同期結果通知
-- 出力: GitLab Issue 状態の更新、および Zulip への結果投稿
+- 出力: GitLab Issue 状態の更新、決定ログ（証跡）の記録、および Zulip への結果投稿
 
 ## 5. 非機能要件（共通）
 
