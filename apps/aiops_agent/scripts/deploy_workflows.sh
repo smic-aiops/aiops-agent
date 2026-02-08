@@ -2036,6 +2036,10 @@ sync_workflows_for_realm() {
     fi
   done
 
+  if is_truthy "${N8N_FORCE_AWS_CREDENTIAL:-false}"; then
+    needs_aws_creds="true"
+  fi
+
   if [[ "${needs_postgres_creds}" == "true" ]]; then
     ensure_postgres_credentials
   fi

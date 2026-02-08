@@ -149,7 +149,11 @@ pull_and_tag() {
   if [[ "${DRY_RUN}" == "true" ]]; then
     echo "[exastro-web] (dry-run) docker pull --platform \"${IMAGE_ARCH}\" \"${src}\""
   else
-    docker pull --platform "${IMAGE_ARCH}" "${src}"
+    if docker image inspect "${src}" >/dev/null 2>&1; then
+      echo "[exastro-web] Using existing local image: ${src}"
+    else
+      retry "docker pull ${src}" 5 5 docker pull --platform "${IMAGE_ARCH}" "${src}"
+    fi
   fi
   echo "[exastro-web] Tagging ${src} as ${dst}:latest"
   if [[ "${DRY_RUN}" == "true" ]]; then

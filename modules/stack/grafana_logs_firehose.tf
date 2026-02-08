@@ -98,10 +98,10 @@ resource "aws_cloudwatch_log_group" "grafana_logs_firehose" {
 }
 
 resource "aws_cloudwatch_log_stream" "grafana_logs_firehose" {
-  for_each = aws_cloudwatch_log_group.grafana_logs_firehose
+  for_each = local.grafana_logs_to_s3_enabled ? toset(local.grafana_realms) : []
 
   name           = "S3Delivery"
-  log_group_name = each.value.name
+  log_group_name = aws_cloudwatch_log_group.grafana_logs_firehose[each.key].name
 }
 
 data "aws_iam_policy_document" "grafana_logs_firehose_assume" {

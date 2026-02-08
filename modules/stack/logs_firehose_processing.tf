@@ -5,6 +5,12 @@ locals {
     { for key, stream in aws_kinesis_firehose_delivery_stream.grafana_logs : "grafana::${key}" => stream.arn },
     { for key, stream in aws_kinesis_firehose_delivery_stream.service_logs : "service::${key}" => stream.arn }
   )
+  # Keep permission keys static; ARNs can remain apply-time values.
+  logs_firehose_permission_keys = merge(
+    local.n8n_logs_to_s3_enabled ? { "n8n" = true } : {},
+    local.grafana_logs_to_s3_enabled ? { for realm in local.grafana_realms : "grafana::${realm}" => true } : {},
+    { for key in keys(local.service_logs_firehose_targets) : "service::${key}" => true }
+  )
 }
 
 data "archive_file" "logs_firehose_processor" {
@@ -54,11 +60,11 @@ resource "aws_lambda_function" "logs_firehose_processor" {
 }
 
 resource "aws_lambda_permission" "logs_firehose_processor" {
-  for_each = local.logs_firehose_processing_enabled ? local.logs_firehose_arns_by_key : {}
+  for_each = local.logs_firehose_processing_enabled ? local.logs_firehose_permission_keys : {}
 
   statement_id  = "AllowFirehoseInvoke-${replace(each.key, ":", "-")}"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.logs_firehose_processor[0].arn
   principal     = "firehose.amazonaws.com"
-  source_arn    = "${each.value}*"
+  source_arn    = "${local.logs_firehose_arns_by_key[each.key]}*"
 }

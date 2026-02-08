@@ -85,7 +85,25 @@ pull_and_tag() {
     echo "[zulip] [dry-run] docker tag \"${src}\" \"${dst}\""
     return 0
   fi
-  docker pull --platform "${IMAGE_ARCH}" "${src}"
+
+  local attempt max_attempts sleep_s
+  max_attempts="${ZULIP_PULL_MAX_ATTEMPTS:-5}"
+  sleep_s="${ZULIP_PULL_RETRY_SLEEP_SECONDS:-5}"
+  attempt=1
+  while :; do
+    if docker pull --platform "${IMAGE_ARCH}" "${src}"; then
+      break
+    fi
+    if [[ "${attempt}" -ge "${max_attempts}" ]]; then
+      echo "[zulip] ERROR: docker pull failed after ${attempt} attempts: ${src}" >&2
+      return 1
+    fi
+    echo "[zulip] WARN: docker pull failed (attempt ${attempt}/${max_attempts}); retrying in ${sleep_s}s..." >&2
+    sleep "${sleep_s}"
+    attempt="$((attempt + 1))"
+    sleep_s="$((sleep_s * 2))"
+  done
+
   echo "[zulip] Tagging ${src} as ${dst}"
   docker tag "${src}" "${dst}"
 }
