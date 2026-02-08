@@ -1,0 +1,37 @@
+name: バグ報告
+description: 動作不良、ドキュメント不備、スクリプトの失敗など
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: 何が起きましたか？
+      description: 期待した挙動と実際の挙動を記載してください（ログはマスクして貼ってください）
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 再現手順
+      description: 可能なら最小手順で
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: false
+  - type: input
+    id: terraform_version
+    attributes:
+      label: Terraform バージョン
+      placeholder: "terraform -version の出力"
+    validations:
+      required: false
+  - type: textarea
+    id: env
+    attributes:
+      label: 環境
+      description: OS、AWS リージョン、利用しているサービスなど
+    validations:
+      required: false
+

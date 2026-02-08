@@ -1,0 +1,6 @@
+blank_issues_enabled: true
+contact_links:
+  - name: セキュリティ報告
+    url: https://github.com/smic-aiops/aiops-agent/security/advisories/new
+    about: 脆弱性は公開 Issue ではなくこちらから報告してください
+

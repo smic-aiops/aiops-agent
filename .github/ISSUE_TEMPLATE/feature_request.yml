@@ -1,0 +1,24 @@
+name: 機能要望
+description: 新機能、改善提案、ドキュメントの拡充など
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 背景 / 解決したい課題
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案（やりたいこと）
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 影響範囲（想定）
+      description: Terraform / scripts / apps / docs など
+    validations:
+      required: false
+
