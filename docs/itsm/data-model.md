@@ -380,7 +380,7 @@ Change/Incident/Request にぶら下げる “作業” を表現します（Exa
 
 Incident/Change/Export 等の “承認” を共通テーブルで扱い、**承認 ID** を証跡の核にします。
 
-- 運用（チャット）では、AIOpsAgent の approve/deny（承認確定）を **Zulip の `/decision`** として同一トピックへ投稿し、GitLab Issue にも証跡化する（参照: `docs/usage-guide.md`）。必要に応じて `/decisions` で時系列サマリを参照する。
+- 運用（チャット）では、AIOpsAgent の approve/deny（承認確定）や `auto_enqueue`（自動承認/自動実行）を **Zulip の `/decision`** として同一トピックへ投稿し、GitLab Issue にも「決定メッセージへのリンク + 要約 + `correlation_id`（`context_id`/`trace_id`/`job_id` 等）」として証跡化する（参照: `docs/usage-guide.md`）。必要に応じて `/decisions` で時系列サマリを参照する。
 
 | 列 | 型 | 例 | 備考 |
 |---|---|---|---|

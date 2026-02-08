@@ -19,7 +19,7 @@ AIOpsAgent が提示した承認導線（approve/deny）について、**リン�
 3. 承認リンク（approve）をクリックして確定する
 4. Zulip の同一トピックに **`/decision`** で始まる決定ログが投稿されることを確認する
 5. Zulip で `/decisions` を投稿する
-6. AIOpsAgent が「決定履歴（AIOpsAgent 承認）」の時系列サマリを返し、直前の承認が含まれることを確認する
+6. AIOpsAgent が「決定履歴（AIOpsAgent 承認/自動承認）」の時系列サマリを返し、直前の承認が含まれることを確認する
 
 ## 期待出力
 - クリックで確定した approve/deny が **Zulip の `/decision`** として可視化される
@@ -45,4 +45,3 @@ AIOpsAgent が提示した承認導線（approve/deny）について、**リン�
 - `apps/aiops_agent/docs/zulip_chat_bot.md`
 - `apps/zulip_gitlab_issue_sync/README.md`
 - `docs/usage-guide.md`
-

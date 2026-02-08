@@ -6622,6 +6622,59 @@
         3000,
         440
       ]
+    },
+    {
+      "id": "mark-auto-enqueue-as-decision-zulip",
+      "name": "Mark Auto-Enqueue As Decision (Zulip)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3040,
+        240
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto'); const base = $json ?? {}; const nextAction = String(base.next_action ?? base.job_plan?.next_action ?? '').trim(); const replyTarget = base.reply_target ?? {}; const source = base.source ?? replyTarget.source ?? 'unknown'; const isTruthy = (v) => ['1','true','yes','y','on'].includes(String(v ?? '').trim().toLowerCase()); const decisionPrefix = String($env.AIOPS_ZULIP_DECISION_PREFIX || '/decision').trim() || '/decision'; const asDecision = isTruthy($env.AIOPS_ZULIP_APPROVAL_AS_DECISION ?? 'true'); const jobId = String(base.job_id ?? '').trim(); if (!(nextAction === 'auto_enqueue' && source === 'zulip' && asDecision && jobId)) return [{ json: base }]; const contextId = String(base.context_id ?? '').trim(); const traceId = String(base.normalized_event?.trace_id ?? base.job_plan?.trace_id ?? '').trim(); const correlationId = String(traceId || contextId || '').trim(); const workflowId = String(base.job_plan?.workflow_id ?? base.job_plan?.workflowId ?? '').trim(); const summary = String(base.job_plan?.summary ?? '').trim(); const approvalPolicy = String(base.policy_context?.approval_policy ?? '').trim(); const requesterActor = base.actor ?? {}; const requester = String(requesterActor.name ?? requesterActor.full_name ?? requesterActor.username ?? requesterActor.email ?? '').trim(); const headParts = [decisionPrefix, 'AIOpsAgent 自動承認']; if (workflowId) headParts.push(`workflow=${workflowId}`); if (correlationId) headParts.push(`correlation_id=${correlationId}`); const head = headParts.join(' '); const lines = [ head, requester ? `- 依頼者: ${requester}` : null, approvalPolicy ? `- approval_policy: ${approvalPolicy}` : null, correlationId ? `- correlation_id: ${correlationId}` : null, contextId ? `- context_id: ${contextId}` : null, traceId ? `- trace_id: ${traceId}` : null, `- job_id: ${jobId}`, workflowId ? `- workflow_id: ${workflowId}` : null, summary ? `- summary: ${summary}` : null ].filter(Boolean); const autoDecisionActor = { name: 'AIOpsAgent', type: 'system', decision_mode: 'auto_enqueue', requested_by: requesterActor, decision_id: crypto.randomUUID() }; return [{ json: { ...base, content: lines.join('\\\\n'), auto_decision_actor: autoDecisionActor, auto_decision_history_id: jobId } }];"
+      }
+    },
+    {
+      "id": "insert-auto-decision-history-zulip",
+      "name": "Insert Auto Decision History (Zulip)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        3280,
+        240
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\\n  SELECT\\n    CASE\\n      WHEN '{{ $json.auto_decision_history_id }}' IS NULL OR '{{ $json.auto_decision_history_id }}' = '' OR '{{ $json.auto_decision_history_id }}' = 'undefined'\\n        THEN NULL\\n      ELSE NULLIF(NULLIF('{{ $json.auto_decision_history_id }}',''), 'undefined')::uuid\\n    END AS approval_history_id,\\n    NULLIF(NULLIF('{{ $json.context_id }}',''), 'undefined')::uuid AS context_id,\\n    COALESCE(NULLIF('{{ JSON.stringify($json.auto_decision_actor || {}) }}','undefined')::jsonb, '{}'::jsonb) AS actor,\\n    COALESCE(NULLIF('{{ JSON.stringify($json.job_plan || {}) }}','undefined')::jsonb, '{}'::jsonb) AS job_plan,\\n    NULLIF(({{ JSON.stringify($json.content || '') }}::jsonb #>> '{}'), '') AS comment\\n), ins AS (\\n  INSERT INTO aiops_approval_history (approval_history_id, context_id, approval_id, actor, decision, job_plan, comment)\\n  SELECT v.approval_history_id, v.context_id, NULL, v.actor, 'approved', v.job_plan, v.comment\\n  FROM v\\n  WHERE v.approval_history_id IS NOT NULL\\n  ON CONFLICT (approval_history_id) DO NOTHING\\n  RETURNING approval_history_id\\n)\\nSELECT (SELECT COUNT(*) FROM ins) AS inserted;"
+      }
+    },
+    {
+      "id": "restore-after-insert-auto-decision-history-zulip",
+      "name": "Restore Items After Insert Auto Decision History (Zulip)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        240
+      ],
+      "parameters": {
+        "jsCode": "return $items('Mark Auto-Enqueue As Decision (Zulip)');\\n"
+      }
+    },
+    {
+      "id": "normalize-decisions-summary-zulip",
+      "name": "Normalize Decisions Summary (Zulip)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3240,
+        520
+      ],
+      "parameters": {
+        "jsCode": "const base = $json ?? {}; let content = String(base.content ?? ''); if (content) { content = content.replace('決定履歴（AIOpsAgent 承認）はまだありません。', '決定履歴（AIOpsAgent 承認/自動承認）はまだありません。'); content = content.replace('補足: AIOpsAgent の承認リンク（approve/deny）で確定した内容は、この履歴に追加されます。', '補足: AIOpsAgent の承認リンク（approve/deny）や、自動承認（auto_enqueue）で確定した内容は、この履歴に追加されます。'); content = content.replace('決定履歴（AIOpsAgent 承認、古い→新しい）:', '決定履歴（AIOpsAgent 承認/自動承認、古い→新しい）:'); } return [{ json: { ...base, content } }];"
+      }
     }
   ],
   "connections": {
@@ -7996,6 +8049,39 @@
       ]
     },
     "Use Chat Core Reply": {
+      "main": [
+        [
+          {
+            "node": "Mark Auto-Enqueue As Decision (Zulip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Auto-Enqueue As Decision (Zulip)": {
+      "main": [
+        [
+          {
+            "node": "Insert Auto Decision History (Zulip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Auto Decision History (Zulip)": {
+      "main": [
+        [
+          {
+            "node": "Restore Items After Insert Auto Decision History (Zulip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Items After Insert Auto Decision History (Zulip)": {
       "main": [
         [
           {
@@ -11572,6 +11658,17 @@
       ]
     },
     "Build Decisions Summary (Zulip)": {
+      "main": [
+        [
+          {
+            "node": "Normalize Decisions Summary (Zulip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Decisions Summary (Zulip)": {
       "main": [
         [
           {

@@ -101,9 +101,9 @@
 - Sulu のログは CloudWatch Logs `/aws/ecs/<realm>/<name_prefix>-sulu/<container>` に14日保持（`ecs_logs_retention_days` で変更可）。プレフィックスは `redis` `loupe` `init-db` `php` `nginx` `sulu-fs-init`。コンテナ内や EFS にはログを残していません。
 - CloudWatch アラーム（特にアイドル停止やエラー）はチーム通知に入れておくと安心。
 
-### ITSM の作法（最終決定 = Zulip / 証跡 = GitLab）
+### ITSM の作法（最終決定 = Zulip または GitLab / 証跡 = GitLab）
 
-- 速度重視のため、**最終決定は Zulip のトピック上**で行います（会話の流れの中で決め切る）。
+- 速度重視のため、**最終決定は原則 Zulip のトピック上**で行います（会話の流れの中で決め切る）。ただし、GitLab Issue 上で決める必要がある場合は、**決定マーカー**を付けて明示します（後述）。
 - 監査/再現性のため、**経緯記録/証跡は GitLab Issue** に残します（自動同期が有効な場合、n8n が記録します）。
 
 #### 決定メッセージの書き方（推奨）
@@ -114,9 +114,11 @@
 
 補足:
 - `/decision` で始まる投稿は、`apps/zulip_gitlab_issue_sync` が GitLab Issue に `### 決定（Zulip）` として証跡コメントを残します（環境により無効な場合があります）。
+- 監査のため、可能な限り GitLab 側には「決定メッセージへのリンク + 要約 + `correlation_id`（`context_id`/`trace_id`/`job_id` 等）」が残る前提で運用します。
 - チケットをクローズ/再オープンしたい場合は、同一トピックで `/close ...` / `/reopen ...` を投稿します（GitLab Issue の状態へ反映されます）。
-- AIOpsAgent の承認導線（approve/deny）がリンクで提示された場合、**リンククリックで確定した内容も `/decision` として扱われ**、同一トピックへ決定ログが投稿されます。過去の承認（決定）を一覧したい場合は `/decisions` を投稿します（AIOpsAgent が時系列サマリを返します）。
-- GitLab 側で決定を記録して関係者へ通知したい場合は、Issue 本文またはコメントの先頭を `[DECISION]` または `決定:` にします（Zulip の該当トピックへ通知されます。Zulip URL を復元できない場合は通知されません）。
+- AIOpsAgent の承認導線（approve/deny）がリンクで提示された場合、**リンククリックで確定した内容も `/decision` として扱われ**、同一トピックへ決定ログが投稿されます。AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も同様に `/decision` として扱われます。
+- 過去の承認（決定）を一覧したい場合は `/decisions` を投稿します（AIOpsAgent が時系列サマリを返します。リンククリック/自動承認も含みます）。
+- GitLab 側で決定を記録して関係者へ通知したい場合は、Issue 本文またはコメントの先頭を `[DECISION]` または `決定:` にします（Zulip の該当トピックへ通知されます。Zulip URL を復元できない場合は通知されません）。可能なら本文に `correlation_id`（`context_id`/`trace_id` 等）と根拠リンクも含めます。
 
 ---
 

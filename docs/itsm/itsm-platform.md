@@ -49,7 +49,9 @@
 - 正のデータ:
   - CMDB: GitLab サービス管理プロジェクト `cmdb/`
   - （将来/改善）統合データモデルの正: ITSM コア DB（PostgreSQL）。詳細は `docs/itsm/data-model.md` を参照
-  - 会話/調整/最終決定: Zulip（経緯記録/証跡は GitLab へ）
+  - 会話/調整: Zulip（トピックで整理）
+  - 最終決定: Zulip または GitLab Issue（状況により。決定マーカーで明示）
+  - 証跡/監査: GitLab（決定リンク + 要約 + `correlation_id` 等）+（承認履歴: `aiops_approval_history`）
   - 監視参照: Grafana（状態参照の中心。Issue/レポートの参照リンクも Grafana に統一する）
   - ログ検索/可視化: Athena/Grafana（ログの本文や検索結果をGitLabへ複製しない）
   - ベクトルインデックス: Qdrant（ただし「文書/台帳の正」はGitLab。Qdrantは検索用の派生データ）
@@ -77,9 +79,9 @@
 ### 共通ルール（矛盾防止）
 
 - **起票/状態の正**: 対応が必要な事象は GitLab サービス管理（Issue）に集約し、状態（ステータス/担当/期限）と証跡は GitLab を正に寄せる。
-- **会話/最終決定の正**: 速度重視のため最終決定は Zulip のトピック上で行う（決定メッセージに根拠リンクを含め、GitLab にはリンク付き要約を残す）。
-- **決定マーカー**: 最終決定は Zulip メッセージとして明示し、`/decision`（既定）で始まる投稿は `apps/zulip_gitlab_issue_sync` が GitLab Issue に「決定（Zulip）」コメントとして証跡化する（マーカーは `ZULIP_GITLAB_DECISION_PREFIXES` で変更可）。
-- **承認リンク（クリック）も決定扱い**: AIOpsAgent が承認導線（approve/deny）をリンクで提示する場合、リンククリックで確定した内容も同一トピックへ `/decision` として投稿し、GitLab に証跡化する。過去の承認（決定）サマリは Zulip で `/decisions` を投稿して参照する。
+- **会話/最終決定の正**: 速度重視で、会話/調整は Zulip に寄せる。最終決定は **Zulip または GitLab Issue** で行い、決定マーカーで明示する（決定メッセージには根拠リンクを含め、GitLab にはリンク付き要約 + `correlation_id` を残す）。
+- **決定マーカー**: Zulip の `/decision`（既定）で始まる投稿は `apps/zulip_gitlab_issue_sync` が GitLab Issue に「決定（Zulip）」コメントとして証跡化する（マーカーは `ZULIP_GITLAB_DECISION_PREFIXES` で変更可）。GitLab 側で決定を記録する場合は `[DECISION]` / `決定:` を先頭に付け、Zulip へ通知する（詳細: `apps/zulip_gitlab_issue_sync/README.md`）。
+- **承認/自動承認も決定扱い**: AIOpsAgent の承認リンク（approve/deny）のクリック確定や、`auto_enqueue`（自動承認/自動実行）で確定した内容は、Zulip の同一トピックへ `/decision` として投稿し、GitLab に証跡化する。過去の承認（決定）サマリは Zulip で `/decisions` を投稿して参照する。
 - **GitLab 側の決定通知（補助）**: 例外的に GitLab 側で決定（`[DECISION]` / `決定:`）を記録した場合は、Zulip へ通知して関係者へ到達させる（詳細: `apps/zulip_gitlab_issue_sync/README.md`）。
 - **根拠リンク優先**: ログ本文の貼り付けではなく、Athena/Grafana/CloudWatch へのリンクを根拠とする（GitLabには要約と参照URL）。
 - **PII取り扱い**: PIIはZulipへ貼らない。必要ならGitLabのConfidential Issueに限定し、n8n通知はマスキング済みの要約のみ。
@@ -252,8 +254,8 @@ Grafana のフォルダ/ダッシュボードは `scripts/itsm/grafana/sync_usec
 
 - **Zulip（会話） vs GitLab（長期記録）**  
   - Zulip：インシデント/依頼/合意形成のリアルタイム窓口（トピックで整理）  
-  - GitLab：経緯記録/証跡（決定の要約・根拠リンク・承認ID）・Runbook・設計・台帳の長期保管（版管理）  
-  - 方針：会話と最終決定はZulip、経緯記録/証跡はGitLab。n8n が会話→起票/要約→記録を補助する
+  - GitLab：経緯記録/証跡（決定の要約・根拠リンク・`correlation_id` 等）・Runbook・設計・台帳の長期保管（版管理）
+  - 方針：会話/調整は Zulip、最終決定は Zulip または GitLab Issue（状況により）。証跡の正は GitLab。n8n が会話→起票/要約→記録を補助する
 
 - **クラウド側ログ分析基盤（Athena/Grafana） vs GitLab（起票/追跡）**  
   - ログ分析：検索・可視化・集計は Athena/Grafana を正とする  
@@ -342,5 +344,5 @@ Grafana のフォルダ/ダッシュボードは `scripts/itsm/grafana/sync_usec
 | Exastro ITA Web | プロジェクト管理・要件管理用途、CMDB台帳用途 | 要件/承認は他プラクティクスで扱い、Exastroは構成作業自動実行に専念するため |
 | Exastro ITA API | Web UI操作の代替としての常用 | 手動はWeb、自動はAPIに経路を分離し権限制御を簡素化するため |
 | Keycloak | アプリ固有の細粒度権限モデル | 細粒度権限は各アプリ側に任せ、Keycloakは統合認証と粗いロールに限定する方針のため |
-| クラウド側ログ分析基盤（Athena/Grafana） | チケット管理、承認/証跡、対話窓口 | 起票・承認・証跡はGitLab、コミュニケーション/最終決定はZulipに集約し、分析基盤は分析に専念させるため |
-| クラウド側ログ通知基盤（CloudWatch→*（Webhook）→n8n） | 複雑な業務判断、長期台帳 | 判断/最終決定はZulip、承認/証跡はGitLab、処理はn8nに寄せ、通知基盤は配送に専念させるため |
+| クラウド側ログ分析基盤（Athena/Grafana） | チケット管理、承認/証跡、対話窓口 | 起票・承認・証跡はGitLab、コミュニケーション/最終決定は Zulip（原則）または GitLab Issue（状況により）に寄せ、分析基盤は分析に専念させるため |
+| クラウド側ログ通知基盤（CloudWatch→*（Webhook）→n8n） | 複雑な業務判断、長期台帳 | 判断/最終決定は Zulip（原則）または GitLab Issue（状況により）。承認/証跡はGitLab、処理はn8nに寄せ、通知基盤は配送に専念させるため |

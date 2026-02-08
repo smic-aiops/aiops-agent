@@ -12,8 +12,8 @@
 ## 利用者向け（作法）
 
 - 環境の使い方（ITSM 利用者向け）: `docs/usage-guide.md`
-  - 最終決定は Zulip のトピック上で行い、決定メッセージは `/decision` で明示する（証跡は GitLab Issue に残す）
-  - AIOpsAgent の承認リンク（approve/deny）が提示された場合、リンククリックで確定した内容も `/decision` として扱われる。過去の承認（決定）サマリは `/decisions` で参照する
+  - 最終決定は **Zulip または GitLab Issue** 上で行い、決定マーカー（Zulip: `/decision` / GitLab: `[DECISION]`/`決定:`）で明示する（証跡の正は GitLab）
+  - AIOpsAgent の承認リンク（approve/deny）や `auto_enqueue`（自動承認/自動実行）で確定した内容も **決定**として扱われ、Zulip へ `/decision` が投稿される。過去の承認（決定）サマリは `/decisions` で参照する
   - 例外的に GitLab 側で決定を記録する場合は、先頭に `[DECISION]` / `決定:` を付けると Zulip に通知される（環境設定が必要）
 
 ## セットアップ（サマリ）

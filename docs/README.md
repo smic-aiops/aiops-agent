@@ -7,6 +7,7 @@
 
 - インフラ（Terraform）: `docs/infra/README.md`
 - ITSM（サービス）: `docs/itsm/README.md`
+  - 方針（最終決定/証跡/相互通知）: `docs/itsm/itsm-platform.md`
 - apps（n8n ワークフロー同期）: `docs/apps/README.md`（全体像は `apps/README.md`）
 - スクリプト仕様（副作用/入出力）: `docs/scripts.md`
 - 用語: `docs/glossary.md`

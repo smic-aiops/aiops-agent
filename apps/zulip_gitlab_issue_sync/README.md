@@ -36,7 +36,7 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
 **内容**
 - Intended Use（意図した使用）
   - Zulip の対象 stream/topic を入力として、GitLab Issue の作成/更新/クローズ/再オープンを行い、結果を Zulip へ通知する。
-  - Zulip 上での最終決定を「決定メッセージ」として扱い、GitLab Issue に証跡（決定ログ）を残す（決定の正は Zulip、経緯記録/証跡は GitLab）。
+  - Zulip または GitLab Issue 上での最終決定を「決定」として扱い、決定マーカー（Zulip: `/decision` / GitLab: `[DECISION]`/`決定:`）で識別して、Zulip への通知と GitLab Issue への証跡（決定ログ）を残す（証跡の正は GitLab）。
   - （任意）S3 へイベント/メトリクスをエクスポートし、日次の振り返り等に利用できる形にする。
 - 高レベル構成
   - n8n（Cron / Webhook）→ Zulip API / GitLab API →（同期結果通知）→ Zulip
@@ -54,6 +54,7 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
   - `[DECISION]`（大小は問わない）
   - `決定:`
 - 補足: AIOpsAgent の承認導線（approve/deny）がリンクで提示された場合、リンククリックで確定した内容も同一トピックへ `/decision` として投稿される想定（= 本ルールで証跡化される）。
+- 補足: AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も、同一トピックへ `/decision` として投稿される想定（= 本ルールで証跡化される）。
 - 設定:
   - `ZULIP_GITLAB_DECISION_PREFIXES`（カンマ区切り、既定: `/decision,[decision],[DECISION],決定:`）
   - `ZULIP_GITLAB_DECISION_LABEL`（任意。設定した場合、決定が初めて記録されたタイミングで Issue にラベルを付与）
