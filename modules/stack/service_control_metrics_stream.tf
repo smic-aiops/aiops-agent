@@ -95,8 +95,9 @@ locals {
 }
 
 resource "aws_s3_bucket" "service_control_metrics" {
-  count  = local.service_control_metrics_stream_enabled ? 1 : 0
-  bucket = local.service_control_metrics_bucket_name
+  count         = local.service_control_metrics_stream_enabled ? 1 : 0
+  bucket        = local.service_control_metrics_bucket_name
+  force_destroy = true
 
   object_lock_enabled = var.service_control_metrics_object_lock_enabled
 

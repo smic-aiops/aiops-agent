@@ -77,7 +77,8 @@ locals {
 resource "aws_s3_bucket" "service_logs" {
   for_each = toset(local.service_logs_enabled_services)
 
-  bucket = local.service_logs_bucket_name_by_service[each.key]
+  bucket        = local.service_logs_bucket_name_by_service[each.key]
+  force_destroy = true
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-${each.key}-logs" })
 }
