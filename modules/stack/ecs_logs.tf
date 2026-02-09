@@ -96,6 +96,9 @@ locals {
         { name = "gitlab", realm = local.ecs_default_realm }
       ]
     ) : []
+    "gitlab-runner" = contains(local.enabled_services, "gitlab-runner") ? [
+      { name = "gitlab-runner", realm = local.ecs_default_realm }
+    ] : []
     grafana = contains(local.enabled_services, "grafana") ? concat(
       local.grafana_has_efs_effective ? [{ name = "grafana-fs-init", realm = local.ecs_grafana_shared_realm }] : [],
       [{ name = "grafana-db-init", realm = local.ecs_grafana_shared_realm }],
@@ -139,15 +142,16 @@ locals {
   }
   ecs_logs_per_container_services_effective = sort(local.enabled_services)
   ecs_service_log_group_realm_by_service = {
-    n8n      = local.ecs_n8n_shared_realm
-    exastro  = local.ecs_default_realm
-    sulu     = local.ecs_sulu_shared_realm
-    keycloak = local.ecs_default_realm
-    odoo     = local.ecs_default_realm
-    pgadmin  = local.ecs_default_realm
-    gitlab   = local.ecs_default_realm
-    grafana  = local.ecs_grafana_shared_realm
-    zulip    = local.ecs_default_realm
+    n8n             = local.ecs_n8n_shared_realm
+    exastro         = local.ecs_default_realm
+    sulu            = local.ecs_sulu_shared_realm
+    keycloak        = local.ecs_default_realm
+    odoo            = local.ecs_default_realm
+    pgadmin         = local.ecs_default_realm
+    gitlab          = local.ecs_default_realm
+    "gitlab-runner" = local.ecs_default_realm
+    grafana         = local.ecs_grafana_shared_realm
+    zulip           = local.ecs_default_realm
   }
   ecs_container_log_groups_by_realm_service = {
     for realm_service in distinct([

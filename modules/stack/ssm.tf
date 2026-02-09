@@ -65,6 +65,7 @@ locals {
   gitlab_db_host_parameter_name                     = "/${local.name_prefix}/gitlab/db/host"
   gitlab_db_port_parameter_name                     = "/${local.name_prefix}/gitlab/db/port"
   gitlab_admin_token_parameter_name                 = "/${local.name_prefix}/gitlab/admin/token"
+  gitlab_runner_token_parameter_name                = "/${local.name_prefix}/gitlab/runner/token"
   grafana_db_username_parameter_name                = "/${local.name_prefix}/grafana/db/username"
   grafana_db_password_parameter_name                = "/${local.name_prefix}/grafana/db/password"
   grafana_db_name_parameter_name                    = "/${local.name_prefix}/grafana/db/name"
@@ -105,6 +106,7 @@ locals {
   odoo_db_password_effective                        = local.db_password_effective
   gitlab_db_password_effective                      = local.db_password_effective
   gitlab_admin_token_value                          = var.gitlab_admin_token != null && trimspace(var.gitlab_admin_token) != "" ? var.gitlab_admin_token : null
+  gitlab_runner_token_value                         = var.gitlab_runner_token != null && trimspace(var.gitlab_runner_token) != "" ? var.gitlab_runner_token : null
   gitlab_realm_admin_tokens_yaml_parameter_name     = coalesce(var.gitlab_realm_admin_tokens_yaml_parameter_name, "/${local.name_prefix}/gitlab/realm_admin_tokens_yaml")
   gitlab_realm_admin_tokens_yaml_value              = var.gitlab_realm_admin_tokens_yaml != null && trimspace(var.gitlab_realm_admin_tokens_yaml) != "" ? var.gitlab_realm_admin_tokens_yaml : null
   gitlab_realm_admin_tokens_json_parameter_name     = "/${local.name_prefix}/aiops/gitlab/realm_admin_tokens_json"
@@ -394,6 +396,7 @@ locals {
   service_control_oidc_client_id_write_enabled     = local.ssm_writes_enabled && var.create_ecs && var.enable_service_control && (var.service_control_oidc_client_id != null || var.service_control_oidc_client_secret != null)
   service_control_oidc_client_secret_write_enabled = local.ssm_writes_enabled && var.create_ecs && var.enable_service_control && (var.service_control_oidc_client_secret != null)
   gitlab_admin_token_write_enabled                 = local.ssm_writes_enabled && var.create_ecs && var.create_gitlab && local.gitlab_admin_token_value != null
+  gitlab_runner_token_write_enabled                = local.ssm_writes_enabled && var.create_ecs && var.create_gitlab_runner && local.gitlab_runner_token_value != null
   keycloak_smtp_username_value                     = coalesce(var.keycloak_smtp_username, local.ses_smtp_username_value)
   keycloak_smtp_password_value                     = coalesce(var.keycloak_smtp_password, local.ses_smtp_password_value)
   keycloak_db_username_value                       = coalesce(var.keycloak_db_username, local.master_username)
@@ -1097,6 +1100,17 @@ resource "aws_ssm_parameter" "gitlab_admin_token" {
   overwrite = true
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-gitlab-admin-token" })
+}
+
+resource "aws_ssm_parameter" "gitlab_runner_token" {
+  count = local.gitlab_runner_token_write_enabled ? 1 : 0
+
+  name      = local.gitlab_runner_token_parameter_name
+  type      = "SecureString"
+  value     = local.gitlab_runner_token_value
+  overwrite = true
+
+  tags = merge(local.tags, { Name = "${local.name_prefix}-gitlab-runner-token" })
 }
 
 resource "aws_ssm_parameter" "gitlab_realm_admin_tokens_yaml" {

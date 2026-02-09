@@ -105,6 +105,12 @@ output "gitlab_admin_token_parameter_name" {
   sensitive   = true
 }
 
+output "gitlab_runner_token_parameter_name" {
+  description = "SSM parameter name for the GitLab Runner token (if created)"
+  value       = local.gitlab_runner_token_write_enabled ? local.gitlab_runner_token_parameter_name : null
+  sensitive   = true
+}
+
 output "gitlab_efs_mirror_state_machine_arn" {
   description = "Step Functions state machine ARN for GitLab->EFS mirror loop (if enabled)"
   value       = local.gitlab_efs_mirror_enabled ? try(aws_sfn_state_machine.gitlab_efs_mirror[0].arn, null) : null
