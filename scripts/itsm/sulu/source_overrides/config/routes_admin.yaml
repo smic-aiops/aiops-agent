@@ -2,3 +2,43 @@ n8n_observer_events:
     path: /admin/api/n8n/observer/events
     controller: App\Controller\N8nObserverController::events
     methods: [GET]
+
+itsm_incidents_list:
+    path: /admin/api/itsm/incidents
+    controller: App\Controller\IstmIncidentController::cgetAction
+    methods: [GET]
+
+itsm_incidents_detail:
+    path: /admin/api/itsm/incidents/{id}
+    controller: App\Controller\IstmIncidentController::getAction
+    methods: [GET]
+
+itsm_service_requests_list:
+    path: /admin/api/itsm/service-requests
+    controller: App\Controller\IstmServiceRequestController::cgetAction
+    methods: [GET]
+
+itsm_service_requests_detail:
+    path: /admin/api/itsm/service-requests/{id}
+    controller: App\Controller\IstmServiceRequestController::getAction
+    methods: [GET]
+
+itsm_problems_list:
+    path: /admin/api/itsm/problems
+    controller: App\Controller\IstmProblemController::cgetAction
+    methods: [GET]
+
+itsm_problems_detail:
+    path: /admin/api/itsm/problems/{id}
+    controller: App\Controller\IstmProblemController::getAction
+    methods: [GET]
+
+itsm_change_requests_list:
+    path: /admin/api/itsm/change-requests
+    controller: App\Controller\IstmChangeRequestController::cgetAction
+    methods: [GET]
+
+itsm_change_requests_detail:
+    path: /admin/api/itsm/change-requests/{id}
+    controller: App\Controller\IstmChangeRequestController::getAction
+    methods: [GET]
