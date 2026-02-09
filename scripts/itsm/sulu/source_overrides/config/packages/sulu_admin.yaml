@@ -6,3 +6,20 @@ sulu_admin:
     lists:
         directories:
             - "%kernel.project_dir%/config/lists"
+    resources:
+        itsm_incidents:
+            routes:
+                list: itsm_incidents_list
+                detail: itsm_incidents_detail
+        itsm_service_requests:
+            routes:
+                list: itsm_service_requests_list
+                detail: itsm_service_requests_detail
+        itsm_problems:
+            routes:
+                list: itsm_problems_list
+                detail: itsm_problems_detail
+        itsm_change_requests:
+            routes:
+                list: itsm_change_requests_list
+                detail: itsm_change_requests_detail

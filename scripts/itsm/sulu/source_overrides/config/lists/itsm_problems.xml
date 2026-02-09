@@ -1,0 +1,98 @@
+<?xml version="1.0" ?>
+<list xmlns="http://schemas.sulu.io/list-builder/list">
+    <key>itsm_problems</key>
+
+    <joins name="realm">
+        <join>
+            <entity-name>App\Entity\IstmRealm</entity-name>
+            <field-name>App\Entity\IstmProblem.realm</field-name>
+        </join>
+    </joins>
+
+    <properties>
+        <property
+            name="id"
+            visibility="no"
+            searchability="yes"
+            translation="sulu_admin.id"
+        >
+            <field-name>id</field-name>
+            <entity-name>App\Entity\IstmProblem</entity-name>
+        </property>
+
+        <property
+            name="number"
+            visibility="always"
+            sortable="true"
+            searchability="yes"
+            translation="app.itsm.problems.table.number"
+        >
+            <field-name>number</field-name>
+            <entity-name>App\Entity\IstmProblem</entity-name>
+            <filter type="text" />
+        </property>
+
+        <property
+            name="title"
+            visibility="always"
+            sortable="true"
+            searchability="yes"
+            translation="sulu_admin.title"
+        >
+            <field-name>title</field-name>
+            <entity-name>App\Entity\IstmProblem</entity-name>
+            <filter type="text" />
+        </property>
+
+        <property
+            name="status"
+            visibility="yes"
+            sortable="true"
+            searchability="yes"
+            translation="app.itsm.problems.table.status"
+        >
+            <field-name>status</field-name>
+            <entity-name>App\Entity\IstmProblem</entity-name>
+            <filter type="text" />
+        </property>
+
+        <property
+            name="priority"
+            visibility="yes"
+            sortable="true"
+            searchability="yes"
+            translation="app.itsm.problems.table.priority"
+        >
+            <field-name>priority</field-name>
+            <entity-name>App\Entity\IstmProblem</entity-name>
+            <filter type="text" />
+        </property>
+
+        <property
+            name="updatedAt"
+            visibility="yes"
+            sortable="true"
+            searchability="never"
+            translation="sulu_admin.changed"
+        >
+            <field-name>updatedAt</field-name>
+            <entity-name>App\Entity\IstmProblem</entity-name>
+            <transformer type="datetime"/>
+            <filter type="datetime" />
+        </property>
+
+        <property
+            name="realmKey"
+            visibility="no"
+            sortable="true"
+            searchability="yes"
+            translation="app.itsm.field.realm"
+        >
+            <field-name>realmKey</field-name>
+            <entity-name>App\Entity\IstmRealm</entity-name>
+            <joins ref="realm"/>
+            <filter type="text" />
+        </property>
+    </properties>
+</list>
+
