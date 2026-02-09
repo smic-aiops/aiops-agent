@@ -25,6 +25,7 @@ set -euo pipefail
 # - ITSM_ALLOW_ALL_REALMS (default: false; when REALMS is unset and DRY_RUN is unset, require true to allow targeting all realms)
 # - ITSM_WIKI_SYNC_* (see ensure_realm_groups.sh)
 # - DRY_RUN (set to any value to skip creation)
+# - GITLAB_PROJECT_ENABLE_SHARED_RUNNERS_ON_CREATE (default: true; when true, enables shared runners for newly created/forked projects)
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

@@ -9,6 +9,7 @@ locals {
     var.create_odoo ? "odoo" : "",
     var.create_pgadmin ? "pgadmin" : "",
     var.create_gitlab ? "gitlab" : "",
+    var.create_gitlab_runner ? "gitlab-runner" : "",
     var.create_grafana && var.create_gitlab ? "grafana" : "",
     var.create_zulip ? "zulip" : ""
   ]) : []
@@ -44,6 +45,7 @@ locals {
   ecr_uri_keycloak         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_keycloak}:latest"
   ecr_uri_odoo             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_odoo}:latest"
   ecr_uri_gitlab           = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab}:latest"
+  ecr_uri_gitlab_runner    = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab_runner}:latest"
   ecr_uri_grafana          = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_grafana}:latest"
   ecr_uri_zulip            = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_zulip}:latest"
   default_realm            = local.keycloak_realm_effective
@@ -237,9 +239,13 @@ locals {
       N8N_DEFAULT_LOCALE                    = "ja"
       N8N_PUBLIC_API_DISABLED               = "false"
       N8N_ADMIN_EMAIL                       = local.n8n_admin_email_value
-      GENERIC_TIMEZONE                      = "Asia/Tokyo"
-      SERVICE_CONTROL_API_BASE_URL          = local.service_control_api_base_url_effective
-      SERVICE_CONTROL_TOKEN_URL             = local.service_control_token_url
+      # Enable decision/approval recognition by LLM for Zulip<->GitLab sync workflows by default.
+      # (Workflows still require DECISION_LLM_API_* values to actually call the model.)
+      ZULIP_GITLAB_DECISION_LLM_ENABLED = "true"
+      GITLAB_DECISION_LLM_ENABLED       = "true"
+      GENERIC_TIMEZONE                  = "Asia/Tokyo"
+      SERVICE_CONTROL_API_BASE_URL      = local.service_control_api_base_url_effective
+      SERVICE_CONTROL_TOKEN_URL         = local.service_control_token_url
     }
   )
   default_environment_keycloak = {
@@ -655,6 +661,13 @@ locals {
   ssm_param_arns_keycloak    = { for k, v in merge(local.default_ssm_params_keycloak, var.keycloak_db_ssm_params, var.keycloak_ssm_params, local.optional_smtp_params_keycloak) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
   ssm_param_arns_odoo        = { for k, v in merge(local.default_ssm_params_odoo, var.odoo_ssm_params, local.optional_smtp_params_odoo, local.optional_oidc_params_odoo) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
   ssm_param_arns_gitlab      = { for k, v in merge(local.default_ssm_params_gitlab, var.gitlab_db_ssm_params, var.gitlab_ssm_params, local.optional_smtp_params_gitlab, local.optional_oidc_params_gitlab) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
+  default_ssm_params_gitlab_runner = local.gitlab_runner_token_write_enabled ? {
+    GITLAB_RUNNER_TOKEN = local.gitlab_runner_token_parameter_name
+  } : {}
+  ssm_param_arns_gitlab_runner = {
+    for k, v in merge(local.default_ssm_params_gitlab_runner, var.gitlab_runner_ssm_params) :
+    k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}")
+  }
   grafana_db_ssm_params_effective = var.grafana_db_ssm_params != null ? {
     for k, v in var.grafana_db_ssm_params : k => v if k != "GF_DATABASE_NAME"
   } : {}
@@ -723,10 +736,41 @@ locals {
 }
 
 locals {
-  odoo_var_secrets_map    = { for s in var.odoo_secrets : s.name => (can(regex("^arn:aws:ssm", s.valueFrom)) ? s.valueFrom : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(s.valueFrom, "/") ? s.valueFrom : "/${s.valueFrom}"}") }
-  gitlab_var_secrets_map  = { for s in var.gitlab_secrets : s.name => (can(regex("^arn:aws:ssm", s.valueFrom)) ? s.valueFrom : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(s.valueFrom, "/") ? s.valueFrom : "/${s.valueFrom}"}") }
-  grafana_var_secrets_map = { for s in var.grafana_secrets : s.name => (can(regex("^arn:aws:ssm", s.valueFrom)) ? s.valueFrom : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(s.valueFrom, "/") ? s.valueFrom : "/${s.valueFrom}"}") }
-  pgadmin_var_secrets_map = { for s in var.pgadmin_secrets : s.name => (can(regex("^arn:aws:ssm", s.valueFrom)) ? s.valueFrom : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(s.valueFrom, "/") ? s.valueFrom : "/${s.valueFrom}"}") }
+  gitlab_runner_url_effective = coalesce(
+    var.gitlab_runner_url != null && trimspace(var.gitlab_runner_url) != "" ? trimspace(var.gitlab_runner_url) : null,
+    var.create_gitlab ? "https://${local.gitlab_host}" : null
+  )
+  gitlab_runner_name_effective = "${local.name_prefix}-gitlab-runner"
+  gitlab_runner_tags_csv       = join(",", var.gitlab_runner_tags)
+
+  gitlab_runner_secret_names = toset(concat(
+    [for s in var.gitlab_runner_secrets : s.name],
+    keys(local.ssm_param_arns_gitlab_runner)
+  ))
+
+  default_environment_gitlab_runner = {
+    GITLAB_RUNNER_URL            = coalesce(local.gitlab_runner_url_effective, "")
+    GITLAB_RUNNER_NAME           = local.gitlab_runner_name_effective
+    GITLAB_RUNNER_CONCURRENT     = tostring(var.gitlab_runner_concurrent)
+    GITLAB_RUNNER_CHECK_INTERVAL = tostring(var.gitlab_runner_check_interval)
+    GITLAB_RUNNER_BUILDS_DIR     = var.gitlab_runner_builds_dir
+    GITLAB_RUNNER_CACHE_DIR      = var.gitlab_runner_cache_dir
+    GITLAB_RUNNER_TAG_LIST       = local.gitlab_runner_tags_csv
+    GITLAB_RUNNER_RUN_UNTAGGED   = var.gitlab_runner_run_untagged ? "true" : "false"
+  }
+
+  gitlab_runner_environment_effective = {
+    for k, v in merge(local.default_environment_gitlab_runner, coalesce(var.gitlab_runner_environment, {})) :
+    k => v if !contains(local.gitlab_runner_secret_names, k)
+  }
+}
+
+locals {
+  odoo_var_secrets_map          = { for s in var.odoo_secrets : s.name => (can(regex("^arn:aws:ssm", s.valueFrom)) ? s.valueFrom : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(s.valueFrom, "/") ? s.valueFrom : "/${s.valueFrom}"}") }
+  gitlab_var_secrets_map        = { for s in var.gitlab_secrets : s.name => (can(regex("^arn:aws:ssm", s.valueFrom)) ? s.valueFrom : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(s.valueFrom, "/") ? s.valueFrom : "/${s.valueFrom}"}") }
+  gitlab_runner_var_secrets_map = { for s in var.gitlab_runner_secrets : s.name => (can(regex("^arn:aws:ssm", s.valueFrom)) ? s.valueFrom : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(s.valueFrom, "/") ? s.valueFrom : "/${s.valueFrom}"}") }
+  grafana_var_secrets_map       = { for s in var.grafana_secrets : s.name => (can(regex("^arn:aws:ssm", s.valueFrom)) ? s.valueFrom : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(s.valueFrom, "/") ? s.valueFrom : "/${s.valueFrom}"}") }
+  pgadmin_var_secrets_map       = { for s in var.pgadmin_secrets : s.name => (can(regex("^arn:aws:ssm", s.valueFrom)) ? s.valueFrom : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(s.valueFrom, "/") ? s.valueFrom : "/${s.valueFrom}"}") }
 
   odoo_secrets_effective = [
     for name, value in merge(local.odoo_var_secrets_map, local.ssm_param_arns_odoo) : {
@@ -736,6 +780,12 @@ locals {
   ]
   gitlab_secrets_effective = [
     for name, value in merge(local.gitlab_var_secrets_map, local.ssm_param_arns_gitlab) : {
+      name      = name
+      valueFrom = value
+    }
+  ]
+  gitlab_runner_secrets_effective = [
+    for name, value in merge(local.gitlab_runner_var_secrets_map, local.ssm_param_arns_gitlab_runner) : {
       name      = name
       valueFrom = value
     }

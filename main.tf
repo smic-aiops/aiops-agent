@@ -29,6 +29,12 @@ locals {
     var.default_realm != null && var.default_realm != "" ? var.default_realm : null,
     local.name_prefix_effective
   )
+  gitlab_omnibus_semver = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+", var.gitlab_omnibus_image_tag)) ? regex("^[0-9]+\\.[0-9]+\\.[0-9]+", var.gitlab_omnibus_image_tag) : ""
+  gitlab_runner_image_tag_effective = coalesce(
+    trimspace(var.gitlab_runner_image_tag != null ? var.gitlab_runner_image_tag : "") != "" ? trimspace(var.gitlab_runner_image_tag) : null,
+    local.gitlab_omnibus_semver != "" ? "alpine-v${local.gitlab_omnibus_semver}" : null,
+    "alpine-v17.11.7"
+  )
   default_tags = merge(
     {
       environment = var.environment
@@ -125,6 +131,7 @@ module "stack" {
   enable_zulip_alb_oidc                                = var.enable_zulip_alb_oidc
   create_odoo                                          = var.create_odoo
   create_gitlab                                        = var.create_gitlab
+  create_gitlab_runner                                 = var.create_gitlab_runner
   create_grafana                                       = var.create_grafana
   ecs_task_additional_trust_principal_arns             = var.ecs_task_additional_trust_principal_arns
   gitlab_ssh_cidr_blocks                               = var.gitlab_ssh_cidr_blocks
@@ -194,6 +201,21 @@ module "stack" {
   keycloak_health_check_grace_period_seconds           = var.keycloak_health_check_grace_period_seconds
   exastro_desired_count                                = var.exastro_desired_count
   gitlab_desired_count                                 = var.gitlab_desired_count
+  gitlab_runner_desired_count                          = var.gitlab_runner_desired_count
+  gitlab_runner_task_cpu                               = var.gitlab_runner_task_cpu
+  gitlab_runner_task_memory                            = var.gitlab_runner_task_memory
+  gitlab_runner_ephemeral_storage_gib                  = var.gitlab_runner_ephemeral_storage_gib
+  gitlab_runner_url                                    = var.gitlab_runner_url
+  gitlab_runner_token                                  = var.gitlab_runner_token
+  gitlab_runner_concurrent                             = var.gitlab_runner_concurrent
+  gitlab_runner_check_interval                         = var.gitlab_runner_check_interval
+  gitlab_runner_builds_dir                             = var.gitlab_runner_builds_dir
+  gitlab_runner_cache_dir                              = var.gitlab_runner_cache_dir
+  gitlab_runner_tags                                   = var.gitlab_runner_tags
+  gitlab_runner_run_untagged                           = var.gitlab_runner_run_untagged
+  gitlab_runner_environment                            = var.gitlab_runner_environment
+  gitlab_runner_ssm_params                             = var.gitlab_runner_ssm_params
+  gitlab_runner_secrets                                = var.gitlab_runner_secrets
   gitlab_data_filesystem_id                            = var.gitlab_data_filesystem_id
   gitlab_config_filesystem_id                          = var.gitlab_config_filesystem_id
   gitlab_data_efs_availability_zone                    = var.gitlab_data_efs_availability_zone
@@ -238,6 +260,7 @@ module "stack" {
   ecr_repo_sulu                                        = var.ecr_repo_sulu
   ecr_repo_sulu_nginx                                  = var.ecr_repo_sulu_nginx
   ecr_repo_gitlab                                      = var.ecr_repo_gitlab
+  ecr_repo_gitlab_runner                               = var.ecr_repo_gitlab_runner
   ecr_repo_grafana                                     = var.ecr_repo_grafana
   ecr_repo_pgadmin                                     = var.ecr_repo_pgadmin
   ecr_repo_keycloak                                    = var.ecr_repo_keycloak
@@ -253,6 +276,7 @@ module "stack" {
   ecr_repo_qdrant                                      = var.ecr_repo_qdrant
   ecr_repo_xray_daemon                                 = var.ecr_repo_xray_daemon
   gitlab_omnibus_image_tag                             = var.gitlab_omnibus_image_tag
+  gitlab_runner_image_tag                              = local.gitlab_runner_image_tag_effective
   keycloak_image_tag                                   = var.keycloak_image_tag
   pgadmin_image_tag                                    = var.pgadmin_image_tag
   enable_gitlab_keycloak                               = var.enable_gitlab_keycloak

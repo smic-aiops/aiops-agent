@@ -166,6 +166,12 @@ output "ecr_repo_gitlab" {
   sensitive   = true
 }
 
+output "ecr_repo_gitlab_runner" {
+  description = "ECR repository name for GitLab Runner"
+  value       = var.ecr_repo_gitlab_runner
+  sensitive   = true
+}
+
 output "ecr_repo_grafana" {
   description = "ECR repository name for Grafana"
   value       = var.ecr_repo_grafana
@@ -350,6 +356,12 @@ output "gitlab_omnibus_image_tag" {
   sensitive   = true
 }
 
+output "gitlab_runner_image_tag" {
+  description = "GitLab Runner image tag"
+  value       = local.gitlab_runner_image_tag_effective
+  sensitive   = true
+}
+
 output "zulip_image_tag" {
   description = "Zulip image tag"
   value       = var.zulip_image_tag
@@ -383,14 +395,15 @@ locals {
     "zulip"
   )
   service_names = {
-    n8n      = "${var.name_prefix}-n8n"
-    zulip    = "${var.name_prefix}-zulip"
-    sulu     = local.sulu_service_name_effective
-    keycloak = "${var.name_prefix}-keycloak"
-    odoo     = "${var.name_prefix}-odoo"
-    pgadmin  = "${var.name_prefix}-pgadmin"
-    gitlab   = "${var.name_prefix}-gitlab"
-    exastro  = "${var.name_prefix}-exastro"
+    n8n           = "${var.name_prefix}-n8n"
+    zulip         = "${var.name_prefix}-zulip"
+    sulu          = local.sulu_service_name_effective
+    keycloak      = "${var.name_prefix}-keycloak"
+    odoo          = "${var.name_prefix}-odoo"
+    pgadmin       = "${var.name_prefix}-pgadmin"
+    gitlab        = "${var.name_prefix}-gitlab"
+    gitlab_runner = "${var.name_prefix}-gitlab-runner"
+    exastro       = "${var.name_prefix}-exastro"
   }
   service_control_web_monitoring_targets_default = {
     for service in ["keycloak", "zulip", "gitlab", "n8n", "sulu"] :
@@ -1027,6 +1040,11 @@ output "gitlab_service_name" {
   value       = local.service_names.gitlab
 }
 
+output "gitlab_runner_service_name" {
+  description = "GitLab Runner ECS service name"
+  value       = local.service_names.gitlab_runner
+}
+
 output "exastro_service_name" {
   description = "Unified Exastro ECS service name (web+api)"
   value       = local.service_names.exastro
@@ -1060,6 +1078,12 @@ output "service_control_api_base_url" {
 output "gitlab_admin_token_parameter_name" {
   description = "SSM parameter name for the GitLab admin token (if created)"
   value       = module.stack.gitlab_admin_token_parameter_name
+  sensitive   = true
+}
+
+output "gitlab_runner_token_parameter_name" {
+  description = "SSM parameter name for the GitLab Runner token (if created)"
+  value       = module.stack.gitlab_runner_token_parameter_name
   sensitive   = true
 }
 

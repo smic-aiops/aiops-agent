@@ -753,6 +753,71 @@ variable "service_control_metrics_object_lock_retention_days" {
   }
 }
 
+variable "itsm_audit_event_anchor_enabled" {
+  description = "Whether to create a WORM S3 bucket to anchor ITSM audit_event hash-chain heads."
+  type        = bool
+  default     = false
+}
+
+variable "itsm_audit_event_anchor_bucket_name" {
+  description = "S3 bucket name for ITSM audit_event anchors (defaults to <name_prefix>-<region>-<account>-itsm-audit-anchor)."
+  type        = string
+  default     = null
+}
+
+variable "itsm_audit_event_anchor_bucket_kms_key_arn" {
+  description = "KMS key ARN for ITSM audit_event anchor bucket encryption (uses SSE-S3 when null)."
+  type        = string
+  default     = null
+}
+
+variable "itsm_audit_event_anchor_retention_days" {
+  description = "Retention days for audit_event anchor objects in S3."
+  type        = number
+  default     = 3650
+
+  validation {
+    condition     = !var.itsm_audit_event_anchor_enabled || var.itsm_audit_event_anchor_retention_days >= 1
+    error_message = "itsm_audit_event_anchor_retention_days must be >= 1 when itsm_audit_event_anchor_enabled is true."
+  }
+}
+
+variable "itsm_audit_event_anchor_object_lock_enabled" {
+  description = "Whether to enable S3 Object Lock for ITSM audit_event anchor bucket."
+  type        = bool
+  default     = true
+}
+
+variable "itsm_audit_event_anchor_object_lock_mode" {
+  description = "Object Lock mode for ITSM audit_event anchor bucket (GOVERNANCE or COMPLIANCE)."
+  type        = string
+  default     = "COMPLIANCE"
+
+  validation {
+    condition     = contains(["GOVERNANCE", "COMPLIANCE"], var.itsm_audit_event_anchor_object_lock_mode)
+    error_message = "itsm_audit_event_anchor_object_lock_mode must be GOVERNANCE or COMPLIANCE."
+  }
+}
+
+variable "itsm_audit_event_anchor_object_lock_retention_days" {
+  description = "Default Object Lock retention days for ITSM audit_event anchor bucket."
+  type        = number
+  default     = 365
+
+  validation {
+    condition     = !var.itsm_audit_event_anchor_enabled || !var.itsm_audit_event_anchor_object_lock_enabled || var.itsm_audit_event_anchor_object_lock_retention_days >= 1
+    error_message = "itsm_audit_event_anchor_object_lock_retention_days must be >= 1 when object lock is enabled."
+  }
+  validation {
+    condition = (
+      !var.itsm_audit_event_anchor_enabled
+      || !var.itsm_audit_event_anchor_object_lock_enabled
+      || var.itsm_audit_event_anchor_retention_days >= var.itsm_audit_event_anchor_object_lock_retention_days
+    )
+    error_message = "itsm_audit_event_anchor_retention_days must be >= itsm_audit_event_anchor_object_lock_retention_days."
+  }
+}
+
 variable "service_control_metrics_firehose_buffer_interval" {
   description = "Firehose buffering interval (seconds) for service control metrics."
   type        = number
@@ -1788,6 +1853,12 @@ variable "create_gitlab" {
   default     = true
 }
 
+variable "create_gitlab_runner" {
+  description = "Whether to create GitLab Runner (shell executor on Fargate) resources"
+  type        = bool
+  default     = false
+}
+
 variable "enable_gitlab_autostop" {
   description = "Whether to enable GitLab idle auto-stop (AppAutoScaling + CloudWatch alarm)"
   type        = bool
@@ -1818,16 +1889,127 @@ variable "gitlab_task_memory" {
   default     = 8192
 }
 
+variable "gitlab_runner_desired_count" {
+  description = "Default desired count for GitLab Runner ECS service"
+  type        = number
+  default     = 1
+}
+
+variable "gitlab_runner_task_cpu" {
+  description = "Override CPU units for GitLab Runner task definition (null to use ecs_task_cpu)"
+  type        = number
+  default     = 512
+}
+
+variable "gitlab_runner_task_memory" {
+  description = "Override memory (MB) for GitLab Runner task definition (null to use ecs_task_memory)"
+  type        = number
+  default     = 1024
+}
+
+variable "gitlab_runner_ephemeral_storage_gib" {
+  description = "Ephemeral storage size (GiB) for the GitLab Runner task (null to use Fargate default)."
+  type        = number
+  default     = 30
+
+  validation {
+    condition     = var.gitlab_runner_ephemeral_storage_gib == null || (var.gitlab_runner_ephemeral_storage_gib >= 21 && var.gitlab_runner_ephemeral_storage_gib <= 200)
+    error_message = "gitlab_runner_ephemeral_storage_gib must be null or between 21 and 200."
+  }
+}
+
 variable "ecr_repo_gitlab" {
   description = "ECR repository name for GitLab Omnibus"
   type        = string
   default     = "gitlab-omnibus"
 }
 
+variable "ecr_repo_gitlab_runner" {
+  description = "ECR repository name for GitLab Runner"
+  type        = string
+  default     = "gitlab-runner"
+}
+
 variable "gitlab_omnibus_image_tag" {
   description = "GitLab Omnibus image tag to pull/build"
   type        = string
   default     = "17.11.7-ce.0"
+}
+
+variable "gitlab_runner_image_tag" {
+  description = "GitLab Runner image tag to pull/build (upstream tag, e.g. alpine-v17.11.7). Defaults to the GitLab omnibus version (alpine-v<gitlab_omnibus_semver>) when unset."
+  type        = string
+  default     = null
+}
+
+variable "gitlab_runner_url" {
+  description = "GitLab URL for Runner registration/connection (defaults to the managed GitLab URL when create_gitlab is true)."
+  type        = string
+  default     = null
+}
+
+variable "gitlab_runner_token" {
+  description = "GitLab Runner authentication token (do not commit). If set, stored as SecureString in SSM."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "gitlab_runner_concurrent" {
+  description = "Runner concurrent jobs limit (config.toml: concurrent)"
+  type        = number
+  default     = 1
+}
+
+variable "gitlab_runner_check_interval" {
+  description = "Runner check interval seconds (config.toml: check_interval)"
+  type        = number
+  default     = 0
+}
+
+variable "gitlab_runner_builds_dir" {
+  description = "Runner builds_dir (ephemeral recommended)."
+  type        = string
+  default     = "/tmp/gitlab-runner/builds"
+}
+
+variable "gitlab_runner_cache_dir" {
+  description = "Runner cache_dir (ephemeral recommended)."
+  type        = string
+  default     = "/tmp/gitlab-runner/cache"
+}
+
+variable "gitlab_runner_tags" {
+  description = "Runner tag list"
+  type        = list(string)
+  default     = []
+}
+
+variable "gitlab_runner_run_untagged" {
+  description = "Whether the runner can pick untagged jobs"
+  type        = bool
+  default     = true
+}
+
+variable "gitlab_runner_environment" {
+  description = "Extra environment variables for the runner container (non-secret)."
+  type        = map(string)
+  default     = {}
+}
+
+variable "gitlab_runner_ssm_params" {
+  description = "Extra SSM parameter names to inject into the runner container (merged into secrets). Map of ENV_NAME => parameter name or full ARN."
+  type        = map(string)
+  default     = {}
+}
+
+variable "gitlab_runner_secrets" {
+  description = "Additional secrets for the runner container (SSM parameter name or ARN)."
+  type = list(object({
+    name      = string
+    valueFrom = string
+  }))
+  default = []
 }
 
 variable "gitlab_email_from" {

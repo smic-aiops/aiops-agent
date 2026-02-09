@@ -932,7 +932,12 @@ gitlab_create_project() {
     gitlab_request POST "/projects" "${payload}"
 
     if [[ "${GITLAB_LAST_STATUS}" == "201" || "${GITLAB_LAST_STATUS}" == "200" ]]; then
-      echo "${GITLAB_LAST_BODY}" | jq -r '.id // empty'
+      local project_id
+      project_id="$(echo "${GITLAB_LAST_BODY}" | jq -r '.id // empty')"
+      if [[ -n "${project_id}" ]]; then
+        gitlab_project_auto_enable_shared_runners_on_create "${project_id}"
+      fi
+      echo "${project_id}"
       return
     fi
     if [[ "${GITLAB_LAST_STATUS}" == "409" ]]; then
@@ -964,6 +969,46 @@ gitlab_create_project() {
   exit 1
 }
 
+gitlab_project_set_shared_runners_enabled() {
+  local project_id="$1"
+  local enabled="${2:-true}"
+
+  local enabled_json
+  if [[ "${enabled}" == "true" ]]; then
+    enabled_json="true"
+  else
+    enabled_json="false"
+  fi
+
+  local payload
+  payload="$(jq -nc --argjson enabled "${enabled_json}" '{shared_runners_enabled:$enabled}')"
+
+  if [[ -n "${DRY_RUN:-}" ]]; then
+    echo "[gitlab] DRY_RUN set shared_runners_enabled=${enabled_json} project_id=${project_id}" >&2
+    return
+  fi
+
+  gitlab_request PUT "/projects/${project_id}" "${payload}"
+  if [[ "${GITLAB_LAST_STATUS}" == "200" ]]; then
+    echo "[gitlab] Set shared_runners_enabled=${enabled_json} project_id=${project_id}" >&2
+    return
+  fi
+  echo "ERROR: Failed to update shared_runners_enabled for project_id=${project_id} (HTTP ${GITLAB_LAST_STATUS})." >&2
+  echo "${GITLAB_LAST_BODY}" >&2
+  exit 1
+}
+
+gitlab_project_auto_enable_shared_runners_on_create() {
+  local project_id="$1"
+
+  # Default: enable shared runners for newly created/forked projects
+  if [[ "${GITLAB_PROJECT_ENABLE_SHARED_RUNNERS_ON_CREATE:-true}" == "false" ]]; then
+    return
+  fi
+
+  gitlab_project_set_shared_runners_enabled "${project_id}" "true"
+}
+
 gitlab_fork_project() {
   local source_project_id="$1"
   local namespace_id="$2"
@@ -977,6 +1022,11 @@ gitlab_fork_project() {
     '{namespace_id:$namespace_id, name:$name, path:$path}')"
   gitlab_request POST "/projects/${source_project_id}/fork" "${payload}"
   if [[ "${GITLAB_LAST_STATUS}" == "201" || "${GITLAB_LAST_STATUS}" == "200" ]]; then
+    local project_id
+    project_id="$(echo "${GITLAB_LAST_BODY}" | jq -r '.id // empty')"
+    if [[ -n "${project_id}" ]]; then
+      gitlab_project_auto_enable_shared_runners_on_create "${project_id}"
+    fi
     return
   fi
   if [[ "${GITLAB_LAST_STATUS}" == "409" ]]; then
