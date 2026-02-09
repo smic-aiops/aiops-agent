@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-label="aiops-agent: ITSM x AI Ops x AI Agent">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="0.55" stop-color="#111a2e"/>
+      <stop offset="1" stop-color="#0b1220"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22c55e" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="#60a5fa" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#a78bfa" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                0 0 0 0.45 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#94a3b8" stroke-opacity="0.10" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="360" fill="url(#bg)"/>
+  <rect width="1200" height="360" fill="url(#grid)"/>
+
+  <g opacity="0.85" filter="url(#softGlow)">
+    <circle cx="1060" cy="80" r="90" fill="#60a5fa" opacity="0.22"/>
+    <circle cx="1040" cy="280" r="120" fill="#a78bfa" opacity="0.18"/>
+    <circle cx="160" cy="280" r="140" fill="#22c55e" opacity="0.14"/>
+  </g>
+
+  <g transform="translate(86,72)">
+    <rect x="0" y="0" width="14" height="216" rx="7" fill="url(#accent)"/>
+    <g transform="translate(38,0)">
+      <text x="0" y="72"
+        font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'"
+        font-size="64"
+        font-weight="800"
+        fill="#e5e7eb"
+        letter-spacing="-0.8">
+        aiops-agent
+      </text>
+      <text x="0" y="120"
+        font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'"
+        font-size="24"
+        font-weight="600"
+        fill="#cbd5e1"
+        opacity="0.95">
+        ITSM x AI Ops x AI Agent
+      </text>
+      <text x="0" y="164"
+        font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji'"
+        font-size="18"
+        font-weight="500"
+        fill="#94a3b8">
+        GAMP® 5 / CSA / NIST AI RMF を意識した「実装と証跡の導線」
+      </text>
+    </g>
+  </g>
+
+  <g transform="translate(86,298)" opacity="0.92">
+    <rect x="0" y="0" width="170" height="38" rx="19" fill="#0f172a" stroke="#334155" stroke-opacity="0.7"/>
+    <circle cx="22" cy="19" r="7" fill="#22c55e"/>
+    <circle cx="46" cy="19" r="7" fill="#60a5fa"/>
+    <circle cx="70" cy="19" r="7" fill="#a78bfa"/>
+    <text x="94" y="25"
+      font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial"
+      font-size="14"
+      font-weight="700"
+      fill="#e2e8f0">
+      n8n
+    </text>
+  </g>
+</svg>

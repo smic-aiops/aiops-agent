@@ -387,7 +387,7 @@ resource "aws_efs_file_system" "n8n" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.n8n_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.n8n_efs_name}. Import or reference it instead of creating a new one."
@@ -429,7 +429,7 @@ resource "aws_efs_file_system" "sulu" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.sulu_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.sulu_efs_name}. Import or reference it instead of creating a new one."
@@ -472,7 +472,7 @@ resource "aws_efs_file_system" "zulip" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.zulip_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.zulip_efs_name}. Import or reference it instead of creating a new one."
@@ -495,7 +495,7 @@ resource "aws_efs_file_system" "keycloak" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.keycloak_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.keycloak_efs_name}. Import or reference it instead of creating a new one."
@@ -517,7 +517,7 @@ resource "aws_efs_file_system" "odoo" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.odoo_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.odoo_efs_name}. Import or reference it instead of creating a new one."
@@ -540,7 +540,7 @@ resource "aws_efs_file_system" "pgadmin" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.pgadmin_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.pgadmin_efs_name}. Import or reference it instead of creating a new one."
@@ -563,7 +563,7 @@ resource "aws_efs_file_system" "exastro" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.exastro_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.exastro_efs_name}. Import or reference it instead of creating a new one."
@@ -586,7 +586,7 @@ resource "aws_efs_file_system" "gitlab_data" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.gitlab_data_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.gitlab_data_efs_name}. Import or reference it instead of creating a new one."
@@ -609,7 +609,7 @@ resource "aws_efs_file_system" "gitlab_config" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.gitlab_config_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.gitlab_config_efs_name}. Import or reference it instead of creating a new one."
@@ -897,7 +897,7 @@ resource "aws_efs_file_system" "grafana" {
   }
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     precondition {
       condition     = var.manage_existing_efs || local.grafana_existing_efs_count == 0
       error_message = "Existing EFS detected for ${local.grafana_efs_name}. Import or reference it instead of creating a new one."

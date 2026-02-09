@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/repo-header.svg" alt="aiops-agent banner" width="1000" />
+</p>
+
 # aiops-agent
 
 [![CI](https://github.com/smic-aiops/aiops-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/smic-aiops/aiops-agent/actions/workflows/ci.yml)

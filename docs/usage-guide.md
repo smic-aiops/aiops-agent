@@ -44,40 +44,43 @@
 
 ## 4. サービス一覧（URL / 認証）
 
-### 管理基盤
-| 区分       | サービス         | URL                                                                 | 認証       |
-| ---------- | ---------------- | ------------------------------------------------------------------- | ---------- |
-| 認証基盤     | Keycloak         | `https://keycloak.smic-aiops.jp/`                                   | Keycloak   |
-| 基盤管理     | コントロールサイト      | `https://control.smic-aiops.jp/`                                    | Keycloak(JWT Auth)   |
+このセクションの URL は **例**（`smic-aiops.jp`）です。実環境では Terraform の output を正として確認してください。
 
-### ITサービス
+```bash
+terraform output -json service_urls
+terraform output -json n8n_realm_urls
+terraform output -json grafana_realm_urls
+```
 
-| 区分       | サービス         | URL                                                                 | 認証       |
-| ---------- | ---------------- | ------------------------------------------------------------------- | ---------- |
-| メインサービス（ダミー） | Sulu             | `https://sulu.smic-aiops.jp/`                                       | Keycloak   |
+### 管理基盤 / 主要サービス（URL / 認証）
 
-### AI Ops コアサービス
+| 区分 | サービス | URL（例） | 認証 | 備考 |
+| --- | --- | --- | --- | --- |
+| 基盤管理 | コントロールサイト | `https://control.smic-aiops.jp/` | Keycloak（JWT Auth） | 起動/停止・スケジュール |
+| 認証基盤 | Keycloak | `https://keycloak.smic-aiops.jp/` | Keycloak | SSO の入口 |
+| AIOps | Zulip | `https://zulip.smic-aiops.jp/` / `https://<realm>.zulip.smic-aiops.jp/` | Keycloak（OIDC） | 参加は招待メールから |
+| AIOps | n8n | `https://<realm>.aiops-agent.smic-aiops.jp/` | ローカル（n8n ユーザー管理） | 既定 realm は `master` |
+| AIOps | Qdrant | `https://<realm>.qdrant.smic-aiops.jp/` | なし（API） | 原則は n8n から利用（レルム別） |
+| ITSM/CMDB | GitLab | `https://gitlab.smic-aiops.jp/` | Keycloak（OIDC） | サービス管理プロジェクトは `/<realm>/service-management` が既定 |
+| 監視 | Grafana | `https://<realm>.grafana.smic-aiops.jp/` | Keycloak（OIDC） | 監視参照の中心（レルム別） |
+| 自動化 | Exastro ITA Web | `https://ita-web.smic-aiops.jp/` | Keycloak（OIDC） | |
+| 自動化 | Exastro ITA API | `https://ita-api.smic-aiops.jp/` | Keycloak（OIDC） | |
+| ITサービス | Sulu | `https://<realm>.sulu.smic-aiops.jp/` | Keycloak（OIDC） | |
+| DB確認 | pgAdmin | `https://pgadmin.smic-aiops.jp/` | Keycloak（OIDC） | |
+| 一般管理 | Odoo | `https://odoo.smic-aiops.jp/` | Keycloak（OIDC） | |
 
-| 区分       | サービス         | URL                                                                 | 認証       |
-| ---------- | ---------------- | ------------------------------------------------------------------- | ---------- |
-| PoCコア    | n8n              | `https://n8n.smic-aiops.jp/`                                        | ローカル     |
-| PoCコア    | Zulip            | `https://zulip.smic-aiops.jp/`                                      | Keycloak   |
+### コンテナイメージの既定値（Terraform variables の default）
+以下は「このリポジトリの Terraform 変数の default 値」です（デプロイ済みイメージは ECR の `:latest` を参照しつつ、ビルド/更新時にこれらの upstream tag を使います）。
 
-### IT 運用支援サービス
-
-| 区分       | サービス         | URL                                                                 | 認証       |
-| ---------- | ---------------- | ------------------------------------------------------------------- | ---------- |
-| DB確認     | pgAdmin          | `https://pgadmin.smic-aiops.jp/`                                    | Keycloak   |
-
-
-※ 準備中/追加検討中
-
-| 区分     | サービス         | URL                                                                 | 認証     |
-| -------- | ---------------- | ------------------------------------------------------------------- | -------- |
-| 一般管理     | Odoo             | `https://odoo.smic-aiops.jp/`                                       | Keycloak |
-| ITSM/CMDB | GitLab サービス管理 | `https://gitlab.smic-aiops.jp/<realm-group>/service-management`     | Keycloak |
-| 自動化      | Exastro ITA      | `https://ita-web.smic-aiops.jp/` / `https://ita-api.smic-aiops.jp/` | Keycloak |
-| DevOps   | GitLab（技術管理/開発） | `https://gitlab.smic-aiops.jp/`                                     | Keycloak |
+| サービス | 既定値 | 変数 | 備考 |
+| --- | --- | --- | --- |
+| Zulip | `11.4-0` | `zulip_image_tag` | upstream: `zulip/docker-zulip:<tag>` |
+| n8n | `1.122.4` | `n8n_image_tag` | upstream: `n8nio/n8n:<tag>` |
+| Qdrant | `v1.16.3` | `qdrant_image_tag` | upstream: `qdrant/qdrant:<tag>` |
+| GitLab | `17.11.7-ce.0` | `gitlab_omnibus_image_tag` | upstream: `gitlab/gitlab-ce:<tag>` |
+| Exastro ITA Web | `exastro/exastro-it-automation-web-server:2.7.0` | `exastro_it_automation_web_server_image_tag` | repo:tag |
+| Exastro ITA API | `exastro/exastro-it-automation-api-admin:2.7.0` | `exastro_it_automation_api_admin_image_tag` | repo:tag |
+| Grafana | `12.3.1` | `grafana_image_tag` | upstream: `grafana/grafana:<tag>` |
 
 ※ `smic-aiops.jp` ドメインは仮です。実運用ではサービスごとの正しいホスト名を使うため、Keycloak の接続先や DNS/証明書設定が対応しているか確認してください。
 

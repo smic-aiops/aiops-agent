@@ -12,8 +12,9 @@ locals {
 }
 
 resource "aws_s3_bucket" "alb_access_logs" {
-  count  = local.alb_access_logs_enabled ? 1 : 0
-  bucket = local.alb_access_logs_bucket_name
+  count         = local.alb_access_logs_enabled ? 1 : 0
+  bucket        = local.alb_access_logs_bucket_name
+  force_destroy = true
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-alb-access-logs" })
 }
