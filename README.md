@@ -38,6 +38,10 @@ ITSM x AI Ops x AI Agent を組み合わせた運用のアイデアと手順を�
 - **ChatGPT 5.2** では自律的拡張（自律的に作業を進める振る舞い）が機能しますが、**ChatGPT 5.2 Codex** では自律拡張プロンプト類は想定動作になりません（作業確認のために中断が多いため）。このため **自律的機能拡張の実施には実質的に人手が必要**になります。
 - 自律拡張を行う場合は、まず ChatGPT に `ai/prompts/itsm/itsm_usecase_enrichment.md` の実行を指示し、ユースケース追加（`scripts/itsm/gitlab/templates/*/docs/usecases/` と各 `usecase_guide.md.tpl` の更新）まで実施します。その後 `apps/*/data/default/prompt/system.md` などの「実行指示（system prompt）」を与えることで、以降は原則としてモデルが自律的に拡張を進める前提です。
 
+<p align="center">
+  <img src="docs/assets/orchestrator-adapter.jpg" alt="オーケストラレータとアダプター" width="1000" />
+</p>
+
 ## 1. 目的と対象（スコープ）
 
 ### 1.1 目的
