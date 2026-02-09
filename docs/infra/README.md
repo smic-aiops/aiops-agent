@@ -205,11 +205,61 @@ terraform output
 - 変更: `prevent_destroy = true` → `prevent_destroy = false`（10 箇所すべて）
 
 注意: S3 バケット側に `force_destroy` が無いと、バケット内にオブジェクト（versioning 有効時は過去バージョン含む）が残っている限り `terraform destroy` が失敗します。
-環境削除時は、事前に以下 3 リソースへ **一時的に** `force_destroy = true` を追加してください（versioning が有効でも全バージョン削除まで行わせます）。
+環境削除時は、事前に以下 3 リソースへ `force_destroy = true` を設定し（versioning が有効でも全バージョン削除まで行わせます）、**state に反映**させてから destroy してください。
 
 - `modules/stack/alb_access_logs.tf` の `aws_s3_bucket.alb_access_logs`: `bucket = local.alb_access_logs_bucket_name` の直下に `force_destroy = true`
 - `modules/stack/service_control_metrics_stream.tf` の `aws_s3_bucket.service_control_metrics`: `bucket = local.service_control_metrics_bucket_name` の直下に `force_destroy = true`
 - `modules/stack/service_logs_firehose.tf` の `aws_s3_bucket.service_logs`: `bucket = local.service_logs_bucket_name_by_service[each.key]` の直下に `force_destroy = true`
+
+`force_destroy` を追加/変更した直後は、まず `terraform apply -refresh-only` で state を更新してから `terraform destroy` してください（`force_destroy` が state 側で `false` のままだと `BucketNotEmpty` で止まることがあります）。
+
+```bash
+terraform apply -refresh-only \
+  -var-file=terraform.env.tfvars \
+  -var-file=terraform.itsm.tfvars \
+  -var-file=terraform.apps.tfvars \
+  --auto-approve
+```
+
+また、`terraform.env.tfvars` を **参照モード**（`existing_*_id`）へ移行している場合、NAT Gateway を Terraform が管理しないため、
+その NAT が存在する Subnet の削除が `DependencyViolation` で止まることがあります。先に NAT を削除し、S3（version/delete marker 含む）を空にしてから destroy するのが確実です。
+
+```bash
+# まずは確認
+bash scripts/itsm/terraform/pre_destroy_cleanup.sh --dry-run \
+  --nat-gateway-id nat-xxxxxxxxxxxxxxxxx \
+  --bucket your-alb-logs-bucket \
+  --bucket your-metrics-bucket \
+  --bucket your-sulu-logs-bucket
+
+# 実行（NAT削除 + S3全削除）
+bash scripts/itsm/terraform/pre_destroy_cleanup.sh \
+  --nat-gateway-id nat-xxxxxxxxxxxxxxxxx \
+  --bucket your-alb-logs-bucket \
+  --bucket your-metrics-bucket \
+  --bucket your-sulu-logs-bucket
+```
+
+上記をまとめて実行したい場合は、ラッパー `scripts/itsm/terraform/destroy_all.sh` を使うと手順漏れを減らせます（既定は dry-run、`--execute` で実行）。
+
+```bash
+# まとめて確認（dry-run）
+bash scripts/itsm/terraform/destroy_all.sh --dry-run \
+  --nat-gateway-id nat-xxxxxxxxxxxxxxxxx \
+  --bucket your-alb-logs-bucket \
+  --bucket your-metrics-bucket \
+  --bucket your-sulu-logs-bucket
+
+# まとめて実行（破壊操作あり）
+bash scripts/itsm/terraform/destroy_all.sh --execute --auto-approve \
+  --nat-gateway-id nat-xxxxxxxxxxxxxxxxx \
+  --bucket your-alb-logs-bucket \
+  --bucket your-metrics-bucket \
+  --bucket your-sulu-logs-bucket
+```
+
+補足: 参照モードでネットワーク（VPC）が既に手動削除済みの場合、Terraform の data source（例: `data.aws_vpc.selected`）が失敗して `terraform destroy` が進まないことがあります。
+この場合 `destroy_all.sh` は、state に残っている Subnet/S3 などが **AWS 上で既に消えていることを確認できたときのみ** `terraform state rm` でローカル state を自動クリーンアップします（無効化: `--no-auto-state-cleanup`）。
 
 注意: RDS の削除保護（deletion protection）が有効だと、`terraform destroy` は更新せずに削除を試みて失敗することがあります。
 先に `deletion_protection = false` に更新するため、`module.stack.aws_db_instance.this[0]` だけ `-target` で apply してから destroy を実行してください。

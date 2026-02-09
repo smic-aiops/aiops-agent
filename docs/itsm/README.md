@@ -277,6 +277,9 @@ bash scripts/infra/update_env_tfvars_from_outputs.sh
 - 本スクリプトは既定で参照モードへ移行します（内部で `terraform state rm` → `terraform apply -refresh-only` を実行します）。無効化したい場合は `DEFAULT_MIGRATE=false` または `MIGRATE_TO_EXISTING_NETWORK=false` を指定してください。
 - 以後 `terraform destroy` をしてもネットワーク（VPC/IGW/NAT/EIP）は削除されません（手動削除が必要）。
 
+参照モードのまま「全部削除」したい場合は、NAT Gateway（Subnet 依存）と S3 バケット（version/delete marker 残り）で `terraform destroy` が止まりやすいので、
+事前クリーンアップ→destroy をまとめた `scripts/itsm/terraform/destroy_all.sh` の利用を推奨します（詳細: `../infra/README.md`）。
+
 ### n8n イメージの更新（ECR へ push / ECS を再デプロイ）
 n8n のコンテナイメージ更新は、次のスクリプトで行います（Terraform の `output` を参照して AWS Profile / ECR 名 / Tag などを自動解決します）。
 

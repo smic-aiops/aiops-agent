@@ -151,6 +151,9 @@
 - `scripts/apps/report_aiops_rag_status.sh` - Qdrant / GitLab EFS 同期 / n8n 実行状況をレポート（既定 DRY_RUN）
 - `scripts/report_setup_status.sh` - `evidence/setup_status/setup_log.jsonl` からセットアップ進捗を集計（既定 DRY_RUN）
 - `scripts/verify_apps_scripts_tf_resolution.sh` - `apps/*/scripts/*.sh` の terraform output 参照などを検証
+- `scripts/itsm/terraform/pre_destroy_cleanup.sh` - `terraform destroy` 前の詰まりポイント（参照モードの NAT/Subnet 依存、S3 version/delete marker）を事前に解消する（NAT削除 + S3完全空化、`--dry-run` 対応）
+- `scripts/itsm/terraform/destroy_all.sh` - 上記 pre-cleanup → `terraform destroy`（分割 tfvars）をまとめて実行するラッパー（既定 dry-run、`--execute` で実行、VPC 等が既に手動削除済みで destroy が進まない場合は **消滅確認できたときのみ** state を自動クリーンアップ）
+- `scripts/itsm/terraform/audit_leftovers.sh` - destroy 後の残存リソースを棚卸し（VPC/IGW/NAT/EIP/Subnet/SG/S3/Backup等）。`AWS_PROFILE` と `NAME_PREFIX` が必須。
 
 ## 追加スクリプト（SSM/パスワード同期）
 
