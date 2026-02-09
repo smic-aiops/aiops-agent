@@ -51,6 +51,7 @@ set -euo pipefail
 # - ITSM_WIKI_SYNC_TECH_SOURCE_DIRS (default: <docs_root>/wiki)
 # - ITSM_WIKI_SYNC_TITLE_MODE (default: path; set heading to use H1 as title)
 # - ITSM_WIKI_SYNC_BASE_PATH (default: empty; prefix for wiki paths)
+# - GITLAB_PROJECT_ENABLE_SHARED_RUNNERS_ON_CREATE (default: true; when true, enables shared runners for newly created/forked projects)
 
 THIS_SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${THIS_SCRIPT_DIR}/../../.." && pwd)"

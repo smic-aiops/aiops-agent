@@ -171,6 +171,46 @@ pg_db_password               = "xxxxxxxxxxxxxxxxxxxxxxxx"
 - `scripts/lib/name_prefix_from_tf.sh` - tfvars から `name_prefix` を解決する。
 - `scripts/lib/realms_from_tf.sh` - tfvars からレルム一覧を取得する。
 
+## GitLab Runner（Fargate / shell executor）
+
+このリポジトリの GitLab（`gitlab_omnibus_image_tag`）と同一メジャーで動く Runner を、ECS Fargate 上に **shell executor** として追加できます（Runner イメージは ECR から取得）。
+
+安全運用（「残したくない」寄り）での前提:
+- **同一 Runner をプロジェクト専用にしない**（Group/Instance runner として共有運用）
+- **EFS を `/builds` にマウントしない**（永続化するなら `/etc/gitlab-runner` 等に限定）
+- CI 側で掃除を明示（例は後述）
+
+ITSM ブートストラップ連携:
+- `scripts/itsm/gitlab/itsm_bootstrap_realms.sh` は、新規作成/フォークされたプロジェクトに対して **shared runners を自動で有効化**します（既定: 有効）。
+  - 無効化する場合: `GITLAB_PROJECT_ENABLE_SHARED_RUNNERS_ON_CREATE=false`
+
+導入手順（概要）:
+1. `terraform.itsm.tfvars` で有効化（例）:
+   - `create_gitlab_runner = true`
+   - `gitlab_runner_token = "..."`（コミット禁止。`create_ssm_parameters=true` の場合は SSM SecureString へ保存され、ECS `secrets` で注入されます）
+     - 既存の SSM を使いたい場合は `gitlab_runner_ssm_params = { GITLAB_RUNNER_TOKEN = "/<name_prefix>/gitlab/runner/token" }` のように指定して注入できます
+2. Runner イメージを ECR へ push:
+   - `bash scripts/itsm/gitlab/pull_gitlab_runner_image.sh`
+   - `bash scripts/itsm/gitlab/build_and_push_gitlab_runner.sh`
+3. `terraform apply ...` 後、必要なら `bash scripts/itsm/gitlab/redeploy_gitlab_runner.sh` で再デプロイ。
+
+CI で必要なツールがある場合:
+- shell executor はジョブを Runner コンテナ内で実行します（`.gitlab-ci.yml` の `image:` は基本使えません）。
+- `docker/gitlab-runner/Dockerfile` を使って Runner イメージへ必要ツールを焼き込めます。
+  - 既定の焼き込み対象は `bash curl jq yq ripgrep git openssh-client ca-certificates`。
+  - `GITLAB_RUNNER_CI_APK_PACKAGES="..." bash scripts/itsm/gitlab/build_and_push_gitlab_runner.sh` で上書きできます。
+
+### `.gitlab-ci.yml` 掃除例
+
+```yaml
+variables:
+  GIT_STRATEGY: clone
+  GIT_CLEAN_FLAGS: -ffdx
+
+after_script:
+  - rm -rf "$CI_PROJECT_DIR" || true
+```
+
 ## Terraform 実行（fmt/validate/plan/apply）
 分割 tfvars 運用の推奨順序:
 

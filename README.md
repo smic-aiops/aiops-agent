@@ -52,7 +52,7 @@ ITSM x AI Ops x AI Agent を組み合わせた運用のアイデアと手順を�
 ### 1.2 対象（本リポジトリで管理するもの）
 
 - IaC: Terraform による基盤（AWS 上の ECS 等）
-- ITSM 構成サービス: Keycloak / Zulip / GitLab / n8n / Exastro ITA
+- ITSM 構成サービス: Keycloak / Zulip / GitLab / n8n / Exastro ITA（必要に応じて GitLab Runner（ECS Fargate / shell executor）を追加可能）
 - AIOps Agent（プロンプト/ポリシー/ワークフロー/運用手順）
 - Workflow Manager（サービスリクエスト/カタログ同期のワークフロー）
 
@@ -155,6 +155,7 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 
 - **アクセス制御**: 認証（Keycloak）や権限設計を前提に、誰が何を実行できるかを分離する
 - **証跡（audit trail / evidence）**: OQ/PQ 実行結果を `evidence/` に保存し、判断の根拠と紐付ける
+- **SoR（System of Record）**: 共有 RDS(PostgreSQL) の `itsm.*`（例: `itsm.audit_event` / `itsm.approval`）に、承認・決定・主要レコードの構造化データを集約し、AIOpsAgent が「誰が・いつ・何を・どう決めたか」を照会できるようにする（詳細: `docs/itsm/data-model.md`, `docs/itsm/README.md`）
 - **変更管理**: 設定・ワークフロー・プロンプト変更を `docs/change-management.md` の手順で記録し、追跡可能にする
 
 ## 6. AI ガバナンス（NIST AI RMF を意識した整理）
@@ -179,6 +180,7 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 - 環境構築ガイド: `docs/setup-guide.md`
 - 環境の利用手順と SSO の流れ: `docs/usage-guide.md`
 - ITSM セットアップ: `docs/itsm/README.md`
+- ITSM コア（SoR）機能一覧（実装状況）: `docs/itsm/itsm-core-feature-status.md`
 
 ## 10. ディレクトリ構成（クイック参照）
 

@@ -22,6 +22,7 @@
 - `scripts/itsm/n8n/pull_n8n_image.sh` - n8n の公式イメージを取得してローカルへキャッシュ
 - `scripts/itsm/zulip/pull_zulip_image.sh` - Zulip の公式イメージを取得してローカルへキャッシュ
 - `scripts/itsm/gitlab/pull_gitlab_omnibus_image.sh` - GitLab Omnibus の公式イメージを取得してローカルへキャッシュ
+- `scripts/itsm/gitlab/pull_gitlab_runner_image.sh` - GitLab Runner の公式イメージを取得してローカルへキャッシュ
 - `scripts/itsm/keycloak/pull_keycloak_image.sh` - Keycloak の公式イメージを取得してローカルへキャッシュ
 - `scripts/itsm/grafana/pull_grafana_image.sh` - Grafana の公式イメージを取得してローカルへキャッシュ
 - `scripts/itsm/pgadmin/pull_pgadmin_image.sh` - pgAdmin の公式イメージを取得してローカルへキャッシュ
@@ -48,6 +49,7 @@
 - `scripts/itsm/n8n/build_and_push_n8n.sh` - n8n イメージをビルドして ECR に push
 - `scripts/itsm/zulip/build_and_push_zulip.sh` - Zulip イメージをビルドして ECR に push
 - `scripts/itsm/gitlab/build_and_push_gitlab_omnibus.sh` - GitLab Omnibus イメージをビルドして ECR に push
+- `scripts/itsm/gitlab/build_and_push_gitlab_runner.sh` - GitLab Runner イメージをビルドして ECR に push
 - `scripts/itsm/keycloak/build_and_push_keycloak.sh` - Keycloak イメージをビルドして ECR に push
 - `scripts/itsm/grafana/build_and_push_grafana.sh` - Grafana イメージをビルドして ECR に push
 - `scripts/itsm/pgadmin/build_and_push_pgadmin.sh` - pgAdmin イメージをビルドして ECR に push
@@ -70,6 +72,7 @@
 - `scripts/itsm/n8n/redeploy_n8n.sh` - n8n を強制再デプロイ
 - `scripts/itsm/zulip/redeploy_zulip.sh` - Zulip を強制再デプロイ
 - `scripts/itsm/gitlab/redeploy_gitlab.sh` - GitLab を強制再デプロイ（Grafana 同居時は Grafana も更新対象）
+- `scripts/itsm/gitlab/redeploy_gitlab_runner.sh` - GitLab Runner（shell executor）を強制再デプロイ
 - `scripts/itsm/keycloak/redeploy_keycloak.sh` - Keycloak を強制再デプロイ
 - `scripts/itsm/pgadmin/redeploy_pgadmin.sh` - pgAdmin を強制再デプロイ
 - `scripts/itsm/odoo/redeploy_odoo.sh` - Odoo を強制再デプロイ
@@ -89,6 +92,9 @@
 - `scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh` - Webhook secret を更新し `terraform.itsm.tfvars` を更新
 - `scripts/itsm/gitlab/itsm_bootstrap_realms.sh` - レルム用の GitLab グループ/初期プロジェクト（テンプレ）を作成/更新（`--files-only` で Markdown/CMDB など特定ファイルのみ更新可）
 - `scripts/itsm/gitlab/ensure_realm_groups.sh` - レルム単位のグループ/トークンを作成し tfvars を更新
+- `scripts/itsm/gitlab/pull_gitlab_runner_image.sh` - GitLab Runner の upstream イメージを pull し `./images/` へ tar としてキャッシュ（CIで必要な `apk` パッケージ候補も表示）
+- `scripts/itsm/gitlab/build_and_push_gitlab_runner.sh` - GitLab Runner イメージを ECR に push（`./docker/gitlab-runner` が存在する場合はカスタム Runner をビルドして CI ツールを焼き込む）
+  - `GITLAB_RUNNER_CI_APK_PACKAGES` で焼き込む `apk add` を上書き可能（例: `bash curl jq yq ripgrep`）
 - `scripts/itsm/gitlab/refresh_realm_group_tokens_with_bot_cleanup.sh` - レルム単位のグループトークンを更新し `terraform.itsm.tfvars` を更新（旧トークン削除時に group bot を `delete`/`block`）
 - `scripts/itsm/gitlab/provision_grafana_itsm_event_inbox.sh` - ITSM 用の Grafana Inbox（通知先/フォルダ等）をプロビジョニング
 - `scripts/itsm/gitlab/show_gitlab_root_password.sh` - GitLab root パスワードを表示
