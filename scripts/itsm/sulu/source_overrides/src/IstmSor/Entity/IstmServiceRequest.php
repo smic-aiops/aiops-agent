@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Entity;
+namespace App\IstmSor\Entity;
 
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'incident', schema: 'itsm')]
-class IstmIncident
+#[ORM\Table(name: 'service_request', schema: 'itsm')]
+class IstmServiceRequest
 {
     #[ORM\Id]
     #[ORM\Column(type: 'guid')]
@@ -46,8 +46,8 @@ class IstmIncident
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, name: 'opened_at')]
     private \DateTimeImmutable $openedAt;
 
-    #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, name: 'resolved_at', nullable: true)]
-    private ?\DateTimeImmutable $resolvedAt = null;
+    #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, name: 'fulfilled_at', nullable: true)]
+    private ?\DateTimeImmutable $fulfilledAt = null;
 
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, name: 'closed_at', nullable: true)]
     private ?\DateTimeImmutable $closedAt = null;
@@ -113,9 +113,9 @@ class IstmIncident
         return $this->openedAt;
     }
 
-    public function getResolvedAt(): ?\DateTimeImmutable
+    public function getFulfilledAt(): ?\DateTimeImmutable
     {
-        return $this->resolvedAt;
+        return $this->fulfilledAt;
     }
 
     public function getClosedAt(): ?\DateTimeImmutable
@@ -133,4 +133,3 @@ class IstmIncident
         return $this->updatedAt;
     }
 }
-

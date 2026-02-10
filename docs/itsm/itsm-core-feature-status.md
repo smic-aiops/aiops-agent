@@ -75,7 +75,7 @@
 | 機能 | 状態 | 根拠（実装） | 補足（不足/注意） |
 |---|---|---|---|
 | ITSM コア API（CRUD/検索/参照） | 未実装 | （なし） | 現状は n8n ワークフローから DB 直叩き。 |
-| Sulu admin（read-only 一覧/検索） | 実装済み | `docker/sulu/source/src/Admin/IstmAdmin.php`, `docker/sulu/source/config/routes_admin.yaml`, `docker/sulu/source/src/Controller/Istm*Controller.php` | 決定一覧（`/itsm/decisions`）および Incident/SRQ/Problem/Change の参照導線。書き込み UI は無し。SoR 接続（`ITSM_SOR_DATABASE_URL`）が必要。 |
+| Sulu admin（read-only 一覧/検索） | 実装済み | `scripts/itsm/sulu/source_overrides/src/Admin/IstmAdmin.php`, `scripts/itsm/sulu/source_overrides/config/routes_admin.yaml`, `scripts/itsm/sulu/source_overrides/src/Controller/Istm*Controller.php` | 決定一覧（`/itsm/decisions`）および Incident/SRQ/Problem/Change の参照導線。書き込み UI は無し。SoR 接続（`ITSM_SOR_DATABASE_URL`）が必要。静的チェック: `scripts/itsm/sulu/check_sulu_itsm_admin_readonly.sh`。 |
 | UI（サービスデスク画面） | 未実装 | （なし） | Sulu admin は「参照（read-only）」の導線であり、サービスデスク UI は別途。 |
 
 ## 次に「未実装」を潰す優先候補（最小）

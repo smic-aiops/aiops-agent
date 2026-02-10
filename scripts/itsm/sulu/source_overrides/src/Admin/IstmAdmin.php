@@ -15,6 +15,7 @@ final class IstmAdmin extends Admin
 {
     public const NAVIGATION_ITSM = 'app.itsm';
 
+    public const VIEW_DECISIONS = 'app.itsm.decisions';
     public const VIEW_INCIDENTS = 'app.itsm.incidents';
     public const VIEW_INCIDENTS_DETAIL = 'app.itsm.incidents.detail';
     public const VIEW_INCIDENTS_DETAIL_FORM = 'app.itsm.incidents.detail.details';
@@ -31,6 +32,8 @@ final class IstmAdmin extends Admin
     public const VIEW_CHANGE_REQUESTS_DETAIL = 'app.itsm.change_requests.detail';
     public const VIEW_CHANGE_REQUESTS_DETAIL_FORM = 'app.itsm.change_requests.detail.details';
 
+    public const RESOURCE_KEY_DECISIONS = 'itsm_decisions';
+    public const LIST_KEY_DECISIONS = 'itsm_decisions';
     public const RESOURCE_KEY_INCIDENTS = 'itsm_incidents';
     public const LIST_KEY_INCIDENTS = 'itsm_incidents';
     public const FORM_KEY_INCIDENT_DETAILS = 'itsm_incident_details';
@@ -47,6 +50,7 @@ final class IstmAdmin extends Admin
     public const LIST_KEY_CHANGE_REQUESTS = 'itsm_change_requests';
     public const FORM_KEY_CHANGE_REQUEST_DETAILS = 'itsm_change_request_details';
 
+    public const SECURITY_CONTEXT_DECISIONS = 'app.itsm.decisions';
     public const SECURITY_CONTEXT_INCIDENTS = 'app.itsm.incidents';
     public const SECURITY_CONTEXT_SERVICE_REQUESTS = 'app.itsm.service_requests';
     public const SECURITY_CONTEXT_PROBLEMS = 'app.itsm.problems';
@@ -61,6 +65,10 @@ final class IstmAdmin extends Admin
         $itsm = new NavigationItem(self::NAVIGATION_ITSM);
         $itsm->setLabel(self::NAVIGATION_ITSM);
         $itsm->setIcon('su-list-check');
+
+        $decisions = new NavigationItem(self::VIEW_DECISIONS);
+        $decisions->setLabel(self::VIEW_DECISIONS);
+        $decisions->setView(self::VIEW_DECISIONS);
 
         $incidents = new NavigationItem(self::VIEW_INCIDENTS);
         $incidents->setLabel(self::VIEW_INCIDENTS);
@@ -78,6 +86,7 @@ final class IstmAdmin extends Admin
         $changeRequests->setLabel(self::VIEW_CHANGE_REQUESTS);
         $changeRequests->setView(self::VIEW_CHANGE_REQUESTS);
 
+        $itsm->addChild($decisions);
         $itsm->addChild($incidents);
         $itsm->addChild($serviceRequests);
         $itsm->addChild($problems);
@@ -88,6 +97,18 @@ final class IstmAdmin extends Admin
     public function configureViews(ViewCollection $viewCollection): void
     {
         $readOnlyToolbarActions = [];
+
+        $viewCollection->add(
+            $this->viewBuilderFactory
+                ->createListViewBuilder(self::VIEW_DECISIONS, '/itsm/decisions')
+                ->setResourceKey(self::RESOURCE_KEY_DECISIONS)
+                ->setListKey(self::LIST_KEY_DECISIONS)
+                ->setTitle(self::VIEW_DECISIONS)
+                ->addListAdapters(['table'])
+                ->enableSearching()
+                ->enableFiltering()
+                ->setOption('security_context', self::SECURITY_CONTEXT_DECISIONS)
+        );
 
         $viewCollection->add(
             $this->viewBuilderFactory
@@ -215,6 +236,9 @@ final class IstmAdmin extends Admin
         return [
             self::SULU_ADMIN_SECURITY_SYSTEM => [
                 self::NAVIGATION_ITSM => [
+                    self::SECURITY_CONTEXT_DECISIONS => [
+                        PermissionTypes::VIEW,
+                    ],
                     self::SECURITY_CONTEXT_INCIDENTS => [
                         PermissionTypes::VIEW,
                     ],
@@ -232,4 +256,3 @@ final class IstmAdmin extends Admin
         ];
     }
 }
-

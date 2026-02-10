@@ -1,11 +1,18 @@
 {
   "app.itsm": "ITSM",
+  "app.itsm.decisions": "決定一覧",
   "app.itsm.incidents": "インシデント",
   "app.itsm.service_requests": "サービス要求",
   "app.itsm.problems": "問題",
   "app.itsm.change_requests": "変更要求",
   "app.itsm.field.realm": "レルム",
   "app.itsm.field.service_id": "サービスID",
+  "app.itsm.decisions.table.occurred_at": "日時",
+  "app.itsm.decisions.table.realm": "レルム",
+  "app.itsm.decisions.table.source": "ソース",
+  "app.itsm.decisions.table.summary": "サマリ",
+  "app.itsm.decisions.table.message": "本文",
+  "app.itsm.decisions.table.correlation_id": "相関ID",
   "app.itsm.incidents.table.number": "番号",
   "app.itsm.incidents.table.status": "状態",
   "app.itsm.incidents.table.priority": "優先度",
@@ -33,4 +40,3 @@
   "app.itsm.change_requests.field.approved_at": "承認日時",
   "app.itsm.change_requests.field.implemented_at": "実施日時"
 }
-

@@ -66,6 +66,7 @@ DRY_RUN="$(to_bool "${DRY_RUN}")"
 
 ROUTES_ADMIN_YAML="${SULU_ROOT}/config/routes_admin.yaml"
 SULU_ADMIN_YAML="${SULU_ROOT}/config/packages/sulu_admin.yaml"
+ITSM_SOR_DOCTRINE_YAML="${SULU_ROOT}/config/packages/itsm_sor_doctrine.yaml"
 TRANSLATIONS_JA="${SULU_ROOT}/translations/admin.ja.json"
 TRANSLATIONS_EN="${SULU_ROOT}/translations/admin.en.json"
 
@@ -80,6 +81,7 @@ if [[ "${DRY_RUN}" == "true" ]]; then
   echo "[dry-run] would check:"
   echo "  - ${ROUTES_ADMIN_YAML}"
   echo "  - ${SULU_ADMIN_YAML}"
+  echo "  - ${ITSM_SOR_DOCTRINE_YAML}"
   echo "  - ${TRANSLATIONS_JA}"
   echo "  - ${TRANSLATIONS_EN}"
   echo "  - ${LISTS_DIR}/itsm_*.xml"
@@ -97,10 +99,11 @@ require_file() {
 
 require_file "${ROUTES_ADMIN_YAML}"
 require_file "${SULU_ADMIN_YAML}"
+require_file "${ITSM_SOR_DOCTRINE_YAML}"
 require_file "${TRANSLATIONS_JA}"
 require_file "${TRANSLATIONS_EN}"
 
-python3 - "${REPO_ROOT}" "${SULU_ROOT}" <<'PY'
+python3 - "${REPO_ROOT}" "${SULU_ROOT}" "${ITSM_SOR_DOCTRINE_YAML}" <<'PY'
 import os
 import re
 import sys
@@ -109,6 +112,7 @@ import json
 
 repo_root = sys.argv[1]
 sulu_root = sys.argv[2]
+itsm_sor_doctrine = sys.argv[3]
 
 routes_admin = os.path.join(sulu_root, "config", "routes_admin.yaml")
 sulu_admin = os.path.join(sulu_root, "config", "packages", "sulu_admin.yaml")
@@ -170,6 +174,12 @@ def parse_translation_keys(path: str) -> set[str]:
     die(f"unsupported translation file: {path}")
 
 translation_keys = {lang: parse_translation_keys(path) for lang, path in translations.items()}
+
+doctrine_content = read_text(itsm_sor_doctrine)
+if "ITSM_SOR_DATABASE_URL" not in doctrine_content:
+    die(f"missing ITSM_SOR_DATABASE_URL in doctrine config: {itsm_sor_doctrine}")
+if re.search(r"entity_managers\s*:\s*$", doctrine_content, flags=re.M) is None:
+    die(f"doctrine config does not define an entity manager: {itsm_sor_doctrine}")
 
 def parse_routes_admin(path: str):
     route_names: set[str] = set()

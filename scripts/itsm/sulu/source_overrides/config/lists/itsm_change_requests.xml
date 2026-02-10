@@ -4,8 +4,8 @@
 
     <joins name="realm">
         <join>
-            <entity-name>App\Entity\IstmRealm</entity-name>
-            <field-name>App\Entity\IstmChangeRequest.realm</field-name>
+            <entity-name>App\IstmSor\Entity\IstmRealm</entity-name>
+            <field-name>App\IstmSor\Entity\IstmChangeRequest.realm</field-name>
         </join>
     </joins>
 
@@ -17,7 +17,7 @@
             translation="sulu_admin.id"
         >
             <field-name>id</field-name>
-            <entity-name>App\Entity\IstmChangeRequest</entity-name>
+            <entity-name>App\IstmSor\Entity\IstmChangeRequest</entity-name>
         </property>
 
         <property
@@ -28,7 +28,7 @@
             translation="app.itsm.change_requests.table.number"
         >
             <field-name>number</field-name>
-            <entity-name>App\Entity\IstmChangeRequest</entity-name>
+            <entity-name>App\IstmSor\Entity\IstmChangeRequest</entity-name>
             <filter type="text" />
         </property>
 
@@ -40,7 +40,7 @@
             translation="sulu_admin.title"
         >
             <field-name>title</field-name>
-            <entity-name>App\Entity\IstmChangeRequest</entity-name>
+            <entity-name>App\IstmSor\Entity\IstmChangeRequest</entity-name>
             <filter type="text" />
         </property>
 
@@ -52,7 +52,7 @@
             translation="app.itsm.change_requests.table.status"
         >
             <field-name>status</field-name>
-            <entity-name>App\Entity\IstmChangeRequest</entity-name>
+            <entity-name>App\IstmSor\Entity\IstmChangeRequest</entity-name>
             <filter type="text" />
         </property>
 
@@ -64,7 +64,7 @@
             translation="app.itsm.change_requests.table.risk"
         >
             <field-name>risk</field-name>
-            <entity-name>App\Entity\IstmChangeRequest</entity-name>
+            <entity-name>App\IstmSor\Entity\IstmChangeRequest</entity-name>
             <filter type="text" />
         </property>
 
@@ -76,7 +76,7 @@
             translation="app.itsm.change_requests.table.planned_start_at"
         >
             <field-name>plannedStartAt</field-name>
-            <entity-name>App\Entity\IstmChangeRequest</entity-name>
+            <entity-name>App\IstmSor\Entity\IstmChangeRequest</entity-name>
             <transformer type="datetime"/>
             <filter type="datetime" />
         </property>
@@ -89,7 +89,7 @@
             translation="app.itsm.change_requests.table.planned_end_at"
         >
             <field-name>plannedEndAt</field-name>
-            <entity-name>App\Entity\IstmChangeRequest</entity-name>
+            <entity-name>App\IstmSor\Entity\IstmChangeRequest</entity-name>
             <transformer type="datetime"/>
             <filter type="datetime" />
         </property>
@@ -102,7 +102,7 @@
             translation="sulu_admin.changed"
         >
             <field-name>updatedAt</field-name>
-            <entity-name>App\Entity\IstmChangeRequest</entity-name>
+            <entity-name>App\IstmSor\Entity\IstmChangeRequest</entity-name>
             <transformer type="datetime"/>
             <filter type="datetime" />
         </property>
@@ -115,10 +115,9 @@
             translation="app.itsm.field.realm"
         >
             <field-name>realmKey</field-name>
-            <entity-name>App\Entity\IstmRealm</entity-name>
+            <entity-name>App\IstmSor\Entity\IstmRealm</entity-name>
             <joins ref="realm"/>
             <filter type="text" />
         </property>
     </properties>
 </list>
-
