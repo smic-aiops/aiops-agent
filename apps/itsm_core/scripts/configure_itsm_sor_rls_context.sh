@@ -72,7 +72,7 @@ while [[ $# -gt 0 ]]; do
     --ecs-service) shift; ECS_SERVICE="${1:-}" ;;
     --ecs-container) shift; ECS_CONTAINER="${1:-}" ;;
     --ecs-task) shift; ECS_TASK="${1:-}" ;;
-    --local) LOCAL_PSQL="true" ;;
+    --local) LOCAL_PSQL="true"; ECS_EXEC="false" ;;
     --db-host) shift; DB_HOST="${1:-}" ;;
     --db-port) shift; DB_PORT="${1:-}" ;;
     --db-name) shift; DB_NAME="${1:-}" ;;
@@ -95,41 +95,69 @@ AWS_REGION="${AWS_REGION:-ap-northeast-1}"
 itsm_load_defaults_from_terraform_outputs
 
 if [[ -n "${NAME_PREFIX:-}" ]]; then
-  DB_HOST_PARAM="${DB_HOST_PARAM:-/${NAME_PREFIX}/db/host}"
-  DB_PORT_PARAM="${DB_PORT_PARAM:-/${NAME_PREFIX}/db/port}"
+  DB_HOST_PARAM="${DB_HOST_PARAM:-/${NAME_PREFIX}/n8n/db/host}"
+  DB_PORT_PARAM="${DB_PORT_PARAM:-/${NAME_PREFIX}/n8n/db/port}"
   DB_NAME_PARAM="${DB_NAME_PARAM:-/${NAME_PREFIX}/n8n/db/name}"
   DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/n8n/db/username}"
   DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"
 fi
 
-itsm_resolve_db_connection
-itsm_ensure_db_connection
-
 if [[ -z "${DB_ROLE}" ]]; then
-  DB_ROLE="${DB_USER}"
+  DB_ROLE="${DB_USER:-}"
+fi
+if [[ -z "${DB_ROLE}" ]]; then
+  echo "ERROR: --db-role is required (could not resolve DB_USER)." >&2
+  exit 1
+fi
+if [[ -z "${DB_NAME:-}" ]]; then
+  echo "ERROR: --db-name is required (could not resolve DB_NAME)." >&2
+  exit 1
 fi
 
 rk_sql="${REALM_KEY//\'/''}"
 pid_sql="${PRINCIPAL_ID//\'/''}"
-db_role_sql="${DB_ROLE//\"/\"\"}"
+db_role_sql="${DB_ROLE//\'/''}"
+db_name_sql="${DB_NAME//\'/''}"
 
-sql="\\set ON_ERROR_STOP on
-DO \\$\\$
+sql="$(cat <<SQL
+\\set ON_ERROR_STOP on
+
+DO \$\$
+DECLARE
+  role_name text := '${db_role_sql}';
+  db_name text := '${db_name_sql}';
+  rk text := '${rk_sql}';
+  pid text := '${pid_sql}';
+  rid uuid;
 BEGIN
-  EXECUTE format('ALTER ROLE %I SET app.realm_key = %L', '${db_role_sql}', '${rk_sql}');
-  EXECUTE format('ALTER ROLE %I SET app.realm_id = %L', '${db_role_sql}', (SELECT itsm.lookup_realm_id('${rk_sql}')::text));
-"
-if [[ -n "${PRINCIPAL_ID}" ]]; then
-  sql="${sql}  EXECUTE format('ALTER ROLE %I SET app.principal_id = %L', '${db_role_sql}', '${pid_sql}');\n"
-fi
-sql="${sql}END
-\\$\\$;"
+  rid := itsm.get_realm_id(rk);
+
+  EXECUTE format('ALTER ROLE %I IN DATABASE %I SET app.realm_key = %L', role_name, db_name, rk);
+  EXECUTE format('ALTER ROLE %I IN DATABASE %I SET app.realm_id = %L', role_name, db_name, rid::text);
+  IF pid IS NOT NULL AND pid <> '' THEN
+    EXECUTE format('ALTER ROLE %I IN DATABASE %I SET app.principal_id = %L', role_name, db_name, pid);
+  END IF;
+  EXECUTE format('ALTER ROLE %I IN DATABASE %I SET app.roles = %L', role_name, db_name, '[]');
+  EXECUTE format('ALTER ROLE %I IN DATABASE %I SET app.groups = %L', role_name, db_name, '[]');
+END \$\$;
+
+SELECT
+  (setdatabase::regdatabase)::text AS database,
+  (setrole::regrole)::text AS role,
+  unnest(setconfig) AS setting
+FROM pg_db_role_setting
+WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = current_database())
+  AND setrole = (SELECT oid FROM pg_roles WHERE rolname = '${db_role_sql}')
+ORDER BY setting;
+SQL
+)"
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   echo "Plan:"
   echo "  DB_ROLE=${DB_ROLE}"
+  echo "  DB_NAME=${DB_NAME}"
   echo "  app.realm_key=${REALM_KEY}"
-  echo "  app.realm_id=(lookup via itsm.realm)"
+  echo "  app.realm_id=(lookup via itsm.get_realm_id)"
   if [[ -n "${PRINCIPAL_ID}" ]]; then
     echo "  app.principal_id=${PRINCIPAL_ID}"
   fi
@@ -138,6 +166,8 @@ if [[ "${DRY_RUN}" == "true" ]]; then
   exit 0
 fi
 
+itsm_resolve_db_connection
+itsm_ensure_db_connection
+
 echo "[itsm] configuring RLS context defaults for role=${DB_ROLE} realm_key=${REALM_KEY}"
 itsm_run_sql_auto "${sql}"
-

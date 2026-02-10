@@ -43,7 +43,7 @@ BEGIN
 
   SELECT id INTO v_realm_id
   FROM itsm.realm
-  WHERE realm_key = lower(v_realm_key);
+  WHERE lower(realm_key) = lower(v_realm_key);
 
   IF v_realm_id IS NULL THEN
     RAISE EXCEPTION 'Unknown realm_key: %', v_realm_key;
@@ -100,4 +100,3 @@ BEGIN
     END IF;
   END LOOP;
 END $$;
-

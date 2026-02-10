@@ -65,6 +65,7 @@ BEGIN
   IF v_key IS NULL THEN
     RAISE EXCEPTION 'realm_key is required';
   END IF;
+  v_key := lower(v_key);
 
   INSERT INTO itsm.realm (realm_key)
   VALUES (v_key)
@@ -90,6 +91,7 @@ BEGIN
   IF v_key IS NULL THEN
     RAISE EXCEPTION 'realm_key is required';
   END IF;
+  v_key := lower(v_key);
   v_name := NULLIF(BTRIM(p_name), '');
 
   INSERT INTO itsm.realm (realm_key, name)
@@ -110,7 +112,7 @@ STABLE
 AS $$
   SELECT id
   FROM itsm.realm
-  WHERE realm_key = NULLIF(BTRIM(p_realm_key), '')
+  WHERE realm_key = lower(NULLIF(BTRIM(p_realm_key), ''))
   LIMIT 1;
 $$;
 
@@ -648,7 +650,7 @@ BEGIN
   v_event_key := NULLIF(NEW.integrity->>'event_key', '');
 
   NEW.integrity := COALESCE(NEW.integrity, '{}'::jsonb);
-  NEW.integrity := NEW.integrity - 'prev_hash' - 'hash';
+  NEW.integrity := NEW.integrity - 'prev_hash' - 'hash' - 'hash_algo' - 'hash_version';
   NEW.integrity := jsonb_set(NEW.integrity, '{prev_hash}', to_jsonb(v_prev_hash), true);
 
   v_hash := itsm._audit_event_compute_hash(
@@ -673,6 +675,8 @@ BEGIN
   );
 
   NEW.integrity := jsonb_set(NEW.integrity, '{hash}', to_jsonb(v_hash), true);
+  NEW.integrity := jsonb_set(NEW.integrity, '{hash_algo}', to_jsonb('sha256'::text), true);
+  NEW.integrity := jsonb_set(NEW.integrity, '{hash_version}', to_jsonb(1), true);
   RETURN NEW;
 END;
 $$;

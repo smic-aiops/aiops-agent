@@ -241,44 +241,44 @@ WITH src AS (
 mapped AS (
   SELECT
     itsm.get_realm_id('${REALM_KEY}') AS realm_id,
-    id AS approval_history_id,
+    approval_history_id AS approval_history_id,
     created_at AS occurred_at,
-    COALESCE(NULLIF(approval_id,'')::uuid, id) AS approval_uuid,
-    COALESCE(NULLIF(approval_id,''), id::text) AS approval_id_text,
-    CASE
-      WHEN LOWER(COALESCE(NULLIF(status,''), '')) IN ('pending','approved','rejected','canceled','expired')
-        THEN LOWER(COALESCE(NULLIF(status,''), ''))
-      ELSE 'pending'
-    END AS status,
-    requester,
-    requested_action,
-    target,
-    message,
-    result,
-    raw
+    COALESCE(approval_id, approval_history_id) AS approval_uuid,
+    context_id AS context_id,
+    actor AS actor,
+    decision AS decision,
+    comment AS comment,
+    job_plan AS job_plan
   FROM src
 )
 INSERT INTO itsm.approval (
   id, realm_id, resource_type, resource_id, status,
-  approved_by_principal_id, approved_at, decision_reason, evidence, correlation_id
+  requested_by_principal_id, approved_by_principal_id, approved_at, decision_reason, evidence, correlation_id
 )
 SELECT
   m.approval_uuid AS id,
   m.realm_id,
-  'aiops_approval_history' AS resource_type,
-  m.approval_history_id AS resource_id,
-  m.status,
-  NULLIF(m.requester, '') AS approved_by_principal_id,
+  'aiops_job' AS resource_type,
+  m.context_id AS resource_id,
+  CASE
+    WHEN m.decision = 'approved' THEN 'approved'
+    WHEN m.decision = 'denied' THEN 'rejected'
+    WHEN m.decision = 'expired' THEN 'expired'
+    ELSE 'pending'
+  END AS status,
+  NULLIF(m.actor #>> '{email}', '') AS requested_by_principal_id,
+  NULLIF(m.actor #>> '{email}', '') AS approved_by_principal_id,
   m.occurred_at AS approved_at,
-  m.message AS decision_reason,
+  m.comment AS decision_reason,
   jsonb_build_object(
-    'requester', m.requester,
-    'requested_action', m.requested_action,
-    'target', m.target,
-    'result', m.result,
-    'raw', m.raw
+    'approval_history_id', m.approval_history_id,
+    'context_id', m.context_id,
+    'actor', m.actor,
+    'decision', m.decision,
+    'comment', m.comment,
+    'job_plan', m.job_plan
   ) AS evidence,
-  m.approval_id_text AS correlation_id
+  NULLIF(m.context_id::text, '') AS correlation_id
 FROM mapped
 ON CONFLICT (id) DO UPDATE SET
   status = EXCLUDED.status,
@@ -295,17 +295,22 @@ INSERT INTO itsm.audit_event (
 SELECT
   m.realm_id,
   m.occurred_at,
-  jsonb_build_object('name', COALESCE(NULLIF(m.requester,''), 'unknown')) AS actor,
-  'human' AS actor_type,
-  'approval.recorded' AS action,
+  COALESCE(m.actor, '{}'::jsonb) AS actor,
+  CASE WHEN NULLIF(m.actor #>> '{email}', '') IS NULL THEN 'unknown' ELSE 'human' END AS actor_type,
+  CASE
+    WHEN m.decision = 'approved' THEN 'approval.approved'
+    WHEN m.decision = 'denied' THEN 'approval.rejected'
+    WHEN m.decision = 'expired' THEN 'approval.expired'
+    ELSE 'approval.recorded'
+  END AS action,
   'aiops_agent' AS source,
-  'aiops_approval_history' AS resource_type,
-  NULLIF(m.approval_id_text, '') AS correlation_id,
-  jsonb_build_object('source','aiops','approval_id', m.approval_id_text) AS reply_target,
-  'Backfill approval history into SoR' AS summary,
-  m.message AS message,
-  jsonb_build_object('status', m.status, 'requested_action', m.requested_action, 'target', m.target, 'result', m.result) AS after,
-  jsonb_build_object('event_key', concat('aiops_approval_history:', m.approval_history_id::text)) AS integrity
+  'approval' AS resource_type,
+  NULLIF(m.context_id::text, '') AS correlation_id,
+  jsonb_build_object('source','aiops_agent','approval_id', m.approval_uuid::text, 'context_id', m.context_id::text) AS reply_target,
+  'AIOps approval history backfill' AS summary,
+  m.comment AS message,
+  COALESCE(m.job_plan, '{}'::jsonb) AS after,
+  jsonb_build_object('event_key', concat('aiops:approval_history:', m.approval_history_id::text)) AS integrity
 FROM mapped m
 ON CONFLICT DO NOTHING;
 SQL

@@ -126,6 +126,7 @@ fi
 
 ORDERED_APPS=(
   aiops_agent
+  itsm_core
   workflow_manager
   cloudwatch_event_notify
   gitlab_issue_metrics_sync

@@ -221,6 +221,31 @@ if [[ -n "${NAME_PREFIX:-}" ]]; then
   DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"
 fi
 
+if [[ "${DRY_RUN}" == "true" ]]; then
+  echo "Plan:"
+  echo "  AWS_PROFILE=${AWS_PROFILE}"
+  echo "  AWS_REGION=${AWS_REGION}"
+  echo "  NAME_PREFIX=${NAME_PREFIX:-}"
+  echo "  SCHEMA_FILE=${SCHEMA_FILE}"
+  echo "  DB_HOST=${DB_HOST:-}"
+  echo "  DB_PORT=${DB_PORT:-}"
+  echo "  DB_NAME=${DB_NAME:-}"
+  echo "  DB_USER=${DB_USER:-}"
+  echo "  DB_PASSWORD=***"
+  echo "  DB_HOST_PARAM=${DB_HOST_PARAM:-}"
+  echo "  DB_PORT_PARAM=${DB_PORT_PARAM:-}"
+  echo "  DB_NAME_PARAM=${DB_NAME_PARAM:-}"
+  echo "  DB_USER_PARAM=${DB_USER_PARAM:-}"
+  echo "  DB_PASSWORD_PARAM=${DB_PASSWORD_PARAM:-}"
+  echo "  EXEC=$([[ \"${LOCAL_PSQL}\" == \"true\" ]] && echo 'local psql' || echo 'auto (local->ecs)')"
+  echo "  ECS_EXEC=${ECS_EXEC}"
+  echo "  ECS_CLUSTER=${ECS_CLUSTER:-}"
+  echo "  ECS_SERVICE=${ECS_SERVICE:-}"
+  echo "  ECS_CONTAINER=${ECS_CONTAINER:-}"
+  echo "  ECS_TASK=${ECS_TASK:-}"
+  exit 0
+fi
+
 fetch_ssm_param() {
   local name="$1"
   local decrypt="${2:-false}"
@@ -272,11 +297,6 @@ echo "  DB_PORT=${DB_PORT}"
 echo "  DB_NAME=${DB_NAME}"
 echo "  DB_USER=${DB_USER}"
 echo "  SCHEMA_FILE=${SCHEMA_FILE}"
-
-if [[ "${DRY_RUN}" == "true" ]]; then
-  echo "[dry-run] would apply schema via: $([[ \"${LOCAL_PSQL}\" == \"true\" ]] && echo 'local psql' || echo 'auto (local->ecs)')"
-  exit 0
-fi
 
 apply_local_psql() {
   require_cmd "psql"

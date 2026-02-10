@@ -44,7 +44,7 @@
 - 既存の承認履歴バックフィル: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
 - GitLab の過去決定（Issue 本文/Note）バックフィル（n8n）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json`
   - LLM 判定のみで「取り漏れ最小化」を優先し、`decision.recorded` に加えて `decision.candidate_detected` / `decision.classification_failed` を SoR に残して後からレビュー可能にする（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
-- Zulip の過去決定メッセージバックフィル（GitLab を経由しない）: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`（現状: 未実装）
+- Zulip の過去決定メッセージバックフィル（GitLab を経由しない）: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`
 
 RLS（Row Level Security）導入（段階適用推奨）:
 - RLS ポリシー適用: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls.sql`

@@ -97,9 +97,6 @@ if [[ -n "${NAME_PREFIX:-}" ]]; then
   DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"
 fi
 
-itsm_resolve_db_connection
-itsm_ensure_db_connection
-
 dry_sql="true"
 if [[ "${DRY_RUN}" == "false" ]]; then
   dry_sql="false"
@@ -119,6 +116,9 @@ if [[ "${PLAN_ONLY}" == "true" ]]; then
   echo "${sql}"
   exit 0
 fi
+
+itsm_resolve_db_connection
+itsm_ensure_db_connection
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   echo "[itsm] retention dry-run (realm_key=${REALM_KEY})"

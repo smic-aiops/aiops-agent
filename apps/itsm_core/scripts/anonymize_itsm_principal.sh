@@ -13,14 +13,14 @@ Usage:
   apps/itsm_core/scripts/anonymize_itsm_principal.sh [options]
 
 Purpose:
-  - Pseudonymize a principal identifier while keeping referential integrity.
-  - Intended for PII deletion requests: prefer anonymization over hard delete.
+  - PII anonymization helper for ITSM SoR (MVP).
+  - Uses DB-side function: itsm.anonymize_principal(realm_id, principal_id, dry_run)
 
 Options:
   --realm-key KEY          Target realm_key (default: default)
-  --principal-id ID        Principal identifier (e.g., Keycloak sub or email) (required)
+  --principal-id ID        Target principal_id (required; e.g. Keycloak sub or email)
   --dry-run                Compute and print counts only (default)
-  --execute                Execute anonymization
+  --execute                Execute updates (where allowed)
   --plan-only              Print the SQL to be executed and exit
 
   --ecs-exec               Run psql via ECS Exec (useful when RDS is private) (default: true)
@@ -89,8 +89,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${PRINCIPAL_ID}" ]]; then
-  echo "ERROR: --principal-id is required." >&2
-  usage
+  echo "ERROR: --principal-id is required" >&2
   exit 1
 fi
 
@@ -106,9 +105,6 @@ if [[ -n "${NAME_PREFIX:-}" ]]; then
   DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/n8n/db/username}"
   DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"
 fi
-
-itsm_resolve_db_connection
-itsm_ensure_db_connection
 
 dry_sql="true"
 if [[ "${DRY_RUN}" == "false" ]]; then
@@ -131,11 +127,13 @@ if [[ "${PLAN_ONLY}" == "true" ]]; then
   exit 0
 fi
 
+itsm_resolve_db_connection
+itsm_ensure_db_connection
+
 if [[ "${DRY_RUN}" == "true" ]]; then
-  echo "[itsm] anonymize dry-run (realm_key=${REALM_KEY})"
+  echo "[itsm] PII anonymize dry-run (realm_key=${REALM_KEY})"
 else
-  echo "[itsm] anonymize execute (realm_key=${REALM_KEY})"
+  echo "[itsm] PII anonymize execute (realm_key=${REALM_KEY})"
 fi
 
 itsm_run_sql_auto "${sql}"
-

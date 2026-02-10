@@ -17,7 +17,7 @@
 - PII 疑似化: `apps/itsm_core/scripts/anonymize_itsm_principal.sh`
 - 監査アンカー（S3）: `apps/itsm_core/scripts/anchor_itsm_audit_event_hash.sh`
 - GitLab 過去決定バックフィル起動（n8n Webhook 呼び出し）: `apps/itsm_core/scripts/backfill_gitlab_decisions_to_sor.sh`
-- Zulip 過去決定メッセージバックフィル: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`（現状: 未実装）
+- Zulip 過去決定メッセージバックフィル: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`
 - 既存の承認履歴バックフィル（AIOps）: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
 
 ## n8n ワークフロー（LLM 集約）

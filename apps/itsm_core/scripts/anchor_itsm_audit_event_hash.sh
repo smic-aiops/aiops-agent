@@ -247,6 +247,10 @@ if [[ -n "${NAME_PREFIX:-}" ]]; then
   DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"
 fi
 
+if [[ -z "${BUCKET:-}" && -n "${ITSM_AUDIT_ANCHOR_BUCKET:-}" ]]; then
+  BUCKET="${ITSM_AUDIT_ANCHOR_BUCKET}"
+fi
+
 fetch_ssm_param() {
   local name="$1"
   local decrypt="${2:-false}"
@@ -279,6 +283,45 @@ resolve_db_connection() {
     DB_PASSWORD="$(fetch_ssm_param "${DB_PASSWORD_PARAM}" "true")"
   fi
 }
+
+if [[ "${DRY_RUN}" == "true" && -z "${HEAD_HASH_OVERRIDE}" ]]; then
+  bucket_guess="${BUCKET:-}"
+  if [[ -z "${bucket_guess}" ]] && command -v terraform >/dev/null 2>&1; then
+    bucket_guess="$(terraform -chdir="${REPO_ROOT}" output -raw itsm_audit_event_anchor_bucket_name 2>/dev/null || true)"
+    if [[ "${bucket_guess}" == "null" ]]; then
+      bucket_guess=""
+    fi
+  fi
+
+  echo "Plan:"
+  echo "  REALM_KEY=${REALM_KEY}"
+  echo "  BUCKET=${bucket_guess}"
+  echo "  PREFIX=${PREFIX}"
+  echo "  HEAD_HASH=${HEAD_HASH_OVERRIDE:-}"
+  echo "  AUDIT_EVENT_ID=${AUDIT_EVENT_ID_OVERRIDE:-}"
+  echo "  CHAIN_SEQ=${CHAIN_SEQ_OVERRIDE:-}"
+  echo "  INSERTED_AT=${INSERTED_AT_OVERRIDE:-}"
+  echo "  AWS_PROFILE=${AWS_PROFILE}"
+  echo "  AWS_REGION=${AWS_REGION}"
+  echo "  NAME_PREFIX=${NAME_PREFIX:-}"
+  echo "  DB_HOST=${DB_HOST:-}"
+  echo "  DB_PORT=${DB_PORT:-}"
+  echo "  DB_NAME=${DB_NAME:-}"
+  echo "  DB_USER=${DB_USER:-}"
+  echo "  DB_PASSWORD=***"
+  echo "  DB_HOST_PARAM=${DB_HOST_PARAM:-}"
+  echo "  DB_PORT_PARAM=${DB_PORT_PARAM:-}"
+  echo "  DB_NAME_PARAM=${DB_NAME_PARAM:-}"
+  echo "  DB_USER_PARAM=${DB_USER_PARAM:-}"
+  echo "  DB_PASSWORD_PARAM=${DB_PASSWORD_PARAM:-}"
+  echo "  EXEC=$([[ \"${LOCAL_PSQL}\" == \"true\" ]] && echo 'local psql' || echo 'auto (local->ecs)')"
+  echo "  ECS_EXEC=${ECS_EXEC}"
+  echo "  ECS_CLUSTER=${ECS_CLUSTER:-}"
+  echo "  ECS_SERVICE=${ECS_SERVICE:-}"
+  echo "  ECS_CONTAINER=${ECS_CONTAINER:-}"
+  echo "  ECS_TASK=${ECS_TASK:-}"
+  exit 0
+fi
 
 if [[ -z "${HEAD_HASH_OVERRIDE}" ]]; then
   resolve_db_connection
@@ -527,4 +570,3 @@ aws "${AWS_ARGS[@]}" "${PUT_ARGS[@]}" >/dev/null
 echo "OK: anchored hash-chain head to s3://${BUCKET}/${KEY}"
 
 exit 0
-
