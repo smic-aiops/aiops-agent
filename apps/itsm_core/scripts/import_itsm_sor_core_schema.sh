@@ -196,7 +196,7 @@ emit("ECS_CLUSTER", val("ecs_cluster_name") or (val("ecs_cluster") or {}).get("n
 db_ssm = val("db_credentials_ssm_parameters") or {}
 emit("DB_HOST_PARAM", db_ssm.get("host"))
 emit("DB_PORT_PARAM", db_ssm.get("port"))
-emit("DB_NAME_PARAM", db_ssm.get("database"))
+emit("DB_NAME_PARAM", db_ssm.get("name") or db_ssm.get("database"))
 emit("DB_USER_PARAM", db_ssm.get("username"))
 emit("DB_PASSWORD_PARAM", db_ssm.get("password"))
 
@@ -214,8 +214,8 @@ AWS_PROFILE="${AWS_PROFILE:-Admin-AIOps}"
 AWS_REGION="${AWS_REGION:-ap-northeast-1}"
 
 if [[ -n "${NAME_PREFIX:-}" ]]; then
-  DB_HOST_PARAM="${DB_HOST_PARAM:-/${NAME_PREFIX}/n8n/db/host}"
-  DB_PORT_PARAM="${DB_PORT_PARAM:-/${NAME_PREFIX}/n8n/db/port}"
+  DB_HOST_PARAM="${DB_HOST_PARAM:-/${NAME_PREFIX}/db/host}"
+  DB_PORT_PARAM="${DB_PORT_PARAM:-/${NAME_PREFIX}/db/port}"
   DB_NAME_PARAM="${DB_NAME_PARAM:-/${NAME_PREFIX}/n8n/db/name}"
   DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/n8n/db/username}"
   DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"

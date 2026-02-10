@@ -222,7 +222,7 @@ emit("ITSM_AUDIT_ANCHOR_BUCKET", val("itsm_audit_event_anchor_bucket_name"))
 db_ssm = val("db_credentials_ssm_parameters") or {}
 emit("DB_HOST_PARAM", db_ssm.get("host"))
 emit("DB_PORT_PARAM", db_ssm.get("port"))
-emit("DB_NAME_PARAM", db_ssm.get("database"))
+emit("DB_NAME_PARAM", db_ssm.get("name") or db_ssm.get("database"))
 emit("DB_USER_PARAM", db_ssm.get("username"))
 emit("DB_PASSWORD_PARAM", db_ssm.get("password"))
 

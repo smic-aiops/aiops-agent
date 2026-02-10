@@ -44,13 +44,15 @@
 - 既存の承認履歴バックフィル: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
 - GitLab の過去決定（Issue 本文/Note）バックフィル（n8n）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json`
   - LLM 判定のみで「取り漏れ最小化」を優先し、`decision.recorded` に加えて `decision.candidate_detected` / `decision.classification_failed` を SoR に残して後からレビュー可能にする（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
-- Zulip の過去決定メッセージバックフィル（GitLab を経由しない）: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`（`--dry-run-scan` で走査のみ、`--execute` で投入。DM は既定除外で必要なら `--include-private`）
+- Zulip の過去決定メッセージバックフィル（GitLab を経由しない）: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`（`--dry-run-scan` で走査のみ、`--execute` で投入。DM は既定除外で必要なら `--include-private`。決定マーカーは `--decision-prefixes`（または `ZULIP_DECISION_PREFIXES`）で上書き可能）
 
 RLS（Row Level Security）導入（段階適用推奨）:
 - RLS ポリシー適用: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls.sql`
 - （n8n が DB 直叩きの場合はほぼ必須）RLS コンテキスト（app.*）の既定値投入: `apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh`
 - （強化/任意）RLS の FORCE（テーブル所有者バイパスを禁止）: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls_force.sql`
 - `apps/aiops_agent/scripts/deploy_workflows.sh` から有効化する場合は、環境変数 `N8N_APPLY_ITSM_SOR_RLS=true`（必要なら `N8N_APPLY_ITSM_SOR_RLS_FORCE=true`）を使用
+  - 依存関係チェック（推奨）: `N8N_CHECK_ITSM_SOR_SCHEMA=true`（デフォルト有効）
+  - RLS コンテキスト既定値（任意）: `N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT=true`（`ALTER ROLE ... SET app.*` を投入）
   - 注意: RLS を有効化すると、`itsm.*` へのアクセスは `app.realm_key`（または `app.realm_id`）が必須になります（未設定は fail close / エラー）。
 
 監査イベントの改ざん耐性（推奨）:

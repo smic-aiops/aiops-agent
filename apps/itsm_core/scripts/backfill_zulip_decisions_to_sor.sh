@@ -19,7 +19,7 @@ Purpose:
 Decision detection (default: marker-only):
   - The first non-empty line starts with one of:
       /decision, [decision], [DECISION], 決定:
-  - Override with env ZULIP_DECISION_PREFIXES (comma-separated).
+  - Override with --decision-prefixes (comma-separated) or env ZULIP_DECISION_PREFIXES.
 
 Modes:
   --dry-run         Show plan only (default; no Zulip scan)
@@ -34,6 +34,7 @@ Options:
   --since ISO8601        Stop when date_sent < since (optional; best-effort)
   --page-size N          Page size for Zulip GET /messages (default: 1000; max 1000)
   --max-pages N          Max pages to scan (default: 200)
+  --decision-prefixes CSV  Decision markers (comma-separated; default: /decision,[decision],[DECISION],決定:)
 
 DB execution options:
   --local                Force local psql (no ECS Exec)
@@ -72,6 +73,7 @@ STREAM_PREFIX=""
 SINCE_ISO=""
 PAGE_SIZE="1000"
 MAX_PAGES="200"
+DECISION_PREFIXES_CSV=""
 
 DRY_RUN="true"
 DRY_RUN_SCAN="false"
@@ -88,6 +90,7 @@ while [[ $# -gt 0 ]]; do
     --since) shift; SINCE_ISO="${1:-}" ;;
     --page-size) shift; PAGE_SIZE="${1:-}" ;;
     --max-pages) shift; MAX_PAGES="${1:-}" ;;
+    --decision-prefixes) shift; DECISION_PREFIXES_CSV="${1:-}" ;;
 
     --dry-run) DRY_RUN="true"; DRY_RUN_SCAN="false" ;;
     --dry-run-scan) DRY_RUN="true"; DRY_RUN_SCAN="true" ;;
@@ -137,6 +140,7 @@ if [[ "${DRY_RUN}" == "true" && "${DRY_RUN_SCAN}" != "true" ]]; then
   echo "  SINCE_ISO=${SINCE_ISO:-}"
   echo "  PAGE_SIZE=${PAGE_SIZE}"
   echo "  MAX_PAGES=${MAX_PAGES}"
+  echo "  DECISION_PREFIXES=${DECISION_PREFIXES_CSV:-${ZULIP_DECISION_PREFIXES:-/decision,[decision],[DECISION],決定:}}"
   echo ""
   echo "[dry-run] would:"
   echo "  1) Resolve Zulip env via scripts/itsm/zulip/resolve_zulip_env.sh (realm=${ZULIP_REALM})"
@@ -162,6 +166,9 @@ SCAN_PY="$(mktemp "/tmp/itsm_sor_zulip_decisions_scan.XXXXXX.py")"
 trap 'rm -f "${SQL_FILE}" "${SCAN_PY}"' EXIT
 
 DECISION_PREFIXES="${ZULIP_DECISION_PREFIXES:-/decision,[decision],[DECISION],決定:}"
+if [[ -n "${DECISION_PREFIXES_CSV}" ]]; then
+  DECISION_PREFIXES="${DECISION_PREFIXES_CSV}"
+fi
 
 echo "[itsm] scanning Zulip (realm=${ZULIP_REALM}) ..."
 
@@ -229,7 +236,10 @@ def is_decision(text):
   return False
 
 def zulip_message_url(stream_id, stream_name, topic, msg_id):
-  # Best-effort URL (works for standard Zulip web UI)
+  # Best-effort URL (works for standard Zulip web UI) for stream messages.
+  # For private messages, return None (URL shape varies and may be tenant-dependent).
+  if stream_id is None:
+    return None
   sname = urllib.parse.quote(stream_name or "")
   t = urllib.parse.quote(topic or "")
   return f"{zulip_base}#narrow/stream/{stream_id}-{sname}/topic/{t}/near/{msg_id}"
@@ -309,7 +319,7 @@ while pages < max_pages:
       "stream_id": stream_id,
       "stream": stream_name,
       "topic": topic,
-      "url": zulip_message_url(stream_id or 0, stream_name, topic, msg_id),
+      "url": zulip_message_url(stream_id, stream_name, topic, msg_id),
     }
 
     events.append({

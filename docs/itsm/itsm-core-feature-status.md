@@ -30,7 +30,7 @@
 | 機能 | 状態 | 根拠（実装） | 補足（不足/注意） |
 |---|---|---|---|
 | SoR DDL 適用スクリプト（dry-run あり、tfvars 直読みなし） | 実装済み | `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh` | DB 接続情報は terraform output/SSM から解決。 |
-| デプロイ時に DDL を先に適用してからワークフロー同期 | 実装済み | `apps/aiops_agent/scripts/deploy_workflows.sh` | `N8N_APPLY_ITSM_SOR_SCHEMA`（デフォルト有効）。 |
+| デプロイ時に DDL を先に適用してからワークフロー同期 | 実装済み | `apps/aiops_agent/scripts/deploy_workflows.sh` | `N8N_APPLY_ITSM_SOR_SCHEMA`（デフォルト有効）。必要なら `N8N_CHECK_ITSM_SOR_SCHEMA=true`（依存チェック; 既定有効）と併用。 |
 
 ## 3. 「決定/承認」を SoR へ集約（誰が・いつ・何を・どう決めたか）
 
@@ -49,7 +49,7 @@
 |---|---|---|---|
 | AIOps 既存承認履歴（`aiops_approval_history`）→ SoR バックフィル | 実装済み | `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh` | `itsm.approval` UPSERT + `itsm.audit_event` INSERT。 |
 | GitLab 過去決定（Issue 本文/Note）→ SoR バックフィル | 実装済み | `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json` | n8n で GitLab API を全件走査し `itsm.audit_event` へ投入。LLM 判定のみで広く拾い、`decision.recorded` に加えて `decision.candidate_detected` / `decision.classification_failed` も投入して「取り漏れ最小化」を優先できる（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）。 |
-| Zulip 過去メッセージ（GitLab を経由しない）→ SoR バックフィル | 実装済み | `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh` | Zulip API を走査し、決定マーカー（既定: `/decision` 等）から `decision.recorded` を生成して `itsm.audit_event` に投入（冪等キー: `zulip:decision:<message_id>`）。既定は `--dry-run`（スキャンなし）で、`--dry-run-scan`（スキャンのみ）/`--execute`（投入）を選択可能。既定は DM を除外（必要なら `--include-private`）。 |
+| Zulip 過去メッセージ（GitLab を経由しない）→ SoR バックフィル | 実装済み | `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh` | Zulip API を走査し、決定マーカー（既定: `/decision` 等）から `decision.recorded` を生成して `itsm.audit_event` に投入（冪等キー: `zulip:decision:<message_id>`）。既定は `--dry-run`（スキャンなし）で、`--dry-run-scan`（スキャンのみ）/`--execute`（投入）を選択可能。既定は DM を除外（必要なら `--include-private`）。マーカーは `--decision-prefixes`（または `ZULIP_DECISION_PREFIXES`）で上書き可能。 |
 | GitLab Issue 全件 → SoR レコード（incident/srq/problem/change）バックフィル | 未実装 | （オンライン upsert は存在） | オンライン upsert: `apps/zulip_gitlab_issue_sync/workflows/zulip_gitlab_issue_sync.json`。全件走査は別途必要。 |
 
 ## 5. ITSM レコード（Incident/Change/Request/Problem）運用機能

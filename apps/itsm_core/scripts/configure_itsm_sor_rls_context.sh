@@ -95,11 +95,16 @@ AWS_REGION="${AWS_REGION:-ap-northeast-1}"
 itsm_load_defaults_from_terraform_outputs
 
 if [[ -n "${NAME_PREFIX:-}" ]]; then
-  DB_HOST_PARAM="${DB_HOST_PARAM:-/${NAME_PREFIX}/n8n/db/host}"
-  DB_PORT_PARAM="${DB_PORT_PARAM:-/${NAME_PREFIX}/n8n/db/port}"
+  DB_HOST_PARAM="${DB_HOST_PARAM:-/${NAME_PREFIX}/db/host}"
+  DB_PORT_PARAM="${DB_PORT_PARAM:-/${NAME_PREFIX}/db/port}"
   DB_NAME_PARAM="${DB_NAME_PARAM:-/${NAME_PREFIX}/n8n/db/name}"
   DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/n8n/db/username}"
   DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"
+fi
+
+if [[ "${DRY_RUN}" != "true" ]]; then
+  itsm_resolve_db_connection
+  itsm_ensure_db_connection
 fi
 
 if [[ -z "${DB_ROLE}" ]]; then
@@ -165,9 +170,6 @@ if [[ "${DRY_RUN}" == "true" ]]; then
   echo "${sql}"
   exit 0
 fi
-
-itsm_resolve_db_connection
-itsm_ensure_db_connection
 
 echo "[itsm] configuring RLS context defaults for role=${DB_ROLE} realm_key=${REALM_KEY}"
 itsm_run_sql_auto "${sql}"
