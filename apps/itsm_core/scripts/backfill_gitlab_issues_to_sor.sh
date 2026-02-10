@@ -10,24 +10,24 @@ Usage:
   apps/itsm_core/scripts/backfill_gitlab_issues_to_sor.sh [options]
 
 Purpose:
-  - Trigger the n8n workflow that scans GitLab Issues and backfills ITSM records into SoR:
-    - itsm.(incident/service_request/problem/change_request)
-    - itsm.external_ref(ref_type=gitlab_issue)
-  - Classification of record type uses GitLab labels (e.g. 種別：障害/変更/問題/依頼) inside n8n.
+  - Trigger the n8n workflow that scans GitLab issues and backfills them into ITSM SoR records:
+      - itsm.incident / itsm.service_request / itsm.problem / itsm.change_request
+      - itsm.external_ref (ref_type=gitlab_issue)
 
 Workflow:
   - apps/itsm_core/workflows/gitlab_issue_backfill_to_sor.json
   - Webhook: POST /webhook/gitlab/issue/backfill/sor
 
 Options:
-  --realm-key KEY          Realm key (default: default) -> sent as payload.realm
+  --realm-key KEY          Realm key (default: default) -> payload.realm
   --project-ids CSV        GitLab project IDs CSV (required) -> payload.project_ids
-  --since ISO8601          Optional (updated_after) -> payload.since
-  --state STATE            all|opened|closed (default: all) -> payload.state
-  --batch-size N           Batch size per DB upsert (default: 50) -> payload.batch_size
+  --since ISO8601          Optional updated_after -> payload.since
+  --state STATE            opened|closed|all (default: all) -> payload.state
+  --default-type TYPE      incident|service_request|problem|change_request (default: service_request) -> payload.default_type
+  --batch-size N           Batch size (default: 50) -> payload.batch_size
 
-  --dry-run                Do not write to SoR (default; scans GitLab)
-  --execute                Write to SoR (payload.dry_run=false)
+  --dry-run                Do not insert into SoR (default) (payload.dry_run=true)
+  --execute                Insert into SoR (payload.dry_run=false)
   --plan-only              No GitLab calls; return computed plan only (payload.plan_only=true)
   --print-only             Print request details only (no HTTP)
 
@@ -36,7 +36,7 @@ Options:
 
 Environment overrides:
   N8N_URL / N8N_WEBHOOK_BASE_URL
-  REALM_KEY, PROJECT_IDS, SINCE, STATE, BATCH_SIZE, DRY_RUN, PLAN_ONLY
+  REALM_KEY, PROJECT_IDS, SINCE, STATE, DEFAULT_TYPE, BATCH_SIZE, DRY_RUN, PLAN_ONLY
 USAGE
 }
 
@@ -57,6 +57,7 @@ REALM_KEY="${REALM_KEY:-default}"
 PROJECT_IDS="${PROJECT_IDS:-}"
 SINCE="${SINCE:-}"
 STATE="${STATE:-all}"
+DEFAULT_TYPE="${DEFAULT_TYPE:-service_request}"
 BATCH_SIZE="${BATCH_SIZE:-50}"
 DRY_RUN="${DRY_RUN:-true}"
 PLAN_ONLY="${PLAN_ONLY:-false}"
@@ -70,6 +71,7 @@ while [[ $# -gt 0 ]]; do
     --project-ids) shift; PROJECT_IDS="${1:-}" ;;
     --since) shift; SINCE="${1:-}" ;;
     --state) shift; STATE="${1:-}" ;;
+    --default-type) shift; DEFAULT_TYPE="${1:-}" ;;
     --batch-size) shift; BATCH_SIZE="${1:-}" ;;
     --dry-run) DRY_RUN="true" ;;
     --execute) DRY_RUN="false" ;;
@@ -108,6 +110,7 @@ payload="$(
     --arg project_ids "${PROJECT_IDS}" \
     --arg since "${SINCE}" \
     --arg state "${STATE}" \
+    --arg default_type "${DEFAULT_TYPE}" \
     --arg batch_size "${BATCH_SIZE}" \
     --argjson dry_run "$( [[ \"${DRY_RUN}\" == \"true\" ]] && echo true || echo false )" \
     --argjson plan_only "$( [[ \"${PLAN_ONLY}\" == \"true\" ]] && echo true || echo false )" \
@@ -115,6 +118,7 @@ payload="$(
       realm: $realm,
       project_ids: $project_ids,
       state: $state,
+      default_type: $default_type,
       batch_size: $batch_size,
       dry_run: $dry_run,
       plan_only: $plan_only
