@@ -117,6 +117,57 @@ AS $$
 $$;
 
 -- -----------------------------------------------------------------------------
+-- RLS context helper (n8n / direct DB access safety)
+-- -----------------------------------------------------------------------------
+--
+-- RLS policies rely on app.* session variables (apps/itsm_core/sql/itsm_sor_rls.sql).
+-- When a client uses autocommit / pooled connections, "SET LOCAL" may be missed or
+-- may leak across requests unless done per-transaction.
+--
+-- This helper allows "single SQL statement" safe usage by calling set_config(..., true)
+-- in the same statement (e.g. WITH v AS (SELECT itsm.set_rls_context(...)) ...).
+--
+CREATE OR REPLACE FUNCTION itsm.set_rls_context(
+  p_realm_key text,
+  p_principal_id text DEFAULT NULL,
+  p_roles jsonb DEFAULT '[]'::jsonb,
+  p_groups jsonb DEFAULT '[]'::jsonb,
+  p_local boolean DEFAULT true
+)
+RETURNS uuid
+LANGUAGE plpgsql
+VOLATILE
+AS $$
+DECLARE
+  v_realm_key text;
+  v_realm_id uuid;
+  v_principal_id text;
+  v_local boolean;
+BEGIN
+  v_local := COALESCE(p_local, true);
+
+  v_realm_key := NULLIF(BTRIM(p_realm_key), '');
+  IF v_realm_key IS NULL THEN
+    RAISE EXCEPTION 'realm_key is required';
+  END IF;
+  v_realm_key := lower(v_realm_key);
+
+  v_realm_id := itsm.get_realm_id(v_realm_key);
+
+  PERFORM set_config('app.realm_key', v_realm_key, v_local);
+  PERFORM set_config('app.realm_id', v_realm_id::text, v_local);
+
+  v_principal_id := COALESCE(NULLIF(BTRIM(p_principal_id), ''), '');
+  PERFORM set_config('app.principal_id', v_principal_id, v_local);
+
+  PERFORM set_config('app.roles', COALESCE(p_roles, '[]'::jsonb)::text, v_local);
+  PERFORM set_config('app.groups', COALESCE(p_groups, '[]'::jsonb)::text, v_local);
+
+  RETURN v_realm_id;
+END;
+$$;
+
+-- -----------------------------------------------------------------------------
 -- Record number allocation (INC/CHG/SRQ/PRB/CI/SVC...)
 -- -----------------------------------------------------------------------------
 
