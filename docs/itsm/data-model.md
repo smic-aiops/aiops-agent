@@ -526,6 +526,10 @@ API サービスが DB 接続後に以下を `SET LOCAL` する前提:
 推奨パターン B（API サービス等、同一コネクションで複数 realm を扱う可能性がある場合）:
 
 - **必ずトランザクションごとに `SET LOCAL app.*`** を行う（または、単一 SQL 文の先頭で `set_config('app.*', ..., true)` を同一文内に含めて確実化する）。
+- このリポジトリでは、単一 SQL 文内で RLS コンテキスト（`app.*`）を **確実にセットする helper** として `itsm.set_rls_context(...)` を `apps/itsm_core/sql/itsm_sor_core.sql` に実装しています。
+  - 例: `WITH ctx AS (SELECT itsm.set_rls_context('<realm_key>', '<principal_id>', '[]'::jsonb, '[]'::jsonb, true)) SELECT ...;`
+  - n8n の Postgres ノード（autocommit）の場合は `local=true`（statement/transaction ローカル）を推奨します。
+  - 複数 statement を 1 クエリで投げる場合は、**各 statement** の先頭で `itsm.set_rls_context(...)` を呼んでください。
 - 誤設定/未設定時は “fail close（行が見えない/書けない）” を選び、監視で検知できるようにする。
 
 RLS は “誤実装時の保険” であり、**最終責任は API 層**に置きます（DB だけで完全なフィールド ACL をやり切らない）。
@@ -580,5 +584,5 @@ DB 側は `external_ref` に GitLab の参照を保存し、双方向リンク�
 ## 8. 次の成果物（本書の後に作るもの）
 
 - `docs/itsm/api.md`（OpenAPI: CRUD + 検索 + 承認 + 監査イベント）
-- `apps/aiops_agent/`（SoR 実装/運用スクリプトの配置先）
+- `apps/itsm_core/`（SoR 実装/運用スクリプトの配置先）
 - GitLab テンプレの更新（Issue/MR の必須項目化）

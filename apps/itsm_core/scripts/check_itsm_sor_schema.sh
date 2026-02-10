@@ -136,19 +136,20 @@ WITH v AS (
     to_regclass('itsm.external_ref') IS NOT NULL AS external_ref_ok,
     to_regclass('itsm.incident') IS NOT NULL AS incident_ok,
     to_regclass('itsm.service_request') IS NOT NULL AS service_request_ok,
-    to_regclass('itsm.problem') IS NOT NULL AS problem_ok,
-    to_regclass('itsm.change_request') IS NOT NULL AS change_request_ok,
-    to_regprocedure('itsm.get_realm_id(text)') IS NOT NULL AS get_realm_id_ok,
-    to_regprocedure('itsm.next_record_number(uuid,text,text,integer)') IS NOT NULL AS next_record_number_ok
-)
-SELECT
-  realm_ok AND audit_event_ok AND approval_ok AND external_ref_ok
-    AND incident_ok AND service_request_ok AND problem_ok AND change_request_ok
-    AND get_realm_id_ok AND next_record_number_ok AS ok,
-  realm_ok, audit_event_ok, approval_ok, external_ref_ok,
-  incident_ok, service_request_ok, problem_ok, change_request_ok,
-  get_realm_id_ok, next_record_number_ok
-FROM v;
+	    to_regclass('itsm.problem') IS NOT NULL AS problem_ok,
+	    to_regclass('itsm.change_request') IS NOT NULL AS change_request_ok,
+	    to_regprocedure('itsm.get_realm_id(text)') IS NOT NULL AS get_realm_id_ok,
+	    to_regprocedure('itsm.set_rls_context(text,text,jsonb,jsonb,boolean)') IS NOT NULL AS set_rls_context_ok,
+	    to_regprocedure('itsm.next_record_number(uuid,text,text,integer)') IS NOT NULL AS next_record_number_ok
+	)
+	SELECT
+	  realm_ok AND audit_event_ok AND approval_ok AND external_ref_ok
+	    AND incident_ok AND service_request_ok AND problem_ok AND change_request_ok
+	    AND get_realm_id_ok AND set_rls_context_ok AND next_record_number_ok AS ok,
+	  realm_ok, audit_event_ok, approval_ok, external_ref_ok,
+	  incident_ok, service_request_ok, problem_ok, change_request_ok,
+	  get_realm_id_ok, set_rls_context_ok, next_record_number_ok
+	FROM v;
 SQL
 )"
 

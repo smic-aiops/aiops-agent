@@ -7,6 +7,7 @@
 - スキーマ（正）: `apps/itsm_core/sql/itsm_sor_core.sql`
 - RLS: `apps/itsm_core/sql/itsm_sor_rls.sql`
 - RLS FORCE（強化）: `apps/itsm_core/sql/itsm_sor_rls_force.sql`
+- RLS 運用補助: `itsm.set_rls_context(...)`（`apps/itsm_core/sql/itsm_sor_core.sql` 内。n8n/autocommit の “SQL 文内で app.* をセット” を想定）
 
 ## 運用スクリプト
 

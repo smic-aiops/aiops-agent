@@ -66,7 +66,7 @@
 
 | 機能 | 状態 | 根拠（実装） | 補足（不足/注意） |
 |---|---|---|---|
-| RLS（Row Level Security）/ポリシー | 部分実装 | `apps/itsm_core/sql/itsm_sor_rls.sql`, `apps/itsm_core/sql/itsm_sor_rls_force.sql`, `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh`, `apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh` | DDL は追加済みだが、**本番へ適用 + n8n/直DB の運用（app.* セッション変数）**が前提。ロール/DB の既定値で `app.realm_key/app.realm_id` を必ず与えるか、全クエリを毎回 `SET LOCAL app.*` する必要あり。 |
+| RLS（Row Level Security）/ポリシー | 実装済み | `apps/itsm_core/sql/itsm_sor_rls.sql`, `apps/itsm_core/sql/itsm_sor_rls_force.sql`, `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.set_rls_context`）, `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh`, `apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh` | 運用: RLS を適用すると `itsm.*` へのアクセスは `app.realm_key`/`app.realm_id` が必須（未設定は fail close / エラー）。n8n/直DB は (A) ロール既定値（`ALTER ROLE ... SET app.*`）で固定するか、(B) 各 SQL の先頭で `itsm.set_rls_context(..., local=true)` を呼んで statement 内で確実化する（複数 statement の場合は各 statement で呼ぶ）。 |
 | 監査イベントの改ざん耐性（append-only + ハッシュチェーン + 外部アンカー） | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql` / `apps/itsm_core/scripts/anchor_itsm_audit_event_hash.sh` / Terraform(`itsm_audit_event_anchor_*`) | S3 アンカーは `itsm_audit_event_anchor_enabled=true` の上で定期実行が必要（推奨）。 |
 | アーカイブ/保持期間/削除（運用・監査要件） | 部分実装 | `docs/itsm/data-retention.md`, `apps/itsm_core/sql/itsm_sor_core.sql`, `apps/itsm_core/scripts/apply_itsm_sor_retention.sh` | レルム別 `itsm.retention_policy` と purge 関数/ジョブ（dry-run→execute）を追加。監査ログ（`audit_event`）の物理削除は既定で無効。添付実体の削除はストレージ側（S3 lifecycle 等）が正。 |
 

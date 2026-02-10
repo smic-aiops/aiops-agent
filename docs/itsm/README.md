@@ -56,6 +56,7 @@ RLS（Row Level Security）導入（段階適用推奨）:
   - 依存関係チェック（推奨）: `N8N_CHECK_ITSM_SOR_SCHEMA=true`（デフォルト有効）
   - RLS コンテキスト既定値（任意）: `N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT=true`（`ALTER ROLE ... SET app.*` を投入）
   - 注意: RLS を有効化すると、`itsm.*` へのアクセスは `app.realm_key`（または `app.realm_id`）が必須になります（未設定は fail close / エラー）。
+  - n8n の SQL では、各 SQL 文の先頭で `itsm.set_rls_context(...)` を呼ぶ形（statement 内で `app.*` をセット）を推奨します（複数 statement の場合は各 statement で呼ぶ）。
 
 監査イベントの改ざん耐性（推奨）:
 - DB 側: `apps/itsm_core/sql/itsm_sor_core.sql` で `itsm.audit_event` を append-only + ハッシュチェーン化（INSERT 時に `integrity.prev_hash/hash` を自動付与）
