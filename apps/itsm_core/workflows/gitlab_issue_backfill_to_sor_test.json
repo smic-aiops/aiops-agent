@@ -1,0 +1,100 @@
+{
+  "name": "gitlab-issue-backfill-to-sor-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/issue/backfill/sor/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst input = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\nconst realm = String(input.realm || $env.N8N_REALM || $env.N8N_OBSERVER_REALM || 'default').trim() || 'default';\n\nconst salt = crypto.randomUUID();\nconst now = new Date().toISOString();\n\nconst issues = [\n  {\n    project_path: 'test/itsm-core',\n    issue_iid: 1,\n    issue_url: 'https://example.invalid/test/itsm-core/-/issues/1',\n    gitlab_meta: { test: true, salt, now },\n    title: `Test SRQ ${salt}`,\n    description: input.message || 'This is a test service request created by n8n smoke test.',\n    status: 'opened',\n    actor: { name: 'gitlab-issue-backfill-to-sor-test' },\n    reply_target: { source: 'n8n', webhook: 'gitlab/issue/backfill/sor/test' },\n    record_type_hint: 'service_request'\n  },\n  {\n    project_path: 'test/itsm-core',\n    issue_iid: 2,\n    issue_url: 'https://example.invalid/test/itsm-core/-/issues/2',\n    gitlab_meta: { test: true, salt, now },\n    title: `Test INC ${salt}`,\n    description: 'This is a test incident.',\n    status: 'closed',\n    actor: { name: 'gitlab-issue-backfill-to-sor-test' },\n    reply_target: { source: 'n8n', webhook: 'gitlab/issue/backfill/sor/test' },\n    record_type_hint: 'incident'\n  },\n  {\n    project_path: 'test/itsm-core',\n    issue_iid: 3,\n    issue_url: 'https://example.invalid/test/itsm-core/-/issues/3',\n    gitlab_meta: { test: true, salt, now },\n    title: `Test PRB ${salt}`,\n    description: 'This is a test problem.',\n    status: 'opened',\n    actor: { name: 'gitlab-issue-backfill-to-sor-test' },\n    reply_target: { source: 'n8n', webhook: 'gitlab/issue/backfill/sor/test' },\n    record_type_hint: 'problem'\n  }\n];\n\nreturn [{ json: { realm, issues } }];\n"
+      },
+      "id": "2",
+      "name": "Build Test Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT\n    itsm.get_realm_id(NULLIF('{{ $json.realm }}','')) AS realm_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.issues || []).replace(/'/g, \"''\") }}','undefined')::jsonb, '[]'::jsonb) AS arr\n), rows AS (\n  SELECT\n    i.realm_id AS realm_id,\n    NULLIF(e->>'project_path','') AS project_path,\n    NULLIF(e->>'issue_iid','')::int AS issue_iid,\n    NULLIF(e->>'issue_url','') AS issue_url,\n    COALESCE(e->'gitlab_meta', '{}'::jsonb) AS gitlab_meta,\n    NULLIF(e->>'title','') AS title,\n    NULLIF(e->>'description','') AS description,\n    LOWER(NULLIF(e->>'status','')) AS status,\n    COALESCE(e->'actor', '{}'::jsonb) AS actor,\n    COALESCE(e->'reply_target', '{}'::jsonb) AS reply_target,\n    NULLIF(e->>'record_type_hint','') AS record_type_hint\n  FROM input i\n  JOIN LATERAL jsonb_array_elements(i.arr) e ON TRUE\n), ref AS (\n  SELECT\n    r.realm_id,\n    r.project_path,\n    r.issue_iid,\n    r.issue_url,\n    r.gitlab_meta,\n    r.title,\n    r.description,\n    r.status,\n    r.actor,\n    r.reply_target,\n    COALESCE(NULLIF(r.record_type_hint,''), 'service_request') AS desired_type,\n    'gitlab_issue'::text AS ref_type,\n    ('gitlab:issue:' || r.project_path || '#' || r.issue_iid::text) AS ref_key,\n    jsonb_build_object(\n      'project_path', r.project_path,\n      'issue_iid', r.issue_iid,\n      'issue_url', r.issue_url,\n      'gitlab', r.gitlab_meta,\n      'reply_target', r.reply_target\n    ) AS meta\n  FROM rows r\n  WHERE r.project_path IS NOT NULL AND r.issue_iid IS NOT NULL\n), existing AS (\n  SELECT\n    v.realm_id,\n    v.ref_type,\n    v.ref_key,\n    ex.resource_type,\n    ex.resource_id\n  FROM ref v\n  LEFT JOIN itsm.external_ref ex\n    ON ex.realm_id = v.realm_id AND ex.ref_type = v.ref_type AND ex.ref_key = v.ref_key\n), eff AS (\n  SELECT\n    v.*,\n    COALESCE(existing.resource_type, v.desired_type) AS resource_type_effective,\n    existing.resource_id AS existing_resource_id,\n    gen_random_uuid() AS new_resource_id\n  FROM ref v\n  LEFT JOIN existing USING (realm_id, ref_type, ref_key)\n), resolved AS (\n  SELECT\n    e.*,\n    COALESCE(e.existing_resource_id, e.new_resource_id) AS resource_id_effective\n  FROM eff e\n), ins_incident AS (\n  INSERT INTO itsm.incident (id, realm_id, number, title, description, status, requester_principal_id)\n  SELECT\n    r.resource_id_effective,\n    r.realm_id,\n    itsm.next_record_number(r.realm_id, 'incident', 'INC'),\n    r.title,\n    r.description,\n    CASE WHEN r.status = 'closed' THEN 'closed' ELSE 'new' END,\n    NULLIF(r.actor #>> '{email}', '')\n  FROM resolved r\n  WHERE r.resource_type_effective = 'incident' AND r.existing_resource_id IS NULL\n  ON CONFLICT (id) DO NOTHING\n  RETURNING 1\n), ins_srq AS (\n  INSERT INTO itsm.service_request (id, realm_id, number, title, description, status, requester_principal_id)\n  SELECT\n    r.resource_id_effective,\n    r.realm_id,\n    itsm.next_record_number(r.realm_id, 'service_request', 'SRQ'),\n    r.title,\n    r.description,\n    CASE WHEN r.status = 'closed' THEN 'closed' ELSE 'new' END,\n    NULLIF(r.actor #>> '{email}', '')\n  FROM resolved r\n  WHERE r.resource_type_effective = 'service_request' AND r.existing_resource_id IS NULL\n  ON CONFLICT (id) DO NOTHING\n  RETURNING 1\n), ins_prb AS (\n  INSERT INTO itsm.problem (id, realm_id, number, title, description, status)\n  SELECT\n    r.resource_id_effective,\n    r.realm_id,\n    itsm.next_record_number(r.realm_id, 'problem', 'PRB'),\n    r.title,\n    r.description,\n    CASE WHEN r.status = 'closed' THEN 'closed' ELSE 'new' END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'problem' AND r.existing_resource_id IS NULL\n  ON CONFLICT (id) DO NOTHING\n  RETURNING 1\n), ins_chg AS (\n  INSERT INTO itsm.change_request (id, realm_id, number, title, description, status)\n  SELECT\n    r.resource_id_effective,\n    r.realm_id,\n    itsm.next_record_number(r.realm_id, 'change_request', 'CHG'),\n    r.title,\n    r.description,\n    CASE WHEN r.status = 'closed' THEN 'closed' ELSE 'new' END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'change_request' AND r.existing_resource_id IS NULL\n  ON CONFLICT (id) DO NOTHING\n  RETURNING 1\n), upd_inc AS (\n  UPDATE itsm.incident i\n  SET\n    title = COALESCE(r.title, i.title),\n    description = COALESCE(r.description, i.description),\n    status = CASE WHEN r.status = 'closed' THEN 'closed' ELSE i.status END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'incident' AND i.id = r.resource_id_effective\n  RETURNING 1\n), upd_srq AS (\n  UPDATE itsm.service_request s\n  SET\n    title = COALESCE(r.title, s.title),\n    description = COALESCE(r.description, s.description),\n    status = CASE WHEN r.status = 'closed' THEN 'closed' ELSE s.status END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'service_request' AND s.id = r.resource_id_effective\n  RETURNING 1\n), upd_prb AS (\n  UPDATE itsm.problem p\n  SET\n    title = COALESCE(r.title, p.title),\n    description = COALESCE(r.description, p.description),\n    status = CASE WHEN r.status = 'closed' THEN 'closed' ELSE p.status END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'problem' AND p.id = r.resource_id_effective\n  RETURNING 1\n), upd_chg AS (\n  UPDATE itsm.change_request c\n  SET\n    title = COALESCE(r.title, c.title),\n    description = COALESCE(r.description, c.description),\n    status = CASE WHEN r.status = 'closed' THEN 'closed' ELSE c.status END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'change_request' AND c.id = r.resource_id_effective\n  RETURNING 1\n), upsert_ref AS (\n  INSERT INTO itsm.external_ref (realm_id, resource_type, resource_id, ref_type, ref_key, ref_url, meta)\n  SELECT\n    r.realm_id,\n    r.resource_type_effective,\n    r.resource_id_effective,\n    r.ref_type,\n    r.ref_key,\n    r.issue_url,\n    r.meta\n  FROM resolved r\n  WHERE r.resource_id_effective IS NOT NULL\n  ON CONFLICT (realm_id, ref_type, ref_key) DO UPDATE\n  SET resource_type = EXCLUDED.resource_type,\n      resource_id = EXCLUDED.resource_id,\n      ref_url = EXCLUDED.ref_url,\n      meta = COALESCE(EXCLUDED.meta, itsm.external_ref.meta)\n  RETURNING 1\n)\nSELECT\n  (SELECT COUNT(*)::int FROM resolved) AS attempted,\n  (SELECT COUNT(*)::int FROM upsert_ref) AS upserted;\n"
+      },
+      "id": "3",
+      "name": "Bulk Upsert SoR Records",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Test Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Test Batch": {
+      "main": [
+        [
+          {
+            "node": "Bulk Upsert SoR Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bulk Upsert SoR Records": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}
+

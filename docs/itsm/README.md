@@ -17,7 +17,7 @@
   - 最終決定は **Zulip または GitLab Issue** 上で行い、決定マーカー（Zulip: `/decision` / GitLab: `[DECISION]`/`決定:`）で明示する
     - 構造化された判断/承認/決定の “正（SoR）” は共有 RDS（`itsm.audit_event` / `itsm.approval`）
     - GitLab はレビュー/議論/根拠リンク/版管理などの **補助証跡（Change & Evidence）**
-  - （任意）決定マーカーに一致しない場合でも、LLM 判定が有効な環境では「決定/承認」に該当する表現が **決定として自動認定**され得る（デフォルト: 有効。無効化は `*_DECISION_LLM_ENABLED=false`。誤判定に注意。詳細は `apps/zulip_gitlab_issue_sync/README.md`）
+  - （任意）決定マーカーに一致しない場合でも、LLM 判定が有効な環境では「決定/承認」に該当する表現が **決定として自動認定**され得る（デフォルト: 有効。無効化は `ZULIP_GITLAB_DECISION_LLM_ENABLED=false`。誤判定に注意。詳細は `apps/zulip_gitlab_issue_sync/README.md`）
   - AIOpsAgent の承認リンク（approve/deny）や `auto_enqueue`（自動承認/自動実行）で確定した内容も **決定**として扱われ、Zulip へ `/decision` が投稿される。過去の承認（決定）サマリは `/decisions` で参照する
   - 例外的に GitLab 側で決定を記録する場合は、先頭に `[DECISION]` / `決定:` を付けると Zulip に通知される（環境設定が必要）
 
@@ -42,6 +42,8 @@
 適用/バックフィル（推奨）:
 - スキーマ適用: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh`
 - 既存の承認履歴バックフィル: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
+- GitLab Issue 全件 → SoR レコード backfill（n8n）: `apps/itsm_core/workflows/gitlab_issue_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor`）
+  - 起動スクリプト: `apps/itsm_core/scripts/backfill_gitlab_issues_to_sor.sh`
 - GitLab の過去決定（Issue 本文/Note）バックフィル（n8n）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json`
   - LLM 判定のみで「取り漏れ最小化」を優先し、`decision.recorded` に加えて `decision.candidate_detected` / `decision.classification_failed` を SoR に残して後からレビュー可能にする（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
 - Zulip の過去決定メッセージバックフィル（GitLab を経由しない）: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`（`--dry-run-scan` で走査のみ、`--execute` で投入。DM は既定除外で必要なら `--include-private`。決定マーカーは `--decision-prefixes`（または `ZULIP_DECISION_PREFIXES`）で上書き可能）

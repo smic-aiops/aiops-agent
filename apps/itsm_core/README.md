@@ -16,6 +16,7 @@
 - 保持/削除: `apps/itsm_core/scripts/apply_itsm_sor_retention.sh`
 - PII 疑似化: `apps/itsm_core/scripts/anonymize_itsm_principal.sh`
 - 監査アンカー（S3）: `apps/itsm_core/scripts/anchor_itsm_audit_event_hash.sh`
+- GitLab Issue 全件 → SoR レコード backfill 起動（n8n Webhook 呼び出し）: `apps/itsm_core/scripts/backfill_gitlab_issues_to_sor.sh`
 - GitLab 過去決定バックフィル起動（n8n Webhook 呼び出し）: `apps/itsm_core/scripts/backfill_gitlab_decisions_to_sor.sh`
 - Zulip 過去決定メッセージバックフィル: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`
 - 既存の承認履歴バックフィル（AIOps）: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
@@ -23,6 +24,8 @@
 ## n8n ワークフロー（LLM 集約）
 
 - SoR への書き込みスモークテスト: `apps/itsm_core/workflows/itsm_sor_audit_event_test.json`（Webhook: `POST /webhook/itsm/sor/audit_event/test`）
+- GitLab Issue → SoR レコード（incident/srq/problem/change）バックフィル（全件走査）: `apps/itsm_core/workflows/gitlab_issue_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor`）
+- GitLab Issue → SoR レコード backfill（テスト）: `apps/itsm_core/workflows/gitlab_issue_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor/test`）
 - GitLab Issue 決定バックフィル（全件走査・LLM 判定）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
 - GitLab Issue 決定バックフィル（テスト）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor/test`）
 

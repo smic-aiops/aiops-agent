@@ -1,0 +1,161 @@
+{
+  "name": "gitlab-issue-backfill-to-sor",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/issue/backfill/sor",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const env = $env || {};\nconst input = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\n\nfunction trimSlash(value) {\n  return String(value || '').replace(/\\/+$/, '');\n}\n\nfunction parseList(value) {\n  if (!value) return [];\n  if (Array.isArray(value)) return value.filter(Boolean);\n  return String(value)\n    .split(',')\n    .map((v) => v.trim())\n    .filter(Boolean);\n}\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on', 'enabled'].includes(v);\n}\n\nfunction toInt(value, fallback) {\n  const n = Number.parseInt(String(value ?? ''), 10);\n  return Number.isFinite(n) ? n : fallback;\n}\n\nfunction buildGitlabApiBase() {\n  const baseRaw = trimSlash(env.GITLAB_API_BASE_URL || env.GITLAB_API_BASE_URL || '');\n  if (baseRaw) return baseRaw;\n  const uiBase = trimSlash(env.N8N_GITLAB_BASE_URL || env.GITLAB_BASE_URL || env.GITLAB_URL || env.SERVICE_URL_GITLAB || '');\n  if (!uiBase) return '';\n  if (uiBase.endsWith('/api/v4')) return uiBase;\n  return `${uiBase}/api/v4`;\n}\n\nfunction inferRecordTypeFromLabels(labels, defaultType) {\n  const list = Array.isArray(labels) ? labels.map((v) => String(v || '').trim()) : [];\n  const typeLabel = list.find((v) => v.startsWith('種別：')) || '';\n  const t = typeLabel ? typeLabel.replace(/^種別：/, '').trim() : String(defaultType || '').trim();\n  if (/障害|インシデント/i.test(t)) return 'incident';\n  if (/変更|RFC|change/i.test(t)) return 'change_request';\n  if (/問題|problem/i.test(t)) return 'problem';\n  return 'service_request';\n}\n\nconst realm = String(input.realm || env.N8N_REALM || env.N8N_OBSERVER_REALM || 'default').trim() || 'default';\nconst projectIdsCsv = String(input.project_ids || input.project_ids_csv || '').trim();\nconst sinceIso = String(input.since || '').trim();\nconst state = String(input.state || 'all').trim().toLowerCase();\nconst dryRun = isTruthy(input.dry_run);\nconst planOnly = isTruthy(input.plan_only);\nconst defaultType = String(input.default_type || 'service_request').trim();\n\nif (!projectIdsCsv) {\n  throw new Error('project_ids is required (CSV).');\n}\n\nconst projectIds = parseList(projectIdsCsv).map((v) => toInt(v, null)).filter((v) => Number.isFinite(v));\nif (!projectIds.length) {\n  throw new Error('project_ids must contain at least one numeric project id.');\n}\n\nconst batchSize = Math.max(1, toInt(input.batch_size || env.GITLAB_ISSUE_BACKFILL_BATCH_SIZE || '50', 50));\n\nif (planOnly) {\n  return [{\n    json: {\n      ok: true,\n      plan_only: true,\n      realm,\n      project_ids: projectIds,\n      since: sinceIso || null,\n      state,\n      batch_size: batchSize,\n      default_type: defaultType\n    }\n  }];\n}\n\nconst gitlabApiBase = buildGitlabApiBase();\nconst gitlabToken = String(env.GITLAB_ADMIN_TOKEN || env.GITLAB_TOKEN || '').trim();\nif (!gitlabApiBase) throw new Error('GitLab API base URL is missing. Set GITLAB_API_BASE_URL or N8N_GITLAB_BASE_URL/GITLAB_BASE_URL.');\nif (!gitlabToken) throw new Error('GitLab token is missing. Set GITLAB_ADMIN_TOKEN (or GITLAB_TOKEN).');\n\nasync function httpGet(url, qs) {\n  const res = await this.helpers.httpRequest({\n    method: 'GET',\n    url,\n    qs,\n    json: true,\n    timeout: 30000,\n    returnFullResponse: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken }\n  });\n  const headers = res?.headers || {};\n  const nextPage = String(headers['x-next-page'] || headers['X-Next-Page'] || '').trim();\n  return { body: res?.body, next_page: nextPage };\n}\n\nasync function* paginate(url, params) {\n  let page = 1;\n  const perPage = 100;\n  while (true) {\n    const { body, next_page } = await httpGet(url, { ...(params || {}), per_page: perPage, page });\n    const arr = Array.isArray(body) ? body : (Array.isArray(body?.data) ? body.data : []);\n    yield arr;\n    if (!next_page) break;\n    page = Number.parseInt(next_page, 10);\n    if (!Number.isFinite(page) || page <= 1) break;\n  }\n}\n\nconst stats = {\n  started_at: new Date().toISOString(),\n  realm,\n  projects: projectIds.length,\n  scanned_projects: 0,\n  scanned_issues: 0,\n  skipped_invalid: 0,\n  batches: 0\n};\n\nconst all = [];\n\nfor (const pid of projectIds) {\n  const project = await httpGet(`${gitlabApiBase}/projects/${pid}`, {});\n  const projectPath = String(project?.body?.path_with_namespace || '').trim();\n  if (!projectPath) {\n    stats.skipped_invalid += 1;\n    continue;\n  }\n\n  const params = {\n    scope: 'all',\n    state: (state === 'opened' || state === 'closed' || state === 'all') ? state : 'all',\n    order_by: 'updated_at',\n    sort: 'asc'\n  };\n  if (sinceIso) params.updated_after = sinceIso;\n\n  stats.scanned_projects += 1;\n\n  for await (const pageItems of paginate(`${gitlabApiBase}/projects/${pid}/issues`, params)) {\n    for (const issue of (pageItems || [])) {\n      const iid = issue?.iid;\n      if (!Number.isFinite(Number(iid))) {\n        stats.skipped_invalid += 1;\n        continue;\n      }\n\n      const labels = Array.isArray(issue?.labels) ? issue.labels : [];\n      const hint = inferRecordTypeFromLabels(labels, defaultType);\n\n      const actor = issue?.author || {};\n      const actorObj = {\n        id: actor?.id ?? null,\n        username: actor?.username ?? null,\n        name: actor?.name ?? null\n      };\n\n      const webUrl = String(issue?.web_url || '').trim();\n\n      all.push({\n        project_path: projectPath,\n        issue_iid: Number(iid),\n        issue_url: webUrl || null,\n        gitlab_meta: {\n          project_id: pid,\n          issue_id: issue?.id ?? null,\n          iid: Number(iid),\n          state: issue?.state ?? null,\n          labels,\n          created_at: issue?.created_at ?? null,\n          updated_at: issue?.updated_at ?? null,\n          web_url: webUrl || null,\n          confidential: issue?.confidential ?? null,\n          author: actorObj,\n          assignees: issue?.assignees ?? null\n        },\n        title: issue?.title ?? null,\n        description: issue?.description ?? null,\n        status: issue?.state ?? null,\n        actor: actorObj,\n        reply_target: { source: 'gitlab', project_id: pid, project_path: projectPath, issue_iid: Number(iid), url: webUrl || null },\n        record_type_hint: hint\n      });\n\n      stats.scanned_issues += 1;\n    }\n  }\n}\n\nstats.finished_at = new Date().toISOString();\n\nconst sample = all.slice(0, 10);\nif (dryRun) {\n  return [{\n    json: {\n      ok: true,\n      dry_run: true,\n      realm,\n      since: sinceIso || null,\n      state,\n      default_type: defaultType,\n      batch_size: batchSize,\n      stats,\n      sample_issues: sample\n    }\n  }];\n}\n\nconst batches = [];\nfor (let i = 0; i < all.length; i += batchSize) {\n  batches.push(all.slice(i, i + batchSize));\n}\nstats.batches = batches.length;\n\nconst items = [];\nfor (let i = 0; i < batches.length; i += 1) {\n  items.push({\n    json: {\n      realm,\n      batch_index: i + 1,\n      batches_total: batches.length,\n      issues: batches[i]\n    }\n  });\n}\n\nif (!items.length) {\n  items.push({ json: { realm, batch_index: 0, batches_total: 0, issues: [] } });\n}\n\nreturn items;\n"
+      },
+      "id": "2",
+      "name": "Scan + Build (GitLab Issues → SoR batches)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.dry_run === true || $json.plan_only === true }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF Dry Run",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        760,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT\n    itsm.set_rls_context(NULLIF('{{ $json.realm }}',''), NULL, '[]'::jsonb, '[]'::jsonb, true) AS realm_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.issues || []).replace(/'/g, \"''\") }}','undefined')::jsonb, '[]'::jsonb) AS arr\n), rows AS (\n  SELECT\n    i.realm_id AS realm_id,\n    NULLIF(e->>'project_path','') AS project_path,\n    NULLIF(e->>'issue_iid','')::int AS issue_iid,\n    NULLIF(e->>'issue_url','') AS issue_url,\n    COALESCE(e->'gitlab_meta', '{}'::jsonb) AS gitlab_meta,\n    NULLIF(e->>'title','') AS title,\n    NULLIF(e->>'description','') AS description,\n    LOWER(NULLIF(e->>'status','')) AS status,\n    COALESCE(e->'actor', '{}'::jsonb) AS actor,\n    COALESCE(e->'reply_target', '{}'::jsonb) AS reply_target,\n    NULLIF(e->>'record_type_hint','') AS record_type_hint\n  FROM input i\n  JOIN LATERAL jsonb_array_elements(i.arr) e ON TRUE\n), ref AS (\n  SELECT\n    r.realm_id,\n    r.project_path,\n    r.issue_iid,\n    r.issue_url,\n    r.gitlab_meta,\n    r.title,\n    r.description,\n    r.status,\n    r.actor,\n    r.reply_target,\n    COALESCE(NULLIF(r.record_type_hint,''), 'service_request') AS desired_type,\n    'gitlab_issue'::text AS ref_type,\n    ('gitlab:issue:' || r.project_path || '#' || r.issue_iid::text) AS ref_key,\n    jsonb_build_object(\n      'project_path', r.project_path,\n      'issue_iid', r.issue_iid,\n      'issue_url', r.issue_url,\n      'gitlab', r.gitlab_meta,\n      'reply_target', r.reply_target\n    ) AS meta\n  FROM rows r\n  WHERE r.project_path IS NOT NULL AND r.issue_iid IS NOT NULL\n), existing AS (\n  SELECT\n    v.realm_id,\n    v.ref_type,\n    v.ref_key,\n    ex.resource_type,\n    ex.resource_id\n  FROM ref v\n  LEFT JOIN itsm.external_ref ex\n    ON ex.realm_id = v.realm_id AND ex.ref_type = v.ref_type AND ex.ref_key = v.ref_key\n), eff AS (\n  SELECT\n    v.*,\n    COALESCE(existing.resource_type, v.desired_type) AS resource_type_effective,\n    existing.resource_id AS existing_resource_id,\n    gen_random_uuid() AS new_resource_id\n  FROM ref v\n  LEFT JOIN existing USING (realm_id, ref_type, ref_key)\n), resolved AS (\n  SELECT\n    e.*,\n    COALESCE(e.existing_resource_id, e.new_resource_id) AS resource_id_effective\n  FROM eff e\n), ins_incident AS (\n  INSERT INTO itsm.incident (id, realm_id, number, title, description, status, requester_principal_id)\n  SELECT\n    r.resource_id_effective,\n    r.realm_id,\n    itsm.next_record_number(r.realm_id, 'incident', 'INC'),\n    r.title,\n    r.description,\n    CASE WHEN r.status = 'closed' THEN 'closed' ELSE 'new' END,\n    NULLIF(r.actor #>> '{email}', '')\n  FROM resolved r\n  WHERE r.resource_type_effective = 'incident' AND r.existing_resource_id IS NULL\n  ON CONFLICT (id) DO NOTHING\n  RETURNING 1\n), ins_srq AS (\n  INSERT INTO itsm.service_request (id, realm_id, number, title, description, status, requester_principal_id)\n  SELECT\n    r.resource_id_effective,\n    r.realm_id,\n    itsm.next_record_number(r.realm_id, 'service_request', 'SRQ'),\n    r.title,\n    r.description,\n    CASE WHEN r.status = 'closed' THEN 'closed' ELSE 'new' END,\n    NULLIF(r.actor #>> '{email}', '')\n  FROM resolved r\n  WHERE r.resource_type_effective = 'service_request' AND r.existing_resource_id IS NULL\n  ON CONFLICT (id) DO NOTHING\n  RETURNING 1\n), ins_prb AS (\n  INSERT INTO itsm.problem (id, realm_id, number, title, description, status)\n  SELECT\n    r.resource_id_effective,\n    r.realm_id,\n    itsm.next_record_number(r.realm_id, 'problem', 'PRB'),\n    r.title,\n    r.description,\n    CASE WHEN r.status = 'closed' THEN 'closed' ELSE 'new' END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'problem' AND r.existing_resource_id IS NULL\n  ON CONFLICT (id) DO NOTHING\n  RETURNING 1\n), ins_chg AS (\n  INSERT INTO itsm.change_request (id, realm_id, number, title, description, status)\n  SELECT\n    r.resource_id_effective,\n    r.realm_id,\n    itsm.next_record_number(r.realm_id, 'change_request', 'CHG'),\n    r.title,\n    r.description,\n    CASE WHEN r.status = 'closed' THEN 'closed' ELSE 'new' END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'change_request' AND r.existing_resource_id IS NULL\n  ON CONFLICT (id) DO NOTHING\n  RETURNING 1\n), upd_inc AS (\n  UPDATE itsm.incident i\n  SET\n    title = COALESCE(r.title, i.title),\n    description = COALESCE(r.description, i.description),\n    status = CASE WHEN r.status = 'closed' THEN 'closed' ELSE i.status END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'incident' AND i.id = r.resource_id_effective\n  RETURNING 1\n), upd_srq AS (\n  UPDATE itsm.service_request s\n  SET\n    title = COALESCE(r.title, s.title),\n    description = COALESCE(r.description, s.description),\n    status = CASE WHEN r.status = 'closed' THEN 'closed' ELSE s.status END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'service_request' AND s.id = r.resource_id_effective\n  RETURNING 1\n), upd_prb AS (\n  UPDATE itsm.problem p\n  SET\n    title = COALESCE(r.title, p.title),\n    description = COALESCE(r.description, p.description),\n    status = CASE WHEN r.status = 'closed' THEN 'closed' ELSE p.status END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'problem' AND p.id = r.resource_id_effective\n  RETURNING 1\n), upd_chg AS (\n  UPDATE itsm.change_request c\n  SET\n    title = COALESCE(r.title, c.title),\n    description = COALESCE(r.description, c.description),\n    status = CASE WHEN r.status = 'closed' THEN 'closed' ELSE c.status END\n  FROM resolved r\n  WHERE r.resource_type_effective = 'change_request' AND c.id = r.resource_id_effective\n  RETURNING 1\n), upsert_ref AS (\n  INSERT INTO itsm.external_ref (realm_id, resource_type, resource_id, ref_type, ref_key, ref_url, meta)\n  SELECT\n    r.realm_id,\n    r.resource_type_effective,\n    r.resource_id_effective,\n    r.ref_type,\n    r.ref_key,\n    r.issue_url,\n    r.meta\n  FROM resolved r\n  WHERE r.resource_id_effective IS NOT NULL\n  ON CONFLICT (realm_id, ref_type, ref_key) DO UPDATE\n  SET resource_type = EXCLUDED.resource_type,\n      resource_id = EXCLUDED.resource_id,\n      ref_url = EXCLUDED.ref_url,\n      meta = COALESCE(EXCLUDED.meta, itsm.external_ref.meta)\n  RETURNING 1\n)\nSELECT\n  (SELECT COUNT(*)::int FROM resolved) AS attempted,\n  (SELECT COUNT(*)::int FROM upsert_ref) AS upserted;\n"
+      },
+      "id": "4",
+      "name": "Bulk Upsert SoR Records",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet attempted = 0;\nlet upserted = 0;\nfor (const it of items) {\n  const row = it.json || {};\n  attempted += Number(row.attempted || 0);\n  upserted += Number(row.upserted || 0);\n}\n\nreturn [{\n  json: {\n    ok: true,\n    attempted,\n    upserted,\n    batches: items.length\n  }\n}];\n"
+      },
+      "id": "5",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1470,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scan + Build (GitLab Issues → SoR batches)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan + Build (GitLab Issues → SoR batches)": {
+      "main": [
+        [
+          {
+            "node": "IF Dry Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Dry Run": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bulk Upsert SoR Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bulk Upsert SoR Records": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

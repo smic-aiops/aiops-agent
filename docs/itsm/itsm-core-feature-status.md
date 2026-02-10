@@ -50,7 +50,7 @@
 | AIOps 既存承認履歴（`aiops_approval_history`）→ SoR バックフィル | 実装済み | `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh` | `itsm.approval` UPSERT + `itsm.audit_event` INSERT。 |
 | GitLab 過去決定（Issue 本文/Note）→ SoR バックフィル | 実装済み | `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json` | n8n で GitLab API を全件走査し `itsm.audit_event` へ投入。LLM 判定のみで広く拾い、`decision.recorded` に加えて `decision.candidate_detected` / `decision.classification_failed` も投入して「取り漏れ最小化」を優先できる（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）。 |
 | Zulip 過去メッセージ（GitLab を経由しない）→ SoR バックフィル | 実装済み | `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh` | Zulip API を走査し、決定マーカー（既定: `/decision` 等）から `decision.recorded` を生成して `itsm.audit_event` に投入（冪等キー: `zulip:decision:<message_id>`）。既定は `--dry-run`（スキャンなし）で、`--dry-run-scan`（スキャンのみ）/`--execute`（投入）を選択可能。既定は DM を除外（必要なら `--include-private`）。マーカーは `--decision-prefixes`（または `ZULIP_DECISION_PREFIXES`）で上書き可能。 |
-| GitLab Issue 全件 → SoR レコード（incident/srq/problem/change）バックフィル | 未実装 | （オンライン upsert は存在） | オンライン upsert: `apps/zulip_gitlab_issue_sync/workflows/zulip_gitlab_issue_sync.json`。全件走査は別途必要。 |
+| GitLab Issue 全件 → SoR レコード（incident/srq/problem/change）バックフィル | 実装済み | `apps/itsm_core/workflows/gitlab_issue_backfill_to_sor.json` | n8n で GitLab API を全件走査し、online upsert と同じルールで `itsm.(incident/service_request/problem/change_request)` + `itsm.external_ref` を upsert（Webhook: `POST /webhook/gitlab/issue/backfill/sor` / Test: `POST /webhook/gitlab/issue/backfill/sor/test`）。 |
 
 ## 5. ITSM レコード（Incident/Change/Request/Problem）運用機能
 
@@ -80,6 +80,6 @@
 
 ## 次に「未実装」を潰す優先候補（最小）
 
-1. **GitLab Issue 全件の SoR レコード化バックフィル**（online upsert と同じルールで全件走査）
-2. **RLS の適用/運用**（RLS を入れるなら `app.*` セッション変数設計とセットで）
-3. **状態遷移/必須フィールド**（incident/change/request/problem の運用ルールを CHECK/トリガ/アプリ側検証へ落とす）
+1. **RLS の適用/運用**（RLS を入れるなら `app.*` セッション変数設計とセットで）
+2. **状態遷移/必須フィールド**（incident/change/request/problem の運用ルールを CHECK/トリガ/アプリ側検証へ落とす）
+3. **GitLab Issue 全件バックフィルの運用手順整備**（増分 run / 例外処理 / 実行時間の見積もり）

@@ -73,13 +73,16 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
   - SoR（任意だが推奨）
     - 決定メッセージ（本文そのもの）を、共有 RDS(PostgreSQL) の `itsm.audit_event` にも `action=decision.recorded` として記録します（監査・横断検索用）。
     - 前提: `apps/itsm_core/sql/itsm_sor_core.sql` を RDS に適用済みであること。
-    - 既存データのバックフィル（SoR を“正”として運用する場合は推奨）
-      - AIOpsAgent の過去承認履歴: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
-	      - GitLab の過去決定（Issue 本文/Note）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json`
-	        - Webhook: `POST /webhook/gitlab/decision/backfill/sor`
-	        - リクエスト例（JSON）: `{ "realm":"default", "project_ids":"123,456", "since":"2026-01-01T00:00:00Z", "mode":"recall", "dry_run":true }`
-	        - 取り漏れ最小化（推奨）: LLM のみで広く拾い、確度が高いものは `decision.recorded`、グレーは `decision.candidate_detected`、分類失敗は `decision.classification_failed` として SoR に残す（後からレビュー/再判定が可能）
-	        - スモークテスト（SoR への bulk insert）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor/test`）
+	    - 既存データのバックフィル（SoR を“正”として運用する場合は推奨）
+	      - AIOpsAgent の過去承認履歴: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
+	      - GitLab Issue 全件 → SoR レコード backfill: `apps/itsm_core/workflows/gitlab_issue_backfill_to_sor.json`
+	        - Webhook: `POST /webhook/gitlab/issue/backfill/sor`
+	        - スモークテスト（SoR への bulk upsert）: `apps/itsm_core/workflows/gitlab_issue_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor/test`）
+		      - GitLab の過去決定（Issue 本文/Note）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json`
+		        - Webhook: `POST /webhook/gitlab/decision/backfill/sor`
+		        - リクエスト例（JSON）: `{ "realm":"default", "project_ids":"123,456", "since":"2026-01-01T00:00:00Z", "mode":"recall", "dry_run":true }`
+		        - 取り漏れ最小化（推奨）: LLM のみで広く拾い、確度が高いものは `decision.recorded`、グレーは `decision.candidate_detected`、分類失敗は `decision.classification_failed` として SoR に残す（後からレビュー/再判定が可能）
+		        - スモークテスト（SoR への bulk insert）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor/test`）
 
 ### 決定（GitLab）→通知（Zulip）
 

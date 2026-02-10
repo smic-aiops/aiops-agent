@@ -178,7 +178,7 @@ if is_truthy "${DRY_RUN}" && is_truthy "${SKIP_API_WHEN_DRY_RUN}"; then
     echo "[n8n] dry-run: would sync ${wf_name} (${file})"
   done
   if is_truthy "${RUN_TEST_WORKFLOWS}"; then
-    echo "[n8n] dry-run: would run smoke tests via /webhook/itsm/sor/audit_event/test and /webhook/gitlab/decision/backfill/sor/test"
+    echo "[n8n] dry-run: would run smoke tests via /webhook/itsm/sor/audit_event/test, /webhook/gitlab/decision/backfill/sor/test and /webhook/gitlab/issue/backfill/sor/test"
   fi
   exit 0
 fi
@@ -245,6 +245,7 @@ for realm in "${TARGET_REALMS[@]}"; do
     invoke_webhook_json "${realm_public_api_base_url}" "itsm/sor/audit_event/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\"}" >/dev/null
     result="$(invoke_webhook_json "${realm_public_api_base_url}" "gitlab/decision/backfill/sor/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\"}" || true)"
     echo "[n8n] smoke-test result: ${result}"
+    result="$(invoke_webhook_json "${realm_public_api_base_url}" "gitlab/issue/backfill/sor/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\"}" || true)"
+    echo "[n8n] smoke-test result: ${result}"
   fi
 done
-
