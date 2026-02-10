@@ -1,0 +1,100 @@
+{
+  "name": "gitlab-decision-backfill-to-sor-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/decision/backfill/sor/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst input = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\nconst realm = String(input.realm || $env.N8N_REALM || $env.N8N_OBSERVER_REALM || 'default').trim() || 'default';\nconst now = new Date().toISOString();\n\nconst baseKey = `test:${now}:${crypto.randomUUID()}`;\n\nconst events = [\n  {\n    occurred_at: now,\n    actor: { name: 'gitlab-decision-backfill-to-sor-test' },\n    actor_type: 'automation',\n    action: 'decision.recorded',\n    source: 'gitlab',\n    resource_type: 'gitlab_issue',\n    correlation_id: 'test:gitlab#1',\n    reply_target: { source: 'n8n', webhook: 'gitlab/decision/backfill/sor/test' },\n    summary: 'Test: decision.recorded',\n    message: input.message || 'This is a test decision.',\n    after: { ok: true, test: true },\n    integrity: { event_key: `${baseKey}:recorded` }\n  },\n  {\n    occurred_at: now,\n    actor: { name: 'gitlab-decision-backfill-to-sor-test' },\n    actor_type: 'automation',\n    action: 'decision.candidate_detected',\n    source: 'gitlab',\n    resource_type: 'gitlab_issue',\n    correlation_id: 'test:gitlab#1',\n    reply_target: { source: 'n8n', webhook: 'gitlab/decision/backfill/sor/test' },\n    summary: 'Test: decision.candidate_detected',\n    message: 'This looks like a decision candidate.',\n    after: { ok: true, test: true },\n    integrity: { event_key: `${baseKey}:candidate` }\n  },\n  {\n    occurred_at: now,\n    actor: { name: 'gitlab-decision-backfill-to-sor-test' },\n    actor_type: 'automation',\n    action: 'decision.classification_failed',\n    source: 'gitlab',\n    resource_type: 'gitlab_issue',\n    correlation_id: 'test:gitlab#1',\n    reply_target: { source: 'n8n', webhook: 'gitlab/decision/backfill/sor/test' },\n    summary: 'Test: decision.classification_failed',\n    message: 'LLM failed (simulated).',\n    after: { ok: false, test: true, decision_classifier: { ok: false, error: 'simulated' } },\n    integrity: { event_key: `${baseKey}:failed` }\n  }\n];\n\nreturn [{ json: { realm, events } }];\n"
+      },
+      "id": "2",
+      "name": "Build Test Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT\n    itsm.get_realm_id(NULLIF('{{ $json.realm }}','')) AS realm_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.events || []).replace(/'/g, \"''\") }}','undefined')::jsonb, '[]'::jsonb) AS arr\n), rows AS (\n  SELECT\n    i.realm_id AS realm_id,\n    NULLIF(e->>'occurred_at','') AS occurred_at_raw,\n    COALESCE(e->'actor', '{}'::jsonb) AS actor,\n    COALESCE(NULLIF(e->>'actor_type',''), 'unknown') AS actor_type,\n    COALESCE(NULLIF(e->>'action',''), '') AS action,\n    COALESCE(NULLIF(e->>'source',''), '') AS source,\n    NULLIF(e->>'resource_type','') AS resource_type,\n    NULLIF(e->>'correlation_id','') AS correlation_id,\n    COALESCE(e->'reply_target', '{}'::jsonb) AS reply_target,\n    NULLIF(e->>'summary','') AS summary,\n    NULLIF(e->>'message','') AS message,\n    COALESCE(e->'after', '{}'::jsonb) AS after,\n    COALESCE(e->'integrity', '{}'::jsonb) AS integrity\n  FROM input i\n  JOIN LATERAL jsonb_array_elements(i.arr) e ON TRUE\n), ins AS (\n  INSERT INTO itsm.audit_event (\n    realm_id, occurred_at, actor, actor_type, action, source,\n    resource_type, correlation_id, reply_target, summary, message, after, integrity\n  )\n  SELECT\n    r.realm_id,\n    COALESCE(NULLIF(r.occurred_at_raw,'')::timestamptz, NOW()),\n    r.actor,\n    r.actor_type,\n    r.action,\n    r.source,\n    r.resource_type,\n    r.correlation_id,\n    r.reply_target,\n    r.summary,\n    r.message,\n    r.after,\n    r.integrity\n  FROM rows r\n  WHERE r.action <> '' AND r.source <> ''\n  ON CONFLICT DO NOTHING\n  RETURNING 1\n)\nSELECT\n  (SELECT COUNT(*)::int FROM rows) AS attempted,\n  (SELECT COUNT(*)::int FROM ins) AS inserted;\n"
+      },
+      "id": "3",
+      "name": "Bulk Insert SoR Audit Events",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Test Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Test Batch": {
+      "main": [
+        [
+          {
+            "node": "Bulk Insert SoR Audit Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bulk Insert SoR Audit Events": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}
+

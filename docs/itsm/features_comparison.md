@@ -5,7 +5,8 @@
 前提（本リポジトリ側の主要要素）:
 - 認証/認可: Keycloak（OIDC）
 - 連携/自動化: n8n（Webhook/スケジュール/外部API連携）
-- 記録/起票/CMDB（正）: GitLab（Issue/Repo/`cmdb/`）
+- 記録/起票/CMDB（現状の正）: GitLab（Issue/Repo/`cmdb/`）
+- SoR（正規化DB）: 共有 RDS(PostgreSQL) の `itsm.*`（承認・決定・正規化レコードを集約）
 - コミュニケーション: Zulip
 - 構成自動化/構成収集: Exastro ITA
 - 監視参照/可視化: Grafana（CloudWatch/Athena 等）

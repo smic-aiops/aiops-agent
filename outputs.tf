@@ -1109,6 +1109,30 @@ output "itsm_monitoring_context" {
   sensitive   = false
 }
 
+output "itsm_audit_event_anchor_bucket_name" {
+  description = "S3 bucket name for anchoring ITSM audit_event hash-chain heads (WORM)."
+  value       = module.stack.itsm_audit_event_anchor_bucket_name
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_enabled" {
+  description = "Whether S3 Object Lock is enabled for the ITSM audit_event anchor bucket."
+  value       = module.stack.itsm_audit_event_anchor_object_lock_enabled
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_mode" {
+  description = "Default S3 Object Lock mode for ITSM audit_event anchor objects."
+  value       = module.stack.itsm_audit_event_anchor_object_lock_mode
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_retention_days" {
+  description = "Default S3 Object Lock retention days for ITSM audit_event anchor objects."
+  value       = module.stack.itsm_audit_event_anchor_object_lock_retention_days
+  sensitive   = false
+}
+
 output "service_control_web_monitoring_targets" {
   description = "Web monitoring targets for service control (service => url)"
   value       = local.service_control_web_monitoring_targets_effective

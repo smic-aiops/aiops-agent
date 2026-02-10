@@ -3,6 +3,10 @@
 本書は「統合データモデル（テーブル/参照/ACL）」の **不足（△）** を埋めるための詳細設計です。  
 狙いは **ITSM コア DB（PostgreSQL/RDS）を “正のデータ（System of Record）”** として定義し、**GitLab は変更/証跡（Change & Evidence）へ寄せる** ことです。
 
+実装との関係:
+- 本リポジトリの **実装（MVP）の正** は `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.*` スキーマ）です。
+- 本書は「最小核（MVP）」に加えて、段階拡張（将来追加）も含むため、列/制約が実装より多い場合があります（運用で必要になったものから DDL へ追随します）。
+
 ---
 
 ## 0. 前提と方針（正のデータ境界）
@@ -140,9 +144,12 @@ erDiagram
 | 列 | 型 | 例 | 備考 |
 |---|---|---|---|
 | `id` | `uuid` |  | PK |
-| `key` | `text` | `tenant-a` | Keycloak realm 名に一致（ユニーク） |
+| `realm_key` | `text` | `tenant-a` | Keycloak realm 名に一致（ユニーク） |
 | `name` | `text` | `Tenant A` | 表示名 |
 | `created_at` | `timestamptz` |  |  |
+
+補足:
+- 実装では `itsm.get_realm_id(realm_key)` で realm を冪等に作成/取得します（n8n ワークフロー/バックフィルが利用）。
 
 #### `itsm.record_number_sequence`（採番）
 
@@ -172,8 +179,9 @@ erDiagram
 | `created_at` | `timestamptz` |  | |
 
 制約（推奨）:
-- `(realm_id, resource_type, resource_id, ref_type, ref_key)` をユニーク
-- `ref_key` は “再生成可能” ではなく “識別子” として固定する
+- 実装: `(realm_id, resource_type, resource_id, ref_type, ref_key)` をユニーク
+- 実装: `(realm_id, ref_type, ref_key)` をユニーク（外部 ID の重複取り込み防止）
+- `ref_key` は “再生成可能” ではなく “識別子” として固定する（例: `gitlab:issue:<project>#<iid>`）
 
 #### `itsm.resource_acl`（例外 ACL）
 
@@ -218,6 +226,9 @@ erDiagram
 | `size_bytes` | `bigint` |  | |
 | `sha256` | `text` |  | 改ざん検知用（任意） |
 | `created_by_principal_id` | `text` | `kc-sub` | |
+| `deleted_at` | `timestamptz` |  | 運用上の削除（取り下げ/誤登録）: ソフトデリート |
+| `deleted_by_principal_id` | `text` | `kc-sub` | ソフトデリート実行者（任意） |
+| `delete_reason` | `text` |  | 任意 |
 | `created_at` | `timestamptz` |  | |
 
 #### `itsm.tag`（共通タグ）
@@ -300,6 +311,9 @@ erDiagram
 | `resolved_at` | `timestamptz` |  | |
 | `closed_at` | `timestamptz` |  | |
 | `visibility` | `text` | `internal/confidential` | **ACL の補助**（後述） |
+| `deleted_at` | `timestamptz` |  | 運用上の削除（取り下げ/誤登録）: ソフトデリート |
+| `deleted_by_principal_id` | `text` | `kc-sub` | ソフトデリート実行者（任意） |
+| `delete_reason` | `text` |  | 任意 |
 | `created_at` | `timestamptz` |  | |
 | `updated_at` | `timestamptz` |  | |
 
@@ -320,6 +334,9 @@ erDiagram
 | `planned_end_at` | `timestamptz` |  | |
 | `implementation_plan` | `text` |  | 重要なら GitLab MR/Runbook を正にし、ここは要約にする |
 | `backout_plan` | `text` |  | |
+| `deleted_at` | `timestamptz` |  | 運用上の削除（取り下げ/誤登録）: ソフトデリート |
+| `deleted_by_principal_id` | `text` | `kc-sub` | ソフトデリート実行者（任意） |
+| `delete_reason` | `text` |  | 任意 |
 | `created_at` | `timestamptz` |  | |
 | `updated_at` | `timestamptz` |  | |
 
@@ -394,6 +411,9 @@ Incident/Change/Export 等の “承認” を共通テーブルで扱い、**�
 | `approved_at` | `timestamptz` |  | |
 | `decision_reason` | `text` |  | |
 | `evidence` | `jsonb` | `{ "gitlab_issue": "...", "hmac": "..." }` | 改ざん検知や外部証跡の最小メタ |
+| `deleted_at` | `timestamptz` |  | 運用上の削除（取り下げ/誤登録）: ソフトデリート |
+| `deleted_by_principal_id` | `text` | `kc-sub` | ソフトデリート実行者（任意） |
+| `delete_reason` | `text` |  | 任意 |
 | `created_at` | `timestamptz` |  | |
 | `updated_at` | `timestamptz` |  | |
 
@@ -401,21 +421,59 @@ Incident/Change/Export 等の “承認” を共通テーブルで扱い、**�
 
 - 目的: “誰が・いつ・何を” を DB 側でも追えるようにする（GitLab だけに寄せない）
 - 原則: **更新ではなく追記**（イベントログは append-only）
+- 改ざん耐性: append-only（UPDATE/DELETE 拒否）＋ハッシュチェーン（`integrity.prev_hash/hash`）＋外部アンカー（S3 Object Lock 等）で成立させる
 
 | 列 | 型 | 例 | 備考 |
 |---|---|---|---|
 | `id` | `uuid` |  | PK |
 | `realm_id` | `uuid` |  | FK |
+| `chain_seq` | `bigint` | `12345` | **ハッシュチェーンの順序キー**（DB側で連番を採番） |
+| `inserted_at` | `timestamptz` |  | **DB 側の挿入時刻**（ユーザー入力は無視） |
 | `occurred_at` | `timestamptz` |  | |
-| `actor_principal_id` | `text` | `kc-sub` | |
-| `actor_type` | `text` | `human/automation` | |
-| `action` | `text` | `incident.create/change.approve/...` | |
-| `resource_type` | `text` | `incident/change_request/...` | |
-| `resource_id` | `uuid` |  | |
-| `correlation_id` | `text` | `evt-...` | CloudWatch/EventBridge/n8n で引き回す |
-| `before` | `jsonb` |  | 変更前（必要に応じて） |
-| `after` | `jsonb` |  | 変更後（必要に応じて） |
-| `integrity` | `jsonb` | `{ "prev_hash": "...", "hash": "..." }` | ハッシュチェーン等（任意） |
+| `actor` | `jsonb` | `{ "email": "...", "name": "..." }` | 送信元の素性（人/自動化を含む） |
+| `actor_type` | `text` | `human/automation/unknown` | |
+| `action` | `text` | `decision.recorded/approval.approved/...` | |
+| `source` | `text` | `zulip/gitlab/aiops_agent/...` | どこで決まったか |
+| `resource_type` | `text` | `approval/incident/...` | 任意 |
+| `resource_id` | `uuid` |  | 任意 |
+| `correlation_id` | `text` | `trace_id/context_id/...` | n8n 側で引き回す |
+| `reply_target` | `jsonb` | `{ "source":"zulip", "stream_id":"...", "topic":"..." }` | `/decisions` のスレッド特定などに利用 |
+| `summary` | `text` |  | 短い要約（任意） |
+| `message` | `text` |  | 決定メッセージ本文（任意） |
+| `before` | `jsonb` |  | 変更前（任意） |
+| `after` | `jsonb` |  | 変更後/関連情報（任意） |
+| `integrity` | `jsonb` | `{ "event_key":"...", "prev_hash":"...", "hash":"..." }` | 冪等キー + ハッシュチェーンメタ（任意） |
+
+冪等性（必須）:
+- 実装では `integrity.event_key` を安定キーとして、SoR への二重投入を防ぎます（例: `gitlab:note:<project_id>:<note_id>`）。
+
+改ざん耐性（実装）:
+- DB は `itsm.audit_event` を **append-only** として扱い、UPDATE/DELETE を拒否します。
+- INSERT 時に DB が `integrity.prev_hash` と `integrity.hash` を自動計算して **ハッシュチェーン** を形成します（アプリ側が指定しても上書きされます）。
+- 外部アンカー（推奨）: 最新の `integrity.hash`（チェーン先頭）を定期的に S3 Object Lock（WORM）へ保存して、DB 管理者が DB 内で辻褄を合わせる攻撃を難しくします。
+  - Terraform: `itsm_audit_event_anchor_enabled=true` でアンカーバケットを作成（Object Lock 付き）
+  - スクリプト: `apps/itsm_core/scripts/anchor_itsm_audit_event_hash.sh`（realm 単位で先頭ハッシュをアンカー）
+  - 検証関数: `itsm.audit_event_verify_hash_chain(realm_id)`（`ok=false` の行があれば改ざん/欠落/順序破綻の疑い）
+
+#### `itsm.retention_policy`（保持ポリシー）
+
+レルム別の保持年限/削除可否を DB 上の “変数” として管理します（既定値は `itsm.ensure_retention_policy(realm_id)` により遅延投入）。
+
+| 列 | 型 | 例 | 備考 |
+|---|---|---|---|
+| `id` | `uuid` |  | PK |
+| `realm_id` | `uuid` |  | FK |
+| `policy_key` | `text` | `incident/change_request/approval/audit_event/attachment` | 対象カテゴリ |
+| `retain_years` | `int` | `7/10` | 保持年限 |
+| `soft_delete_grace_days` | `int` | `30` | ソフトデリート後の物理削除猶予 |
+| `hard_delete_enabled` | `boolean` | `false` | 監査ログは既定で false |
+| `pii_redaction_enabled` | `boolean` | `true` | PII 匿名化の有効/無効 |
+| `created_at` | `timestamptz` |  | |
+| `updated_at` | `timestamptz` |  | |
+
+運用:
+- purge: `itsm.apply_retention(realm_id, dry_run)`（`apps/itsm_core/scripts/apply_itsm_sor_retention.sh`）
+- PII 匿名化: `itsm.anonymize_principal(realm_id, principal_id, dry_run)`（`apps/itsm_core/scripts/anonymize_itsm_principal.sh`）
 
 ---
 
@@ -453,6 +511,23 @@ API サービスが DB 接続後に以下を `SET LOCAL` する前提:
 - `app.roles`（CSV あるいは JSON）
 - `app.groups`（Keycloak group IDs）
 
+実運用の注意（特に n8n の “DB 直叩き”）:
+
+- **RLS を有効化すると、RLS の対象クエリは必ず `app.realm_key`（または `app.realm_id`）が設定済みである必要があります。**
+- **コネクションプール + autocommit** の組み合わせでは、`SET LOCAL` の設定漏れ/別トランザクションへの持ち越し事故が起きやすいです。
+  原則として以下のどちらかで “毎回確実に realm を固定” してください。
+
+推奨パターン A（n8n など、1つの実行環境が 1 realm に固定できる場合）:
+
+- DB 側で **(DB role, database) の既定値**として `app.*` を永続設定する。
+  例: `ALTER ROLE <db_user> IN DATABASE <db_name> SET app.realm_key = 'tenant-a';`
+- このリポジトリには、既定値を投入するスクリプトとして `apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh` を用意しています。
+
+推奨パターン B（API サービス等、同一コネクションで複数 realm を扱う可能性がある場合）:
+
+- **必ずトランザクションごとに `SET LOCAL app.*`** を行う（または、単一 SQL 文の先頭で `set_config('app.*', ..., true)` を同一文内に含めて確実化する）。
+- 誤設定/未設定時は “fail close（行が見えない/書けない）” を選び、監視で検知できるようにする。
+
 RLS は “誤実装時の保険” であり、**最終責任は API 層**に置きます（DB だけで完全なフィールド ACL をやり切らない）。
 
 ---
@@ -486,6 +561,8 @@ DB 側は `external_ref` に GitLab の参照を保存し、双方向リンク�
   - SSM パラメータ名（例: `/env/itsm/tenant-a/n8n/api_key`）
   - Secrets Manager の ARN
   - 秘密の種類/用途/ローテーション方針（メタデータ）
+- 実体（値）は SSM SecureString / Secrets Manager に置き、アプリへは ECS Task の secret として注入する
+  - 例: Sulu が SoR（`itsm.*`）を参照する `ITSM_SOR_DATABASE_URL` は、SSM SecureString `/${name_prefix}/itsm_sor/database_url` から注入する
 
 ---
 
@@ -503,5 +580,5 @@ DB 側は `external_ref` に GitLab の参照を保存し、双方向リンク�
 ## 8. 次の成果物（本書の後に作るもの）
 
 - `docs/itsm/api.md`（OpenAPI: CRUD + 検索 + 承認 + 監査イベント）
-- `apps/itsm_core/`（API サービス実装）※必要になったタイミングで追加
+- `apps/aiops_agent/`（SoR 実装/運用スクリプトの配置先）
 - GitLab テンプレの更新（Issue/MR の必須項目化）

@@ -1,0 +1,162 @@
+{
+  "name": "gitlab-decision-backfill-to-sor",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/decision/backfill/sor",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const env = $env || {};\nconst input = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\n\nfunction trimSlash(value) {\n  return String(value || '').replace(/\\/+$/, '');\n}\n\nfunction parseList(value) {\n  if (!value) return [];\n  if (Array.isArray(value)) return value.filter(Boolean);\n  return String(value)\n    .split(',')\n    .map((v) => v.trim())\n    .filter(Boolean);\n}\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on', 'enabled'].includes(v);\n}\n\nfunction toInt(value, fallback) {\n  const n = Number.parseInt(String(value ?? ''), 10);\n  return Number.isFinite(n) ? n : fallback;\n}\n\nfunction toFloat(value, fallback) {\n  const n = Number.parseFloat(String(value ?? ''));\n  return Number.isFinite(n) ? n : fallback;\n}\n\nfunction clamp01(value) {\n  const n = Number(value);\n  if (!Number.isFinite(n)) return 0;\n  return Math.max(0, Math.min(1, n));\n}\n\nfunction firstNonEmptyLine(text) {\n  const lines = String(text || '').split(/\\r?\\n/);\n  for (const line of lines) {\n    const t = String(line || '').trim();\n    if (t) return t;\n  }\n  return '';\n}\n\nfunction parseJsonFromText(text) {\n  const raw = String(text || '').trim();\n  if (!raw) return null;\n  const cleaned = raw.replace(/^```(?:json)?\\s*/i, '').replace(/```\\s*$/i, '').trim();\n  try {\n    return JSON.parse(cleaned);\n  } catch (error) {}\n  const start = cleaned.indexOf('{');\n  const end = cleaned.lastIndexOf('}');\n  if (start >= 0 && end > start) {\n    try {\n      return JSON.parse(cleaned.slice(start, end + 1));\n    } catch (error) {}\n  }\n  return null;\n}\n\nfunction looksLikeZulipSyncEvidence(text) {\n  const t = String(text || '');\n  if (t.includes('### 決定（Zulip）')) return true;\n  if (t.includes('### Zulip更新')) return true;\n  if (t.includes('### Zulipクローズ')) return true;\n  if (t.includes('### Zulip再オープン')) return true;\n  return false;\n}\n\nfunction parseZulipReplyTarget(text) {\n  const raw = String(text || '');\n  const m = raw.match(/#narrow\\/stream\\/(?<stream_id>\\d+)\\/topic\\/(?<topic>[^/]+)\\/near\\/(?<message_id>\\d+)/);\n  if (!m || !m.groups) return null;\n  const { stream_id, topic, message_id } = m.groups;\n  let decodedTopic = '';\n  try {\n    decodedTopic = decodeURIComponent(String(topic || ''));\n  } catch (error) {\n    decodedTopic = String(topic || '');\n  }\n  return { source: 'zulip', stream_id: String(stream_id), topic: decodedTopic, message_id: String(message_id) };\n}\n\nfunction buildGitlabApiBase() {\n  const baseRaw = trimSlash(env.GITLAB_API_BASE_URL || env.GITLAB_API_BASE_URL || '');\n  if (baseRaw) return baseRaw;\n  const uiBase = trimSlash(env.N8N_GITLAB_BASE_URL || env.GITLAB_BASE_URL || env.GITLAB_URL || env.SERVICE_URL_GITLAB || '');\n  if (!uiBase) return '';\n  if (uiBase.endsWith('/api/v4')) return uiBase;\n  return `${uiBase}/api/v4`;\n}\n\nconst realm = String(input.realm || env.N8N_REALM || env.N8N_OBSERVER_REALM || 'default').trim() || 'default';\nconst projectIdsCsv = String(input.project_ids || input.project_ids_csv || '').trim();\nconst sinceIso = String(input.since || '').trim();\nconst dryRun = isTruthy(input.dry_run);\nconst planOnly = isTruthy(input.plan_only);\nconst mode = String(input.mode || 'recall').trim().toLowerCase();\n\nif (!projectIdsCsv) {\n  throw new Error('project_ids is required (CSV).');\n}\n\nconst gitlabApiBase = buildGitlabApiBase();\nconst gitlabToken = String(env.GITLAB_TOKEN || env.GITLAB_ADMIN_TOKEN || '').trim();\nif (!gitlabApiBase) throw new Error('GitLab API base URL is missing. Set GITLAB_API_BASE_URL or N8N_GITLAB_BASE_URL/GITLAB_BASE_URL.');\nif (!gitlabToken) throw new Error('GitLab token is missing. Set GITLAB_TOKEN (or GITLAB_ADMIN_TOKEN).');\n\n// LLM config (OpenAI-compatible Chat Completions)\nconst llmApiBase = trimSlash(env.GITLAB_DECISION_LLM_API_BASE_URL || 'https://api.openai.com/v1');\nconst llmModel = String(env.GITLAB_DECISION_LLM_MODEL || 'gpt-4o-mini').trim();\nconst llmApiKey = String(\n  env.GITLAB_DECISION_LLM_API_KEY ||\n  env.OPENAI_MODEL_API_KEY ||\n  env.OPENAI_API_KEY ||\n  env.N8N_LLM_API_KEY ||\n  ''\n).trim();\n\nif (!planOnly) {\n  if (!llmApiBase || !llmModel || !llmApiKey) {\n    throw new Error('LLM configuration is missing. Set GITLAB_DECISION_LLM_API_KEY (and optionally GITLAB_DECISION_LLM_API_BASE_URL/GITLAB_DECISION_LLM_MODEL).');\n  }\n}\n\n// Mode presets\nlet includeIssueDescriptions = true;\nlet recordCandidates = true;\nlet recordLlmErrors = true;\nlet minConfidence = toFloat(env.GITLAB_DECISION_LLM_MIN_CONFIDENCE, 0.5);\nlet decisionMinScore = toFloat(env.GITLAB_DECISION_LLM_DECISION_MIN_SCORE, 0.55);\nlet candidateMinScore = toFloat(env.GITLAB_DECISION_LLM_CANDIDATE_MIN_SCORE, 0.25);\nlet maxTextChars = toInt(env.GITLAB_DECISION_LLM_MAX_TEXT_CHARS, 2000);\nlet maxLlmCalls = toInt(env.GITLAB_DECISION_LLM_MAX_CALLS_PER_RUN, 0); // 0 = unlimited\n\nif (mode === 'precision') {\n  includeIssueDescriptions = false;\n  recordCandidates = false;\n  recordLlmErrors = false;\n  minConfidence = toFloat(env.GITLAB_DECISION_LLM_MIN_CONFIDENCE, 0.75);\n  decisionMinScore = toFloat(env.GITLAB_DECISION_LLM_DECISION_MIN_SCORE, 0.5);\n  candidateMinScore = toFloat(env.GITLAB_DECISION_LLM_CANDIDATE_MIN_SCORE, 0.3);\n  maxTextChars = toInt(env.GITLAB_DECISION_LLM_MAX_TEXT_CHARS, 400);\n  maxLlmCalls = toInt(env.GITLAB_DECISION_LLM_MAX_CALLS_PER_RUN, 10);\n}\n\nif (input.include_issue_descriptions !== undefined) includeIssueDescriptions = isTruthy(input.include_issue_descriptions);\nif (input.record_candidates !== undefined) recordCandidates = isTruthy(input.record_candidates);\nif (input.record_llm_errors !== undefined) recordLlmErrors = isTruthy(input.record_llm_errors);\nif (input.min_confidence !== undefined) minConfidence = toFloat(input.min_confidence, minConfidence);\nif (input.decision_min_score !== undefined) decisionMinScore = toFloat(input.decision_min_score, decisionMinScore);\nif (input.candidate_min_score !== undefined) candidateMinScore = toFloat(input.candidate_min_score, candidateMinScore);\nif (input.max_text_chars !== undefined) maxTextChars = toInt(input.max_text_chars, maxTextChars);\nif (input.max_llm_calls !== undefined) maxLlmCalls = toInt(input.max_llm_calls, maxLlmCalls);\n\nconst batchSize = Math.max(1, toInt(input.batch_size, toInt(env.GITLAB_DECISION_BACKFILL_BATCH_SIZE, 200)));\n\nfunction shouldRecordDecision(classified) {\n  if (!classified?.ok) return false;\n  return (classified.decision_score >= decisionMinScore) && (classified.confidence >= minConfidence);\n}\n\nfunction shouldRecordCandidate(classified) {\n  if (!classified?.ok) return false;\n  return classified.decision_score >= candidateMinScore;\n}\n\nfunction classifierMeta(classified) {\n  if (!classified) return {};\n  if (!classified.ok) {\n    return {\n      ok: false,\n      method: 'llm',\n      model: llmModel,\n      error: classified.error || 'unknown',\n      thresholds: { decision_min_score: decisionMinScore, candidate_min_score: candidateMinScore, min_confidence: minConfidence },\n      config: { mode, max_text_chars: maxTextChars }\n    };\n  }\n  return {\n    ok: true,\n    method: classified.method,\n    model: classified.model,\n    decision_score: classified.decision_score,\n    confidence: classified.confidence,\n    is_decision: classified.is_decision,\n    category: classified.category ?? null,\n    reason: classified.reason ?? null,\n    thresholds: { decision_min_score: decisionMinScore, candidate_min_score: candidateMinScore, min_confidence: minConfidence },\n    config: { mode, max_text_chars: maxTextChars }\n  };\n}\n\nlet llmCalls = 0;\nasync function llmClassifyDecision(context) {\n  if (maxLlmCalls > 0 && llmCalls >= maxLlmCalls) {\n    return { ok: false, error: 'llm_max_calls_exceeded' };\n  }\n  llmCalls += 1;\n\n  let response;\n  try {\n    response = await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${llmApiBase}/chat/completions`,\n      json: true,\n      timeout: 30000,\n      headers: { Authorization: `Bearer ${llmApiKey}` },\n      body: {\n        model: llmModel,\n        temperature: 0,\n        max_tokens: 250,\n        messages: [\n          {\n            role: 'system',\n            content:\n              'あなたは文章が「決定/承認（実施・採用・却下・クローズ等の意思決定）」に該当するかを判定する分類器です。' +\n              '出力は必ずJSONのみ。必須キー: decision_score(0-1; 決定である確からしさ), confidence(0-1; 判定の確信度), is_decision(boolean), category(string), reason(string;短く1文)。' +\n              '疑わしい場合は decision_score を下げ、is_decision=false とする。'\n          },\n          { role: 'user', content: JSON.stringify(context) }\n        ]\n      }\n    });\n  } catch (error) {\n    return { ok: false, error: `llm_request_failed:${String(error?.message || error)}` };\n  }\n\n  const content = response?.choices?.[0]?.message?.content ?? '';\n  const parsed = parseJsonFromText(content);\n  if (!parsed || typeof parsed !== 'object') {\n    return { ok: false, error: 'llm_invalid_json' };\n  }\n\n  const confidence = clamp01(parsed.confidence);\n  const decisionScoreRaw = (parsed.decision_score !== undefined) ? parsed.decision_score : (parsed.is_decision ? 1 : 0);\n  const decision_score = clamp01(decisionScoreRaw);\n  const is_decision = (parsed.is_decision !== undefined) ? Boolean(parsed.is_decision) : (decision_score >= 0.5);\n\n  return {\n    ok: true,\n    method: 'llm',\n    model: llmModel,\n    decision_score,\n    confidence,\n    is_decision,\n    category: parsed.category ?? null,\n    reason: parsed.reason ?? null\n  };\n}\n\nasync function httpGet(url, qs) {\n  const res = await this.helpers.httpRequest({\n    method: 'GET',\n    url,\n    qs,\n    json: true,\n    timeout: 30000,\n    returnFullResponse: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken }\n  });\n  const headers = res?.headers || {};\n  const nextPage = String(headers['x-next-page'] || headers['X-Next-Page'] || '').trim();\n  return { body: res?.body, next_page: nextPage };\n}\n\nasync function* paginate(url, params) {\n  let page = 1;\n  const perPage = 100;\n  while (true) {\n    const { body, next_page } = await httpGet(url, { ...(params || {}), per_page: perPage, page });\n    const items = Array.isArray(body) ? body : [];\n    for (const it of items) yield it;\n    if (!next_page) break;\n    const n = Number.parseInt(next_page, 10);\n    if (!Number.isFinite(n) || n <= page) break;\n    page = n;\n  }\n}\n\nfunction shouldSkipBySince(iso) {\n  if (!sinceIso) return false;\n  const t = Date.parse(String(iso || ''));\n  const s = Date.parse(sinceIso);\n  if (!Number.isFinite(t) || !Number.isFinite(s)) return false;\n  return t < s;\n}\n\nfunction buildEvent({\n  occurred_at,\n  action,\n  actor,\n  message,\n  summary,\n  reply_target,\n  after,\n  integrity,\n  correlation_id\n}) {\n  return {\n    occurred_at: occurred_at || null,\n    actor: actor || {},\n    actor_type: (actor && Object.keys(actor).length) ? 'human' : 'unknown',\n    action,\n    source: 'gitlab',\n    resource_type: 'gitlab_issue',\n    correlation_id: correlation_id || null,\n    reply_target: reply_target || {},\n    summary: summary || null,\n    message: message || null,\n    after: after || {},\n    integrity: integrity || {}\n  };\n}\n\nif (planOnly) {\n  return [{\n    json: {\n      ok: true,\n      plan_only: true,\n      realm,\n      project_ids: parseList(projectIdsCsv),\n      since: sinceIso || null,\n      mode,\n      batch_size: batchSize,\n      include_issue_descriptions: includeIssueDescriptions,\n      record_candidates: recordCandidates,\n      record_llm_errors: recordLlmErrors,\n      thresholds: { decision_min_score: decisionMinScore, candidate_min_score: candidateMinScore, min_confidence: minConfidence },\n      llm: { api_base: llmApiBase, model: llmModel, max_text_chars: maxTextChars, max_calls: maxLlmCalls || null },\n      gitlab_api_base: gitlabApiBase\n    }\n  }];\n}\n\nconst projectIds = parseList(projectIdsCsv);\nconst stats = {\n  project_ids: projectIds,\n  scanned_issues: 0,\n  scanned_notes: 0,\n  llm_calls: 0,\n  recorded: 0,\n  candidates: 0,\n  failures: 0,\n  skipped_low_score: 0,\n  skipped_since: 0,\n  started_at: new Date().toISOString()\n};\n\nconst batches = [];\nlet cur = [];\n\nfunction flush() {\n  if (!cur.length) return;\n  batches.push(cur);\n  cur = [];\n}\n\nfor (const pid of projectIds) {\n  const issuesUrl = `${gitlabApiBase}/projects/${encodeURIComponent(String(pid))}/issues`;\n  for await (const issue of paginate(issuesUrl, { scope: 'all', state: 'all' })) {\n    const iid = issue?.iid;\n    if (iid === undefined || iid === null) continue;\n    stats.scanned_issues += 1;\n\n    const issueId = issue?.id;\n    const issueUrl = String(issue?.web_url || '').trim();\n    const title = String(issue?.title || '').trim();\n    const description = String(issue?.description || '');\n    const labels = Array.isArray(issue?.labels) ? issue.labels : [];\n    const state = String(issue?.state || '').trim();\n\n    const replyTarget = parseZulipReplyTarget(description) || { source: 'gitlab', project_id: String(pid), issue_iid: String(iid) };\n    const correlationId = `gitlab:${pid}#${iid}`;\n\n    if (includeIssueDescriptions && description.trim() && !looksLikeZulipSyncEvidence(description)) {\n      const occurred = String(issue?.updated_at || issue?.created_at || '').trim();\n      if (shouldSkipBySince(occurred)) {\n        stats.skipped_since += 1;\n      } else {\n        const first = firstNonEmptyLine(description);\n        const ctx = {\n          kind: 'issue_description',\n          project_id: String(pid),\n          issue_iid: iid,\n          issue_id: issueId,\n          issue_url: issueUrl || null,\n          issue_title: title || null,\n          issue_state: state || null,\n          issue_labels: labels,\n          first_line: first.slice(0, 200),\n          text: description.trim().slice(0, maxTextChars)\n        };\n        const classified = await llmClassifyDecision.call(this, ctx);\n        stats.llm_calls = llmCalls;\n\n        const after = {\n          gitlab_project_id: pid,\n          gitlab_issue_iid: iid,\n          gitlab_issue_url: issueUrl || null,\n          gitlab_issue_description: true,\n          decision_classifier: classifierMeta(classified)\n        };\n        const integrityBase = {\n          event_key: `gitlab:issue:${pid}:${issueId}:description`,\n          project_id: pid,\n          issue_iid: iid,\n          issue_id: issueId\n        };\n\n        if (classified.ok && shouldRecordDecision(classified)) {\n          const ev = buildEvent({\n            occurred_at: occurred || null,\n            action: 'decision.recorded',\n            actor: issue?.author || {},\n            message: description,\n            summary: title ? `Backfill: GitLab decision (issue description): ${title}` : 'Backfill: GitLab decision (issue description)',\n            reply_target: replyTarget,\n            after,\n            correlation_id: correlationId,\n            integrity: { ...integrityBase, decision_method: 'llm', decision_score: classified.decision_score, decision_confidence: classified.confidence }\n          });\n          cur.push(ev);\n          stats.recorded += 1;\n        } else if (classified.ok && recordCandidates && shouldRecordCandidate(classified)) {\n          const ev = buildEvent({\n            occurred_at: occurred || null,\n            action: 'decision.candidate_detected',\n            actor: issue?.author || {},\n            message: description,\n            summary: title ? `Backfill: GitLab decision candidate (issue description): ${title}` : 'Backfill: GitLab decision candidate (issue description)',\n            reply_target: replyTarget,\n            after,\n            correlation_id: correlationId,\n            integrity: { ...integrityBase, decision_method: 'llm', decision_score: classified.decision_score, decision_confidence: classified.confidence }\n          });\n          cur.push(ev);\n          stats.candidates += 1;\n        } else if (!classified.ok && recordLlmErrors) {\n          const ev = buildEvent({\n            occurred_at: occurred || null,\n            action: 'decision.classification_failed',\n            actor: issue?.author || {},\n            message: description,\n            summary: title ? `Backfill: GitLab decision classification failed (issue description): ${title}` : 'Backfill: GitLab decision classification failed (issue description)',\n            reply_target: replyTarget,\n            after,\n            correlation_id: correlationId,\n            integrity: { ...integrityBase, decision_method: 'llm', decision_error: classified.error }\n          });\n          cur.push(ev);\n          stats.failures += 1;\n        } else {\n          stats.skipped_low_score += 1;\n        }\n\n        if (cur.length >= batchSize) flush();\n      }\n    }\n\n    const notesUrl = `${gitlabApiBase}/projects/${encodeURIComponent(String(pid))}/issues/${encodeURIComponent(String(iid))}/notes`;\n    for await (const note of paginate(notesUrl, { sort: 'asc' })) {\n      if (note?.system === true) continue;\n      const body = String(note?.body || '');\n      if (!body.trim()) continue;\n      if (looksLikeZulipSyncEvidence(body)) continue;\n\n      const createdAt = String(note?.created_at || '').trim();\n      if (shouldSkipBySince(createdAt)) {\n        stats.skipped_since += 1;\n        continue;\n      }\n\n      stats.scanned_notes += 1;\n\n      const first = firstNonEmptyLine(body);\n      const noteId = note?.id;\n      const noteUrl = String(note?.web_url || '').trim();\n      const author = note?.author || {};\n\n      const ctx = {\n        kind: 'note',\n        project_id: String(pid),\n        issue_iid: iid,\n        issue_id: issueId,\n        issue_url: issueUrl || null,\n        issue_title: title || null,\n        issue_state: state || null,\n        issue_labels: labels,\n        note_id: noteId,\n        note_url: noteUrl || null,\n        note_created_at: createdAt || null,\n        first_line: first.slice(0, 200),\n        text: body.trim().slice(0, maxTextChars)\n      };\n\n      const classified = await llmClassifyDecision.call(this, ctx);\n      stats.llm_calls = llmCalls;\n\n      const after = {\n        gitlab_project_id: pid,\n        gitlab_issue_iid: iid,\n        gitlab_issue_url: issueUrl || null,\n        gitlab_note_id: noteId,\n        gitlab_note_url: noteUrl || null,\n        decision_classifier: classifierMeta(classified)\n      };\n\n      const integrityBase = {\n        event_key: `gitlab:note:${pid}:${noteId}`,\n        project_id: pid,\n        issue_iid: iid,\n        issue_id: issueId,\n        note_id: noteId\n      };\n\n      if (classified.ok && shouldRecordDecision(classified)) {\n        const ev = buildEvent({\n          occurred_at: createdAt || null,\n          action: 'decision.recorded',\n          actor: author,\n          message: body,\n          summary: title ? `Backfill: GitLab decision note: ${title}` : 'Backfill: GitLab decision note',\n          reply_target: replyTarget,\n          after,\n          correlation_id: correlationId,\n          integrity: { ...integrityBase, decision_method: 'llm', decision_score: classified.decision_score, decision_confidence: classified.confidence }\n        });\n        cur.push(ev);\n        stats.recorded += 1;\n      } else if (classified.ok && recordCandidates && shouldRecordCandidate(classified)) {\n        const ev = buildEvent({\n          occurred_at: createdAt || null,\n          action: 'decision.candidate_detected',\n          actor: author,\n          message: body,\n          summary: title ? `Backfill: GitLab decision candidate note: ${title}` : 'Backfill: GitLab decision candidate note',\n          reply_target: replyTarget,\n          after,\n          correlation_id: correlationId,\n          integrity: { ...integrityBase, decision_method: 'llm', decision_score: classified.decision_score, decision_confidence: classified.confidence }\n        });\n        cur.push(ev);\n        stats.candidates += 1;\n      } else if (!classified.ok && recordLlmErrors) {\n        const ev = buildEvent({\n          occurred_at: createdAt || null,\n          action: 'decision.classification_failed',\n          actor: author,\n          message: body,\n          summary: title ? `Backfill: GitLab decision classification failed (note): ${title}` : 'Backfill: GitLab decision classification failed (note)',\n          reply_target: replyTarget,\n          after,\n          correlation_id: correlationId,\n          integrity: { ...integrityBase, decision_method: 'llm', decision_error: classified.error }\n        });\n        cur.push(ev);\n        stats.failures += 1;\n      } else {\n        stats.skipped_low_score += 1;\n      }\n\n      if (cur.length >= batchSize) flush();\n    }\n  }\n}\n\nflush();\nstats.finished_at = new Date().toISOString();\n\nif (dryRun) {\n  const all = batches.flat();\n  return [{\n    json: {\n      ok: true,\n      dry_run: true,\n      realm,\n      mode,\n      since: sinceIso || null,\n      stats,\n      batches: batches.length,\n      sample_events: all.slice(0, 10)\n    }\n  }];\n}\n\nconst items = [];\nfor (let i = 0; i < batches.length; i += 1) {\n  items.push({\n    json: {\n      realm,\n      batch_index: i + 1,\n      batches_total: batches.length,\n      events: batches[i]\n    }\n  });\n}\n\n// If there are no events, still return one item so the webhook responds.\nif (!items.length) {\n  items.push({ json: { realm, batch_index: 0, batches_total: 0, events: [] } });\n}\n\nreturn items;\n"
+      },
+      "id": "2",
+      "name": "Scan + Classify (GitLab → SoR batches)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.dry_run === true || $json.plan_only === true }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF Dry Run",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT\n    itsm.get_realm_id(NULLIF('{{ $json.realm }}','')) AS realm_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.events || []).replace(/'/g, \"''\") }}','undefined')::jsonb, '[]'::jsonb) AS arr\n), rows AS (\n  SELECT\n    i.realm_id AS realm_id,\n    NULLIF(e->>'occurred_at','') AS occurred_at_raw,\n    COALESCE(e->'actor', '{}'::jsonb) AS actor,\n    COALESCE(NULLIF(e->>'actor_type',''), 'unknown') AS actor_type,\n    COALESCE(NULLIF(e->>'action',''), '') AS action,\n    COALESCE(NULLIF(e->>'source',''), '') AS source,\n    NULLIF(e->>'resource_type','') AS resource_type,\n    NULLIF(e->>'correlation_id','') AS correlation_id,\n    COALESCE(e->'reply_target', '{}'::jsonb) AS reply_target,\n    NULLIF(e->>'summary','') AS summary,\n    NULLIF(e->>'message','') AS message,\n    COALESCE(e->'after', '{}'::jsonb) AS after,\n    COALESCE(e->'integrity', '{}'::jsonb) AS integrity\n  FROM input i\n  JOIN LATERAL jsonb_array_elements(i.arr) e ON TRUE\n), ins AS (\n  INSERT INTO itsm.audit_event (\n    realm_id, occurred_at, actor, actor_type, action, source,\n    resource_type, correlation_id, reply_target, summary, message, after, integrity\n  )\n  SELECT\n    r.realm_id,\n    COALESCE(NULLIF(r.occurred_at_raw,'')::timestamptz, NOW()),\n    r.actor,\n    r.actor_type,\n    r.action,\n    r.source,\n    r.resource_type,\n    r.correlation_id,\n    r.reply_target,\n    r.summary,\n    r.message,\n    r.after,\n    r.integrity\n  FROM rows r\n  WHERE r.action <> '' AND r.source <> ''\n  ON CONFLICT DO NOTHING\n  RETURNING 1\n)\nSELECT\n  (SELECT COUNT(*)::int FROM rows) AS attempted,\n  (SELECT COUNT(*)::int FROM ins) AS inserted;\n"
+      },
+      "id": "4",
+      "name": "Bulk Insert SoR Audit Events",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet attempted = 0;\nlet inserted = 0;\nfor (const it of items) {\n  const row = it.json || {};\n  attempted += Number(row.attempted || 0);\n  inserted += Number(row.inserted || 0);\n}\n\nreturn [{\n  json: {\n    ok: true,\n    attempted,\n    inserted,\n    batches: items.length\n  }\n}];\n"
+      },
+      "id": "5",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scan + Classify (GitLab → SoR batches)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan + Classify (GitLab → SoR batches)": {
+      "main": [
+        [
+          {
+            "node": "IF Dry Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Dry Run": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bulk Insert SoR Audit Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bulk Insert SoR Audit Events": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}
+

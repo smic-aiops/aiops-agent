@@ -117,10 +117,13 @@ terraform output -json grafana_realm_urls
 
 補足:
 - `/decision` で始まる投稿は、`apps/zulip_gitlab_issue_sync` が GitLab Issue に `### 決定（Zulip）` として証跡コメントを残します（環境により無効な場合があります）。
+- （任意）決定マーカー（`/decision` 等）が無い投稿でも、LLM 判定が有効な環境では「決定/承認」に該当する表現が **決定として自動認定**され得ます（デフォルト: 有効。無効化は `*_DECISION_LLM_ENABLED=false`。誤判定に注意。重要な決定は `/decision` の利用を推奨。詳細は `apps/zulip_gitlab_issue_sync/README.md`）。
 - 監査のため、可能な限り GitLab 側には「決定メッセージへのリンク + 要約 + `correlation_id`（`context_id`/`trace_id`/`job_id` 等）」が残る前提で運用します。
 - チケットをクローズ/再オープンしたい場合は、同一トピックで `/close ...` / `/reopen ...` を投稿します（GitLab Issue の状態へ反映されます）。
 - AIOpsAgent の承認導線（approve/deny）がリンクで提示された場合、**リンククリックで確定した内容も `/decision` として扱われ**、同一トピックへ決定ログが投稿されます。AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も同様に `/decision` として扱われます。
 - 過去の承認（決定）を一覧したい場合は `/decisions` を投稿します（AIOpsAgent が時系列サマリを返します。リンククリック/自動承認も含みます）。
+- ブラウザで検索したい場合は、Sulu admin の `ITSM > 決定一覧`（例: `https://<realm>.sulu.smic-aiops.jp/admin/#/itsm/decisions`）でも参照できます（権限がある場合）。
+- 運用上の “正” を DB（SoR: `itsm.audit_event` / `itsm.approval`）に置く場合、導入初期はバックフィル（過去データ投入）が必要です（管理者向け。`docs/itsm/README.md` を参照）。
 - GitLab 側で決定を記録して関係者へ通知したい場合は、Issue 本文またはコメントの先頭を `[DECISION]` または `決定:` にします（Zulip の該当トピックへ通知されます。Zulip URL を復元できない場合は通知されません）。可能なら本文に `correlation_id`（`context_id`/`trace_id` 等）と根拠リンクも含めます。
 
 ---

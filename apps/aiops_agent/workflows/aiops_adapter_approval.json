@@ -1230,6 +1230,51 @@
         2920,
         420
       ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF(NULLIF('{{ $node[\\\"Parse Approval Token\\\"].json.approval_id }}',''), 'undefined')::uuid AS approval_id,\n    itsm.get_realm_id('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? 'default').replace(/'/g, \"''\") }}') AS realm_id,\n    NULLIF(NULLIF('{{ $node[\\\"Validate Pending Approval\\\"].json.context_id }}',''), 'undefined')::uuid AS context_id,\n    LOWER('{{ String($node[\\\"Validate Pending Approval\\\"].json.decision || '').replace(/'/g, \"''\") }}') AS decision,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\\\"Validate Pending Approval\\\"].json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\\\"Validate Pending Approval\\\"].json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS job_plan,\n    COALESCE(NULLIF('{{ JSON.stringify(($node[\\\"Load Context\\\"].json?.[0]?.reply_target) || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($node[\\\"Validate Pending Approval\\\"].json.job_plan?.trace_id ?? $node[\\\"Validate Pending Approval\\\"].json.context_id ?? '').replace(/'/g, \"''\") }}', '') AS correlation_id\n)\nINSERT INTO itsm.approval (\n  id, realm_id, resource_type, resource_id, status,\n  approved_by_principal_id, approved_at, decision_reason, evidence, correlation_id\n)\nSELECT\n  v.approval_id,\n  v.realm_id,\n  'aiops_job',\n  v.context_id,\n  CASE WHEN v.decision = 'approved' THEN 'approved' ELSE 'rejected' END,\n  NULLIF(v.actor #>> '{email}', ''),\n  NOW(),\n  NULL,\n  jsonb_build_object('actor', v.actor, 'job_plan', v.job_plan, 'reply_target', v.reply_target, 'decision', v.decision),\n  v.correlation_id\nFROM v\nON CONFLICT (id) DO UPDATE\nSET\n  status = EXCLUDED.status,\n  approved_by_principal_id = COALESCE(EXCLUDED.approved_by_principal_id, itsm.approval.approved_by_principal_id),\n  approved_at = COALESCE(EXCLUDED.approved_at, itsm.approval.approved_at),\n  evidence = COALESCE(EXCLUDED.evidence, itsm.approval.evidence),\n  correlation_id = COALESCE(EXCLUDED.correlation_id, itsm.approval.correlation_id)\nRETURNING id;"
+      },
+      "id": "76",
+      "name": "Upsert SoR Approval (itsm.approval)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        560
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF(NULLIF('{{ $node[\\\"Parse Approval Token\\\"].json.approval_id }}',''), 'undefined')::uuid AS approval_id,\n    itsm.get_realm_id('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? 'default').replace(/'/g, \"''\") }}') AS realm_id,\n    LOWER('{{ String($node[\\\"Validate Pending Approval\\\"].json.decision || '').replace(/'/g, \"''\") }}') AS decision,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\\\"Validate Pending Approval\\\"].json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\\\"Validate Pending Approval\\\"].json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS job_plan,\n    COALESCE(NULLIF('{{ JSON.stringify(($node[\\\"Load Context\\\"].json?.[0]?.reply_target) || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($node[\\\"Validate Pending Approval\\\"].json.job_plan?.trace_id ?? $node[\\\"Validate Pending Approval\\\"].json.context_id ?? '').replace(/'/g, \"''\") }}', '') AS correlation_id\n)\nINSERT INTO itsm.audit_event (\n  realm_id, occurred_at, actor, actor_type, action, source,\n  resource_type, resource_id, correlation_id, reply_target, summary, message, after, integrity\n)\nSELECT\n  v.realm_id,\n  NOW(),\n  v.actor,\n  CASE WHEN NULLIF(v.actor #>> '{email}', '') IS NULL THEN 'unknown' ELSE 'human' END,\n  CASE WHEN v.decision = 'approved' THEN 'approval.approved' ELSE 'approval.rejected' END,\n  'aiops_agent',\n  'approval',\n  v.approval_id,\n  v.correlation_id,\n  NULLIF(v.reply_target::text, '')::jsonb,\n  CASE WHEN v.decision = 'approved' THEN 'AIOpsAgent 承認: approved' ELSE 'AIOpsAgent 承認: denied' END,\n  NULL,\n  v.job_plan,\n  jsonb_build_object('event_key', ('aiops:approval:' || v.approval_id::text || ':' || v.decision))\nFROM v\nON CONFLICT DO NOTHING\nRETURNING id;"
+      },
+      "id": "77",
+      "name": "Insert SoR Audit Event (Approval Decision)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        560
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF(NULLIF('{{ $json.approval_id }}',''), 'undefined')::uuid AS approval_id,\n    itsm.get_realm_id('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? 'default').replace(/'/g, \"''\") }}') AS realm_id,\n    NULLIF(({{ JSON.stringify($json.content || '') }}::jsonb #>> '{}'), '') AS comment,\n    COALESCE(NULLIF('{{ JSON.stringify($json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($json.reply_target || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target\n)\nUPDATE itsm.approval\nSET decision_reason = v.comment\nFROM v\nWHERE itsm.approval.id = v.approval_id\n  AND itsm.approval.realm_id = v.realm_id;\n\nWITH v2 AS (\n  SELECT\n    NULLIF(NULLIF('{{ $json.approval_id }}',''), 'undefined')::uuid AS approval_id,\n    itsm.get_realm_id('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? 'default').replace(/'/g, \"''\") }}') AS realm_id,\n    NULLIF(({{ JSON.stringify($json.content || '') }}::jsonb #>> '{}'), '') AS comment,\n    COALESCE(NULLIF('{{ JSON.stringify($json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($json.reply_target || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target\n)\nINSERT INTO itsm.audit_event (\n  realm_id, occurred_at, actor, actor_type, action, source,\n  resource_type, resource_id, reply_target, summary, message, integrity\n)\nSELECT\n  v2.realm_id,\n  NOW(),\n  v2.actor,\n  CASE WHEN NULLIF(v2.actor #>> '{email}', '') IS NULL THEN 'unknown' ELSE 'human' END,\n  'approval.comment_added',\n  'aiops_agent',\n  'approval',\n  v2.approval_id,\n  NULLIF(v2.reply_target::text, '')::jsonb,\n  'AIOpsAgent 承認コメント',\n  v2.comment,\n  jsonb_build_object('event_key', ('aiops:approval:' || v2.approval_id::text || ':comment'))\nFROM v2\nON CONFLICT DO NOTHING\nRETURNING id;"
+      },
+      "id": "78",
+      "name": "Upsert SoR Approval Comment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1880,
+        760
+      ],
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -1344,7 +1389,7 @@
       "main": [
         [
           {
-            "node": "Debug Log After: Load Context -> Build Approval Ack",
+            "node": "Upsert SoR Approval (itsm.approval)",
             "type": "main",
             "index": 0
           }
@@ -2050,7 +2095,7 @@
       "main": [
         [
           {
-            "node": "Restore Items After Approval History Comment",
+            "node": "Upsert SoR Approval Comment",
             "type": "main",
             "index": 0
           }
@@ -2062,6 +2107,39 @@
         [
           {
             "node": "IF Zulip Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert SoR Approval (itsm.approval)": {
+      "main": [
+        [
+          {
+            "node": "Insert SoR Audit Event (Approval Decision)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert SoR Audit Event (Approval Decision)": {
+      "main": [
+        [
+          {
+            "node": "Debug Log After: Load Context -> Build Approval Ack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert SoR Approval Comment": {
+      "main": [
+        [
+          {
+            "node": "Restore Items After Approval History Comment",
             "type": "main",
             "index": 0
           }

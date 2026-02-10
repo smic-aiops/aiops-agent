@@ -203,6 +203,10 @@ aiops_agent_environment = {
 - `apps/aiops_agent/scripts/run_dq_llm_quality_report.sh` - DQ 指標を集計し品質レポートを出力する。
 - `apps/aiops_agent/scripts/run_iq_tests_aiops_agent.sh` - n8n/カタログ API の IQ テストを実行し結果を出力する。
 
+#### ITSM Core（SoR）
+
+- `apps/itsm_core/scripts/deploy_workflows.sh` - ITSM SoR（`itsm.*`）へ投入するワークフロー群（バックフィル/検証等）を n8n に同期する。
+
 #### Workflow Manager
 
 - `apps/workflow_manager/scripts/deploy_workflows.sh` - Workflow Manager のワークフローを n8n に反映する。

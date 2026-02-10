@@ -1,0 +1,111 @@
+{
+  "name": "itsm-sor-audit-event-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "itsm/sor/audit_event/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst body = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\n\nconst now = new Date().toISOString();\nconst eventKey = `test:${now}:${crypto.randomUUID()}`;\n\nconst realm = String(body.realm || $env.N8N_REALM || $env.N8N_OBSERVER_REALM || 'default').trim() || 'default';\nconst source = String(body.source || 'test').trim() || 'test';\nconst action = String(body.action || 'decision.recorded').trim() || 'decision.recorded';\n\nconst message = body.message !== undefined ? String(body.message) : 'SoR write test';\n\nreturn [{\n  json: {\n    record_type: 'sor_audit_event',\n    realm,\n    occurred_at: body.occurred_at || now,\n    action,\n    source,\n    actor_type: 'automation',\n    actor: { name: 'itsm-sor-audit-event-test' },\n    resource_type: body.resource_type || 'test',\n    correlation_id: body.correlation_id || null,\n    reply_target: body.reply_target || { source: 'n8n', webhook: 'itsm/sor/audit_event/test' },\n    summary: body.summary || 'SoR audit_event insert test',\n    message,\n    after: body.after || { ok: true },\n    integrity: { event_key: body.event_key || eventKey }\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Build Test Audit Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    itsm.get_realm_id(NULLIF('{{ $json.realm }}','')) AS realm_id,\n    COALESCE(NULLIF(NULLIF('{{ $json.occurred_at }}',''), 'undefined')::timestamptz, NOW()) AS occurred_at,\n    COALESCE(NULLIF('{{ JSON.stringify($json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ String($json.actor_type ?? \"unknown\").replace(/'/g, \"''\") }}', 'undefined'), 'unknown') AS actor_type,\n    '{{ String($json.action || '').replace(/'/g, \"''\") }}' AS action,\n    '{{ String($json.source || '').replace(/'/g, \"''\") }}' AS source,\n    NULLIF('{{ String($json.resource_type || '').replace(/'/g, \"''\") }}','') AS resource_type,\n    NULLIF('{{ String($json.correlation_id || '').replace(/'/g, \"''\") }}','') AS correlation_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.reply_target || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($json.summary || '').replace(/'/g, \"''\") }}','') AS summary,\n    NULLIF('{{ String($json.message || '').replace(/'/g, \"''\") }}','') AS message,\n    COALESCE(NULLIF('{{ JSON.stringify($json.after || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS after,\n    COALESCE(NULLIF('{{ JSON.stringify($json.integrity || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS integrity\n)\nINSERT INTO itsm.audit_event (\n  realm_id, occurred_at, actor, actor_type, action, source,\n  resource_type, correlation_id, reply_target, summary, message, after, integrity\n)\nSELECT\n  v.realm_id, v.occurred_at, v.actor, v.actor_type, v.action, v.source,\n  v.resource_type, v.correlation_id, v.reply_target, v.summary, v.message, v.after, v.integrity\nFROM v\nON CONFLICT DO NOTHING\nRETURNING id;"
+      },
+      "id": "3",
+      "name": "Insert SoR Audit Event",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        860,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, inserted: $json, event: $items(\"Build Test Audit Event\")[0].json } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "4",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Test Audit Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Test Audit Event": {
+      "main": [
+        [
+          {
+            "node": "Insert SoR Audit Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert SoR Audit Event": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}
+

@@ -25,6 +25,7 @@ flowchart LR
 | アプリ | 入力（代表） | 出力/連携（代表） | 主な用途 |
 |---|---|---|---|
 | `aiops_agent` | Zulip/CloudWatch 等 | GitLab/Zulip/Embedding API/Qdrant/Postgres（RDS）/Workflow Manager | 監視・問い合わせの状況整理、提案、（必要なら）承認→実行支援 |
+| `itsm_core` | Cron / 手動 Webhook | GitLab API / LLM API / Postgres（RDS, `itsm.*`） | ITSM SoR（監査/決定/承認）の投入・バックフィル・検証（ワークフロー集約） |
 | `cloudwatch_event_notify` | CloudWatch/SNS | Zulip/GitLab/Grafana | 監視イベントの整形通知、記録、参照リンク付与 |
 | `gitlab_issue_metrics_sync` | Cron / 手動 Webhook | GitLab → S3 | Issue データの集計と履歴出力（KPI/レポート用） |
 | `gitlab_issue_rag` | Cron / 手動 Webhook | GitLab → Embedding API → Postgres（pgvector） | Issue/議論を RAG 用データソース（pgvector）へ同期 |

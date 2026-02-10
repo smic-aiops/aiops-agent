@@ -323,6 +323,13 @@ module "stack" {
   service_control_metrics_glue_database_name           = var.service_control_metrics_glue_database_name
   service_control_metrics_glue_table_name              = var.service_control_metrics_glue_table_name
   service_control_metrics_athena_prefix                = var.service_control_metrics_athena_prefix
+  itsm_audit_event_anchor_enabled                      = var.itsm_audit_event_anchor_enabled
+  itsm_audit_event_anchor_bucket_name                  = var.itsm_audit_event_anchor_bucket_name
+  itsm_audit_event_anchor_bucket_kms_key_arn           = var.itsm_audit_event_anchor_bucket_kms_key_arn
+  itsm_audit_event_anchor_retention_days               = var.itsm_audit_event_anchor_retention_days
+  itsm_audit_event_anchor_object_lock_enabled          = var.itsm_audit_event_anchor_object_lock_enabled
+  itsm_audit_event_anchor_object_lock_mode             = var.itsm_audit_event_anchor_object_lock_mode
+  itsm_audit_event_anchor_object_lock_retention_days   = var.itsm_audit_event_anchor_object_lock_retention_days
   enable_efs_backup                                    = var.enable_efs_backup
   efs_backup_delete_after_days                         = var.efs_backup_delete_after_days
   enable_exastro_keycloak                              = var.enable_exastro_keycloak

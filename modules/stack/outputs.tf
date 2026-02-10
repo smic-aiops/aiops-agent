@@ -283,6 +283,30 @@ output "itsm_monitoring_context" {
   sensitive   = false
 }
 
+output "itsm_audit_event_anchor_bucket_name" {
+  description = "S3 bucket name for anchoring ITSM audit_event hash-chain heads (WORM)."
+  value       = var.itsm_audit_event_anchor_enabled ? try(aws_s3_bucket.itsm_audit_event_anchor[0].bucket, null) : null
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_enabled" {
+  description = "Whether S3 Object Lock is enabled for the ITSM audit_event anchor bucket."
+  value       = var.itsm_audit_event_anchor_enabled ? var.itsm_audit_event_anchor_object_lock_enabled : null
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_mode" {
+  description = "Default S3 Object Lock mode for ITSM audit_event anchor objects."
+  value       = var.itsm_audit_event_anchor_enabled && var.itsm_audit_event_anchor_object_lock_enabled ? var.itsm_audit_event_anchor_object_lock_mode : null
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_retention_days" {
+  description = "Default S3 Object Lock retention days for ITSM audit_event anchor objects."
+  value       = var.itsm_audit_event_anchor_enabled && var.itsm_audit_event_anchor_object_lock_enabled ? var.itsm_audit_event_anchor_object_lock_retention_days : null
+  sensitive   = false
+}
+
 output "n8n_realm_urls" {
   description = "n8n URLs per realm (https://<realm>.<subdomain>.<domain>)"
   value = var.create_ecs && var.create_n8n ? {

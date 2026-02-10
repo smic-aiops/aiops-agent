@@ -689,10 +689,11 @@ locals {
   } : {}
   ssm_param_arns_zulip = { for k, v in merge(local.default_ssm_params_zulip_base, var.zulip_db_ssm_params, var.zulip_ssm_params, local.optional_smtp_params_zulip) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
   sulu_ssm_core_params = {
-    APP_SECRET         = local.sulu_app_secret_parameter_name
-    DATABASE_URL       = local.sulu_database_url_parameter_name
-    MAILER_DSN         = local.sulu_mailer_dsn_parameter_name
-    N8N_OBSERVER_TOKEN = local.observer_token_parameter_name
+    APP_SECRET            = local.sulu_app_secret_parameter_name
+    DATABASE_URL          = local.sulu_database_url_parameter_name
+    ITSM_SOR_DATABASE_URL = local.itsm_sor_database_url_parameter_name
+    MAILER_DSN            = local.sulu_mailer_dsn_parameter_name
+    N8N_OBSERVER_TOKEN    = local.observer_token_parameter_name
   }
   sulu_ssm_oidc_params = var.enable_sulu_keycloak ? {
     SULU_SSO_CLIENT_ID     = local.sulu_oidc_client_id_parameter_name

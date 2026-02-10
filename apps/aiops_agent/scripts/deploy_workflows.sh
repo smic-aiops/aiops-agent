@@ -13,6 +13,7 @@ set -euo pipefail
 #   N8N_SYNC_MISSING_TOKEN_BEHAVIOR : "skip" (default) or "fail" when required tokens are missing
 #   WORKFLOW_DIR              : deprecated (use WORKFLOW_DIR_AGENT); default apps/aiops_agent/workflows
 #   WORKFLOW_DIR_AGENT        : directory that stores agent workflows (default: apps/aiops_agent/workflows)
+#   WORKFLOW_DIR_ITSM_CORE    : directory that stores ITSM core (SoR) workflows (default: apps/itsm_core/workflows)
 #   N8N_ACTIVATE         : "true" to activate workflows after upsert (default: terraform output N8N_ACTIVATE)
 #   N8N_RESET_STATIC_DATA: "true" to overwrite staticData from files (default: false)
 #   N8N_DRY_RUN          : "true" to only print planned actions (default: false)
@@ -33,6 +34,13 @@ set -euo pipefail
 #   N8N_POLICY_DIR        : directory that stores policy files (default: apps/aiops_agent/data/default/policy)
 #   N8N_AGENT_REALMS      : comma/space-separated realm list (default: terraform output N8N_AGENT_REALMS)
 #   N8N_REALM_DATA_DIR_BASE : base dir for realm-specific prompt/policy overrides (default: apps/aiops_agent/data)
+#   N8N_APPLY_ITSM_SOR_SCHEMA : "true" to apply apps/itsm_core/sql/itsm_sor_core.sql to the shared RDS (default: true; set false to skip)
+#   N8N_APPLY_ITSM_SOR_RLS    : "true" to apply apps/itsm_core/sql/itsm_sor_rls.sql (default: false)
+#   N8N_APPLY_ITSM_SOR_RLS_FORCE : "true" to apply apps/itsm_core/sql/itsm_sor_rls_force.sql (default: false)
+#   N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT : "true" to persist default app.* RLS context via ALTER ROLE ... SET (default: false)
+#   N8N_ITSM_SOR_REALM_KEY    : realm_key to configure when N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT=true (default: ${N8N_REALM:-default})
+#   N8N_ITSM_SOR_PRINCIPAL_ID : principal_id to configure when N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT=true (default: automation)
+#   N8N_CHECK_ITSM_SOR_SCHEMA : "true" to verify itsm.* schema exists before sync (default: true)
 #   ZULIP_BASIC_CREDENTIAL_NAME : name for the Zulip httpBasicAuth credential (default: aiops-zulip-basic)
 #   ZULIP_BASIC_CREDENTIAL_ID   : credential ID to update instead of creating a new one
 #   ZULIP_BASIC_USERNAME        : Zulip bot email address (default: terraform output zulip_bot_email)
@@ -79,6 +87,70 @@ has_nonempty_prefixed_env() {
   return 1
 }
 
+apply_itsm_sor_schema_if_enabled() {
+  if ! is_truthy "${N8N_APPLY_ITSM_SOR_SCHEMA}"; then
+    return
+  fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/import_itsm_sor_core_schema.sh")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  fi
+  echo "[itsm] apply SoR core schema"
+  "${cmd[@]}"
+}
+
+apply_itsm_sor_rls_if_enabled() {
+  if ! is_truthy "${N8N_APPLY_ITSM_SOR_RLS}"; then
+    return
+  fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sql/itsm_sor_rls.sql")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  fi
+  echo "[itsm] apply SoR RLS policy schema"
+  "${cmd[@]}"
+}
+
+apply_itsm_sor_rls_force_if_enabled() {
+  if ! is_truthy "${N8N_APPLY_ITSM_SOR_RLS_FORCE}"; then
+    return
+  fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sql/itsm_sor_rls_force.sql")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  fi
+  echo "[itsm] apply SoR RLS FORCE schema"
+  "${cmd[@]}"
+}
+
+check_itsm_sor_schema_if_enabled() {
+  if ! is_truthy "${N8N_CHECK_ITSM_SOR_SCHEMA}"; then
+    return
+  fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/check_itsm_sor_schema.sh")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  fi
+  echo "[itsm] check SoR core schema dependency"
+  "${cmd[@]}"
+}
+
+configure_itsm_sor_rls_context_if_enabled() {
+  if ! is_truthy "${N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT}"; then
+    return
+  fi
+  local realm_key="${N8N_ITSM_SOR_REALM_KEY:-${N8N_REALM:-default}}"
+  local principal_id="${N8N_ITSM_SOR_PRINCIPAL_ID:-automation}"
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh" --realm-key "${realm_key}" --principal-id "${principal_id}")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  else
+    cmd+=(--execute)
+  fi
+  echo "[itsm] configure SoR RLS context defaults"
+  "${cmd[@]}"
+}
+
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${REPO_ROOT}"
@@ -92,6 +164,11 @@ fi
 
 DRY_RUN="${N8N_DRY_RUN:-false}"
 VALIDATE_LLM_SCHEMAS="${N8N_VALIDATE_LLM_SCHEMAS:-true}"
+N8N_APPLY_ITSM_SOR_SCHEMA="${N8N_APPLY_ITSM_SOR_SCHEMA:-true}"
+N8N_APPLY_ITSM_SOR_RLS="${N8N_APPLY_ITSM_SOR_RLS:-false}"
+N8N_APPLY_ITSM_SOR_RLS_FORCE="${N8N_APPLY_ITSM_SOR_RLS_FORCE:-false}"
+N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT="${N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT:-false}"
+N8N_CHECK_ITSM_SOR_SCHEMA="${N8N_CHECK_ITSM_SOR_SCHEMA:-true}"
 
 if is_truthy "${VALIDATE_LLM_SCHEMAS}"; then
   if is_truthy "${DRY_RUN}"; then
@@ -249,8 +326,12 @@ AWS_CRED_NAME=""
 
 WORKFLOW_DIR="${WORKFLOW_DIR:-apps/aiops_agent/workflows}"
 WORKFLOW_DIR_AGENT="${WORKFLOW_DIR_AGENT:-${WORKFLOW_DIR}}"
+WORKFLOW_DIR_ITSM_CORE="${WORKFLOW_DIR_ITSM_CORE:-apps/itsm_core/workflows}"
 WORKFLOW_DIRS=()
 WORKFLOW_DIRS+=("${WORKFLOW_DIR_AGENT}")
+if [[ -d "${REPO_ROOT}/${WORKFLOW_DIR_ITSM_CORE}" ]]; then
+  WORKFLOW_DIRS+=("${WORKFLOW_DIR_ITSM_CORE}")
+fi
 RESET_STATIC_DATA="${N8N_RESET_STATIC_DATA:-false}"
 INCLUDE_TEST_WORKFLOWS="${N8N_INCLUDE_TEST_WORKFLOWS:-false}"
 PROMPT_DIR="${N8N_PROMPT_DIR:-apps/aiops_agent/data/default/prompt}"
@@ -2203,6 +2284,12 @@ for dir in "${WORKFLOW_DIRS[@]}"; do
     exit 1
   fi
 done
+
+apply_itsm_sor_schema_if_enabled
+configure_itsm_sor_rls_context_if_enabled
+apply_itsm_sor_rls_if_enabled
+apply_itsm_sor_rls_force_if_enabled
+check_itsm_sor_schema_if_enabled
 
 load_agent_realms
 if [ "${#TARGET_REALMS[@]}" -eq 0 ]; then

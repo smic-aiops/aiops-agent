@@ -14,7 +14,7 @@
   - 連携/自動化：**n8n**  
   - ベクトルDB（検索/類似度/埋め込みインデックス）：**Qdrant（n8n 連携）**  
     - n8n の realm ごとのタスク内サイドカーとして起動し、n8n から `QDRANT_URL` で参照する（詳細: `docs/itsm/README.md` の Qdrant 節）
-  - サービス管理/CMDB：**GitLab サービス管理（CMDB/Issue, `cmdb/`）**  
+  - サービス管理/CMDB：**GitLab サービス管理（CMDB/Issue, `cmdb/`）**（現状の正） / **共有 RDS(PostgreSQL) の SoR（`itsm.*`）**（承認・決定・正規化レコードの集約）
   - 構成自動化/構成情報取得：**Exastro ITA Web / Exastro ITA API**  
   - クラウド側ログ分析基盤：**CloudWatch → * → Athena → Grafana（＋CloudWatch datasource）**  
   - クラウド側ログ通知基盤：**CloudWatch → *（Webhook）→ n8n**
@@ -22,7 +22,7 @@
 - テスト自動化・実行基盤は各プロジェクトが自由に選択（例：GitLab CI）。本方針では特定ツールを規定しない
 - 似た機能を持つツールは採用・非採用の根拠を明示し、利用しない機能を明確化する
 - ナレッジ/設計/運用手順は GitLab（リポジトリ/Markdown）に集約し、会話は Zulip に集約する
-- CMDBのマスターはレルム対応のGitLabグループ「サービス管理プロジェクト」内 `cmdb/`。他ツールは参照・同期のみで正は持たない
+- CMDBのマスターはレルム対応のGitLabグループ「サービス管理プロジェクト」内 `cmdb/`（現状）。SoR（`itsm.*`）は承認/決定/主要レコードの正規化データを集約し、必要に応じて CMDB の正規化（Service/CI テーブル）へ段階導入する
 - カレンダー機能の使い分け：サービス変更・リリース・アウトージ予定は GitLab サービス管理（Issue/ボード/マイルストーン）に登録し、必要に応じて n8n で外部カレンダーへ同期する（専用ERP/グループウェアは本構成には含めない）
 
 関連ドキュメント:
@@ -39,6 +39,7 @@
 | n8n | 1.122.4 | `n8n_image_tag` のデフォルト値 |
 | Qdrant | v1.16.3 | `qdrant_image_tag` のデフォルト値 |
 | GitLab | 17.11.7-ce.0 | `gitlab_omnibus_image_tag` のデフォルト値 |
+| GitLab Runner | alpine-v17.11.7 | `gitlab_runner_image_tag` のデフォルト値（ECS/Fargate shell executor 用） |
 | Exastro ITA Web | exastro/exastro-it-automation-web-server:2.7.0 | `exastro_it_automation_web_server_image_tag` のデフォルト値 |
 | Exastro ITA API | exastro/exastro-it-automation-api-admin:2.7.0 | `exastro_it_automation_api_admin_image_tag` のデフォルト値 |
 | Grafana | 12.3.1 | `grafana_image_tag` のデフォルト値 |
@@ -286,15 +287,16 @@ Grafana のフォルダ/ダッシュボードは `scripts/itsm/grafana/sync_usec
 
 似た機能を持つツールの採用方針（役割分担）の整理。
 
-- **GitLab サービス管理（CMDB/Issue） vs Exastro ITA（構成・自動化）**  
-  - GitLab：CMDB（`cmdb/`）とチケットの正。変更/承認/証跡を残す中心  
-  - Exastro ITA：構成パラメータ・作業手順の定義と実行（Web/API）  
+- **GitLab サービス管理（CMDB/Issue） vs Exastro ITA（構成・自動化）**
+  - GitLab：CMDB（`cmdb/`）と変更/議論/レビュー/根拠リンクなどの **長期記録（Change & Evidence）** の中心
+  - Exastro ITA：構成パラメータ・作業手順の定義と実行（Web/API）
   - 方針：Exastro ITA から取得できる構成情報は n8n で差分化し、GitLab CMDB を随時更新（MR/コミット）して「参照先の一元化」を担保する
 
 - **Zulip（会話） vs GitLab（長期記録）**  
   - Zulip：インシデント/依頼/合意形成のリアルタイム窓口（トピックで整理）  
   - GitLab：経緯記録/証跡（決定の要約・根拠リンク・`correlation_id` 等）・Runbook・設計・台帳の長期保管（版管理）
-  - 方針：会話/調整は Zulip、最終決定は Zulip または GitLab Issue（状況により）。証跡の正は GitLab。n8n が会話→起票/要約→記録を補助する
+  - SoR（共有 RDS / PostgreSQL）：承認/決定/主要レコードの **構造化された正（`itsm.approval` / `itsm.audit_event` 等）**
+  - 方針：会話/調整は Zulip、最終決定は Zulip または GitLab Issue（状況により）。n8n が会話→起票/要約→（GitLab 証跡化 + SoR 記録）を補助する
 
 - **クラウド側ログ分析基盤（Athena/Grafana） vs GitLab（起票/追跡）**  
   - ログ分析：検索・可視化・集計は Athena/Grafana を正とする  
@@ -343,6 +345,7 @@ Grafana のフォルダ/ダッシュボードは `scripts/itsm/grafana/sync_usec
 ### 監査ログの改ざん防止（WORM/S3）
 - CloudTrail・RDS Enhanced Monitoring・VPC Flow Logs は専用 S3 バケットへ集約し、Object Lock（WORM）＋バージョニング＋SSE-KMS で改ざんと削除を防ぐ。ログ書き込みはログ発行アカウントの IAM role のみに限り、運用チームには読み取り専用ロールを割り当てる。
 - CloudWatch Logs のS3アーカイブ（Athena/Grafana での長期検索・集計用）は対象ロググループを限定し、運用で合意したものだけを出力する（監視参照の導線はGrafanaに統一）。長期保存時は `logs-archive` バケットにライフサイクルで移動し、同様に Object Lock を維持する。
+- ITSM SoR（`itsm.audit_event`）は DB 側で append-only + ハッシュチェーンを形成し、チェーン先頭（最新 `integrity.hash`）を定期的に同様の WORM バケットへアンカーして「DB 管理者が DB 内で辻褄を合わせる」攻撃を難しくする。
 
 ### エクスポート手順
 - データエクスポートは GitLab Issue（承認/記録）を起点にし、n8n のワークフローで実行する。対象・期間・利用者・承認IDを記録し、出力先は VPC 内 S3（VPC Endpoint 経由）に限定して監査ログを残す。

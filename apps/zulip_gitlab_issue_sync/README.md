@@ -53,11 +53,33 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
   - `/decision`
   - `[DECISION]`（大小は問わない）
   - `決定:`
+- ルール（任意 / LLM）: 上記の **決定マーカーに一致しない** 場合でも、LLM 判定を有効化している場合は、本文が「決定/承認（実施・採用・却下・クローズ等の意思決定）」に該当するかを判定し、該当すると判断された場合に **決定** として扱う
+  - 誤判定の可能性があるため、監査上は **決定マーカーを付ける運用を推奨**（LLM は補助）
 - 補足: AIOpsAgent の承認導線（approve/deny）がリンクで提示された場合、リンククリックで確定した内容も同一トピックへ `/decision` として投稿される想定（= 本ルールで証跡化される）。
 - 補足: AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も、同一トピックへ `/decision` として投稿される想定（= 本ルールで証跡化される）。
 - 設定:
   - `ZULIP_GITLAB_DECISION_PREFIXES`（カンマ区切り、既定: `/decision,[decision],[DECISION],決定:`）
   - `ZULIP_GITLAB_DECISION_LABEL`（任意。設定した場合、決定が初めて記録されたタイミングで Issue にラベルを付与）
+  - LLM 判定（任意）
+    - `ZULIP_GITLAB_DECISION_LLM_ENABLED=true`（デフォルト: 有効。無効化する場合は `false`）
+    - `ZULIP_GITLAB_DECISION_LLM_MIN_CONFIDENCE`（デフォルト: `0.75`）
+    - `ZULIP_GITLAB_DECISION_LLM_MAX_CALLS_PER_RUN`（デフォルト: `10`）
+    - `ZULIP_GITLAB_DECISION_LLM_MAX_TEXT_CHARS`（デフォルト: `400`）
+    - `ZULIP_GITLAB_DECISION_LLM_API_BASE_URL`（デフォルト: `https://api.openai.com/v1`）
+    - `ZULIP_GITLAB_DECISION_LLM_MODEL`（デフォルト: `gpt-4o-mini`）
+    - `ZULIP_GITLAB_DECISION_LLM_API_KEY`（推奨。未設定の場合は `OPENAI_MODEL_API_KEY` / `OPENAI_API_KEY` / `N8N_LLM_API_KEY` を参照）
+    - `ZULIP_GITLAB_DECISION_LLM_LOG_ERRORS=true`（任意。LLM 呼び出し失敗をログ出力）
+    - LLM 判定で決定が記録された場合、GitLab の `### 決定（Zulip）` コメントに `判定：llm（信頼度: ...）` が追記される
+  - SoR（任意だが推奨）
+    - 決定メッセージ（本文そのもの）を、共有 RDS(PostgreSQL) の `itsm.audit_event` にも `action=decision.recorded` として記録します（監査・横断検索用）。
+    - 前提: `apps/itsm_core/sql/itsm_sor_core.sql` を RDS に適用済みであること。
+    - 既存データのバックフィル（SoR を“正”として運用する場合は推奨）
+      - AIOpsAgent の過去承認履歴: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
+	      - GitLab の過去決定（Issue 本文/Note）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json`
+	        - Webhook: `POST /webhook/gitlab/decision/backfill/sor`
+	        - リクエスト例（JSON）: `{ "realm":"default", "project_ids":"123,456", "since":"2026-01-01T00:00:00Z", "mode":"recall", "dry_run":true }`
+	        - 取り漏れ最小化（推奨）: LLM のみで広く拾い、確度が高いものは `decision.recorded`、グレーは `decision.candidate_detected`、分類失敗は `decision.classification_failed` として SoR に残す（後からレビュー/再判定が可能）
+	        - スモークテスト（SoR への bulk insert）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor/test`）
 
 ### 決定（GitLab）→通知（Zulip）
 
@@ -67,6 +89,8 @@ Zulip を見ていない関係者へ到達させるため、GitLab 側で「決�
   - `[DECISION]`
   - `決定:`
   - `DECISION:`
+- ルール（任意 / LLM）: 上記の **決定マーカーに一致しない** 場合でも、LLM 判定を有効化している場合は、本文が「決定/承認」に該当するかを判定し、該当すると判断された場合に通知する
+  - 誤判定の可能性があるため、監査上は **決定マーカーを付ける運用を推奨**（LLM は補助）
 - 通知先:
   - 原則: 当該 Issue に含まれる Zulip の `#narrow/stream/.../topic/...` URL から stream/topic を復元し、同じトピックへ投稿
   - 例外: Zulip URL が見つからない（手動作成 Issue 等）場合は、`GITLAB_DECISION_FALLBACK_STREAM` / `GITLAB_DECISION_FALLBACK_TOPIC` に投稿（未設定ならスキップ）
@@ -91,6 +115,17 @@ Zulip を見ていない関係者へ到達させるため、GitLab 側で「決�
 - `GITLAB_DECISION_PREFIXES`（既定: `[DECISION],決定:,DECISION:`）
 - `GITLAB_DECISION_NOTIFY_DRY_RUN=true`（Zulip 投稿をせず解析だけ確認）
 - `GITLAB_DECISION_FALLBACK_STREAM` / `GITLAB_DECISION_FALLBACK_TOPIC`（Zulip URL を復元できない場合の通知先）
+- LLM 判定（任意）
+  - `GITLAB_DECISION_LLM_ENABLED=true`（デフォルト: 有効。無効化する場合は `false`）
+  - `GITLAB_DECISION_LLM_MIN_CONFIDENCE`（デフォルト: `0.75`）
+  - `GITLAB_DECISION_LLM_MAX_CALLS_PER_RUN`（デフォルト: `10`）
+  - `GITLAB_DECISION_LLM_MAX_TEXT_CHARS`（デフォルト: `400`）
+  - `GITLAB_DECISION_LLM_API_BASE_URL`（デフォルト: `https://api.openai.com/v1`）
+  - `GITLAB_DECISION_LLM_MODEL`（デフォルト: `gpt-4o-mini`）
+  - `GITLAB_DECISION_LLM_API_KEY`（推奨。未設定の場合は `OPENAI_MODEL_API_KEY` / `OPENAI_API_KEY` / `N8N_LLM_API_KEY` を参照）
+- SoR（任意だが推奨）
+  - GitLab 上の決定メッセージ（本文そのもの）も `itsm.audit_event` に `action=decision.recorded` として記録します。
+  - 過去の GitLab 決定（Issue 本文/Note）は、必要に応じて `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json` で SoR へバックフィルします（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）。
 - `ZULIP_REALM_URL_TEMPLATE` / `HOSTED_ZONE_NAME`（`N8N_ZULIP_API_BASE_URL` を realm map で解決できない場合の Zulip URL 推定）
 
 ### 構成図（Mermaid / 現行実装）

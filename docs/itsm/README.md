@@ -8,11 +8,16 @@
 ## 比較資料
 - `docs/itsm/features_comparison.md`（市販ITSM との機能対照表・未提供時の実装案）
 - `docs/itsm/data-model.md`（統合データモデル：テーブル/参照/ACL の設計）
+- `docs/itsm/data-retention.md`（アーカイブ/保持期間/削除/匿名化（MVP 方針））
+- `docs/itsm/itsm-core-feature-status.md`（ITSM コア（SoR）機能一覧と実装状況）
 
 ## 利用者向け（作法）
 
 - 環境の使い方（ITSM 利用者向け）: `docs/usage-guide.md`
-  - 最終決定は **Zulip または GitLab Issue** 上で行い、決定マーカー（Zulip: `/decision` / GitLab: `[DECISION]`/`決定:`）で明示する（証跡の正は GitLab）
+  - 最終決定は **Zulip または GitLab Issue** 上で行い、決定マーカー（Zulip: `/decision` / GitLab: `[DECISION]`/`決定:`）で明示する
+    - 構造化された判断/承認/決定の “正（SoR）” は共有 RDS（`itsm.audit_event` / `itsm.approval`）
+    - GitLab はレビュー/議論/根拠リンク/版管理などの **補助証跡（Change & Evidence）**
+  - （任意）決定マーカーに一致しない場合でも、LLM 判定が有効な環境では「決定/承認」に該当する表現が **決定として自動認定**され得る（デフォルト: 有効。無効化は `*_DECISION_LLM_ENABLED=false`。誤判定に注意。詳細は `apps/zulip_gitlab_issue_sync/README.md`）
   - AIOpsAgent の承認リンク（approve/deny）や `auto_enqueue`（自動承認/自動実行）で確定した内容も **決定**として扱われ、Zulip へ `/decision` が投稿される。過去の承認（決定）サマリは `/decisions` で参照する
   - 例外的に GitLab 側で決定を記録する場合は、先頭に `[DECISION]` / `決定:` を付けると Zulip に通知される（環境設定が必要）
 
@@ -25,6 +30,42 @@
 6. （必要な場合は必須）n8n/GitLab/Grafana/Sulu の `refresh_*.sh` を実行して、ワークフロー同期/OQ に必要なキー類を揃える（未実施だと失敗しやすい）。
 7. サービスの各種 Key/トークンを生成・反映し、必要なら再デプロイ。
 7. `terraform output` で URL 等を確認し、動作確認。
+
+### ITSM コア（SoR: System of Record）について
+
+本リポジトリでは、共有 RDS(PostgreSQL) 上に **ITSM コア（SoR）用の正規化スキーマ**（`itsm.*`）を用意し、以下を集約できる設計です。
+
+- **承認（approve/deny/auto）**: `itsm.approval` / `itsm.audit_event`
+- **決定メッセージ本文（Zulip/GitLab）**: `itsm.audit_event(action='decision.recorded')`
+- 主要エンティティ（最小核）: `itsm.incident` / `itsm.service_request` / `itsm.problem` / `itsm.change_request` / `itsm.configuration_item` など（参照整合性は FK で担保）
+
+適用/バックフィル（推奨）:
+- スキーマ適用: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh`
+- 既存の承認履歴バックフィル: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
+- GitLab の過去決定（Issue 本文/Note）バックフィル（n8n）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json`
+  - LLM 判定のみで「取り漏れ最小化」を優先し、`decision.recorded` に加えて `decision.candidate_detected` / `decision.classification_failed` を SoR に残して後からレビュー可能にする（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
+- Zulip の過去決定メッセージバックフィル（GitLab を経由しない）: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`（現状: 未実装）
+
+RLS（Row Level Security）導入（段階適用推奨）:
+- RLS ポリシー適用: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls.sql`
+- （n8n が DB 直叩きの場合はほぼ必須）RLS コンテキスト（app.*）の既定値投入: `apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh`
+- （強化/任意）RLS の FORCE（テーブル所有者バイパスを禁止）: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls_force.sql`
+- `apps/aiops_agent/scripts/deploy_workflows.sh` から有効化する場合は、環境変数 `N8N_APPLY_ITSM_SOR_RLS=true`（必要なら `N8N_APPLY_ITSM_SOR_RLS_FORCE=true`）を使用
+  - 注意: RLS を有効化すると、`itsm.*` へのアクセスは `app.realm_key`（または `app.realm_id`）が必須になります（未設定は fail close / エラー）。
+
+監査イベントの改ざん耐性（推奨）:
+- DB 側: `apps/itsm_core/sql/itsm_sor_core.sql` で `itsm.audit_event` を append-only + ハッシュチェーン化（INSERT 時に `integrity.prev_hash/hash` を自動付与）
+- 外部アンカー（WORM）: Terraform で `itsm_audit_event_anchor_enabled=true` を有効化し、`apps/itsm_core/scripts/anchor_itsm_audit_event_hash.sh` を定期実行してチェーン先頭を S3 Object Lock に固定
+- 監査チェック: `itsm.audit_event_verify_hash_chain(realm_id)` で `ok=false` が無いことを確認
+
+### Sulu admin での参照（決定一覧の検索/フィルタ）
+
+Sulu admin には、SoR（`itsm.*`）を read-only で参照するためのメニュー/ページがあります。
+
+- メニュー: `ITSM > 決定一覧`（ほかに Incident / SRQ / Problem / Change の一覧もあります）
+- URL 例: `https://<realm>.sulu.smic-aiops.jp/admin/#/itsm/decisions`
+- 前提: Sulu は通常 DB（`sulu_db_name`）とは別に、SoR 用 DB 接続 `ITSM_SOR_DATABASE_URL` が必要です（Terraform が SSM SecureString `/${name_prefix}/itsm_sor/database_url` を作成して Sulu へ注入します）。
+- RLS を有効化している場合、Sulu 側は各 API リクエストで `app.realm_key` / `app.principal_id` を設定して参照します（未設定だと参照できません）。
 
 最小の実行例:
 
