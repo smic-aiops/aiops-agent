@@ -7,6 +7,9 @@ sulu_admin:
         directories:
             - "%kernel.project_dir%/config/lists"
     resources:
+        itsm_decisions:
+            routes:
+                list: itsm_decisions_list
         itsm_incidents:
             routes:
                 list: itsm_incidents_list
