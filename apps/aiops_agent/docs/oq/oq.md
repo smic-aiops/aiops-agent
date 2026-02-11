@@ -2042,7 +2042,7 @@ AIOpsAgent が提示した承認導線（approve/deny）について、**リン�
 
 #### 関連
 - `apps/aiops_agent/docs/zulip_chat_bot.md`
-- `apps/zulip_gitlab_issue_sync/README.md`
+- `apps/itsm_core/integrations/zulip_gitlab_issue_sync/README.md`
 - `docs/usage-guide.md`
 
 ---
@@ -2093,7 +2093,7 @@ AIOpsAgent が `auto_enqueue`（自動承認/自動実行）を選択した場�
 
 #### 関連
 - `apps/aiops_agent/docs/zulip_chat_bot.md`
-- `apps/zulip_gitlab_issue_sync/README.md`
+- `apps/itsm_core/integrations/zulip_gitlab_issue_sync/README.md`
 - `docs/usage-guide.md`
 
 

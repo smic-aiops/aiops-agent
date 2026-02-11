@@ -99,6 +99,7 @@ apps/aiops_agent/scripts/setup_aiops_agent.sh --execute
 
 # ワークフロー同期も実施
 apps/aiops_agent/scripts/setup_aiops_agent.sh --execute --deploy-workflows
+# ※ itsm_core（SoR bootstrap / workflow sync）→ aiops_agent の順で同期します
 
 # Zulip ingest 疎通テスト（tenant-a）
 apps/aiops_agent/scripts/setup_aiops_agent.sh --execute --test-ingest --zulip-tenant tenant-a

@@ -27,7 +27,7 @@ Usage: setup_aiops_agent.sh [options]
 
 Options:
   --execute               Run actions (default: dry-run)
-  --deploy-workflows      Run apps/aiops_agent/scripts/deploy_workflows.sh
+  --deploy-workflows      Sync workflows (itsm_core -> aiops_agent) via scripts/apps/deploy_all_workflows.sh
   --redeploy-n8n          Trigger ECS force-new-deploy for n8n after setup
   --test-ingest           Send a Zulip ingest test payload
   --zulip-tenant <tenant> Run only for this tenant/realm (default: terraform output N8N_AGENT_REALMS)
@@ -533,7 +533,7 @@ run_deploy_workflows() {
   local name_prefix="$4"
   local api_key="$5"
   if [[ "$DRY_RUN" == "1" ]]; then
-    log "(dry-run) deploy workflows via apps/aiops_agent/scripts/deploy_workflows.sh"
+    log "(dry-run) deploy workflows via scripts/apps/deploy_all_workflows.sh --only itsm_core,aiops_agent"
     return
   fi
   local token
@@ -545,7 +545,7 @@ run_deploy_workflows() {
   N8N_PUBLIC_API_BASE_URL="$n8n_url" \
   N8N_API_KEY="$api_key" \
   N8N_WORKFLOWS_TOKEN="$token" \
-  bash apps/aiops_agent/scripts/deploy_workflows.sh
+  bash scripts/apps/deploy_all_workflows.sh --only itsm_core,aiops_agent
 }
 
 redeploy_n8n() {

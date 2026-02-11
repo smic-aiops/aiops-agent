@@ -2,7 +2,7 @@
 
 ## 目的
 
-`apps/itsm_core/workflows/` のワークフロー群が n8n Public API へ upsert されることを確認する（dry-run の差分確認も含む）。
+`apps/itsm_core/workflows/`（SoR core）のワークフロー群が n8n Public API へ upsert されることを確認する（dry-run の差分確認も含む）。
 
 ## 受け入れ基準
 
@@ -21,3 +21,5 @@ ACTIVATE=true \
 apps/itsm_core/scripts/deploy_workflows.sh
 ```
 
+補足:
+- integrations 配下（`apps/itsm_core/integrations/*/workflows/`）も含めて一括同期する場合は `scripts/apps/deploy_all_workflows.sh` を使用する。

@@ -75,6 +75,7 @@ request_post() {
   response=$(
     curl -sS -w '\n%{http_code}' \
       -H 'Content-Type: application/json' \
+      ${ITSM_SOR_WEBHOOK_TOKEN:+-H "Authorization: Bearer ${ITSM_SOR_WEBHOOK_TOKEN}"} \
       -X POST \
       --data "${payload}" \
       "${url}"
@@ -85,6 +86,17 @@ request_post() {
   local body_out
   body_out="${response%$'\n'*}"
   echo "${name} status=${status} body=${body_out}"
+
+  if [[ "${status}" != "200" ]]; then
+    return 1
+  fi
+  if command -v jq >/dev/null 2>&1; then
+    local ok
+    ok="$(printf '%s' "${body_out}" | jq -r '.ok // empty' 2>/dev/null || true)"
+    if [[ -n "${ok}" && "${ok}" != "true" ]]; then
+      return 1
+    fi
+  fi
 }
 
 if [[ -z "${REALM}" ]]; then
@@ -114,6 +126,17 @@ fi
 payload="$(json_payload "${REALM}" "${MESSAGE}")"
 
 request_post "audit-event-test" "${N8N_BASE_URL%/}/webhook/itsm/sor/audit_event/test" "${payload}"
-request_post "gitlab-decision-backfill-test" "${N8N_BASE_URL%/}/webhook/gitlab/decision/backfill/sor/test" "${payload}"
-request_post "gitlab-issue-backfill-test" "${N8N_BASE_URL%/}/webhook/gitlab/issue/backfill/sor/test" "${payload}"
 
+webhook_base_url="${N8N_BASE_URL%/}/webhook"
+if command -v jq >/dev/null 2>&1; then
+  payload_aiops="$(jq -nc --arg realm "${REALM}" --arg message "${MESSAGE}" --arg webhook_base_url "${webhook_base_url}" '{realm:$realm, message:$message, webhook_base_url:$webhook_base_url}')"
+else
+  payload_aiops="$(python3 - <<'PY' "${REALM}" "${MESSAGE}" "${webhook_base_url}"
+import json, sys
+print(json.dumps({"realm": sys.argv[1], "message": sys.argv[2], "webhook_base_url": sys.argv[3]}))
+PY
+)"
+fi
+
+request_post "aiops-write-test" "${N8N_BASE_URL%/}/webhook/itsm/sor/aiops/write/test" "${payload_aiops}"
+echo "[hint] GitLab backfill OQ: apps/itsm_core/integrations/gitlab_backfill_to_sor/scripts/run_oq.sh"

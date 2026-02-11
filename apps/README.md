@@ -1,6 +1,6 @@
 # apps/（アプリ共通）
 
-本ディレクトリ配下の各アプリ（`apps/<app>/`）の README は、個別仕様だけでなく、監査/妥当性確認（CSV/CSA）に必要な最低限の情報を含む「共通フォーマット」を採用します。
+本リポジトリの各アプリ（`apps/<app>/` および `apps/itsm_core/integrations/<app>/`）の README は、個別仕様だけでなく、監査/妥当性確認（CSV/CSA）に必要な最低限の情報を含む「共通フォーマット」を採用します。
 
 また、本リポジトリの apps 配下の開発・運用は **GAMP5 2nd（2022）× CSA × AI** の考え方（リスクベース、最小文書、構成管理）に沿って行います。
 特に AI を含む部分（LLM プロンプト/ポリシー/ワークフロー等）は「構成（Configuration）」として扱い、変更管理と再検証（必要最小限の OQ/PQ）を前提とします。
@@ -9,7 +9,7 @@
 
 ```mermaid
 flowchart LR
-  Sources[外部ソース（GitLab/Zulip/CloudWatch/Grafana/CMDB 等）] --> Webhook["n8n Webhook（apps/*/workflows の path）"]
+  Sources[外部ソース（GitLab/Zulip/CloudWatch/Grafana/CMDB 等）] --> Webhook["n8n Webhook（apps/**/workflows の path）"]
   Operator[運用者（手動/検証）] --> Webhook
 
   Webhook --> WF[n8n Workflows（JSON）]
@@ -21,6 +21,9 @@ flowchart LR
 ```
 
 ## アプリ一覧（連携サマリ）
+
+注:
+- 周辺連携系の一部アプリは `apps/itsm_core/integrations/` 配下へ統合しています（例: `apps/itsm_core/integrations/cloudwatch_event_notify`）。
 
 | アプリ | 入力（代表） | 出力/連携（代表） | 主な用途 |
 |---|---|---|---|
@@ -176,37 +179,37 @@ ITSM/AI Ops のユースケースにおいて、システムが「誰により�
 
 ---
 
-## 1. 対象: <app>
+## 1. 対象: <app_root>
 
 ### 1.1 使用プロンプト（配置先）
-推奨の中心プロンプト（System 相当）は `apps/<app>/data/default/prompt/system.md` で管理します。
+推奨の中心プロンプト（System 相当）は `<app_root>/data/default/prompt/system.md` で管理します。
 内容（テンプレート）は本 README の「Appendix: `system.md` フォーマット例（テンプレート）」をコピーして作成してください。
 
 ### 1.2 プロンプト
 この節には「中心プロンプトの置き場」と「参照関係」のみを記載します（プロンプト本文は重複を避けるため Appendix に集約）。
 
-- 中心プロンプト（System）: `apps/<app>/data/default/prompt/system.md`
-- 行動仕様（AIS/CS）: `apps/<app>/docs/cs/ai_behavior_spec.md`
-- ユースケース: `apps/<app>/docs/app_requirements.md`
-- DQ: `apps/<app>/docs/dq/dq.md`
+- 中心プロンプト（System）: `<app_root>/data/default/prompt/system.md`
+- 行動仕様（AIS/CS）: `<app_root>/docs/cs/ai_behavior_spec.md`
+- ユースケース: `<app_root>/docs/app_requirements.md`
+- DQ: `<app_root>/docs/dq/dq.md`
 
 ### 1.3 実行例（入力例）
 実行時は「対象アプリ」「目的」「制約（秘匿・出力様式）」「参照してほしいファイル」を最初に渡します。
 
 ```text
-対象: apps/<app>
+対象: <app_root>（例: apps/<app> または apps/itsm_core/integrations/<app>）
 目的: <app> のユースケース/検証（DQ）を最新化して、関連するプロンプト/ポリシー/実装に反映したい
 制約:
 - 秘匿情報は出力しない
 - ユーザー向けに「実行コマンド」「期待結果」「中止条件」を提示しない
 - GO/承認待ちを要求しない（AIS で例外がある場合を除く）
 進め方:
-- `apps/<app>/data/default/prompt/system.md` の Process に従って、必要なファイル更新と最小差分の実装修正を行ってください
+- `<app_root>/data/default/prompt/system.md` の Process に従って、必要なファイル更新と最小差分の実装修正を行ってください
 - 変更点ごとに「差分の要約」と「理由」を短く添えてください
 参照:
-- AIS: `apps/<app>/docs/cs/ai_behavior_spec.md`
-- 要求/ユースケース: `apps/<app>/docs/app_requirements.md`
-- DQ: `apps/<app>/docs/dq/dq.md`
+- AIS: `<app_root>/docs/cs/ai_behavior_spec.md`
+- 要求/ユースケース: `<app_root>/docs/app_requirements.md`
+- DQ: `<app_root>/docs/dq/dq.md`
 ```
 
 ---
@@ -228,10 +231,10 @@ ITSM/AI Ops のユースケースにおいて、システムが「誰により�
 
 ## `docs/cs/`（Configuration Specification）と `ai_behavior_spec.md`
 
-各アプリは `apps/<app>/docs/cs/` を **Configuration Specification（CS: 設計・構成定義）** の置き場として使用します。
+各アプリは `<app_root>/docs/cs/` を **Configuration Specification（CS: 設計・構成定義）** の置き場として使用します。
 ここには、ワークフローやプロンプト等の「実装（設定）」そのものではなく、**「AI に何を考えさせ、何をさせ、何をさせないか」**を、人間（監査官・QA・開発者）が理解できる形で定義した文書を配置します。
 
-- `apps/<app>/docs/cs/ai_behavior_spec.md`（推奨）
+- `<app_root>/docs/cs/ai_behavior_spec.md`（推奨）
   - 目的: **AI の意図された振る舞い（Intended Behavior）** と、推論境界・制約・人の最終責任・検証方針・変更判断基準を定義する
   - 位置づけ:
     - **GAMP5**: Configuration Specification としての説明責任
@@ -291,7 +294,7 @@ AI には以下が期待される：
 - 速度よりも正確性とトレーサビリティを優先する
 - 情報が不完全な場合は、前提（仮定）を明示する
 - 推測的または根拠のない結論を避ける
-- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、ユースケース（`apps/<app>/docs/app_requirements.md`）と DQ シナリオ（`apps/<app>/docs/dq/dq.md`）を更新する際は、テンプレート（`scripts/itsm/gitlab/templates/*/docs/usecases/`）を参照し、既存と重複しない形で **少なくとも1件**追加する
+- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、ユースケース（`<app_root>/docs/app_requirements.md`）と DQ シナリオ（`<app_root>/docs/dq/dq.md`）を更新する際は、テンプレート（`scripts/itsm/gitlab/templates/*/docs/usecases/`）を参照し、既存と重複しない形で **少なくとも1件**追加する
 
 ## 5. 禁止・制限される振る舞い
 AI は以下を行ってはならない：
@@ -311,11 +314,11 @@ AI は管理された自律モデルの下で動作する：
 ## 7. プロンプト設定への参照
 本行動仕様は、管理対象の構成品目（Configuration）として維持され、関連する「実装（設定）」により実現される。
 
-- 本書（CS）: `apps/<app>/docs/cs/ai_behavior_spec.md`
+- 本書（CS）: `<app_root>/docs/cs/ai_behavior_spec.md`
 - 参照（例・実体の置き場はプロジェクトにより定義）:
-  - 管理対象プロンプト/ポリシー: `apps/<app>/data/default/{prompt,policy}/`（例）
-  - ワークフロー定義: `apps/<app>/workflows/`（例）
-  - 運用 Runbook: `apps/<app>/docs/runbook/`（例）
+  - 管理対象プロンプト/ポリシー: `<app_root>/data/default/{prompt,policy}/`（例）
+  - ワークフロー定義: `<app_root>/workflows/`（例）
+  - 運用 Runbook: `<app_root>/docs/runbook/`（例）
   - ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
 
 これらは変更管理下の構成品目（CI）として管理される。
@@ -355,8 +358,8 @@ AI の振る舞いの検証は以下により実施する：
 
 ## Appendix: `system.md` フォーマット例（テンプレート）
 
-`system.md` は「実行時に LLM へ渡す中心となる指示（System 相当）」です。推奨の置き場は `apps/<app>/data/default/prompt/system.md` です。
-本テンプレートは `apps/<app>/docs/cs/ai_behavior_spec.md`（AIS）と矛盾しないように記述してください。
+`system.md` は「実行時に LLM へ渡す中心となる指示（System 相当）」です。推奨の置き場は `<app_root>/data/default/prompt/system.md` です。
+本テンプレートは `<app_root>/docs/cs/ai_behavior_spec.md`（AIS）と矛盾しないように記述してください。
 
 ```md
 # system.md
@@ -374,7 +377,7 @@ AI の振る舞いの検証は以下により実施する：
 - 「GO」や承認待ちを要求しない（ただし AIS で別途定義した、人の最終責任・承認が必要な事項は除く）
 - 実行スコープ固定: 対象 realm はすべて。対象 n8n base url は terraform output を正とする
 - 実行モード明示: `mode=dry-run|apply` を必須入力にし、`apply` のときのみ外部 HTTP（同期/テスト webhook）を許可する（既定は `apply`）
-- 資格情報健全性ゲート: `apply` の前提として `apps/<app>/docs/oq/oq.md` にある OQ が「当日（YYYY-MM-DD）に合格している証跡パス」を必須入力しない（未提示でも実行する）
+- 資格情報健全性ゲート: `apply` の前提として `<app_root>/docs/oq/oq.md` にある OQ が「当日（YYYY-MM-DD）に合格している証跡パス」を必須入力しない（未提示でも実行する）
 - 変更管理ゲート: `docs/change-management.md` に当日の変更記録（実施日/承認者/対象 realm/影響範囲）が追記済みであることを `apply` の前提にしない（未追記でも実行する）
 - 秘密情報取り扱い注意: `TEST_WEBHOOK_ENV_OVERRIDES_FROM_TERRAFORM=true` は自己テスト時に `x-aiops-env-*` ヘッダへ秘密値（例: `ZULIP_BOT_API_KEY`）を載せ得る。送信先が管理下の n8n であることを確認し、必要最小限で使用する（不要なら false）。
 - OQ ドキュメント整備: OQ 実行（外部 HTTP を伴う検証）に入る前に、必ず `scripts/generate_oq_md.sh` を実行して `apps/*/docs/oq/oq.md` の生成領域（`<!-- OQ_SCENARIOS_BEGIN -->`〜`<!-- OQ_SCENARIOS_END -->`）を最新化する（差分が出た場合は反映してから OQ を実行する）
@@ -386,10 +389,10 @@ AI の振る舞いの検証は以下により実施する：
 
 ## Process
 - ユースケース拡張:
-  - `apps/<app>/docs/app_requirements.md` を確認し、`scripts/itsm/gitlab/templates/*/docs/usecases/` を参照してユースケースを **1つ以上**追加（既存ユースケースと重複しない）
-  - 追加ユースケースに対応するシナリオを **1つ以上** `apps/<app>/docs/dq/dq.md` へ組み込み（既存シナリオと重複しない）
-- 仕様確認: `apps/<app>/docs/dq/dq.md` を確認し、DQ改善点を10件以上列挙
-- DQ修正: 指摘を反映して `apps/<app>/docs/dq/dq.md` を修正し、修正内容と理由を短く記録
+  - `<app_root>/docs/app_requirements.md` を確認し、`scripts/itsm/gitlab/templates/*/docs/usecases/` を参照してユースケースを **1つ以上**追加（既存ユースケースと重複しない）
+  - 追加ユースケースに対応するシナリオを **1つ以上** `<app_root>/docs/dq/dq.md` へ組み込み（既存シナリオと重複しない）
+- 仕様確認: `<app_root>/docs/dq/dq.md` を確認し、DQ改善点を10件以上列挙
+- DQ修正: 指摘を反映して `<app_root>/docs/dq/dq.md` を修正し、修正内容と理由を短く記録
 - 影響仕様書修正: 修正後のDQで再点検し、主に `design` / `usage` / `iq` / `oq` / `pq` と関連プロンプト・ポリシーを更新
 - 影響実装修正: 関連コード/データを見直し、必要な修正を行う
 - デプロイ準備: `usage` に従い、デプロイ手順のコマンド候補のみ整理
@@ -406,8 +409,8 @@ AI の振る舞いの検証は以下により実施する：
 - 次アクション:
 
 ## References
-- AIS（CS）: `apps/<app>/docs/cs/ai_behavior_spec.md`
-- 要求/ユースケース: `apps/<app>/docs/app_requirements.md`
-- DQ: `apps/<app>/docs/dq/dq.md`
+- AIS（CS）: `<app_root>/docs/cs/ai_behavior_spec.md`
+- 要求/ユースケース: `<app_root>/docs/app_requirements.md`
+- DQ: `<app_root>/docs/dq/dq.md`
 - ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
 ```

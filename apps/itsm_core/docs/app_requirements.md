@@ -1,6 +1,6 @@
 # ITSM Core 要求（Requirements）
 
-本書は `apps/itsm_core/` の要求（What/Why）を定義します。詳細な利用方法・手順・実装は `apps/itsm_core/README.md` と `apps/itsm_core/docs/`、スキーマ（`apps/itsm_core/sql/`）、運用スクリプト（`apps/itsm_core/scripts/`）、ワークフロー（`apps/itsm_core/workflows/`）を正とします。
+本書は `apps/itsm_core/` の要求（What/Why）を定義します。詳細な利用方法・手順・実装は `apps/itsm_core/README.md` と `apps/itsm_core/docs/`、スキーマ（`apps/itsm_core/sql/`）、運用スクリプト（`apps/itsm_core/scripts/`）、ワークフロー（`apps/itsm_core/workflows/` および `apps/itsm_core/integrations/*/workflows/`）を正とします。
 
 ## 1. 対象
 
@@ -38,4 +38,3 @@ ITSM の SoR（System of Record）を PostgreSQL（共有 RDS）上の `itsm.*` 
 - セキュリティ: realm 単位の分離（RLS/コンテキスト運用）
 - 監査性: append-only + 冪等キー +（任意）外部アンカー
 - 可用性: 失敗時に原因追跡・再実行が可能であること（スクリプト/ワークフローのログ）
-

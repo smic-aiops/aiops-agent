@@ -95,8 +95,8 @@ flowchart LR
 - `apps/workflow_manager/docs/oq/`: OQ（運用適格性確認）
 
 補足:
-- Zulip↔GitLab Issue 同期は `apps/zulip_gitlab_issue_sync/` に分離。
-- GitLab Issue メトリクス集計→S3 出力は `apps/gitlab_issue_metrics_sync/` に分離。
+- Zulip↔GitLab Issue 同期は `apps/itsm_core/integrations/zulip_gitlab_issue_sync/` に分離。
+- GitLab Issue メトリクス集計→S3 出力は `apps/itsm_core/integrations/gitlab_issue_metrics_sync/` に分離。
 
 ### 同期（n8n Public API へ upsert）
 ```bash

@@ -58,7 +58,7 @@ flowchart LR
   Scripts --> DB[(RDS Postgres<br/>itsm.*)]
 
   Operator --> Webhook["n8n Webhook（検証/バックフィル）"]
-  Webhook --> WF[n8n Workflows（apps/itsm_core/workflows/*.json）]
+  Webhook --> WF[n8n Workflows（apps/itsm_core/**/workflows/*.json）]
   WF --> DB
   WF -. optional .-> GitLab[GitLab API（過去データ走査）]
   WF -. optional .-> LLM[LLM API（判定/分類）]
@@ -66,9 +66,20 @@ flowchart LR
 
 ### ディレクトリ構成
 - `apps/itsm_core/sql/`: SoR スキーマ（正）/RLS
-- `apps/itsm_core/scripts/`: DDL/RLS/保持/削除/匿名化/監査アンカー/バックフィル/検証の補助
-- `apps/itsm_core/workflows/`: SoR へ投入する n8n ワークフロー群（バックフィル/テスト）
+- `apps/itsm_core/scripts/`: DDL/RLS/保持/削除/匿名化/監査アンカー/検証の補助
+- `apps/itsm_core/workflows/`: SoR コアの n8n ワークフロー群（スモークテスト等）
 - `apps/itsm_core/docs/`: Requirements、DQ/IQ/OQ/PQ、AIS
+- `apps/itsm_core/integrations/`: ITSM 運用の周辺連携（n8n ワークフロー + OQ/CS/PQ 等）を統合したアプリ群
+  - `aiops_approval_history_backfill_to_sor`
+  - `cloudwatch_event_notify`
+  - `gitlab_backfill_to_sor`
+  - `gitlab_issue_metrics_sync`
+  - `gitlab_issue_rag`
+  - `gitlab_mention_notify`
+  - `gitlab_push_notify`
+  - `zulip_backfill_to_sor`
+  - `zulip_gitlab_issue_sync`
+  - `zulip_stream_sync`
 
 ---
 
@@ -78,6 +89,7 @@ flowchart LR
 - RLS: `apps/itsm_core/sql/itsm_sor_rls.sql`
 - RLS FORCE（強化）: `apps/itsm_core/sql/itsm_sor_rls_force.sql`
 - RLS 運用補助: `itsm.set_rls_context(...)`（`apps/itsm_core/sql/itsm_sor_core.sql` 内。n8n/autocommit の “SQL 文内で app.* をセット” を想定）
+- AIOpsAgent SoR 書き込み（SoR 直SQLの置き換え）: `itsm.aiops_*`（`apps/itsm_core/sql/itsm_sor_core.sql`）
 
 ---
 
@@ -89,24 +101,33 @@ flowchart LR
 - 保持/削除: `apps/itsm_core/scripts/apply_itsm_sor_retention.sh`
 - PII 疑似化: `apps/itsm_core/scripts/anonymize_itsm_principal.sh`
 - 監査アンカー（S3）: `apps/itsm_core/scripts/anchor_itsm_audit_event_hash.sh`
-- GitLab Issue 全件 → SoR レコード backfill 起動（n8n Webhook 呼び出し）: `apps/itsm_core/scripts/backfill_gitlab_issues_to_sor.sh`
-- GitLab 過去決定バックフィル起動（n8n Webhook 呼び出し）: `apps/itsm_core/scripts/backfill_gitlab_decisions_to_sor.sh`
-- Zulip 過去決定メッセージバックフィル: `apps/itsm_core/scripts/backfill_zulip_decisions_to_sor.sh`
-- 既存の承認履歴バックフィル（AIOps）: `apps/itsm_core/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
+- GitLab backfill 起動（n8n Webhook 呼び出し）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/scripts/backfill_gitlab_issues_to_sor.sh`, `apps/itsm_core/integrations/gitlab_backfill_to_sor/scripts/backfill_gitlab_decisions_to_sor.sh`
+- Zulip backfill（GitLab を経由しない）: `apps/itsm_core/integrations/zulip_backfill_to_sor/scripts/backfill_zulip_decisions_to_sor.sh`
+- AIOps 承認履歴 backfill: `apps/itsm_core/integrations/aiops_approval_history_backfill_to_sor/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
 
 ---
 
 ## n8n ワークフロー（代表）
 
 - SoR への書き込みスモークテスト: `apps/itsm_core/workflows/itsm_sor_audit_event_test.json`（Webhook: `POST /webhook/itsm/sor/audit_event/test`）
-- GitLab Issue → SoR レコード backfill（全件走査）: `apps/itsm_core/workflows/gitlab_issue_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor`）
-- GitLab Issue → SoR レコード backfill（テスト投入）: `apps/itsm_core/workflows/gitlab_issue_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor/test`）
-- GitLab 決定 backfill（全件走査・LLM 判定）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
-- GitLab 決定 backfill（テスト投入）: `apps/itsm_core/workflows/gitlab_decision_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor/test`）
+- AIOps SoR 書き込み（互換 Webhook / 任意）: `apps/itsm_core/workflows/itsm_sor_aiops_*.json`（例: `POST /webhook/itsm/sor/aiops/auto_enqueue`）
+- AIOps SoR 書き込み（スモークテスト）: `apps/itsm_core/workflows/itsm_sor_aiops_write_test.json`（Webhook: `POST /webhook/itsm/sor/aiops/write/test`）
+- GitLab Issue → SoR レコード backfill（全件走査）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_issue_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor`）
+- GitLab Issue → SoR レコード backfill（テスト投入）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_issue_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor/test`）
+- GitLab 決定 backfill（全件走査・LLM 判定）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_decision_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
+- GitLab 決定 backfill（テスト投入）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_decision_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor/test`）
 
 同期（n8n Public API へ upsert）:
 ```bash
 apps/itsm_core/scripts/deploy_workflows.sh
+```
+
+環境変数（任意）:
+- `ITSM_SOR_WEBHOOK_TOKEN`: SoR 書き込み系 Webhook を簡易保護するための Bearer トークン（未設定なら検証なし）
+
+GitLab backfill workflows の同期:
+```bash
+apps/itsm_core/integrations/gitlab_backfill_to_sor/scripts/deploy_workflows.sh
 ```
 
 ---
@@ -184,4 +205,3 @@ Intended Use に適合することを、最小の検証で示す。
 **内容**
 - 変更は Git の差分 + OQ 再実施（必要最小限）で追跡する（変更管理は `docs/change-management.md` を参照）。
 - DDL/RLS/保持/削除/匿名化/監査アンカー/バックフィルの変更は SoR の監査性に直結するため、影響範囲に応じて IQ/OQ/PQ を再実施する。
-

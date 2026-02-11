@@ -47,10 +47,10 @@ render_scenarios_block() {
   shift
   local files=("$@")
 
-  cat <<'HEADER'
+	cat <<'HEADER'
 ## OQ シナリオ（詳細）
 
-このセクションは `docs/oq/oq_*.md` から自動生成されます（更新: `scripts/generate_oq_md.sh`）。
+このセクションは同一ディレクトリ内の `oq_*.md` から自動生成されます（更新: `scripts/generate_oq_md.sh`）。
 個別シナリオを追加/修正した場合は、まず `oq_*.md` を更新し、最後に本スクリプトで `oq.md` を更新してください。
 
 ### 一覧

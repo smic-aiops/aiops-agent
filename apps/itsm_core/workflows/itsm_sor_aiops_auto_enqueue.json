@@ -1,0 +1,165 @@
+{
+  "name": "itsm-sor-aiops-auto-enqueue",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "itsm/sor/aiops/auto_enqueue",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\nconst headers = ($json && typeof $json === 'object' && $json.headers && typeof $json.headers === 'object') ? $json.headers : {};\n\nconst fail = (statusCode, message) => ([{ json: { ok: false, status_code: statusCode, error: message } }]);\n\nconst isUuid = (value) => {\n  const s = String(value ?? '').trim();\n  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);\n};\n\nconst token = String($env.ITSM_SOR_WEBHOOK_TOKEN || '').trim();\nif (token) {\n  const auth = String(headers.authorization || headers.Authorization || '').trim();\n  const xToken = String(headers['x-itsm-sor-token'] || headers['X-ITSM-SOR-TOKEN'] || '').trim();\n  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice('bearer '.length).trim() : '';\n  if (bearer !== token && xToken !== token) {\n    return fail(401, 'unauthorized');\n  }\n}\n\nconst realm = String(body.realm || $env.N8N_REALM || $env.N8N_OBSERVER_REALM || 'default').trim() || 'default';\n\nconst contextId = body.context_id ?? body.contextId ?? null;\nif (!contextId) return fail(400, 'context_id is required');\nif (!isUuid(contextId)) return fail(400, 'context_id must be uuid');\n\nconst jobId = body.job_id ?? body.jobId ?? null;\nif (jobId && !isUuid(jobId)) return fail(400, 'job_id must be uuid');\n\nconst correlationId = body.correlation_id ?? body.correlationId ?? body.trace_id ?? body.traceId ?? null;\n\nconst actor = (body.actor && typeof body.actor === 'object') ? body.actor : ((body.auto_decision_actor && typeof body.auto_decision_actor === 'object') ? body.auto_decision_actor : {});\nconst replyTarget = (body.reply_target && typeof body.reply_target === 'object') ? body.reply_target : {};\n\nconst message = body.message !== undefined ? String(body.message) : (body.content !== undefined ? String(body.content) : null);\n\nconst after = (body.after && typeof body.after === 'object') ? body.after : ((body.job_plan && typeof body.job_plan === 'object') ? body.job_plan : {});\n\nconst occurredAt = body.occurred_at || body.occurredAt || null;\n\nconst decisionMethod = String(body.decision_method || body.decisionMethod || 'auto_enqueue').trim() || 'auto_enqueue';\n\nconst eventKey = String(body.event_key || body.eventKey || `aiops:auto_enqueue:${contextId || 'none'}:${jobId || 'none'}`).trim();\nif (!eventKey) return fail(400, 'event_key is required');\n\nconst source = String(body.source || 'aiops_agent').trim() || 'aiops_agent';\nconst summary = String(body.summary || 'AIOpsAgent 自動承認（auto_enqueue）').trim() || 'AIOpsAgent 自動承認（auto_enqueue）';\n\nreturn [{\n  json: {\n    ok: true,\n    record_type: 'sor_aiops_auto_enqueue',\n    realm,\n    occurred_at: occurredAt,\n    context_id: contextId,\n    job_id: jobId,\n    correlation_id: correlationId,\n    actor,\n    reply_target: replyTarget,\n    message,\n    after,\n    source,\n    summary,\n    integrity: {\n      event_key: eventKey,\n      decision_method: decisionMethod\n    }\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "10",
+      "name": "IF OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($json.realm || '').replace(/'/g, \"''\") }}','') AS realm_key,\n    COALESCE(NULLIF(NULLIF('{{ String($json.occurred_at || '').replace(/'/g, \"''\") }}',''), 'undefined')::timestamptz, NOW()) AS occurred_at,\n    NULLIF(NULLIF('{{ String($json.context_id || '').replace(/'/g, \"''\") }}',''), 'undefined')::uuid AS context_id,\n    NULLIF(NULLIF('{{ String($json.job_id || '').replace(/'/g, \"''\") }}',''), 'undefined')::uuid AS job_id,\n    NULLIF('{{ String($json.correlation_id || '').replace(/'/g, \"''\") }}', '') AS correlation_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($json.reply_target || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($json.summary || '').replace(/'/g, \"''\") }}','') AS summary,\n    NULLIF('{{ String($json.message || '').replace(/'/g, \"''\") }}','') AS message,\n    COALESCE(NULLIF('{{ JSON.stringify($json.after || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS after,\n    NULLIF('{{ String($json.integrity?.event_key || '').replace(/'/g, \"''\") }}','') AS event_key,\n    NULLIF('{{ String($json.integrity?.decision_method || '').replace(/'/g, \"''\") }}','') AS decision_method,\n    NULLIF('{{ String($json.source || \"aiops_agent\").replace(/'/g, \"''\") }}', '') AS source\n)\nSELECT id\nFROM (\n  SELECT itsm.aiops_insert_auto_enqueue_audit_event(\n    v.realm_key,\n    v.context_id,\n    v.job_id,\n    v.correlation_id,\n    v.actor,\n    v.reply_target,\n    v.summary,\n    v.message,\n    v.after,\n    v.decision_method,\n    v.source,\n    v.event_key,\n    v.occurred_at\n  ) AS id\n  FROM v\n) ins\nWHERE ins.id IS NOT NULL;"
+      },
+      "id": "3",
+      "name": "Insert SoR Audit Event (Auto-Enqueue)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        860,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: $node['Normalize Input'].json.ok === true, input: $node['Normalize Input'].json, inserted: $json } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "4",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, error: $json.error } }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 400 }}"
+        }
+      },
+      "id": "11",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        900,
+        360
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "IF OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert SoR Audit Event (Auto-Enqueue)": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF OK": {
+      "main": [
+        [
+          {
+            "node": "Insert SoR Audit Event (Auto-Enqueue)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}

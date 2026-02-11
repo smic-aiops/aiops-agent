@@ -141,8 +141,8 @@ grafana:
 - CI 変数の運用方針: `GITLAB_CI_VAR_MASKED=true` / `GITLAB_CI_VAR_PROTECTED=true`
 - 冪等性: n8n 側で既存ストリームを検出してスキップ
 - DRY_RUN: CI では `DRY_RUN=true` を設定することで、Webhook 送信をスキップして処理対象のみ出力
-- n8n ワークフロー導入: `apps/zulip_stream_sync` に配置（他アプリと同じ運用形態に合わせるため）
-- デプロイ手順: `apps/zulip_stream_sync/README.md` と `apps/zulip_stream_sync/scripts/deploy_workflows.sh` を参照
+- n8n ワークフロー導入: `apps/itsm_core/integrations/zulip_stream_sync` に配置（他アプリと同じ運用形態に合わせるため）
+- デプロイ手順: `apps/itsm_core/integrations/zulip_stream_sync/README.md` と `apps/itsm_core/integrations/zulip_stream_sync/scripts/deploy_workflows.sh` を参照
 
 ```mermaid
 flowchart TD

@@ -62,7 +62,7 @@ realm ごとに SecureString を作成し、n8n コンテナへ secrets とし�
 - n8n 側の環境変数（secrets）: `N8N_CLOUDWATCH_WEBHOOK_SECRET`
 
 補足:
-- `apps/cloudwatch_event_notify/workflows/cloudwatch_event_notify.json` でも同じ `N8N_CLOUDWATCH_WEBHOOK_SECRET` を参照します。
+- `apps/itsm_core/integrations/cloudwatch_event_notify/workflows/cloudwatch_event_notify.json` でも同じ `N8N_CLOUDWATCH_WEBHOOK_SECRET` を参照します。
 
 実装:
 - 生成/保存: `modules/stack/ssm.tf`

@@ -26,7 +26,7 @@
 - カレンダー機能の使い分け：サービス変更・リリース・アウトージ予定は GitLab サービス管理（Issue/ボード/マイルストーン）に登録し、必要に応じて n8n で外部カレンダーへ同期する（専用ERP/グループウェアは本構成には含めない）
 
 関連ドキュメント:
-- [GitLab更新イベントの@メンション通知（Zulip DM）](../../apps/gitlab_mention_notify/README.md)
+- [GitLab更新イベントの@メンション通知（Zulip DM）](../../apps/itsm_core/integrations/gitlab_mention_notify/README.md)
 
 ## OSS 一覧（バージョン）
 
@@ -52,13 +52,13 @@ apps 配下のディレクトリアプリを一覧化します。詳細は各ア
 | --- | --- | --- |
 | aiops_agent | AIOps Agent のワークフロー群 | `apps/aiops_agent/README.md` |
 | workflow_manager | サービスリクエスト管理のワークフロー群 | `apps/workflow_manager/README.md` |
-| cloudwatch_event_notify | CloudWatch イベント通知のワークフロー | `apps/cloudwatch_event_notify/README.md` |
-| gitlab_issue_metrics_sync | GitLab Issue メトリクス同期 | `apps/gitlab_issue_metrics_sync/README.md` |
-| gitlab_issue_rag | GitLab Issue の RAG 連携 | `apps/gitlab_issue_rag/README.md` |
-| gitlab_mention_notify | GitLab メンション通知 | `apps/gitlab_mention_notify/README.md` |
-| gitlab_push_notify | GitLab Push 通知 | `apps/gitlab_push_notify/README.md` |
-| zulip_gitlab_issue_sync | Zulip ↔ GitLab Issue 同期 | `apps/zulip_gitlab_issue_sync/README.md` |
-| zulip_stream_sync | Zulip ストリーム同期 | `apps/zulip_stream_sync/README.md` |
+| cloudwatch_event_notify | CloudWatch イベント通知のワークフロー | `apps/itsm_core/integrations/cloudwatch_event_notify/README.md` |
+| gitlab_issue_metrics_sync | GitLab Issue メトリクス同期 | `apps/itsm_core/integrations/gitlab_issue_metrics_sync/README.md` |
+| gitlab_issue_rag | GitLab Issue の RAG 連携 | `apps/itsm_core/integrations/gitlab_issue_rag/README.md` |
+| gitlab_mention_notify | GitLab メンション通知 | `apps/itsm_core/integrations/gitlab_mention_notify/README.md` |
+| gitlab_push_notify | GitLab Push 通知 | `apps/itsm_core/integrations/gitlab_push_notify/README.md` |
+| zulip_gitlab_issue_sync | Zulip ↔ GitLab Issue 同期 | `apps/itsm_core/integrations/zulip_gitlab_issue_sync/README.md` |
+| zulip_stream_sync | Zulip ストリーム同期 | `apps/itsm_core/integrations/zulip_stream_sync/README.md` |
 
 ## ITIL4プラクティス別 OSS機能特徴一覧（網羅版）
 
@@ -72,10 +72,10 @@ OSS ごとの機能特徴を ITIL4 プラクティスカテゴリでグルーピ
 
 誰でも追えるように、プラクティスをまたいでツール間がどうメッセージ交換するか（イベント→起票→通知→証跡化）を共通仕様としてまとめる。
 
-- 本ドキュメントは「全体の役割分担/連携経路」を定義する。プラクティスごとの詳細なガイドは GitLab 管理プロジェクトのテンプレート（`scripts/itsm/gitlab/templates/*-management/docs/*_management/`）を正とする。
-  - 一般管理: `scripts/itsm/gitlab/templates/general-management/docs/general_management/`
-  - サービス管理: `scripts/itsm/gitlab/templates/service-management/docs/service_management/`
-  - 技術管理: `scripts/itsm/gitlab/templates/technical-management/docs/technical_management/`
+- 本ドキュメントは「全体の役割分担/連携経路」を定義する。プラクティスごとの詳細なガイドは GitLab 管理プロジェクトのテンプレート（`scripts/itsm/gitlab/templates/*-management/docs/`）を正とする。
+  - 一般管理: `scripts/itsm/gitlab/templates/general-management/docs/`
+  - サービス管理: `scripts/itsm/gitlab/templates/service-management/docs/`
+  - 技術管理: `scripts/itsm/gitlab/templates/technical-management/docs/`
   - 監視参照の統一（Grafana）: `scripts/itsm/gitlab/templates/service-management/docs/monitoring_unification_grafana.md.tpl`
 
 - 適用範囲: 一般管理 / サービス管理 / 技術管理プラクティクスを実現するための、ツール間データ連携（通知・起票・CMDB同期・実行要求）
@@ -120,9 +120,9 @@ OSS ごとの機能特徴を ITIL4 プラクティスカテゴリでグルーピ
 
 - **起票/状態の正**: 対応が必要な事象は GitLab サービス管理（Issue）に集約し、状態（ステータス/担当/期限）と証跡は GitLab を正に寄せる。
 - **会話/最終決定の正**: 速度重視で、会話/調整は Zulip に寄せる。最終決定は **Zulip または GitLab Issue** で行い、決定マーカーで明示する（決定メッセージには根拠リンクを含め、GitLab にはリンク付き要約 + `correlation_id` を残す）。
-- **決定マーカー**: Zulip の `/decision`（既定）で始まる投稿は `apps/zulip_gitlab_issue_sync` が GitLab Issue に「決定（Zulip）」コメントとして証跡化する（マーカーは `ZULIP_GITLAB_DECISION_PREFIXES` で変更可）。GitLab 側で決定を記録する場合は `[DECISION]` / `決定:` を先頭に付け、Zulip へ通知する（詳細: `apps/zulip_gitlab_issue_sync/README.md`）。
+- **決定マーカー**: Zulip の `/decision`（既定）で始まる投稿は `apps/itsm_core/integrations/zulip_gitlab_issue_sync` が GitLab Issue に「決定（Zulip）」コメントとして証跡化する（マーカーは `ZULIP_GITLAB_DECISION_PREFIXES` で変更可）。GitLab 側で決定を記録する場合は `[DECISION]` / `決定:` を先頭に付け、Zulip へ通知する（詳細: `apps/itsm_core/integrations/zulip_gitlab_issue_sync/README.md`）。
 - **承認/自動承認も決定扱い**: AIOpsAgent の承認リンク（approve/deny）のクリック確定や、`auto_enqueue`（自動承認/自動実行）で確定した内容は、Zulip の同一トピックへ `/decision` として投稿し、GitLab に証跡化する。過去の承認（決定）サマリは Zulip で `/decisions` を投稿して参照する。
-- **GitLab 側の決定通知（補助）**: 例外的に GitLab 側で決定（`[DECISION]` / `決定:`）を記録した場合は、Zulip へ通知して関係者へ到達させる（詳細: `apps/zulip_gitlab_issue_sync/README.md`）。
+- **GitLab 側の決定通知（補助）**: 例外的に GitLab 側で決定（`[DECISION]` / `決定:`）を記録した場合は、Zulip へ通知して関係者へ到達させる（詳細: `apps/itsm_core/integrations/zulip_gitlab_issue_sync/README.md`）。
 - **根拠リンク優先**: ログ本文の貼り付けではなく、Athena/Grafana/CloudWatch へのリンクを根拠とする（GitLabには要約と参照URL）。
 - **PII取り扱い**: PIIはZulipへ貼らない。必要ならGitLabのConfidential Issueに限定し、n8n通知はマスキング済みの要約のみ。
 - **冪等性**: n8nは `message_id` / `correlation_id` で重複起票・重複通知を抑止する。

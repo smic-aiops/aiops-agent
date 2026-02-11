@@ -125,6 +125,8 @@ apps/aiops_agent/scripts/deploy_workflows.sh
 - `N8N_DRY_RUN=true`（変更計画だけ出力）
 - `N8N_ACTIVATE=true`（未指定なら `terraform output -raw N8N_ACTIVATE`）
 - `N8N_SYNC_MISSING_TOKEN_BEHAVIOR=skip|fail`
+- SoR（ITSM Core / `itsm.*`）書き込み（参考）
+  - AIOpsAgent は n8n の Postgres ノードから `itsm.aiops_*` 関数を呼ぶ（Webhook 依存なし）
 - レルム
   - `N8N_AGENT_REALMS`（未指定なら `terraform output N8N_AGENT_REALMS`）
   - `N8N_REALM_DATA_DIR_BASE`（既定 `apps/aiops_agent/data`）

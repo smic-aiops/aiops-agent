@@ -20,7 +20,7 @@ apps 配下のワークフローは、n8n から周辺サービス（例: Qdrant
 ### Grafana（参照/通知）
 
 - CloudWatch 監視の参照統一（ダッシュボード/リンク）や、Grafana アラートの通知連携（Webhook）で利用します。
-- apps の一部は Grafana API（Annotation など）を呼び出します（例: `apps/cloudwatch_event_notify`）。
+- apps の一部は Grafana API（Annotation など）を呼び出します（例: `apps/itsm_core/integrations/cloudwatch_event_notify`）。
 - Grafana の API token 作成/更新やダッシュボード同期は ITSM 側の運用手順に従います（`docs/itsm/README.md` / `docs/itsm/itsm-platform.md` を参照）。
 
 ### 0) `aiops_n8n_agent_realms`（対象レルムの絞り込み）
@@ -28,7 +28,9 @@ apps 配下のワークフローは、n8n から周辺サービス（例: Qdrant
 `aiops_n8n_agent_realms` は、**AIOps Agent（n8n のワークフロー群）を同期/セットアップする対象レルム（tenant）**を指定するための Terraform 変数です（Terraform の output 名は `N8N_AGENT_REALMS`）。
 
 - 例: `["tenant-a"]` のように **運用対象レルムだけ**を指定します（`realms` 全体とは別）。
-- これが空だと、`apps/*/scripts/deploy_workflows.sh` や Bot セットアップ系が **スキップ/失敗**しやすくなります。
+- これが空だと、次の同期/セットアップ系が **スキップ/失敗**しやすくなります:
+  - `apps/<app>/scripts/deploy_workflows.sh`
+  - `apps/itsm_core/integrations/<app>/scripts/deploy_workflows.sh`
 - 各デプロイスクリプトは `N8N_AGENT_REALMS`（環境変数）で上書きもできますが、基本は Terraform 側（tfvars）を正にしてください。
 
 #### 設定方法（terraform.apps.tfvars）
@@ -106,12 +108,17 @@ aiops_agent_environment = {
 ## まとめてデプロイするスクリプト
 
 - `scripts/apps/deploy_all_workflows.sh`
-  - `apps/*/scripts/` 配下の `deploy*_workflows.sh` を検出し、順番に実行します
+  - 次の配下の `deploy*_workflows.sh` を検出し、順番に実行します:
+    - `apps/<app>/scripts/`
+    - `apps/itsm_core/integrations/<app>/scripts/`
   - 各アプリ側スクリプトが、環境変数や `terraform output` 等から URL/トークンを解決します（本スクリプト自体は secrets を保持しません）
 
 ### 対象になるアプリの条件
 
-次のどちらかを満たす `apps/<app>/scripts/` を対象にします。
+次のどちらかを満たす `scripts/` ディレクトリを対象にします。
+
+- `apps/<app>/scripts/`
+- `apps/itsm_core/integrations/<app>/scripts/`
 
 - `deploy_workflows.sh` が実行可能（推奨）
 - `deploy*_workflows.sh` が 1 つだけ存在し、実行可能（例: `deploy_issue_rag_workflows.sh`）
@@ -155,7 +162,7 @@ bash scripts/apps/deploy_all_workflows.sh --activate
 - `--list`: 検出されたアプリ名を表示して終了
 - `--dry-run` / `-n`: API 書き込みを抑止するための環境変数を設定して実行（アプリ側が対応している範囲で有効）
 - `--only a,b,c`: 指定したアプリだけ実行
-- `--with-tests`: `apps/<app>/scripts/run_oq.sh` があれば続けて実行
+- `--with-tests`: `scripts/run_oq.sh` があれば続けて実行
 - `--activate`: 有効化系のフラグを環境変数で渡す（アプリ側が対応している範囲で有効）
 
 ## 前提・注意点
@@ -213,8 +220,8 @@ aiops_agent_environment = {
 
 #### GitLab メンション通知
 
-- `apps/gitlab_mention_notify/scripts/deploy_workflows.sh` - GitLab メンション通知ワークフローを n8n に反映する。
-- `apps/gitlab_mention_notify/scripts/setup_gitlab_group_webhook.sh` - GitLab グループ Webhook を登録/更新する。
+- `apps/itsm_core/integrations/gitlab_mention_notify/scripts/deploy_workflows.sh` - GitLab メンション通知ワークフローを n8n に反映する。
+- `apps/itsm_core/integrations/gitlab_mention_notify/scripts/setup_gitlab_group_webhook.sh` - GitLab グループ Webhook を登録/更新する。
 
 ## OQ（運用適格性確認）
 

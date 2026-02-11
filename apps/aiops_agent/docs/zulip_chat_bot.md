@@ -72,7 +72,7 @@ Zulip の Outgoing Webhook（bot_type=3）は、受信側が Webhook の **HTTP 
 - 承認リンク（例）:
   - approve: `<approval_base_url>/approval/click?decision=approve&token=<approval_token>`
   - deny: `<approval_base_url>/approval/click?decision=deny&token=<approval_token>`
-- リンククリックで確定した approve/deny は、Zulip の同一トピックへ `/decision` として投稿される（決定ログ）。この `/decision` は `apps/zulip_gitlab_issue_sync` により GitLab Issue へ証跡化される想定。
+- リンククリックで確定した approve/deny は、Zulip の同一トピックへ `/decision` として投稿される（決定ログ）。この `/decision` は `apps/itsm_core/integrations/zulip_gitlab_issue_sync` により GitLab Issue へ証跡化される想定。
 - AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も、Zulip の同一トピックへ `/decision` として投稿される（決定ログ）。GitLab 側には「決定メッセージへのリンク + 要約 + `correlation_id`（`context_id`/`trace_id` 等）」を残す。
 - 過去の承認（決定）サマリは、Zulip で `/decisions` を投稿して参照する（AIOpsAgent が時系列一覧を返す）。
 

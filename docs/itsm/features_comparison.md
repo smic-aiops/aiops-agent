@@ -44,5 +44,5 @@
 - 方針（ツール分担/データ正）: `docs/itsm/itsm-platform.md`
 - ITSM サービスのセットアップ/運用: `docs/itsm/README.md`
 - ワークフロー同期（apps デプロイ）: `docs/apps/README.md`
-- 監視通知（例）: `apps/cloudwatch_event_notify/README.md`
+- 監視通知（例）: `apps/itsm_core/integrations/cloudwatch_event_notify/README.md`
 - サービス要求/カタログ（例）: `apps/workflow_manager/README.md`

@@ -11,7 +11,7 @@
 - スキーマ（正）: `apps/itsm_core/sql/itsm_sor_core.sql`
 - RLS: `apps/itsm_core/sql/itsm_sor_rls.sql` / `apps/itsm_core/sql/itsm_sor_rls_force.sql`
 - 運用スクリプト: `apps/itsm_core/scripts/`
-- ワークフロー: `apps/itsm_core/workflows/`
+- ワークフロー: `apps/itsm_core/workflows/` / `apps/itsm_core/integrations/*/workflows/`
 - OQ: `apps/itsm_core/docs/oq/oq.md`
 - CS: `apps/itsm_core/docs/cs/ai_behavior_spec.md`
 
@@ -61,4 +61,3 @@
 - DDL 適用ログ（dry-run/適用結果）
 - OQ の応答 JSON（スモークテスト/テスト投入）
 - n8n 実行履歴（必要に応じて）
-

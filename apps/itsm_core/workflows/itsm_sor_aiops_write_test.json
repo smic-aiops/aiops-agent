@@ -1,0 +1,214 @@
+{
+  "name": "itsm-sor-aiops-write-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "itsm/sor/aiops/write/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst body = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\nconst headers = ($json && typeof $json === 'object' && $json.headers && typeof $json.headers === 'object') ? $json.headers : {};\n\nconst token = String($env.ITSM_SOR_WEBHOOK_TOKEN || '').trim();\nif (token) {\n  const auth = String(headers.authorization || headers.Authorization || '').trim();\n  const xToken = String(headers['x-itsm-sor-token'] || headers['X-ITSM-SOR-TOKEN'] || '').trim();\n  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice('bearer '.length).trim() : '';\n  if (bearer !== token && xToken !== token) {\n    return [{ json: { ok: false, error: 'unauthorized' } }];\n  }\n}\n\nconst realm = String(body.realm || $env.N8N_REALM || $env.N8N_OBSERVER_REALM || 'default').trim() || 'default';\nconst message = body.message !== undefined ? String(body.message) : 'SoR aiops write test';\n\nconst approvalId = crypto.randomUUID();\nconst contextId = crypto.randomUUID();\nconst jobId = crypto.randomUUID();\n\nconst deriveWebhookBaseUrl = () => {\n  const candidate = String(body.webhook_base_url || body.webhookBaseUrl || $env.N8N_WEBHOOK_BASE_URL || '').trim();\n  if (candidate) {\n    let base = candidate.replace(/\\/+$/, '');\n    if (base.includes('/webhook/')) base = base.replace(/\\/webhook\\/.*/, '/webhook');\n    const idx = base.indexOf('/webhook');\n    if (idx >= 0) base = base.slice(0, idx) + '/webhook';\n    else base = base + '/webhook';\n    return base.replace(/\\/+$/, '');\n  }\n\n  const host = String(headers['x-forwarded-host'] || headers.host || '').trim();\n  const proto = String(headers['x-forwarded-proto'] || 'https').trim();\n  if (host) return `${proto}://${host}/webhook`;\n\n  return '';\n};\n\nconst webhookBaseUrl = deriveWebhookBaseUrl();\nif (!webhookBaseUrl) {\n  return [{ json: { ok: false, error: 'webhook_base_url is required (or set N8N_WEBHOOK_BASE_URL)' } }];\n}\n\nreturn [{\n  json: {\n    ok: true,\n    realm,\n    webhook_base_url: webhookBaseUrl,\n    ids: { approval_id: approvalId, context_id: contextId, job_id: jobId },\n    auto_enqueue: {\n      realm,\n      context_id: contextId,\n      job_id: jobId,\n      correlation_id: `test:${contextId}`,\n      actor: { name: 'itsm-sor-aiops-write-test' },\n      reply_target: { source: 'n8n', webhook: 'itsm/sor/aiops/write/test' },\n      message,\n      after: { test: true, kind: 'auto_enqueue' },\n      source: 'itsm_core',\n      summary: 'AIOps auto_enqueue (test)',\n      event_key: `test:aiops:auto_enqueue:${contextId}:${jobId}`\n    },\n    approval_decision: {\n      realm,\n      approval_id: approvalId,\n      context_id: contextId,\n      decision: 'approved',\n      actor: { name: 'itsm-sor-aiops-write-test', email: 'test@example.com' },\n      job_plan: { test: true, kind: 'approval_decision' },\n      reply_target: { source: 'n8n', webhook: 'itsm/sor/aiops/write/test' },\n      correlation_id: `test:${contextId}`,\n      source: 'itsm_core',\n      event_key: `test:aiops:approval:${approvalId}:approved`\n    },\n    approval_comment: {\n      realm,\n      approval_id: approvalId,\n      comment: `test-comment: ${message}`,\n      actor: { name: 'itsm-sor-aiops-write-test', email: 'test@example.com' },\n      reply_target: { source: 'n8n', webhook: 'itsm/sor/aiops/write/test' },\n      source: 'itsm_core',\n      event_key: `test:aiops:approval:${approvalId}:comment`\n    }\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Build Test Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.webhook_base_url + '/itsm/sor/aiops/auto_enqueue' }}",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.auto_enqueue }}",
+        "sendHeaders": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $env.ITSM_SOR_WEBHOOK_TOKEN ? ('Bearer ' + $env.ITSM_SOR_WEBHOOK_TOKEN) : '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "3",
+      "name": "Call SoR API (Auto-Enqueue)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        860,
+        200
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $node['Build Test Requests'].json.webhook_base_url + '/itsm/sor/aiops/approval/decision' }}",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $node['Build Test Requests'].json.approval_decision }}",
+        "sendHeaders": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $env.ITSM_SOR_WEBHOOK_TOKEN ? ('Bearer ' + $env.ITSM_SOR_WEBHOOK_TOKEN) : '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "4",
+      "name": "Call SoR API (Approval Decision)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1120,
+        200
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $node['Build Test Requests'].json.webhook_base_url + '/itsm/sor/aiops/approval/comment' }}",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $node['Build Test Requests'].json.approval_comment }}",
+        "sendHeaders": true,
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $env.ITSM_SOR_WEBHOOK_TOKEN ? ('Bearer ' + $env.ITSM_SOR_WEBHOOK_TOKEN) : '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "5",
+      "name": "Call SoR API (Approval Comment)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1380,
+        200
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  ok: $node['Build Test Requests'].json.ok === true,\n  input: $node['Build Test Requests'].json,\n  results: {\n    auto_enqueue: $node['Call SoR API (Auto-Enqueue)'].json,\n    approval_decision: $node['Call SoR API (Approval Decision)'].json,\n    approval_comment: $node['Call SoR API (Approval Comment)'].json\n  }\n} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "6",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1640,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Test Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Test Requests": {
+      "main": [
+        [
+          {
+            "node": "Call SoR API (Auto-Enqueue)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call SoR API (Auto-Enqueue)": {
+      "main": [
+        [
+          {
+            "node": "Call SoR API (Approval Decision)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call SoR API (Approval Decision)": {
+      "main": [
+        [
+          {
+            "node": "Call SoR API (Approval Comment)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call SoR API (Approval Comment)": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}

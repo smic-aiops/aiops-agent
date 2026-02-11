@@ -24,7 +24,10 @@ Options:
   -h, --help            Show this help
 
 Behavior:
-  - Discovers apps that have apps/<app>/scripts/run_oq.sh and executes them in a stable order.
+  - Discovers OQ runners under:
+      - apps/*/scripts/run_oq.sh
+      - apps/itsm_core/integrations/*/scripts/run_oq.sh
+    and executes them in a stable order.
   - Evidence location/format is owned by each app script.
 USAGE
 }
@@ -58,9 +61,14 @@ main() {
   done
 
   local scripts
-  scripts="$(find apps -mindepth 3 -maxdepth 3 -type f -path 'apps/*/scripts/run_oq.sh' | LC_ALL=C sort)"
+  scripts="$(
+    {
+      find apps -mindepth 3 -maxdepth 3 -type f -path 'apps/*/scripts/run_oq.sh'
+      find apps/itsm_core/integrations -mindepth 3 -maxdepth 3 -type f -path 'apps/itsm_core/integrations/*/scripts/run_oq.sh' 2>/dev/null || true
+    } | LC_ALL=C sort -u
+  )"
   if [[ -z "${scripts}" ]]; then
-    warn "No apps/*/scripts/run_oq.sh found"
+    warn "No OQ runner scripts found"
     exit 1
   fi
 
@@ -103,4 +111,3 @@ main() {
 }
 
 main "$@"
-

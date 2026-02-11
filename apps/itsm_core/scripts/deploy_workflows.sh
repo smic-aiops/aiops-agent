@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sync n8n workflows in apps/itsm_core/workflows via the n8n Public API.
+# Sync n8n workflows in apps/itsm_core/workflows (SoR core) via the n8n Public API.
 #
 # Required:
 #   N8N_API_KEY
@@ -18,6 +18,15 @@ set -euo pipefail
 # Post-sync smoke tests (optional; writes audit_event records):
 #   N8N_RUN_TEST_WORKFLOWS (default: false)
 #   N8N_TEST_MESSAGE (default: "SoR smoke test")
+#
+# Optional SoR bootstrap (shared RDS Postgres itsm.*):
+#   N8N_APPLY_ITSM_SOR_SCHEMA (default: true)       Apply apps/itsm_core/sql/itsm_sor_core.sql
+#   N8N_CHECK_ITSM_SOR_SCHEMA (default: true)       Check itsm.* schema exists
+#   N8N_APPLY_ITSM_SOR_RLS (default: false)         Apply apps/itsm_core/sql/itsm_sor_rls.sql
+#   N8N_APPLY_ITSM_SOR_RLS_FORCE (default: false)   Apply apps/itsm_core/sql/itsm_sor_rls_force.sql
+#   N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT (default: false) Configure ALTER ROLE ... SET app.* defaults
+#   N8N_ITSM_SOR_REALM_KEY (default: derived from N8N_AGENT_REALMS when single realm; else "default")
+#   N8N_ITSM_SOR_PRINCIPAL_ID (default: automation)
 
 require_var() {
   local key="$1"
@@ -38,6 +47,87 @@ is_truthy() {
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${REPO_ROOT}"
+
+resolve_default_sor_realm_key() {
+  if [[ -n "${N8N_ITSM_SOR_REALM_KEY:-}" ]]; then
+    printf '%s' "${N8N_ITSM_SOR_REALM_KEY}"
+    return 0
+  fi
+  if [[ -n "${N8N_REALM:-}" ]]; then
+    printf '%s' "${N8N_REALM}"
+    return 0
+  fi
+  if [[ "${#TARGET_REALMS[@]:-0}" -eq 1 && -n "${TARGET_REALMS[0]}" ]]; then
+    printf '%s' "${TARGET_REALMS[0]}"
+    return 0
+  fi
+  printf 'default'
+}
+
+apply_itsm_sor_schema_if_enabled() {
+  if ! is_truthy "${N8N_APPLY_ITSM_SOR_SCHEMA}"; then
+    return
+  fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/import_itsm_sor_core_schema.sh")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  fi
+  echo "[itsm] apply SoR core schema"
+  "${cmd[@]}"
+}
+
+apply_itsm_sor_rls_if_enabled() {
+  if ! is_truthy "${N8N_APPLY_ITSM_SOR_RLS}"; then
+    return
+  fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sql/itsm_sor_rls.sql")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  fi
+  echo "[itsm] apply SoR RLS policy schema"
+  "${cmd[@]}"
+}
+
+apply_itsm_sor_rls_force_if_enabled() {
+  if ! is_truthy "${N8N_APPLY_ITSM_SOR_RLS_FORCE}"; then
+    return
+  fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sql/itsm_sor_rls_force.sql")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  fi
+  echo "[itsm] apply SoR RLS FORCE schema"
+  "${cmd[@]}"
+}
+
+check_itsm_sor_schema_if_enabled() {
+  if ! is_truthy "${N8N_CHECK_ITSM_SOR_SCHEMA}"; then
+    return
+  fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/check_itsm_sor_schema.sh")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  fi
+  echo "[itsm] check SoR core schema dependency"
+  "${cmd[@]}"
+}
+
+configure_itsm_sor_rls_context_if_enabled() {
+  if ! is_truthy "${N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT}"; then
+    return
+  fi
+  local realm_key
+  realm_key="$(resolve_default_sor_realm_key)"
+  local principal_id="${N8N_ITSM_SOR_PRINCIPAL_ID:-automation}"
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh" --realm-key "${realm_key}" --principal-id "${principal_id}")
+  if is_truthy "${DRY_RUN}"; then
+    cmd+=(--dry-run)
+  else
+    cmd+=(--execute)
+  fi
+  echo "[itsm] configure SoR RLS context defaults"
+  "${cmd[@]}"
+}
 
 urlencode() {
   jq -nr --arg v "${1}" '$v|@uri'
@@ -78,7 +168,7 @@ parse_realm_list() {
 }
 
 load_agent_realms() {
-  if [[ -n "${N8N_AGENT_REALMS}" ]]; then
+  if [[ -n "${N8N_AGENT_REALMS:-}" ]]; then
     parse_realm_list "${N8N_AGENT_REALMS}"
     return
   fi
@@ -140,11 +230,33 @@ invoke_webhook_json() {
   local json="$3"
 
   local curl_flags=(-sS -X POST -H "Content-Type: application/json" --data "${json}")
+  if [[ -n "${ITSM_SOR_WEBHOOK_TOKEN:-}" ]]; then
+    curl_flags+=(-H "Authorization: Bearer ${ITSM_SOR_WEBHOOK_TOKEN}")
+  fi
   if is_truthy "${N8N_CURL_INSECURE:-false}"; then
     curl_flags+=(-k)
   fi
 
-  curl "${curl_flags[@]}" "${base_url%/}/webhook/${path}"
+  local response
+  response="$(curl "${curl_flags[@]}" -w '\n%{http_code}' "${base_url%/}/webhook/${path}")"
+  local status
+  status="${response##*$'\n'}"
+  local body
+  body="${response%$'\n'*}"
+
+  if [[ "${status}" != "200" ]]; then
+    echo "${body}"
+    return 1
+  fi
+
+  local ok
+  ok="$(printf '%s' "${body}" | jq -r '.ok // empty' 2>/dev/null || true)"
+  if [[ -n "${ok}" && "${ok}" != "true" ]]; then
+    echo "${body}"
+    return 1
+  fi
+
+  printf '%s' "${body}"
 }
 
 WORKFLOW_DIR="${WORKFLOW_DIR:-apps/itsm_core/workflows}"
@@ -154,6 +266,13 @@ N8N_CURL_INSECURE="${N8N_CURL_INSECURE:-}"
 SKIP_API_WHEN_DRY_RUN="${SKIP_API_WHEN_DRY_RUN:-true}"
 RUN_TEST_WORKFLOWS="${N8N_RUN_TEST_WORKFLOWS:-false}"
 TEST_MESSAGE="${N8N_TEST_MESSAGE:-SoR smoke test}"
+N8N_APPLY_ITSM_SOR_SCHEMA="${N8N_APPLY_ITSM_SOR_SCHEMA:-true}"
+N8N_APPLY_ITSM_SOR_RLS="${N8N_APPLY_ITSM_SOR_RLS:-false}"
+N8N_APPLY_ITSM_SOR_RLS_FORCE="${N8N_APPLY_ITSM_SOR_RLS_FORCE:-false}"
+N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT="${N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT:-false}"
+N8N_CHECK_ITSM_SOR_SCHEMA="${N8N_CHECK_ITSM_SOR_SCHEMA:-true}"
+N8N_ITSM_SOR_REALM_KEY="${N8N_ITSM_SOR_REALM_KEY:-}"
+N8N_ITSM_SOR_PRINCIPAL_ID="${N8N_ITSM_SOR_PRINCIPAL_ID:-automation}"
 
 shopt -s nullglob
 files=("${WORKFLOW_DIR}"/*.json)
@@ -171,17 +290,29 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
+TARGET_REALMS=()
+load_agent_realms
+if [ "${#TARGET_REALMS[@]}" -eq 0 ]; then
+  TARGET_REALMS=("")
+fi
+
+apply_itsm_sor_schema_if_enabled
+configure_itsm_sor_rls_context_if_enabled
+apply_itsm_sor_rls_if_enabled
+apply_itsm_sor_rls_force_if_enabled
+check_itsm_sor_schema_if_enabled
+
 if is_truthy "${DRY_RUN}" && is_truthy "${SKIP_API_WHEN_DRY_RUN}"; then
   echo "[n8n] DRY_RUN: skipping API sync."
   for file in "${files[@]}"; do
     wf_name="$(jq -r '.name // empty' "${file}")"
     echo "[n8n] dry-run: would sync ${wf_name} (${file})"
   done
-  if is_truthy "${RUN_TEST_WORKFLOWS}"; then
-    echo "[n8n] dry-run: would run smoke tests via /webhook/itsm/sor/audit_event/test, /webhook/gitlab/decision/backfill/sor/test and /webhook/gitlab/issue/backfill/sor/test"
-  fi
-  exit 0
-fi
+	  if is_truthy "${RUN_TEST_WORKFLOWS}"; then
+	    echo "[n8n] dry-run: would run smoke tests via /webhook/itsm/sor/audit_event/test and /webhook/itsm/sor/aiops/write/test"
+	  fi
+	  exit 0
+	fi
 
 N8N_PUBLIC_API_BASE_URL="${N8N_PUBLIC_API_BASE_URL:-}"
 N8N_PUBLIC_API_BASE_URL="$(derive_n8n_public_base_url "${N8N_PUBLIC_API_BASE_URL}")"
@@ -196,12 +327,6 @@ if [ "${N8N_API_KEY}" = "null" ]; then
   N8N_API_KEY=""
 fi
 DEFAULT_N8N_API_KEY="${N8N_API_KEY}"
-
-TARGET_REALMS=()
-load_agent_realms
-if [ "${#TARGET_REALMS[@]}" -eq 0 ]; then
-  TARGET_REALMS=("")
-fi
 
 for realm in "${TARGET_REALMS[@]}"; do
   realm_label="${realm:-default}"
@@ -240,12 +365,10 @@ for realm in "${TARGET_REALMS[@]}"; do
     fi
   done
 
-  if is_truthy "${RUN_TEST_WORKFLOWS}"; then
-    echo "[n8n] realm=${realm_label} running smoke tests (writes to itsm.audit_event)"
-    invoke_webhook_json "${realm_public_api_base_url}" "itsm/sor/audit_event/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\"}" >/dev/null
-    result="$(invoke_webhook_json "${realm_public_api_base_url}" "gitlab/decision/backfill/sor/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\"}" || true)"
-    echo "[n8n] smoke-test result: ${result}"
-    result="$(invoke_webhook_json "${realm_public_api_base_url}" "gitlab/issue/backfill/sor/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\"}" || true)"
-    echo "[n8n] smoke-test result: ${result}"
-  fi
-done
+		  if is_truthy "${RUN_TEST_WORKFLOWS}"; then
+		    echo "[n8n] realm=${realm_label} running smoke tests (writes to itsm.audit_event)"
+		    invoke_webhook_json "${realm_public_api_base_url}" "itsm/sor/audit_event/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\"}" >/dev/null
+		    result="$(invoke_webhook_json "${realm_public_api_base_url}" "itsm/sor/aiops/write/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\",\"webhook_base_url\":\"${realm_public_api_base_url%/}/webhook\"}")"
+		    echo "[n8n] smoke-test result: ${result}"
+		  fi
+		done

@@ -151,7 +151,9 @@
 - `scripts/itsm/refresh_all_secure.sh` - `scripts/` 配下の `refresh_*.sh` を順次実行（ログ収集/フィルタ/DRY_RUN）
   - 補足: 各 `refresh_*.sh` が発行/出力する secrets がログに混ざる可能性があります。`LOG_DIR`（既定: `/tmp/aiops-secure-refresh-*`）の取り扱いに注意してください。
 - `scripts/plan_apply_all_tfvars.sh` - 既存 tfvars を検出して `terraform plan/apply` をまとめて実行
-- `scripts/apps/deploy_all_workflows.sh` - `apps/*/scripts/deploy_workflows.sh` をまとめて実行（`--with-tests` で `run_oq.sh` も実行）
+- `scripts/apps/deploy_all_workflows.sh` - 次をまとめて実行（`--with-tests` で `run_oq.sh` も実行）
+  - `apps/<app>/scripts/deploy*_workflows.sh`
+  - `apps/itsm_core/integrations/<app>/scripts/deploy*_workflows.sh`
 - `scripts/apps/create_oq_evidence_run_md.sh` - OQ の証跡 Markdown を作成（出力: `apps/<app>/docs/oq/evidence/evidence_run_YYYY-MM-DD.md`、`--dry-run` 対応）
 - `scripts/apps/export_aiops_agent_environment_to_tfvars.sh` - `terraform.apps.tfvars` の `aiops_agent_environment` を生成/補完（最後に `terraform apply -refresh-only --auto-approve`）
 - `scripts/apps/report_aiops_rag_status.sh` - Qdrant / GitLab EFS 同期 / n8n 実行状況をレポート（既定 DRY_RUN）
@@ -273,7 +275,7 @@
 
 - 目的: n8n にログインして API key をレルムごとに発行し、`terraform.itsm.tfvars` の `n8n_api_keys_by_realm` を更新します。
 - キー受け渡し（運用スクリプト用 / パターン B）:
-  - `n8n_api_keys_by_realm`（tfvars）→ `terraform output -json n8n_api_keys_by_realm`（sensitive）→ `apps/*/scripts/deploy_workflows.sh` が各レルムの n8n Public API 呼び出しに使用
+  - `n8n_api_keys_by_realm`（tfvars）→ `terraform output -json n8n_api_keys_by_realm`（sensitive）→ 各デプロイスクリプト（`apps/<app>/scripts/deploy*_workflows.sh` など）が各レルムの n8n Public API 呼び出しに使用
 - 注意:
   - `n8n_api_keys_by_realm` は運用端末側の同期スクリプトが使う認証情報です（ECS へ注入する `N8N_API_KEY` とは別系統）。
 
@@ -432,4 +434,4 @@
 - `sulu_admin_password`: `bash scripts/itsm/sulu/refresh_sulu_admin_user.sh`
 
 補足（AIOps Agent / Workflow 同期の credential ID など）:
-- `apps/*/scripts/deploy_workflows.sh` は、必要に応じて `TFVARS_FILE`（既定: `terraform.apps.tfvars`）へ `aiops_agent_environment` を更新し、n8n 側の credential ID を保存します。
+- 各 `deploy*_workflows.sh` は、必要に応じて `TFVARS_FILE`（既定: `terraform.apps.tfvars`）へ `aiops_agent_environment` を更新し、n8n 側の credential ID を保存します。

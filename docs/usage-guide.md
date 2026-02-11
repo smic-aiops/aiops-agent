@@ -116,8 +116,8 @@ terraform output -json grafana_realm_urls
 - PII/機微情報は Zulip に貼らない（必要なら GitLab の Confidential Issue に限定）
 
 補足:
-- `/decision` で始まる投稿は、`apps/zulip_gitlab_issue_sync` が GitLab Issue に `### 決定（Zulip）` として証跡コメントを残します（環境により無効な場合があります）。
-- （任意）決定マーカー（`/decision` 等）が無い投稿でも、LLM 判定が有効な環境では「決定/承認」に該当する表現が **決定として自動認定**され得ます（デフォルト: 有効。無効化は `*_DECISION_LLM_ENABLED=false`。誤判定に注意。重要な決定は `/decision` の利用を推奨。詳細は `apps/zulip_gitlab_issue_sync/README.md`）。
+- `/decision` で始まる投稿は、`apps/itsm_core/integrations/zulip_gitlab_issue_sync` が GitLab Issue に `### 決定（Zulip）` として証跡コメントを残します（環境により無効な場合があります）。
+- （任意）決定マーカー（`/decision` 等）が無い投稿でも、LLM 判定が有効な環境では「決定/承認」に該当する表現が **決定として自動認定**され得ます（デフォルト: 有効。無効化は `*_DECISION_LLM_ENABLED=false`。誤判定に注意。重要な決定は `/decision` の利用を推奨。詳細は `apps/itsm_core/integrations/zulip_gitlab_issue_sync/README.md`）。
 - 監査のため、可能な限り GitLab 側には「決定メッセージへのリンク + 要約 + `correlation_id`（`context_id`/`trace_id`/`job_id` 等）」が残る前提で運用します。
 - チケットをクローズ/再オープンしたい場合は、同一トピックで `/close ...` / `/reopen ...` を投稿します（GitLab Issue の状態へ反映されます）。
 - AIOpsAgent の承認導線（approve/deny）がリンクで提示された場合、**リンククリックで確定した内容も `/decision` として扱われ**、同一トピックへ決定ログが投稿されます。AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も同様に `/decision` として扱われます。

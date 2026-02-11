@@ -815,6 +815,353 @@ AS $$
 $$;
 
 -- -----------------------------------------------------------------------------
+-- AIOpsAgent helpers (SoR write API)
+-- -----------------------------------------------------------------------------
+--
+-- Centralize AIOpsAgent workflow writes into functions so that n8n workflows can
+-- call stable APIs instead of embedding large INSERT/UPDATE statements.
+--
+
+-- Drop legacy overloads to avoid ambiguity when calling with default args.
+DROP FUNCTION IF EXISTS itsm.aiops_upsert_approval_decision(text, uuid, uuid, text);
+DROP FUNCTION IF EXISTS itsm.aiops_upsert_approval_decision(text, uuid, uuid, text, jsonb, jsonb, jsonb, text);
+DROP FUNCTION IF EXISTS itsm.aiops_upsert_approval_decision(text, uuid, uuid, text, text, jsonb, jsonb, jsonb, text, timestamptz);
+
+DROP FUNCTION IF EXISTS itsm.aiops_insert_approval_decision_audit_event(text, uuid, text, jsonb, jsonb, jsonb, text);
+DROP FUNCTION IF EXISTS itsm.aiops_insert_approval_decision_audit_event(text, uuid, text, jsonb, jsonb, jsonb, text, timestamptz, text, text);
+
+DROP FUNCTION IF EXISTS itsm.aiops_record_approval_comment(text, uuid, text, jsonb, jsonb);
+DROP FUNCTION IF EXISTS itsm.aiops_update_approval_comment(text, uuid, text);
+DROP FUNCTION IF EXISTS itsm.aiops_insert_approval_comment_audit_event(text, uuid, text, jsonb, jsonb, timestamptz, text, text);
+
+DROP FUNCTION IF EXISTS itsm.aiops_insert_auto_enqueue_audit_event(text, uuid, uuid, text, jsonb, jsonb, text, jsonb);
+DROP FUNCTION IF EXISTS itsm.aiops_insert_auto_enqueue_audit_event(text, uuid, uuid, text, jsonb, jsonb, text, text, jsonb, text, text, text, timestamptz);
+
+CREATE OR REPLACE FUNCTION itsm.aiops_upsert_approval_decision(
+  p_realm_key text,
+  p_approval_id uuid,
+  p_context_id uuid,
+  p_decision text,
+  p_approved_by_principal_id text DEFAULT NULL,
+  p_actor jsonb DEFAULT '{}'::jsonb,
+  p_job_plan jsonb DEFAULT '{}'::jsonb,
+  p_reply_target jsonb DEFAULT '{}'::jsonb,
+  p_correlation_id text DEFAULT NULL,
+  p_approved_at timestamptz DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+VOLATILE
+AS $$
+DECLARE
+  v_realm_id uuid;
+  v_decision text;
+  v_status text;
+  v_actor jsonb;
+  v_email text;
+  v_approved_by text;
+  v_approved_at timestamptz;
+BEGIN
+  IF p_approval_id IS NULL THEN
+    RAISE EXCEPTION 'approval_id is required';
+  END IF;
+
+  v_realm_id := itsm.set_rls_context(p_realm_key);
+  v_decision := lower(COALESCE(NULLIF(BTRIM(p_decision), ''), ''));
+  v_status := CASE
+    WHEN v_decision IN ('approved', 'approve', 'yes', 'y', 'ok') THEN 'approved'
+    ELSE 'rejected'
+  END;
+
+  v_actor := COALESCE(p_actor, '{}'::jsonb);
+  v_email := NULLIF(v_actor #>> '{email}', '');
+  v_approved_by := NULLIF(BTRIM(COALESCE(p_approved_by_principal_id, v_email, '')), '');
+  v_approved_at := COALESCE(p_approved_at, NOW());
+
+  INSERT INTO itsm.approval (
+    id, realm_id, resource_type, resource_id, status,
+    approved_by_principal_id, approved_at, decision_reason, evidence, correlation_id
+  )
+  VALUES (
+    p_approval_id,
+    v_realm_id,
+    'aiops_job',
+    p_context_id,
+    v_status,
+    v_approved_by,
+    v_approved_at,
+    NULL,
+    jsonb_build_object(
+      'actor', v_actor,
+      'job_plan', COALESCE(p_job_plan, '{}'::jsonb),
+      'reply_target', COALESCE(p_reply_target, '{}'::jsonb),
+      'decision', v_decision
+    ),
+    NULLIF(BTRIM(p_correlation_id), '')
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET
+    status = EXCLUDED.status,
+    approved_by_principal_id = COALESCE(EXCLUDED.approved_by_principal_id, itsm.approval.approved_by_principal_id),
+    approved_at = COALESCE(EXCLUDED.approved_at, itsm.approval.approved_at),
+    evidence = COALESCE(EXCLUDED.evidence, itsm.approval.evidence),
+    correlation_id = COALESCE(EXCLUDED.correlation_id, itsm.approval.correlation_id);
+
+  RETURN p_approval_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.aiops_insert_approval_decision_audit_event(
+  p_realm_key text,
+  p_approval_id uuid,
+  p_decision text,
+  p_actor jsonb DEFAULT '{}'::jsonb,
+  p_job_plan jsonb DEFAULT '{}'::jsonb,
+  p_reply_target jsonb DEFAULT '{}'::jsonb,
+  p_correlation_id text DEFAULT NULL,
+  p_occurred_at timestamptz DEFAULT NULL,
+  p_source text DEFAULT 'aiops_agent',
+  p_event_key text DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+VOLATILE
+AS $$
+DECLARE
+  v_realm_id uuid;
+  v_decision text;
+  v_actor jsonb;
+  v_email text;
+  v_actor_type text;
+  v_action text;
+  v_summary text;
+  v_event_key text;
+  v_id uuid;
+  v_occurred_at timestamptz;
+  v_source text;
+BEGIN
+  IF p_approval_id IS NULL THEN
+    RAISE EXCEPTION 'approval_id is required';
+  END IF;
+
+  v_realm_id := itsm.set_rls_context(p_realm_key);
+  v_decision := lower(COALESCE(NULLIF(BTRIM(p_decision), ''), ''));
+
+  v_actor := COALESCE(p_actor, '{}'::jsonb);
+  v_email := NULLIF(v_actor #>> '{email}', '');
+  v_actor_type := CASE WHEN v_email IS NULL THEN 'unknown' ELSE 'human' END;
+
+  v_action := CASE
+    WHEN v_decision IN ('approved', 'approve', 'yes', 'y', 'ok') THEN 'approval.approved'
+    ELSE 'approval.rejected'
+  END;
+  v_summary := CASE
+    WHEN v_decision IN ('approved', 'approve', 'yes', 'y', 'ok') THEN 'AIOpsAgent 承認: approved'
+    ELSE 'AIOpsAgent 承認: denied'
+  END;
+
+  v_event_key := NULLIF(BTRIM(COALESCE(p_event_key, '')), '');
+  IF v_event_key IS NULL THEN
+    v_event_key := 'aiops:approval:' || p_approval_id::text || ':' || v_decision;
+  END IF;
+
+  v_occurred_at := COALESCE(p_occurred_at, NOW());
+  v_source := COALESCE(NULLIF(BTRIM(p_source), ''), 'aiops_agent');
+
+  INSERT INTO itsm.audit_event (
+    realm_id, occurred_at, actor, actor_type, action, source,
+    resource_type, resource_id, correlation_id, reply_target, summary, message, after, integrity
+  )
+  VALUES (
+    v_realm_id,
+    v_occurred_at,
+    v_actor,
+    v_actor_type,
+    v_action,
+    v_source,
+    'approval',
+    p_approval_id,
+    NULLIF(BTRIM(p_correlation_id), ''),
+    COALESCE(p_reply_target, '{}'::jsonb),
+    v_summary,
+    NULL,
+    COALESCE(p_job_plan, '{}'::jsonb),
+    jsonb_build_object('event_key', v_event_key)
+  )
+  ON CONFLICT DO NOTHING
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.aiops_update_approval_comment(
+  p_realm_key text,
+  p_approval_id uuid,
+  p_comment text
+)
+RETURNS uuid
+LANGUAGE plpgsql
+VOLATILE
+AS $$
+DECLARE
+  v_realm_id uuid;
+  v_id uuid;
+BEGIN
+  IF p_approval_id IS NULL THEN
+    RAISE EXCEPTION 'approval_id is required';
+  END IF;
+
+  v_realm_id := itsm.set_rls_context(p_realm_key);
+
+  UPDATE itsm.approval
+  SET decision_reason = NULLIF(p_comment, '')
+  WHERE id = p_approval_id
+    AND realm_id = v_realm_id
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.aiops_insert_approval_comment_audit_event(
+  p_realm_key text,
+  p_approval_id uuid,
+  p_comment text,
+  p_actor jsonb DEFAULT '{}'::jsonb,
+  p_reply_target jsonb DEFAULT '{}'::jsonb,
+  p_occurred_at timestamptz DEFAULT NULL,
+  p_source text DEFAULT 'aiops_agent',
+  p_event_key text DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+VOLATILE
+AS $$
+DECLARE
+  v_realm_id uuid;
+  v_actor jsonb;
+  v_email text;
+  v_actor_type text;
+  v_event_key text;
+  v_id uuid;
+  v_occurred_at timestamptz;
+  v_source text;
+BEGIN
+  IF p_approval_id IS NULL THEN
+    RAISE EXCEPTION 'approval_id is required';
+  END IF;
+
+  v_realm_id := itsm.set_rls_context(p_realm_key);
+
+  v_actor := COALESCE(p_actor, '{}'::jsonb);
+  v_email := NULLIF(v_actor #>> '{email}', '');
+  v_actor_type := CASE WHEN v_email IS NULL THEN 'unknown' ELSE 'human' END;
+
+  v_event_key := NULLIF(BTRIM(COALESCE(p_event_key, '')), '');
+  IF v_event_key IS NULL THEN
+    v_event_key := 'aiops:approval:' || p_approval_id::text || ':comment';
+  END IF;
+
+  v_occurred_at := COALESCE(p_occurred_at, NOW());
+  v_source := COALESCE(NULLIF(BTRIM(p_source), ''), 'aiops_agent');
+
+  INSERT INTO itsm.audit_event (
+    realm_id, occurred_at, actor, actor_type, action, source,
+    resource_type, resource_id, reply_target, summary, message, integrity
+  )
+  VALUES (
+    v_realm_id,
+    v_occurred_at,
+    v_actor,
+    v_actor_type,
+    'approval.comment_added',
+    v_source,
+    'approval',
+    p_approval_id,
+    COALESCE(p_reply_target, '{}'::jsonb),
+    'AIOpsAgent 承認コメント',
+    NULLIF(p_comment, ''),
+    jsonb_build_object('event_key', v_event_key)
+  )
+  ON CONFLICT DO NOTHING
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.aiops_insert_auto_enqueue_audit_event(
+  p_realm_key text,
+  p_context_id uuid,
+  p_job_id uuid,
+  p_correlation_id text DEFAULT NULL,
+  p_actor jsonb DEFAULT '{}'::jsonb,
+  p_reply_target jsonb DEFAULT '{}'::jsonb,
+  p_summary text DEFAULT 'AIOpsAgent 自動承認（auto_enqueue）',
+  p_message text DEFAULT NULL,
+  p_after jsonb DEFAULT '{}'::jsonb,
+  p_decision_method text DEFAULT 'auto_enqueue',
+  p_source text DEFAULT 'aiops_agent',
+  p_event_key text DEFAULT NULL,
+  p_occurred_at timestamptz DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+VOLATILE
+AS $$
+DECLARE
+  v_realm_id uuid;
+  v_event_key text;
+  v_id uuid;
+  v_occurred_at timestamptz;
+  v_source text;
+  v_decision_method text;
+  v_summary text;
+BEGIN
+  v_realm_id := itsm.set_rls_context(p_realm_key);
+
+  v_event_key := NULLIF(BTRIM(COALESCE(p_event_key, '')), '');
+  IF v_event_key IS NULL THEN
+    v_event_key := 'aiops:auto_enqueue:' || COALESCE(p_context_id::text, 'none') || ':' || COALESCE(p_job_id::text, 'none');
+  END IF;
+
+  v_occurred_at := COALESCE(p_occurred_at, NOW());
+  v_source := COALESCE(NULLIF(BTRIM(p_source), ''), 'aiops_agent');
+  v_decision_method := COALESCE(NULLIF(BTRIM(p_decision_method), ''), 'auto_enqueue');
+  v_summary := COALESCE(NULLIF(p_summary, ''), 'AIOpsAgent 自動承認（auto_enqueue）');
+
+  INSERT INTO itsm.audit_event (
+    realm_id, occurred_at, actor, actor_type, action, source,
+    resource_type, resource_id, correlation_id, reply_target, summary, message, after, integrity
+  )
+  VALUES (
+    v_realm_id,
+    v_occurred_at,
+    COALESCE(p_actor, '{}'::jsonb),
+    'automation',
+    'decision.recorded',
+    v_source,
+    'aiops_job',
+    p_context_id,
+    NULLIF(BTRIM(p_correlation_id), ''),
+    COALESCE(p_reply_target, '{}'::jsonb),
+    v_summary,
+    NULLIF(p_message, ''),
+    COALESCE(p_after, '{}'::jsonb),
+    jsonb_strip_nulls(jsonb_build_object(
+      'event_key', v_event_key,
+      'decision_method', v_decision_method
+    ))
+  )
+  ON CONFLICT DO NOTHING
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$$;
+
+-- -----------------------------------------------------------------------------
 -- Retention / anonymization (MVP)
 -- -----------------------------------------------------------------------------
 

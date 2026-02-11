@@ -584,5 +584,4 @@ DB 側は `external_ref` に GitLab の参照を保存し、双方向リンク�
 ## 8. 次の成果物（本書の後に作るもの）
 
 - `docs/itsm/api.md`（OpenAPI: CRUD + 検索 + 承認 + 監査イベント）
-- `apps/itsm_core/`（SoR 実装/運用スクリプトの配置先）
-- GitLab テンプレの更新（Issue/MR の必須項目化）
+- （次フェーズ）GitLab テンプレの更新（Issue/MR の必須項目化）
