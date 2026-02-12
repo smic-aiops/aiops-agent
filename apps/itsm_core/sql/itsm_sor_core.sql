@@ -1358,6 +1358,248 @@ BEGIN
 END;
 $$;
 
+-- Retention (batched)
+--
+-- Apply retention with a hard cap of p_max_rows rows per run (total across all purge steps).
+-- This supports periodic, background execution (e.g., via n8n Cron) without large delete spikes.
+CREATE OR REPLACE FUNCTION itsm.apply_retention_batch(p_realm_id uuid, p_dry_run boolean DEFAULT true, p_max_rows integer DEFAULT 1000)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_policy record;
+  v_cutoff timestamptz;
+  v_eligible bigint;
+  v_applied bigint;
+  v_remaining integer;
+  v_summary jsonb := '{}'::jsonb;
+BEGIN
+  IF p_realm_id IS NULL THEN
+    RAISE EXCEPTION 'realm_id is required';
+  END IF;
+  IF p_max_rows IS NULL OR p_max_rows < 0 THEN
+    RAISE EXCEPTION 'max_rows must be >= 0';
+  END IF;
+
+  v_remaining := p_max_rows;
+  PERFORM itsm.ensure_retention_policy(p_realm_id);
+
+  -- incident: soft-delete grace purge
+  SELECT * INTO v_policy FROM itsm.retention_policy WHERE realm_id = p_realm_id AND policy_key = 'incident';
+  v_cutoff := NOW() - make_interval(days => v_policy.soft_delete_grace_days);
+  SELECT COUNT(*) INTO v_eligible FROM itsm.incident WHERE realm_id = p_realm_id AND deleted_at IS NOT NULL AND deleted_at < v_cutoff;
+  IF p_dry_run THEN
+    v_applied := LEAST(v_eligible, v_remaining);
+  ELSE
+    WITH to_del AS (
+      SELECT ctid
+      FROM itsm.incident
+      WHERE realm_id = p_realm_id AND deleted_at IS NOT NULL AND deleted_at < v_cutoff
+      ORDER BY deleted_at ASC
+      LIMIT v_remaining
+    )
+    DELETE FROM itsm.incident i USING to_del d WHERE i.ctid = d.ctid;
+    GET DIAGNOSTICS v_applied = ROW_COUNT;
+  END IF;
+  v_summary := v_summary || jsonb_build_object('incident_soft_delete_purge_eligible', v_eligible, 'incident_soft_delete_purge_applied', v_applied);
+  v_remaining := GREATEST(v_remaining - v_applied, 0);
+
+  -- incident: retention purge
+  v_cutoff := NOW() - make_interval(years => v_policy.retain_years);
+  IF v_policy.hard_delete_enabled THEN
+    SELECT COUNT(*) INTO v_eligible
+    FROM itsm.incident
+    WHERE realm_id = p_realm_id
+      AND COALESCE(closed_at, resolved_at, updated_at) < v_cutoff
+      AND deleted_at IS NULL;
+    IF p_dry_run THEN
+      v_applied := LEAST(v_eligible, v_remaining);
+    ELSE
+      WITH to_del AS (
+        SELECT ctid
+        FROM itsm.incident
+        WHERE realm_id = p_realm_id
+          AND COALESCE(closed_at, resolved_at, updated_at) < v_cutoff
+          AND deleted_at IS NULL
+        ORDER BY COALESCE(closed_at, resolved_at, updated_at) ASC
+        LIMIT v_remaining
+      )
+      DELETE FROM itsm.incident i USING to_del d WHERE i.ctid = d.ctid;
+      GET DIAGNOSTICS v_applied = ROW_COUNT;
+    END IF;
+    v_summary := v_summary || jsonb_build_object('incident_retention_purge_eligible', v_eligible, 'incident_retention_purge_applied', v_applied);
+    v_remaining := GREATEST(v_remaining - v_applied, 0);
+  END IF;
+
+  -- change_request: soft-delete grace purge
+  SELECT * INTO v_policy FROM itsm.retention_policy WHERE realm_id = p_realm_id AND policy_key = 'change_request';
+  v_cutoff := NOW() - make_interval(days => v_policy.soft_delete_grace_days);
+  SELECT COUNT(*) INTO v_eligible FROM itsm.change_request WHERE realm_id = p_realm_id AND deleted_at IS NOT NULL AND deleted_at < v_cutoff;
+  IF p_dry_run THEN
+    v_applied := LEAST(v_eligible, v_remaining);
+  ELSE
+    WITH to_del AS (
+      SELECT ctid
+      FROM itsm.change_request
+      WHERE realm_id = p_realm_id AND deleted_at IS NOT NULL AND deleted_at < v_cutoff
+      ORDER BY deleted_at ASC
+      LIMIT v_remaining
+    )
+    DELETE FROM itsm.change_request c USING to_del d WHERE c.ctid = d.ctid;
+    GET DIAGNOSTICS v_applied = ROW_COUNT;
+  END IF;
+  v_summary := v_summary || jsonb_build_object('change_request_soft_delete_purge_eligible', v_eligible, 'change_request_soft_delete_purge_applied', v_applied);
+  v_remaining := GREATEST(v_remaining - v_applied, 0);
+
+  -- change_request: retention purge
+  v_cutoff := NOW() - make_interval(years => v_policy.retain_years);
+  IF v_policy.hard_delete_enabled THEN
+    SELECT COUNT(*) INTO v_eligible
+    FROM itsm.change_request
+    WHERE realm_id = p_realm_id
+      AND COALESCE(implemented_at, updated_at) < v_cutoff
+      AND deleted_at IS NULL;
+    IF p_dry_run THEN
+      v_applied := LEAST(v_eligible, v_remaining);
+    ELSE
+      WITH to_del AS (
+        SELECT ctid
+        FROM itsm.change_request
+        WHERE realm_id = p_realm_id
+          AND COALESCE(implemented_at, updated_at) < v_cutoff
+          AND deleted_at IS NULL
+        ORDER BY COALESCE(implemented_at, updated_at) ASC
+        LIMIT v_remaining
+      )
+      DELETE FROM itsm.change_request c USING to_del d WHERE c.ctid = d.ctid;
+      GET DIAGNOSTICS v_applied = ROW_COUNT;
+    END IF;
+    v_summary := v_summary || jsonb_build_object('change_request_retention_purge_eligible', v_eligible, 'change_request_retention_purge_applied', v_applied);
+    v_remaining := GREATEST(v_remaining - v_applied, 0);
+  END IF;
+
+  -- approval: soft-delete grace purge
+  SELECT * INTO v_policy FROM itsm.retention_policy WHERE realm_id = p_realm_id AND policy_key = 'approval';
+  v_cutoff := NOW() - make_interval(days => v_policy.soft_delete_grace_days);
+  SELECT COUNT(*) INTO v_eligible FROM itsm.approval WHERE realm_id = p_realm_id AND deleted_at IS NOT NULL AND deleted_at < v_cutoff;
+  IF p_dry_run THEN
+    v_applied := LEAST(v_eligible, v_remaining);
+  ELSE
+    WITH to_del AS (
+      SELECT ctid
+      FROM itsm.approval
+      WHERE realm_id = p_realm_id AND deleted_at IS NOT NULL AND deleted_at < v_cutoff
+      ORDER BY deleted_at ASC
+      LIMIT v_remaining
+    )
+    DELETE FROM itsm.approval a USING to_del d WHERE a.ctid = d.ctid;
+    GET DIAGNOSTICS v_applied = ROW_COUNT;
+  END IF;
+  v_summary := v_summary || jsonb_build_object('approval_soft_delete_purge_eligible', v_eligible, 'approval_soft_delete_purge_applied', v_applied);
+  v_remaining := GREATEST(v_remaining - v_applied, 0);
+
+  -- approval: retention purge (final statuses)
+  v_cutoff := NOW() - make_interval(years => v_policy.retain_years);
+  IF v_policy.hard_delete_enabled THEN
+    SELECT COUNT(*) INTO v_eligible
+    FROM itsm.approval
+    WHERE realm_id = p_realm_id
+      AND COALESCE(approved_at, updated_at) < v_cutoff
+      AND deleted_at IS NULL
+      AND status IN ('approved','rejected','canceled','expired');
+    IF p_dry_run THEN
+      v_applied := LEAST(v_eligible, v_remaining);
+    ELSE
+      WITH to_del AS (
+        SELECT ctid
+        FROM itsm.approval
+        WHERE realm_id = p_realm_id
+          AND COALESCE(approved_at, updated_at) < v_cutoff
+          AND deleted_at IS NULL
+          AND status IN ('approved','rejected','canceled','expired')
+        ORDER BY COALESCE(approved_at, updated_at) ASC
+        LIMIT v_remaining
+      )
+      DELETE FROM itsm.approval a USING to_del d WHERE a.ctid = d.ctid;
+      GET DIAGNOSTICS v_applied = ROW_COUNT;
+    END IF;
+    v_summary := v_summary || jsonb_build_object('approval_retention_purge_eligible', v_eligible, 'approval_retention_purge_applied', v_applied);
+    v_remaining := GREATEST(v_remaining - v_applied, 0);
+  END IF;
+
+  -- attachment: soft-delete grace purge
+  SELECT * INTO v_policy FROM itsm.retention_policy WHERE realm_id = p_realm_id AND policy_key = 'attachment';
+  v_cutoff := NOW() - make_interval(days => v_policy.soft_delete_grace_days);
+  SELECT COUNT(*) INTO v_eligible FROM itsm.attachment WHERE realm_id = p_realm_id AND deleted_at IS NOT NULL AND deleted_at < v_cutoff;
+  IF p_dry_run THEN
+    v_applied := LEAST(v_eligible, v_remaining);
+  ELSE
+    WITH to_del AS (
+      SELECT ctid
+      FROM itsm.attachment
+      WHERE realm_id = p_realm_id AND deleted_at IS NOT NULL AND deleted_at < v_cutoff
+      ORDER BY deleted_at ASC
+      LIMIT v_remaining
+    )
+    DELETE FROM itsm.attachment a USING to_del d WHERE a.ctid = d.ctid;
+    GET DIAGNOSTICS v_applied = ROW_COUNT;
+  END IF;
+  v_summary := v_summary || jsonb_build_object('attachment_soft_delete_purge_eligible', v_eligible, 'attachment_soft_delete_purge_applied', v_applied);
+  v_remaining := GREATEST(v_remaining - v_applied, 0);
+
+  -- attachment: retention purge
+  v_cutoff := NOW() - make_interval(years => v_policy.retain_years);
+  IF v_policy.hard_delete_enabled THEN
+    SELECT COUNT(*) INTO v_eligible
+    FROM itsm.attachment
+    WHERE realm_id = p_realm_id
+      AND created_at < v_cutoff
+      AND deleted_at IS NULL;
+    IF p_dry_run THEN
+      v_applied := LEAST(v_eligible, v_remaining);
+    ELSE
+      WITH to_del AS (
+        SELECT ctid
+        FROM itsm.attachment
+        WHERE realm_id = p_realm_id
+          AND created_at < v_cutoff
+          AND deleted_at IS NULL
+        ORDER BY created_at ASC
+        LIMIT v_remaining
+      )
+      DELETE FROM itsm.attachment a USING to_del d WHERE a.ctid = d.ctid;
+      GET DIAGNOSTICS v_applied = ROW_COUNT;
+    END IF;
+    v_summary := v_summary || jsonb_build_object('attachment_retention_purge_eligible', v_eligible, 'attachment_retention_purge_applied', v_applied);
+    v_remaining := GREATEST(v_remaining - v_applied, 0);
+  END IF;
+
+  v_summary := v_summary || jsonb_build_object('max_rows', p_max_rows, 'remaining_rows', v_remaining);
+
+  IF NOT p_dry_run THEN
+    INSERT INTO itsm.audit_event (
+      realm_id, occurred_at, actor, actor_type, action, source,
+      resource_type, summary, after, integrity
+    )
+    VALUES (
+      p_realm_id,
+      NOW(),
+      jsonb_build_object('name', 'itsm_core'),
+      'automation',
+      'retention.purge.batch',
+      'itsm_core',
+      'retention_policy',
+      'Retention purge batch executed',
+      v_summary,
+      jsonb_build_object('event_key', 'itsm:retention:batch:' || gen_random_uuid()::text)
+    )
+    ON CONFLICT DO NOTHING;
+  END IF;
+
+  RETURN v_summary;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION itsm.anonymize_principal(p_realm_id uuid, p_principal_id text, p_dry_run boolean DEFAULT true)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1429,6 +1671,490 @@ BEGIN
   END IF;
 
   RETURN v_summary || jsonb_build_object('replacement', v_replacement);
+END;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- Integration state (cursor/checkpoint store for periodic jobs)
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS itsm.integration_state (
+  realm_id    uuid NOT NULL REFERENCES itsm.realm(id) ON DELETE CASCADE,
+  state_key   text NOT NULL,
+  cursor      jsonb NOT NULL DEFAULT '{}'::jsonb,
+  version     bigint NOT NULL DEFAULT 0,
+  created_at  timestamptz NOT NULL DEFAULT NOW(),
+  updated_at  timestamptz NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (realm_id, state_key)
+);
+
+DROP TRIGGER IF EXISTS itsm_integration_state_touch_updated_at ON itsm.integration_state;
+CREATE TRIGGER itsm_integration_state_touch_updated_at
+BEFORE UPDATE ON itsm.integration_state
+FOR EACH ROW
+EXECUTE FUNCTION itsm._touch_updated_at();
+
+CREATE OR REPLACE FUNCTION itsm.get_integration_state(p_realm_id uuid, p_state_key text)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_cursor jsonb;
+  v_version bigint;
+  v_updated_at timestamptz;
+BEGIN
+  IF p_realm_id IS NULL OR NULLIF(BTRIM(p_state_key), '') IS NULL THEN
+    RAISE EXCEPTION 'realm_id and state_key are required';
+  END IF;
+
+  INSERT INTO itsm.integration_state (realm_id, state_key)
+  VALUES (p_realm_id, p_state_key)
+  ON CONFLICT (realm_id, state_key) DO NOTHING;
+
+  SELECT cursor, version, updated_at
+  INTO v_cursor, v_version, v_updated_at
+  FROM itsm.integration_state
+  WHERE realm_id = p_realm_id AND state_key = p_state_key;
+
+  RETURN jsonb_build_object(
+    'cursor', COALESCE(v_cursor, '{}'::jsonb),
+    'version', COALESCE(v_version, 0),
+    'updated_at', v_updated_at
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.try_update_integration_state(
+  p_realm_id uuid,
+  p_state_key text,
+  p_cursor jsonb,
+  p_expected_version bigint
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_row record;
+  v_updated bigint;
+BEGIN
+  IF p_realm_id IS NULL OR NULLIF(BTRIM(p_state_key), '') IS NULL THEN
+    RAISE EXCEPTION 'realm_id and state_key are required';
+  END IF;
+  IF p_expected_version IS NULL OR p_expected_version < 0 THEN
+    RAISE EXCEPTION 'expected_version must be >= 0';
+  END IF;
+
+  UPDATE itsm.integration_state
+  SET cursor = COALESCE(p_cursor, '{}'::jsonb),
+      version = version + 1,
+      updated_at = NOW()
+  WHERE realm_id = p_realm_id
+    AND state_key = p_state_key
+    AND version = p_expected_version
+  RETURNING cursor, version, updated_at INTO v_row;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  IF v_updated = 0 THEN
+    RETURN jsonb_build_object('ok', true, 'updated', false);
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'updated', true,
+    'state', jsonb_build_object(
+      'cursor', COALESCE(v_row.cursor, '{}'::jsonb),
+      'version', COALESCE(v_row.version, 0),
+      'updated_at', v_row.updated_at
+    )
+  );
+END;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- AIOps approval_history -> SoR (stateful / incremental)
+-- -----------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION itsm.backfill_aiops_approval_history_batch(
+  p_realm_id uuid,
+  p_limit integer DEFAULT 200,
+  p_dry_run boolean DEFAULT true,
+  p_floor_created_at timestamptz DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_state_key text := 'aiops_approval_history_backfill_to_sor';
+  v_state jsonb;
+  v_cursor jsonb;
+  v_last_created_at timestamptz;
+  v_last_id uuid;
+  v_effective_floor timestamptz;
+  v_picked int := 0;
+  v_upserted int := 0;
+  v_inserted_audit int := 0;
+  v_state_updated int := 0;
+  v_max_created_at timestamptz;
+  v_max_id uuid;
+BEGIN
+  IF p_realm_id IS NULL THEN
+    RAISE EXCEPTION 'realm_id is required';
+  END IF;
+  IF p_limit IS NULL OR p_limit < 0 THEN
+    RAISE EXCEPTION 'limit must be >= 0';
+  END IF;
+
+  IF to_regclass('public.aiops_approval_history') IS NULL THEN
+    RETURN jsonb_build_object('ok', true, 'skipped', true, 'reason', 'missing public.aiops_approval_history');
+  END IF;
+
+  v_state := itsm.get_integration_state(p_realm_id, v_state_key);
+  v_cursor := COALESCE(v_state->'cursor', '{}'::jsonb);
+
+  v_last_created_at := COALESCE(NULLIF(v_cursor->>'last_created_at', '')::timestamptz, '1970-01-01T00:00:00Z'::timestamptz);
+  v_last_id := NULLIF(v_cursor->>'last_approval_history_id', '')::uuid;
+
+  v_effective_floor := p_floor_created_at;
+  IF v_effective_floor IS NOT NULL AND v_effective_floor > v_last_created_at THEN
+    v_last_created_at := v_effective_floor;
+    v_last_id := NULL;
+  END IF;
+
+  WITH picked AS (
+    SELECT
+      approval_history_id,
+      context_id,
+      approval_id,
+      actor,
+      decision,
+      comment,
+      job_plan,
+      created_at
+    FROM public.aiops_approval_history
+    WHERE created_at > v_last_created_at
+       OR (created_at = v_last_created_at AND (v_last_id IS NULL OR approval_history_id > v_last_id))
+    ORDER BY created_at ASC, approval_history_id ASC
+    LIMIT p_limit
+  ),
+  last_row AS (
+    SELECT created_at AS max_created_at, approval_history_id AS max_id
+    FROM picked
+    ORDER BY created_at DESC, approval_history_id DESC
+    LIMIT 1
+  )
+  SELECT
+    (SELECT COUNT(*)::int FROM picked) AS picked_count,
+    (SELECT max_created_at FROM last_row) AS max_created_at,
+    (SELECT max_id FROM last_row) AS max_id
+  INTO v_picked, v_max_created_at, v_max_id;
+
+  IF p_dry_run THEN
+    RETURN jsonb_build_object(
+      'ok', true,
+      'dry_run', true,
+      'state_key', v_state_key,
+      'cursor', jsonb_build_object(
+        'last_created_at', v_last_created_at,
+        'last_approval_history_id', v_last_id
+      ),
+      'picked', v_picked,
+      'next_cursor', CASE
+        WHEN v_picked > 0 THEN jsonb_build_object('last_created_at', v_max_created_at, 'last_approval_history_id', v_max_id)
+        ELSE NULL
+      END
+    );
+  END IF;
+
+  IF v_picked = 0 THEN
+    UPDATE itsm.integration_state
+    SET cursor = jsonb_strip_nulls(
+      COALESCE(cursor, '{}'::jsonb) || jsonb_build_object(
+        'last_run_at', NOW()::text,
+        'last_run_status', 'noop'
+      )
+    ),
+        version = version + 1,
+        updated_at = NOW()
+    WHERE realm_id = p_realm_id AND state_key = v_state_key;
+
+    RETURN jsonb_build_object('ok', true, 'dry_run', false, 'picked', 0, 'advanced', false);
+  END IF;
+
+  WITH picked AS (
+    SELECT
+      approval_history_id,
+      context_id,
+      approval_id,
+      actor,
+      decision,
+      comment,
+      job_plan,
+      created_at
+    FROM public.aiops_approval_history
+    WHERE created_at > v_last_created_at
+       OR (created_at = v_last_created_at AND (v_last_id IS NULL OR approval_history_id > v_last_id))
+    ORDER BY created_at ASC, approval_history_id ASC
+    LIMIT p_limit
+  ),
+  mapped AS (
+    SELECT
+      p_realm_id AS realm_id,
+      approval_history_id AS approval_history_id,
+      created_at AS occurred_at,
+      COALESCE(approval_id, approval_history_id) AS approval_uuid,
+      context_id AS context_id,
+      actor AS actor,
+      decision AS decision,
+      comment AS comment,
+      job_plan AS job_plan
+    FROM picked
+  ),
+  upsert_approval AS (
+    INSERT INTO itsm.approval (
+      id, realm_id, resource_type, resource_id, status,
+      requested_by_principal_id, approved_by_principal_id, approved_at, decision_reason, evidence, correlation_id
+    )
+    SELECT
+      m.approval_uuid AS id,
+      m.realm_id,
+      'aiops_job' AS resource_type,
+      m.context_id AS resource_id,
+      CASE
+        WHEN m.decision = 'approved' THEN 'approved'
+        WHEN m.decision = 'denied' THEN 'rejected'
+        WHEN m.decision = 'expired' THEN 'expired'
+        ELSE 'pending'
+      END AS status,
+      NULLIF(m.actor #>> '{email}', '') AS requested_by_principal_id,
+      NULLIF(m.actor #>> '{email}', '') AS approved_by_principal_id,
+      m.occurred_at AS approved_at,
+      m.comment AS decision_reason,
+      jsonb_build_object(
+        'approval_history_id', m.approval_history_id,
+        'context_id', m.context_id,
+        'actor', m.actor,
+        'decision', m.decision,
+        'comment', m.comment,
+        'job_plan', m.job_plan
+      ) AS evidence,
+      NULLIF(m.context_id::text, '') AS correlation_id
+    FROM mapped m
+    ON CONFLICT (id) DO UPDATE SET
+      status = EXCLUDED.status,
+      approved_by_principal_id = COALESCE(EXCLUDED.approved_by_principal_id, itsm.approval.approved_by_principal_id),
+      approved_at = COALESCE(EXCLUDED.approved_at, itsm.approval.approved_at),
+      decision_reason = COALESCE(EXCLUDED.decision_reason, itsm.approval.decision_reason),
+      evidence = COALESCE(EXCLUDED.evidence, itsm.approval.evidence),
+      correlation_id = COALESCE(EXCLUDED.correlation_id, itsm.approval.correlation_id)
+    RETURNING id
+  ),
+  ins_audit AS (
+    INSERT INTO itsm.audit_event (
+      realm_id, occurred_at, actor, actor_type, action, source,
+      resource_type, correlation_id, reply_target, summary, message, after, integrity
+    )
+    SELECT
+      m.realm_id,
+      m.occurred_at,
+      COALESCE(m.actor, '{}'::jsonb) AS actor,
+      CASE WHEN NULLIF(m.actor #>> '{email}', '') IS NULL THEN 'unknown' ELSE 'human' END AS actor_type,
+      CASE
+        WHEN m.decision = 'approved' THEN 'approval.approved'
+        WHEN m.decision = 'denied' THEN 'approval.rejected'
+        WHEN m.decision = 'expired' THEN 'approval.expired'
+        ELSE 'approval.recorded'
+      END AS action,
+      'aiops_agent' AS source,
+      'approval' AS resource_type,
+      NULLIF(m.context_id::text, '') AS correlation_id,
+      jsonb_build_object(
+        'source', 'aiops_agent',
+        'approval_id', m.approval_uuid::text,
+        'context_id', m.context_id::text
+      ) AS reply_target,
+      'AIOps approval history backfill' AS summary,
+      m.comment AS message,
+      COALESCE(m.job_plan, '{}'::jsonb) AS after,
+      jsonb_build_object('event_key', concat('aiops:approval_history:', m.approval_history_id::text)) AS integrity
+    FROM mapped m
+    ON CONFLICT DO NOTHING
+    RETURNING 1
+  ),
+  upd_state AS (
+    UPDATE itsm.integration_state
+    SET cursor = jsonb_strip_nulls(
+      COALESCE(cursor, '{}'::jsonb) || jsonb_build_object(
+        'last_created_at', v_max_created_at::text,
+        'last_approval_history_id', v_max_id::text,
+        'last_run_at', NOW()::text,
+        'last_run_status', 'ok',
+        'last_picked', v_picked
+      )
+    ),
+        version = version + 1,
+        updated_at = NOW()
+    WHERE realm_id = p_realm_id AND state_key = v_state_key
+    RETURNING 1
+  )
+  SELECT
+    (SELECT COUNT(*)::int FROM upsert_approval) AS upserted,
+    (SELECT COUNT(*)::int FROM ins_audit) AS inserted_audit,
+    (SELECT COUNT(*)::int FROM upd_state) AS state_updated
+  INTO v_upserted, v_inserted_audit, v_state_updated;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'dry_run', false,
+    'picked', v_picked,
+    'upserted_approvals', v_upserted,
+    'inserted_audit_events', v_inserted_audit,
+    'advanced', v_state_updated = 1,
+    'new_cursor', jsonb_build_object(
+      'last_created_at', v_max_created_at,
+      'last_approval_history_id', v_max_id
+    )
+  );
+END;
+$$;
+
+-- PII redaction request queue (for periodic background processing)
+CREATE TABLE IF NOT EXISTS itsm.pii_redaction_request (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id uuid NOT NULL REFERENCES itsm.realm(id) ON DELETE CASCADE,
+  principal_id text NOT NULL,
+  status text NOT NULL DEFAULT 'pending', -- pending|processing|done|error
+  requested_at timestamptz NOT NULL DEFAULT NOW(),
+  requested_by jsonb NOT NULL DEFAULT '{}'::jsonb,
+  attempts integer NOT NULL DEFAULT 0,
+  last_error text,
+  processed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+DROP TRIGGER IF EXISTS itsm_pii_redaction_request_touch_updated_at ON itsm.pii_redaction_request;
+CREATE TRIGGER itsm_pii_redaction_request_touch_updated_at
+BEFORE UPDATE ON itsm.pii_redaction_request
+FOR EACH ROW
+EXECUTE FUNCTION itsm._touch_updated_at();
+
+CREATE UNIQUE INDEX IF NOT EXISTS itsm_pii_redaction_request_unique_pending
+ON itsm.pii_redaction_request (realm_id, principal_id)
+WHERE status IN ('pending','processing');
+
+CREATE OR REPLACE FUNCTION itsm.enqueue_pii_redaction_request(p_realm_id uuid, p_principal_id text, p_requested_by jsonb DEFAULT '{}'::jsonb)
+RETURNS uuid
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_pid text;
+  v_id uuid;
+BEGIN
+  v_pid := NULLIF(BTRIM(p_principal_id), '');
+  IF p_realm_id IS NULL OR v_pid IS NULL THEN
+    RAISE EXCEPTION 'realm_id and principal_id are required';
+  END IF;
+
+  INSERT INTO itsm.pii_redaction_request (realm_id, principal_id, status, requested_at, requested_by)
+  VALUES (p_realm_id, v_pid, 'pending', NOW(), COALESCE(p_requested_by, '{}'::jsonb))
+  ON CONFLICT (realm_id, principal_id) WHERE status IN ('pending','processing')
+  DO UPDATE SET requested_at = EXCLUDED.requested_at, requested_by = EXCLUDED.requested_by, status = 'pending'
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.process_pii_redaction_requests(p_realm_id uuid, p_limit integer DEFAULT 50, p_dry_run boolean DEFAULT true)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_pending bigint;
+  v_done bigint := 0;
+  v_error bigint := 0;
+  v_row record;
+  v_ids uuid[];
+  v_summary jsonb := '{}'::jsonb;
+BEGIN
+  IF p_realm_id IS NULL THEN
+    RAISE EXCEPTION 'realm_id is required';
+  END IF;
+  IF p_limit IS NULL OR p_limit < 0 THEN
+    RAISE EXCEPTION 'limit must be >= 0';
+  END IF;
+
+  SELECT COUNT(*) INTO v_pending
+  FROM itsm.pii_redaction_request
+  WHERE realm_id = p_realm_id AND status = 'pending';
+
+  IF p_dry_run THEN
+    RETURN jsonb_build_object('pending', v_pending, 'limit', p_limit, 'dry_run', true);
+  END IF;
+
+  IF p_limit = 0 OR v_pending = 0 THEN
+    RETURN jsonb_build_object('pending', v_pending, 'processed', 0, 'errors', 0, 'dry_run', false);
+  END IF;
+
+  WITH picked AS (
+    SELECT id
+    FROM itsm.pii_redaction_request
+    WHERE realm_id = p_realm_id AND status = 'pending'
+    ORDER BY requested_at ASC
+    FOR UPDATE SKIP LOCKED
+    LIMIT p_limit
+  )
+  UPDATE itsm.pii_redaction_request r
+  SET status = 'processing', attempts = attempts + 1, updated_at = NOW()
+  FROM picked p
+  WHERE r.id = p.id
+  RETURNING r.id INTO v_ids;
+
+  IF v_ids IS NULL OR array_length(v_ids, 1) IS NULL THEN
+    RETURN jsonb_build_object('pending', v_pending, 'processed', 0, 'errors', 0, 'dry_run', false);
+  END IF;
+
+  FOR v_row IN
+    SELECT id, principal_id
+    FROM itsm.pii_redaction_request
+    WHERE id = ANY(v_ids)
+    ORDER BY requested_at ASC
+  LOOP
+    BEGIN
+      PERFORM itsm.anonymize_principal(p_realm_id, v_row.principal_id, false);
+      UPDATE itsm.pii_redaction_request
+      SET status = 'done', processed_at = NOW(), last_error = NULL, updated_at = NOW()
+      WHERE id = v_row.id;
+      v_done := v_done + 1;
+    EXCEPTION WHEN OTHERS THEN
+      UPDATE itsm.pii_redaction_request
+      SET status = 'error', last_error = SQLERRM, updated_at = NOW()
+      WHERE id = v_row.id;
+      v_error := v_error + 1;
+    END;
+  END LOOP;
+
+  v_summary := jsonb_build_object('pending_before', v_pending, 'processed', v_done, 'errors', v_error, 'limit', p_limit);
+
+  INSERT INTO itsm.audit_event (
+    realm_id, occurred_at, actor, actor_type, action, source,
+    resource_type, summary, after, integrity
+  )
+  VALUES (
+    p_realm_id,
+    NOW(),
+    jsonb_build_object('name', 'itsm_core'),
+    'automation',
+    'pii.redaction.batch',
+    'itsm_core',
+    'principal',
+    'PII redaction batch executed',
+    v_summary,
+    jsonb_build_object('event_key', 'itsm:pii:redaction:batch:' || gen_random_uuid()::text)
+  )
+  ON CONFLICT DO NOTHING;
+
+  RETURN v_summary || jsonb_build_object('dry_run', false);
 END;
 $$;
 

@@ -20,7 +20,7 @@ apps 配下のワークフローは、n8n から周辺サービス（例: Qdrant
 ### Grafana（参照/通知）
 
 - CloudWatch 監視の参照統一（ダッシュボード/リンク）や、Grafana アラートの通知連携（Webhook）で利用します。
-- apps の一部は Grafana API（Annotation など）を呼び出します（例: `apps/itsm_core/integrations/cloudwatch_event_notify`）。
+- apps の一部は Grafana API（Annotation など）を呼び出します（例: `apps/itsm_core/cloudwatch_event_notify`）。
 - Grafana の API token 作成/更新やダッシュボード同期は ITSM 側の運用手順に従います（`docs/itsm/README.md` / `docs/itsm/itsm-platform.md` を参照）。
 
 ### 0) `aiops_n8n_agent_realms`（対象レルムの絞り込み）
@@ -30,7 +30,7 @@ apps 配下のワークフローは、n8n から周辺サービス（例: Qdrant
 - 例: `["tenant-a"]` のように **運用対象レルムだけ**を指定します（`realms` 全体とは別）。
 - これが空だと、次の同期/セットアップ系が **スキップ/失敗**しやすくなります:
   - `apps/<app>/scripts/deploy_workflows.sh`
-  - `apps/itsm_core/integrations/<app>/scripts/deploy_workflows.sh`
+  - `apps/itsm_core/<app>/scripts/deploy_workflows.sh`
 - 各デプロイスクリプトは `N8N_AGENT_REALMS`（環境変数）で上書きもできますが、基本は Terraform 側（tfvars）を正にしてください。
 
 #### 設定方法（terraform.apps.tfvars）
@@ -110,7 +110,7 @@ aiops_agent_environment = {
 - `scripts/apps/deploy_all_workflows.sh`
   - 次の配下の `deploy*_workflows.sh` を検出し、順番に実行します:
     - `apps/<app>/scripts/`
-    - `apps/itsm_core/integrations/<app>/scripts/`
+    - `apps/itsm_core/<app>/scripts/`
   - 各アプリ側スクリプトが、環境変数や `terraform output` 等から URL/トークンを解決します（本スクリプト自体は secrets を保持しません）
 
 ### 対象になるアプリの条件
@@ -118,7 +118,7 @@ aiops_agent_environment = {
 次のどちらかを満たす `scripts/` ディレクトリを対象にします。
 
 - `apps/<app>/scripts/`
-- `apps/itsm_core/integrations/<app>/scripts/`
+- `apps/itsm_core/<app>/scripts/`
 
 - `deploy_workflows.sh` が実行可能（推奨）
 - `deploy*_workflows.sh` が 1 つだけ存在し、実行可能（例: `deploy_issue_rag_workflows.sh`）
@@ -212,7 +212,17 @@ aiops_agent_environment = {
 
 #### ITSM Core（SoR）
 
-- `apps/itsm_core/scripts/deploy_workflows.sh` - ITSM SoR（`itsm.*`）へ投入するワークフロー群（バックフィル/検証等）を n8n に同期する。
+- `apps/itsm_core/scripts/deploy_workflows.sh` - ITSM Core 配下（SoR core + サブアプリ）のワークフロー群（バックフィル/検証等）を n8n に同期し、必要ならサブアプリ OQ（スモーク）を順次実行する（`WITH_TESTS=false` で無効化）。
+- `apps/itsm_core/scripts/run_oq.sh` - ITSM Core 配下の各サブアプリ OQ を順次実行してレポートする。
+
+#### ITSM Core（サブアプリ）
+
+- `apps/itsm_core/gitlab_backfill_to_sor/scripts/deploy_workflows.sh` - GitLab バックフィル系ワークフローを n8n に反映する。
+- `apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh` - GitLab バックフィルのテスト投入（スモーク）を実行する。
+- `apps/itsm_core/zulip_backfill_to_sor/scripts/deploy_workflows.sh` - Zulip backfill（差分・定期）のワークフローを n8n に反映する。
+- `apps/itsm_core/zulip_backfill_to_sor/scripts/run_oq.sh` - Zulip 過去メッセージの backfill OQ（dry-run/scan/execute + 任意の n8n スモーク）を実行する。
+- `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/deploy_workflows.sh` - AIOps 承認履歴 backfill（差分・定期）のワークフローを n8n に反映する。
+- `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/run_oq.sh` - AIOps 承認履歴 backfill OQ（dry-run/execute + 任意の n8n スモーク）を実行する。
 
 #### Workflow Manager
 
@@ -220,8 +230,8 @@ aiops_agent_environment = {
 
 #### GitLab メンション通知
 
-- `apps/itsm_core/integrations/gitlab_mention_notify/scripts/deploy_workflows.sh` - GitLab メンション通知ワークフローを n8n に反映する。
-- `apps/itsm_core/integrations/gitlab_mention_notify/scripts/setup_gitlab_group_webhook.sh` - GitLab グループ Webhook を登録/更新する。
+- `apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh` - GitLab メンション通知ワークフローを n8n に反映する。
+- `apps/itsm_core/gitlab_mention_notify/scripts/setup_gitlab_group_webhook.sh` - GitLab グループ Webhook を登録/更新する。
 
 ## OQ（運用適格性確認）
 

@@ -33,11 +33,11 @@
   - 本 README
   - Requirements: `apps/itsm_core/docs/app_requirements.md`
   - CS（AIS）: `apps/itsm_core/docs/cs/ai_behavior_spec.md`
-  - DQ/IQ/OQ/PQ:
-    - `apps/itsm_core/docs/dq/dq.md`
-    - `apps/itsm_core/docs/iq/iq.md`
-    - `apps/itsm_core/docs/oq/oq.md`
-    - `apps/itsm_core/docs/pq/pq.md`
+- DQ/IQ/OQ/PQ:
+  - `apps/itsm_core/docs/dq/dq.md`
+  - `apps/itsm_core/docs/iq/iq.md`
+  - `apps/itsm_core/docs/oq/oq.md`
+  - `apps/itsm_core/docs/pq/pq.md`
 
 ---
 
@@ -54,7 +54,7 @@ ITSM の監査・決定・承認を「正（SoR）」へ集約し、横断検索
 
 ```mermaid
 flowchart LR
-  Operator[運用者（手動/検証）] --> Scripts["運用スクリプト<br/>apps/itsm_core/scripts/*"]
+  Operator[運用者（手動/検証）] --> Scripts["運用スクリプト<br/>apps/itsm_core/sor_ops/scripts/*"]
   Scripts --> DB[(RDS Postgres<br/>itsm.*)]
 
   Operator --> Webhook["n8n Webhook（検証/バックフィル）"]
@@ -65,21 +65,42 @@ flowchart LR
 ```
 
 ### ディレクトリ構成
-- `apps/itsm_core/sql/`: SoR スキーマ（正）/RLS
-- `apps/itsm_core/scripts/`: DDL/RLS/保持/削除/匿名化/監査アンカー/検証の補助
-- `apps/itsm_core/workflows/`: SoR コアの n8n ワークフロー群（スモークテスト等）
-- `apps/itsm_core/docs/`: Requirements、DQ/IQ/OQ/PQ、AIS
-- `apps/itsm_core/integrations/`: ITSM 運用の周辺連携（n8n ワークフロー + OQ/CS/PQ 等）を統合したアプリ群
-  - `aiops_approval_history_backfill_to_sor`
-  - `cloudwatch_event_notify`
-  - `gitlab_backfill_to_sor`
-  - `gitlab_issue_metrics_sync`
-  - `gitlab_issue_rag`
-  - `gitlab_mention_notify`
-  - `gitlab_push_notify`
-  - `zulip_backfill_to_sor`
-  - `zulip_gitlab_issue_sync`
-  - `zulip_stream_sync`
+- `apps/itsm_core/sql/`: SoR スキーマ（SSoT）/RLS
+- `apps/itsm_core/scripts/`: ITSM Core 配下の **統合オーケストレータ**（一括 deploy / 一括 OQ）
+- `apps/itsm_core/docs/`: ITSM Core の横断ドキュメント（Requirements/DQ/IQ/OQ/PQ/AIS）
+- `apps/itsm_core/<sub_app>/`: サブアプリ（個別の workflows/scripts/docs/data/sql を保持）
+
+### サブアプリ一覧（正）
+各サブアプリは原則として以下を保持する（統一インタフェース）:
+- 中心プロンプト: `apps/itsm_core/<sub_app>/data/default/prompt/system.md`
+- デプロイ: `apps/itsm_core/<sub_app>/scripts/deploy_workflows.sh`
+- OQ: `apps/itsm_core/<sub_app>/scripts/run_oq.sh`
+
+| sub_app | 種別 | 役割（概要） | デプロイ | OQ |
+|---|---|---|---|---|
+| `sor_ops` | hybrid | SoR 運用（DDL/RLS/保持/匿名化/監査アンカー等）+ 定期ジョブ（保持/PII redaction） | `apps/itsm_core/sor_ops/scripts/deploy_workflows.sh` | `apps/itsm_core/sor_ops/scripts/run_oq.sh` |
+| `sor_webhooks` | n8n | SoR コア Webhook（スモークテスト/互換 Webhook 等） | `apps/itsm_core/sor_webhooks/scripts/deploy_workflows.sh` | `apps/itsm_core/sor_webhooks/scripts/run_oq.sh` |
+| `gitlab_backfill_to_sor` | n8n | GitLab 過去データ（Issue/決定）→ SoR | `apps/itsm_core/gitlab_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh` |
+| `zulip_backfill_to_sor` | hybrid | Zulip 過去メッセージ（決定）→ SoR（状態保持・定期バックフィル） | `apps/itsm_core/zulip_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_backfill_to_sor/scripts/run_oq.sh` |
+| `aiops_approval_history_backfill_to_sor` | hybrid | legacy `aiops_approval_history` → SoR（状態保持・定期バックフィル） | `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/run_oq.sh` |
+| `cloudwatch_event_notify` | n8n | CloudWatch/SNS 等の通知を整形し Zulip/GitLab/Grafana へ連携 | `apps/itsm_core/cloudwatch_event_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/cloudwatch_event_notify/scripts/run_oq.sh` |
+| `gitlab_issue_metrics_sync` | n8n | GitLab issue メトリクス集計（S3 出力） | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/run_oq.sh` |
+| `gitlab_issue_rag` | n8n | GitLab issue/notes → pgvector（RAG 用） | `apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_rag/scripts/run_oq.sh` |
+| `gitlab_mention_notify` | n8n | GitLab mention を Zulip へ通知 | `apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_mention_notify/scripts/run_oq.sh` |
+| `gitlab_push_notify` | n8n | GitLab push を Zulip へ通知 | `apps/itsm_core/gitlab_push_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_push_notify/scripts/run_oq.sh` |
+| `zulip_gitlab_issue_sync` | n8n | Zulip ↔ GitLab Issue 同期 | `apps/itsm_core/zulip_gitlab_issue_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_gitlab_issue_sync/scripts/run_oq.sh` |
+| `zulip_stream_sync` | n8n | Zulip stream の作成/アーカイブ同期 | `apps/itsm_core/zulip_stream_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_stream_sync/scripts/run_oq.sh` |
+
+注: Cron の既定スケジュールは各サブアプリの `workflows/*.json` と `README.md` を正とする（必要なら n8n UI で調整する）。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`。
+
+### 統合オーケストレータ（推奨）
+```bash
+# ワークフロー同期（全サブアプリ）
+apps/itsm_core/scripts/deploy_workflows.sh --dry-run
+
+# OQ（一括）
+apps/itsm_core/scripts/run_oq.sh --realm default --dry-run
+```
 
 ---
 
@@ -95,40 +116,16 @@ flowchart LR
 
 ## 運用スクリプト（主要）
 
-- DDL 適用: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh`
-- スキーマ依存チェック: `apps/itsm_core/scripts/check_itsm_sor_schema.sh`
-- RLS コンテキスト既定値: `apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh`
-- 保持/削除: `apps/itsm_core/scripts/apply_itsm_sor_retention.sh`
-- PII 疑似化: `apps/itsm_core/scripts/anonymize_itsm_principal.sh`
-- 監査アンカー（S3）: `apps/itsm_core/scripts/anchor_itsm_audit_event_hash.sh`
-- GitLab backfill 起動（n8n Webhook 呼び出し）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/scripts/backfill_gitlab_issues_to_sor.sh`, `apps/itsm_core/integrations/gitlab_backfill_to_sor/scripts/backfill_gitlab_decisions_to_sor.sh`
-- Zulip backfill（GitLab を経由しない）: `apps/itsm_core/integrations/zulip_backfill_to_sor/scripts/backfill_zulip_decisions_to_sor.sh`
-- AIOps 承認履歴 backfill: `apps/itsm_core/integrations/aiops_approval_history_backfill_to_sor/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
+- 運用スクリプトの正は `apps/itsm_core/sor_ops/` に集約する（一覧・用途・OQ は `apps/itsm_core/sor_ops/README.md` を参照）。
+- サブアプリの実行スクリプト（バックフィル等）は各サブアプリの README に整理する（例: `apps/itsm_core/gitlab_backfill_to_sor/README.md`）。
 
 ---
 
 ## n8n ワークフロー（代表）
 
-- SoR への書き込みスモークテスト: `apps/itsm_core/workflows/itsm_sor_audit_event_test.json`（Webhook: `POST /webhook/itsm/sor/audit_event/test`）
-- AIOps SoR 書き込み（互換 Webhook / 任意）: `apps/itsm_core/workflows/itsm_sor_aiops_*.json`（例: `POST /webhook/itsm/sor/aiops/auto_enqueue`）
-- AIOps SoR 書き込み（スモークテスト）: `apps/itsm_core/workflows/itsm_sor_aiops_write_test.json`（Webhook: `POST /webhook/itsm/sor/aiops/write/test`）
-- GitLab Issue → SoR レコード backfill（全件走査）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_issue_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor`）
-- GitLab Issue → SoR レコード backfill（テスト投入）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_issue_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor/test`）
-- GitLab 決定 backfill（全件走査・LLM 判定）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_decision_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
-- GitLab 決定 backfill（テスト投入）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_decision_backfill_to_sor_test.json`（Webhook: `POST /webhook/gitlab/decision/backfill/sor/test`）
-
-同期（n8n Public API へ upsert）:
-```bash
-apps/itsm_core/scripts/deploy_workflows.sh
-```
-
-環境変数（任意）:
-- `ITSM_SOR_WEBHOOK_TOKEN`: SoR 書き込み系 Webhook を簡易保護するための Bearer トークン（未設定なら検証なし）
-
-GitLab backfill workflows の同期:
-```bash
-apps/itsm_core/integrations/gitlab_backfill_to_sor/scripts/deploy_workflows.sh
-```
+- ワークフロー定義（JSON）は各サブアプリの `workflows/` に配置する（例: SoR コアは `apps/itsm_core/sor_webhooks/README.md`、GitLab backfill は `apps/itsm_core/gitlab_backfill_to_sor/README.md`）。
+- デプロイは ITSM Core 統合オーケストレータ（`apps/itsm_core/scripts/deploy_workflows.sh`）または各サブアプリの `scripts/deploy_workflows.sh` で行う。
+- OQ は `apps/itsm_core/scripts/run_oq.sh`（一括）または各サブアプリの `scripts/run_oq.sh` で行う。
 
 ---
 
@@ -168,14 +165,15 @@ Intended Use に適合することを、最小の検証で示す。
 重要機能（SoR 書き込み、バックフィル投入、ワークフロー同期、冪等性）が意図どおり動作することを確認する。
 
 **文書**
-- `apps/itsm_core/docs/oq/oq.md`（`oq_*.md` から生成）
-- 個別シナリオ: `apps/itsm_core/docs/oq/oq_*.md`
+- OQ（入口）: `apps/itsm_core/docs/oq/oq.md`
+- OQ（SoR core / Webhook）: `apps/itsm_core/sor_webhooks/docs/oq/oq.md`（`oq_*.md` から生成）
 
 **実行**
-- OQ 実行補助: `apps/itsm_core/scripts/run_oq.sh`
+- OQ 実行補助（ITSM Core 配下一括）: `apps/itsm_core/scripts/run_oq.sh`
+- OQ 実行補助（SoR core / Webhook のみ）: `apps/itsm_core/sor_webhooks/scripts/run_oq.sh`
 
 補足:
-- OQ 文書を更新した場合は `scripts/generate_oq_md.sh --app apps/itsm_core` で `oq.md` を更新する。
+- OQ 文書を更新した場合は `scripts/generate_oq_md.sh --app apps/itsm_core/<app>` を実行して、各アプリの `docs/oq/oq.md` を更新する。
 
 ---
 

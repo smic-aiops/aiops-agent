@@ -1,142 +1,163 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Run OQ for all ITSM Core sub-apps under apps/itsm_core/* that provide scripts/run_oq.sh.
+# Exits non-zero if any sub-app OQ fails.
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+cd "${REPO_ROOT}"
+
+REALM=""
+N8N_BASE_URL=""
+DRY_RUN=false
+FAIL_FAST=false
+APPS_FILTER=""
+EVIDENCE_DIR=""
+
 usage() {
   cat <<'USAGE'
 Usage: apps/itsm_core/scripts/run_oq.sh [options]
 
 Options:
-  --realm <realm>         Target realm (default: terraform output default_realm or "default")
-  --n8n-base-url <url>    Override n8n base URL (default: terraform output n8n_realm_urls / service_urls)
-  --message <text>        Message for smoke tests (default: "OQ test: itsm_core")
-  --dry-run               Print requests without executing
+  --realm <realm>         Target realm passed to each sub-app OQ (optional; forwarded as --realm or --realm-key depending on sub-app)
+  --realm-key <key>       Alias of --realm (optional)
+  --n8n-base-url <url>    Override n8n base URL (best-effort; forwarded to apps that support --n8n-base-url)
+  --apps <a,b,c>          Comma-separated app allowlist (optional)
+  --evidence-dir <dir>    Evidence base dir (best-effort; only passed to apps that support it)
+  --dry-run               Propagate --dry-run to each sub-app OQ
+  --fail-fast             Stop at first failure (default: run all and report)
   -h, --help              Show this help
+
+Behavior:
+  - Discovers OQ runners under:
+      - apps/itsm_core/*/scripts/run_oq.sh
+    and executes them in a stable order.
+  - Evidence location/format is owned by each app script.
 USAGE
 }
 
-REALM=""
-N8N_BASE_URL=""
-MESSAGE="OQ test: itsm_core"
-DRY_RUN=false
+log() { printf '[oq:itsm_core] %s\n' "$*"; }
+warn() { printf '[oq:itsm_core] [warn] %s\n' "$*" >&2; }
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
-
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --realm)
-      REALM="$2"; shift 2 ;;
-    --n8n-base-url)
-      N8N_BASE_URL="$2"; shift 2 ;;
-    --message)
-      MESSAGE="$2"; shift 2 ;;
-    --dry-run)
-      DRY_RUN=true; shift ;;
-    -h|--help)
-      usage; exit 0 ;;
-    *)
-      echo "Unknown option: $1" >&2
-      usage; exit 1 ;;
-  esac
-done
-
-terraform_output() {
-  terraform -chdir="${REPO_ROOT}" output -raw "$1" 2>/dev/null || true
-}
-
-terraform_output_json() {
-  terraform -chdir="${REPO_ROOT}" output -json "$1" 2>/dev/null || echo '{}'
-}
-
-json_payload() {
-  local realm="$1"
-  local message="$2"
-  if command -v jq >/dev/null 2>&1; then
-    jq -nc --arg realm "${realm}" --arg message "${message}" '{realm:$realm, message:$message}'
-    return 0
-  fi
-  python3 - <<'PY' "${realm}" "${message}"
-import json, sys
-print(json.dumps({"realm": sys.argv[1], "message": sys.argv[2]}))
-PY
-}
-
-request_post() {
-  local name="$1"
-  local url="$2"
-  local payload="$3"
-
-  if ${DRY_RUN}; then
-    echo "[dry-run] ${name}: POST ${url} payload=${payload}"
-    return 0
-  fi
-
-  local response
-  response=$(
-    curl -sS -w '\n%{http_code}' \
-      -H 'Content-Type: application/json' \
-      ${ITSM_SOR_WEBHOOK_TOKEN:+-H "Authorization: Bearer ${ITSM_SOR_WEBHOOK_TOKEN}"} \
-      -X POST \
-      --data "${payload}" \
-      "${url}"
-  )
-
-  local status
-  status="${response##*$'\n'}"
-  local body_out
-  body_out="${response%$'\n'*}"
-  echo "${name} status=${status} body=${body_out}"
-
-  if [[ "${status}" != "200" ]]; then
-    return 1
-  fi
-  if command -v jq >/dev/null 2>&1; then
-    local ok
-    ok="$(printf '%s' "${body_out}" | jq -r '.ok // empty' 2>/dev/null || true)"
-    if [[ -n "${ok}" && "${ok}" != "true" ]]; then
-      return 1
+contains_app() {
+  local app="$1"
+  local csv="$2"
+  local IFS=,
+  local a
+  for a in $csv; do
+    if [[ "${a}" == "${app}" ]]; then
+      return 0
     fi
-  fi
+  done
+  return 1
 }
 
-if [[ -z "${REALM}" ]]; then
-  if command -v terraform >/dev/null 2>&1; then
-    REALM="$(terraform_output default_realm)"
+script_supports_flag() {
+  local script="$1"
+  local flag="$2"
+  local help=""
+  help="$(bash "${script}" --help 2>/dev/null || true)"
+  if [[ -z "${help}" ]]; then
+    help="$(bash "${script}" -h 2>/dev/null || true)"
   fi
-fi
-REALM="${REALM:-default}"
+  local escaped=""
+  escaped="$(printf '%s' "${flag}" | sed -e 's/[][\\.^$*+?(){}|]/\\\\&/g')"
+  local pattern="(^|[[:space:]])${escaped}([[:space:]]|$)"
+  printf '%s' "${help}" | LC_ALL=C grep -Eq "${pattern}"
+}
 
-if [[ -z "${N8N_BASE_URL}" ]]; then
-  if command -v terraform >/dev/null 2>&1; then
-    N8N_BASE_URL="$(terraform_output_json n8n_realm_urls | python3 -c 'import json,sys; realm=sys.argv[1]; data=json.load(sys.stdin); print(data.get(realm, ""))' "${REALM}")"
+append_realm_arg() {
+  local script="$1"
+  local realm="$2"
+  if [[ -z "${realm}" ]]; then
+    return 0
   fi
-fi
-
-if [[ -z "${N8N_BASE_URL}" ]]; then
-  if command -v terraform >/dev/null 2>&1; then
-    N8N_BASE_URL="$(terraform_output_json service_urls | python3 -c 'import json,sys; print(json.load(sys.stdin).get(\"n8n\", \"\"))')"
+  if script_supports_flag "${script}" "--realm-key"; then
+    printf '%s\0%s\0' "--realm-key" "${realm}"
+    return 0
   fi
-fi
+  if script_supports_flag "${script}" "--realm"; then
+    printf '%s\0%s\0' "--realm" "${realm}"
+    return 0
+  fi
+  return 0
+}
 
-if [[ -z "${N8N_BASE_URL}" ]]; then
-  echo "Failed to resolve N8N base URL. Use --n8n-base-url to override." >&2
-  exit 1
-fi
+main() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --realm) REALM="${2:-}"; shift 2 ;;
+      --realm-key) REALM="${2:-}"; shift 2 ;;
+      --n8n-base-url) N8N_BASE_URL="${2:-}"; shift 2 ;;
+      --apps) APPS_FILTER="${2:-}"; shift 2 ;;
+      --evidence-dir) EVIDENCE_DIR="${2:-}"; shift 2 ;;
+      --dry-run) DRY_RUN=true; shift ;;
+      --fail-fast) FAIL_FAST=true; shift ;;
+      -h|--help) usage; exit 0 ;;
+      *) warn "Unknown option: $1"; usage >&2; exit 1 ;;
+    esac
+  done
 
-payload="$(json_payload "${REALM}" "${MESSAGE}")"
+  local scripts
+  scripts="$(
+    find apps/itsm_core -mindepth 3 -maxdepth 3 -type f -path 'apps/itsm_core/*/scripts/run_oq.sh' 2>/dev/null \
+      | LC_ALL=C sort -u
+  )"
+  if [[ -z "${scripts}" ]]; then
+    warn "No OQ runner scripts found under apps/itsm_core/*/scripts/run_oq.sh"
+    exit 1
+  fi
 
-request_post "audit-event-test" "${N8N_BASE_URL%/}/webhook/itsm/sor/audit_event/test" "${payload}"
+  local failed=0
+  local -a failed_apps=()
 
-webhook_base_url="${N8N_BASE_URL%/}/webhook"
-if command -v jq >/dev/null 2>&1; then
-  payload_aiops="$(jq -nc --arg realm "${REALM}" --arg message "${MESSAGE}" --arg webhook_base_url "${webhook_base_url}" '{realm:$realm, message:$message, webhook_base_url:$webhook_base_url}')"
-else
-  payload_aiops="$(python3 - <<'PY' "${REALM}" "${MESSAGE}" "${webhook_base_url}"
-import json, sys
-print(json.dumps({"realm": sys.argv[1], "message": sys.argv[2], "webhook_base_url": sys.argv[3]}))
-PY
-)"
-fi
+  local script app
+  while IFS= read -r script; do
+    app="$(basename "$(dirname "$(dirname "${script}")")")"
 
-request_post "aiops-write-test" "${N8N_BASE_URL%/}/webhook/itsm/sor/aiops/write/test" "${payload_aiops}"
-echo "[hint] GitLab backfill OQ: apps/itsm_core/integrations/gitlab_backfill_to_sor/scripts/run_oq.sh"
+    if [[ -n "${APPS_FILTER}" ]]; then
+      if ! contains_app "${app}" "${APPS_FILTER}"; then
+        continue
+      fi
+    fi
+
+    log "app=${app} script=${script}"
+
+    local -a args=()
+    while IFS= read -r -d '' part; do
+      args+=("${part}")
+    done < <(append_realm_arg "${script}" "${REALM}")
+    if ${DRY_RUN}; then
+      args+=(--dry-run)
+    fi
+
+    if [[ -n "${N8N_BASE_URL}" ]] && script_supports_flag "${script}" "--n8n-base-url"; then
+      args+=(--n8n-base-url "${N8N_BASE_URL}")
+    fi
+
+    if [[ -n "${EVIDENCE_DIR}" ]] && script_supports_flag "${script}" "--evidence-dir"; then
+      mkdir -p "${EVIDENCE_DIR}/${app}"
+      args+=(--evidence-dir "${EVIDENCE_DIR}/${app}")
+    fi
+
+    if ! bash "${script}" "${args[@]}"; then
+      warn "failed: app=${app}"
+      failed=$((failed + 1))
+      failed_apps+=("${app}")
+      if ${FAIL_FAST}; then
+        exit 1
+      fi
+    fi
+  done <<<"${scripts}"
+
+  if [[ "${failed}" -gt 0 ]]; then
+    warn "completed with failures: ${failed}"
+    printf ' - %s\n' "${failed_apps[@]}" >&2
+    exit 1
+  fi
+
+  log "done"
+}
+
+main "$@"

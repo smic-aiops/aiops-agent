@@ -1,0 +1,173 @@
+{
+  "name": "itsm-aiops-approval-history-backfill-job",
+  "active": false,
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        220
+      ],
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyHour",
+              "minute": 35
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "Build Inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        220
+      ],
+      "parameters": {
+        "jsCode": "function parseRealmList(raw) {\n  const s = String(raw || '').trim();\n  if (!s) return ['default'];\n  return s\n    .replace(/,/g, ' ')\n    .split(/\\s+/)\n    .map((x) => String(x || '').trim())\n    .filter(Boolean);\n}\n\nfunction parseIntSafe(raw, fallback) {\n  const n = Number.parseInt(String(raw ?? ''), 10);\n  return Number.isFinite(n) && n >= 0 ? n : fallback;\n}\n\nfunction parseBool(raw, fallback) {\n  if (raw === undefined || raw === null || raw === '') return fallback;\n  const s = String(raw).toLowerCase().trim();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(s);\n}\n\nconst realms = parseRealmList(process.env.ITSM_AIOPS_APPROVAL_HISTORY_BACKFILL_REALMS || process.env.N8N_AGENT_REALMS || process.env.N8N_REALM || 'default');\nconst limit = parseIntSafe(process.env.ITSM_AIOPS_APPROVAL_HISTORY_BACKFILL_LIMIT, 200);\nconst execute = parseBool(process.env.ITSM_AIOPS_APPROVAL_HISTORY_BACKFILL_EXECUTE, false);\nconst floorCreatedAt = String(process.env.ITSM_AIOPS_APPROVAL_HISTORY_BACKFILL_SINCE || '').trim();\n\nreturn realms.map((realm) => ({\n  json: {\n    realm,\n    limit,\n    execute,\n    floor_created_at: floorCreatedAt || null\n  }\n}));\n"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Backfill Dry Run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        860,
+        220
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($json.realm ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    GREATEST(0, COALESCE(NULLIF('{{ String($json.limit ?? 200) }}',''), '200')::int) AS lim,\n    (CASE WHEN '{{ $json.execute ? \"true\" : \"false\" }}' = 'true' THEN true ELSE false END) AS execute,\n    NULLIF('{{ String($json.floor_created_at ?? \"\").replace(/'/g, \"''\") }}','')::timestamptz AS floor_created_at\n)\nSELECT\n  v.realm_key AS realm,\n  v.lim AS limit,\n  v.execute,\n  v.floor_created_at,\n  itsm.backfill_aiops_approval_history_batch(itsm.set_rls_context(v.realm_key), v.lim, true, v.floor_created_at) AS summary\nFROM v;"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Decide Execute",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        220
+      ],
+      "parameters": {
+        "jsCode": "function parseSummary(raw) {\n  if (raw === null || raw === undefined) return {};\n  if (typeof raw === 'object') return raw;\n  const s = String(raw).trim();\n  if (!s) return {};\n  try {\n    return JSON.parse(s);\n  } catch {\n    return {};\n  }\n}\n\nconst summary = parseSummary($json.summary);\nconst picked = Number(summary.picked) || 0;\nconst execute = Boolean($json.execute);\nconst doExecute = execute && picked > 0;\n\nreturn [{\n  json: {\n    realm: String($json.realm || 'default'),\n    limit: Number($json.limit) || 0,\n    floor_created_at: $json.floor_created_at || null,\n    execute,\n    do_execute: doExecute,\n    dry_run_summary: summary\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "5",
+      "name": "Should Execute?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        220
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.do_execute === true }}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6",
+      "name": "Backfill Execute",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        160
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($json.realm ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    GREATEST(0, COALESCE(NULLIF('{{ String($json.limit ?? 200) }}',''), '200')::int) AS lim,\n    NULLIF('{{ String($json.floor_created_at ?? \"\").replace(/'/g, \"''\") }}','')::timestamptz AS floor_created_at\n)\nSELECT\n  v.realm_key AS realm,\n  v.lim AS limit,\n  itsm.backfill_aiops_approval_history_batch(itsm.set_rls_context(v.realm_key), v.lim, false, v.floor_created_at) AS summary\nFROM v;"
+      }
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Build Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Inputs": {
+      "main": [
+        [
+          {
+            "node": "Backfill Dry Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backfill Dry Run": {
+      "main": [
+        [
+          {
+            "node": "Decide Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide Execute": {
+      "main": [
+        [
+          {
+            "node": "Should Execute?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Execute?": {
+      "main": [
+        [
+          {
+            "node": "Backfill Execute",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -452,7 +452,7 @@ Incident/Change/Export 等の “承認” を共通テーブルで扱い、**�
 - INSERT 時に DB が `integrity.prev_hash` と `integrity.hash` を自動計算して **ハッシュチェーン** を形成します（アプリ側が指定しても上書きされます）。
 - 外部アンカー（推奨）: 最新の `integrity.hash`（チェーン先頭）を定期的に S3 Object Lock（WORM）へ保存して、DB 管理者が DB 内で辻褄を合わせる攻撃を難しくします。
   - Terraform: `itsm_audit_event_anchor_enabled=true` でアンカーバケットを作成（Object Lock 付き）
-  - スクリプト: `apps/itsm_core/scripts/anchor_itsm_audit_event_hash.sh`（realm 単位で先頭ハッシュをアンカー）
+  - スクリプト: `apps/itsm_core/sor_ops/scripts/anchor_itsm_audit_event_hash.sh`（realm 単位で先頭ハッシュをアンカー）
   - 検証関数: `itsm.audit_event_verify_hash_chain(realm_id)`（`ok=false` の行があれば改ざん/欠落/順序破綻の疑い）
 
 #### `itsm.retention_policy`（保持ポリシー）
@@ -472,8 +472,21 @@ Incident/Change/Export 等の “承認” を共通テーブルで扱い、**�
 | `updated_at` | `timestamptz` |  | |
 
 運用:
-- purge: `itsm.apply_retention(realm_id, dry_run)`（`apps/itsm_core/scripts/apply_itsm_sor_retention.sh`）
-- PII 匿名化: `itsm.anonymize_principal(realm_id, principal_id, dry_run)`（`apps/itsm_core/scripts/anonymize_itsm_principal.sh`）
+- purge: `itsm.apply_retention(realm_id, dry_run)`（`apps/itsm_core/sor_ops/scripts/apply_itsm_sor_retention.sh`）
+- PII 匿名化: `itsm.anonymize_principal(realm_id, principal_id, dry_run)`（`apps/itsm_core/sor_ops/scripts/anonymize_itsm_principal.sh`）
+- 定期運用（n8n）: `apps/itsm_core/sor_ops/workflows/`（retention: 毎日 03:10 / PII redaction: 毎時 15分。既定は `active=false`）
+
+#### `itsm.integration_state`（定期ジョブの状態/カーソル）
+
+定期バックフィルや定期クリーニング系のワークフローが、**処理済み範囲（カーソル）**を SoR 側に保持するための内部テーブルです。
+
+- 例（state_key）:
+  - `aiops_approval_history_backfill_to_sor`（AIOps 承認履歴 → SoR の差分 backfill）
+  - `zulip_backfill_to_sor.decisions`（Zulip 決定メッセージ → SoR の差分 backfill）
+
+実装（SSoT）:
+- テーブル: `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.integration_state`）
+- 参照: `itsm.get_integration_state(realm_id, state_key)`
 
 ---
 
@@ -521,7 +534,7 @@ API サービスが DB 接続後に以下を `SET LOCAL` する前提:
 
 - DB 側で **(DB role, database) の既定値**として `app.*` を永続設定する。
   例: `ALTER ROLE <db_user> IN DATABASE <db_name> SET app.realm_key = 'tenant-a';`
-- このリポジトリには、既定値を投入するスクリプトとして `apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh` を用意しています。
+- このリポジトリには、既定値を投入するスクリプトとして `apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh` を用意しています。
 
 推奨パターン B（API サービス等、同一コネクションで複数 realm を扱う可能性がある場合）:
 

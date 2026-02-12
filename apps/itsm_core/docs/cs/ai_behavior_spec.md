@@ -44,5 +44,5 @@ AI は以下を行ってはならない：
 - 要求: `apps/itsm_core/docs/app_requirements.md`
 - DQ/IQ/OQ/PQ: `apps/itsm_core/docs/dq/`, `apps/itsm_core/docs/iq/`, `apps/itsm_core/docs/oq/`, `apps/itsm_core/docs/pq/`
 - スキーマ（正）: `apps/itsm_core/sql/itsm_sor_core.sql`
-- ワークフロー: `apps/itsm_core/workflows/` / `apps/itsm_core/integrations/*/workflows/`
-- 運用スクリプト: `apps/itsm_core/scripts/`
+- ワークフロー: `apps/itsm_core/sor_webhooks/workflows/` / `apps/itsm_core/<app>/workflows/`
+- 運用スクリプト（正）: `apps/itsm_core/sor_ops/scripts/`

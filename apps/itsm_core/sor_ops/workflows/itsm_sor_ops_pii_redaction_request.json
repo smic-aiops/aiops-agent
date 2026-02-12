@@ -1,0 +1,107 @@
+{
+  "name": "itsm-sor-ops-pii-redaction-request",
+  "active": false,
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        840
+      ],
+      "parameters": {
+        "path": "itsm/sor/ops/pii_redaction/request",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Build Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        840
+      ],
+      "parameters": {
+        "jsCode": "const body = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\n\nconst realm = String(body.realm || process.env.N8N_REALM || 'default').trim() || 'default';\nconst principalId = String(body.principal_id || body.principalId || '').trim();\n\nif (!principalId) {\n  throw new Error('principal_id is required');\n}\n\nconst requestedBy = (body.requested_by && typeof body.requested_by === 'object') ? body.requested_by : {};\n\nreturn [{ json: { realm, principal_id: principalId, requested_by: requestedBy } }];\n"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Enqueue Request",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        860,
+        840
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($json.realm ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    NULLIF('{{ String($json.principal_id ?? \"\").replace(/'/g, \"''\") }}','') AS principal_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.requested_by || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS requested_by\n)\nSELECT\n  v.realm_key AS realm,\n  v.principal_id,\n  itsm.enqueue_pii_redaction_request(itsm.set_rls_context(v.realm_key), v.principal_id, v.requested_by) AS request_id\nFROM v;"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        840
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, input: $items(\"Build Input\")[0].json, result: $json } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Input": {
+      "main": [
+        [
+          {
+            "node": "Enqueue Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enqueue Request": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+

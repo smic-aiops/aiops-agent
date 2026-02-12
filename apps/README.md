@@ -1,6 +1,6 @@
 # apps/（アプリ共通）
 
-本リポジトリの各アプリ（`apps/<app>/` および `apps/itsm_core/integrations/<app>/`）の README は、個別仕様だけでなく、監査/妥当性確認（CSV/CSA）に必要な最低限の情報を含む「共通フォーマット」を採用します。
+本リポジトリの各アプリ（`apps/<app>/` および `apps/itsm_core/<app>/`）の README は、個別仕様だけでなく、監査/妥当性確認（CSV/CSA）に必要な最低限の情報を含む「共通フォーマット」を採用します。
 
 また、本リポジトリの apps 配下の開発・運用は **GAMP5 2nd（2022）× CSA × AI** の考え方（リスクベース、最小文書、構成管理）に沿って行います。
 特に AI を含む部分（LLM プロンプト/ポリシー/ワークフロー等）は「構成（Configuration）」として扱い、変更管理と再検証（必要最小限の OQ/PQ）を前提とします。
@@ -23,7 +23,7 @@ flowchart LR
 ## アプリ一覧（連携サマリ）
 
 注:
-- 周辺連携系の一部アプリは `apps/itsm_core/integrations/` 配下へ統合しています（例: `apps/itsm_core/integrations/cloudwatch_event_notify`）。
+- 周辺連携系の一部アプリは `apps/itsm_core/` 配下へ統合しています（例: `apps/itsm_core/cloudwatch_event_notify`）。
 
 | アプリ | 入力（代表） | 出力/連携（代表） | 主な用途 |
 |---|---|---|---|
@@ -197,7 +197,7 @@ ITSM/AI Ops のユースケースにおいて、システムが「誰により�
 実行時は「対象アプリ」「目的」「制約（秘匿・出力様式）」「参照してほしいファイル」を最初に渡します。
 
 ```text
-対象: <app_root>（例: apps/<app> または apps/itsm_core/integrations/<app>）
+対象: <app_root>（例: apps/<app> または apps/itsm_core/<app>）
 目的: <app> のユースケース/検証（DQ）を最新化して、関連するプロンプト/ポリシー/実装に反映したい
 制約:
 - 秘匿情報は出力しない

@@ -75,20 +75,37 @@
 ### 保持/削除ジョブ（dry-run 推奨 → execute）
 
 1. dry-run（件数確認）:
-   - `apps/itsm_core/scripts/apply_itsm_sor_retention.sh --realm-key default --dry-run`
+   - `apps/itsm_core/sor_ops/scripts/apply_itsm_sor_retention.sh --realm-key default --dry-run`
 2. 実行:
-   - `apps/itsm_core/scripts/apply_itsm_sor_retention.sh --realm-key default --execute`
+   - `apps/itsm_core/sor_ops/scripts/apply_itsm_sor_retention.sh --realm-key default --execute`
 3. （任意）plan-only（SQL/ターゲットの確認のみ）:
-   - `apps/itsm_core/scripts/apply_itsm_sor_retention.sh --plan-only --realm-key default --dry-run`
+   - `apps/itsm_core/sor_ops/scripts/apply_itsm_sor_retention.sh --plan-only --realm-key default --dry-run`
+
+#### 定期運用（n8n workflow / 小分け実行）
+
+保持/削除は、削除スパイクを避けるため **小分け（max_rows 上限）**で定期実行できる。
+
+- 定期ジョブ: `apps/itsm_core/sor_ops/workflows/itsm_sor_ops_retention_job.json`（Cron 既定: 毎日 03:10。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`）
+- スモーク（dry-run）: `apps/itsm_core/sor_ops/workflows/itsm_sor_ops_retention_test.json`（Webhook: `POST /webhook/itsm/sor/ops/retention/test`）
+- 実行ガード: n8n 側の `ITSM_SOR_RETENTION_EXECUTE=true` のときのみ実削除を行う（既定 false）
 
 ### PII 匿名化（dry-run 推奨 → execute）
 
 1. dry-run（影響件数確認）:
-   - `apps/itsm_core/scripts/anonymize_itsm_principal.sh --realm-key default --principal-id <kc-sub> --dry-run`
+   - `apps/itsm_core/sor_ops/scripts/anonymize_itsm_principal.sh --realm-key default --principal-id <kc-sub> --dry-run`
 2. 実行:
-   - `apps/itsm_core/scripts/anonymize_itsm_principal.sh --realm-key default --principal-id <kc-sub> --execute`
+   - `apps/itsm_core/sor_ops/scripts/anonymize_itsm_principal.sh --realm-key default --principal-id <kc-sub> --execute`
 3. （任意）plan-only（SQL/ターゲットの確認のみ）:
-   - `apps/itsm_core/scripts/anonymize_itsm_principal.sh --plan-only --realm-key default --principal-id <kc-sub> --dry-run`
+   - `apps/itsm_core/sor_ops/scripts/anonymize_itsm_principal.sh --plan-only --realm-key default --principal-id <kc-sub> --dry-run`
+
+#### 定期運用（n8n workflow / 要求キュー + 小分け実行）
+
+PII 匿名化は「全件走査」ではなく、要求（principal_id）をキューに enqueue し、**limit 上限**でバッチ処理する。
+
+- 定期ジョブ: `apps/itsm_core/sor_ops/workflows/itsm_sor_ops_pii_redaction_job.json`（Cron 既定: 毎時 15分。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`）
+- スモーク（dry-run）: `apps/itsm_core/sor_ops/workflows/itsm_sor_ops_pii_redaction_test.json`（Webhook: `POST /webhook/itsm/sor/ops/pii_redaction/test`）
+- 要求 enqueue: `apps/itsm_core/sor_ops/workflows/itsm_sor_ops_pii_redaction_request.json`（Webhook: `POST /webhook/itsm/sor/ops/pii_redaction/request`）
+- 実行ガード: n8n 側の `ITSM_SOR_PII_REDACTION_EXECUTE=true` のときのみ匿名化を行う（既定 false）
 
 ## 将来拡張（必要になったら）
 

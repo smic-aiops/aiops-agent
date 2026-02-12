@@ -71,15 +71,29 @@ timestamp_dirname() {
 }
 
 resolve_default_realm() {
+  local sanitize
+  sanitize() {
+    local v="$1"
+    v="${v//$'\r'/}"
+    v="$(printf '%s' "${v}" | tr -d '\n' | tr -d '[:space:]')"
+    if [[ "${v}" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+      printf '%s' "${v}"
+    else
+      printf ''
+    fi
+  }
+
   local realm
   realm="$(
     terraform_output_json_optional | python3 -c 'import json,sys; data=json.loads(sys.stdin.read() or "null") or {}; realms=((data.get("N8N_AGENT_REALMS") or {}).get("value") or []); print((realms[0] if realms else ""))'
   )"
+  realm="$(sanitize "${realm}")"
   if [[ -n "${realm}" ]]; then
     printf '%s' "${realm}"
     return
   fi
   realm="$(terraform_output_raw_optional default_realm)"
+  realm="$(sanitize "${realm}")"
   printf '%s' "${realm}"
 }
 
@@ -140,7 +154,11 @@ main() {
   require_cmd bash python3
 
   if [[ -z "${REALM}" ]]; then
-    REALM="$(resolve_default_realm)"
+    if ${DRY_RUN}; then
+      REALM="default"
+    else
+      REALM="$(resolve_default_realm)"
+    fi
   fi
   if [[ -z "${REALM}" ]]; then
     warn "Failed to resolve realm (use --realm <realm>)"

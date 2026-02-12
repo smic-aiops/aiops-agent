@@ -1,0 +1,134 @@
+{
+  "name": "itsm-zulip-backfill-decisions-test",
+  "active": false,
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ],
+      "parameters": {
+        "path": "itsm/sor/zulip/backfill/decisions/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "2",
+      "name": "Build Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ],
+      "parameters": {
+        "jsCode": "function parseIntSafe(raw, fallback) {\n  const n = Number.parseInt(String(raw ?? ''), 10);\n  return Number.isFinite(n) && n >= 0 ? n : fallback;\n}\n\nconst body = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\n\nconst realm = String(body.realm || process.env.N8N_REALM || 'default').trim() || 'default';\nconst pageSize = parseIntSafe(body.page_size ?? process.env.ITSM_ZULIP_BACKFILL_PAGE_SIZE, 50);\nconst includePrivate = Boolean(body.include_private ?? false);\nconst streamPrefix = String(body.stream_prefix || '').trim();\nconst decisionPrefixes = String(body.decision_prefixes || process.env.ITSM_ZULIP_BACKFILL_DECISION_PREFIXES || process.env.ZULIP_DECISION_PREFIXES || '/decision,[decision],[DECISION],決定:').trim();\n\nreturn [{\n  json: {\n    realm,\n    zulip_realm: String(body.zulip_realm || realm).trim() || realm,\n    state_key: 'zulip_backfill_to_sor.decisions',\n    page_size: Math.min(Math.max(pageSize, 1), 1000),\n    include_private: includePrivate,\n    stream_prefix: streamPrefix,\n    decision_prefixes: decisionPrefixes,\n    execute: false\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Get State",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        860,
+        200
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($json.realm ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    NULLIF('{{ String($json.zulip_realm ?? $json.realm ?? \"default\").replace(/'/g, \"''\") }}','') AS zulip_realm,\n    NULLIF('{{ String($json.state_key ?? \"zulip_backfill_to_sor.decisions\").replace(/'/g, \"''\") }}','') AS state_key,\n    LEAST(1000, GREATEST(1, COALESCE(NULLIF('{{ String($json.page_size ?? 50) }}',''), '50')::int)) AS page_size,\n    (CASE WHEN '{{ $json.include_private ? \"true\" : \"false\" }}' = 'true' THEN true ELSE false END) AS include_private,\n    NULLIF('{{ String($json.stream_prefix ?? \"\").replace(/'/g, \"''\") }}','') AS stream_prefix,\n    NULLIF('{{ String($json.decision_prefixes ?? \"\").replace(/'/g, \"''\") }}','') AS decision_prefixes\n)\nSELECT\n  v.realm_key AS realm,\n  v.zulip_realm,\n  v.state_key,\n  v.page_size,\n  v.include_private,\n  COALESCE(v.stream_prefix, '') AS stream_prefix,\n  COALESCE(NULLIF(v.decision_prefixes, ''), '/decision') AS decision_prefixes,\n  itsm.get_integration_state(itsm.set_rls_context(v.realm_key), v.state_key) AS state\nFROM v;"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Fetch Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        200
+      ],
+      "parameters": {
+        "jsCode": "function parseYamlMap(text) {\n  const map = {};\n  String(text || '').split(/\\r?\\n/).forEach((line) => {\n    const trimmed = line.trim();\n    if (!trimmed || trimmed.startsWith('#')) return;\n    const idx = trimmed.indexOf(':');\n    if (idx <= 0) return;\n    const key = trimmed.slice(0, idx).trim();\n    let value = trimmed.slice(idx + 1).trim();\n    value = value.replace(/^['\\\"]|['\\\"]$/g, '');\n    map[key] = value;\n  });\n  return map;\n}\n\nfunction parseMap(jsonRaw, yamlRaw) {\n  if (jsonRaw) {\n    try {\n      const parsed = JSON.parse(String(jsonRaw || ''));\n      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {\n        return parsed;\n      }\n    } catch (e) {}\n  }\n  return parseYamlMap(yamlRaw);\n}\n\nfunction resolveFromMap(realm, jsonRaw, yamlRaw, fallbackRaw) {\n  const map = parseMap(jsonRaw, yamlRaw);\n  const value = (realm && map[realm]) ? map[realm] : (map.default || fallbackRaw || '');\n  return String(value || '').trim();\n}\n\nfunction firstNonEmptyLine(text) {\n  for (const raw of String(text || '').split(/\\r?\\n/)) {\n    const line = String(raw || '').trim();\n    if (line) return line;\n  }\n  return '';\n}\n\nfunction parsePrefixes(csv) {\n  return String(csv || '')\n    .split(',')\n    .map((x) => String(x || '').trim())\n    .filter(Boolean);\n}\n\nfunction isDecision(content, prefixes) {\n  const line = firstNonEmptyLine(content);\n  for (const p of prefixes) {\n    if (line.startsWith(p)) return true;\n  }\n  return false;\n}\n\nfunction zulipMessageUrl(baseUrl, streamId, streamName, topic, msgId) {\n  if (!baseUrl || !streamId) return null;\n  const sname = encodeURIComponent(String(streamName || ''));\n  const t = encodeURIComponent(String(topic || ''));\n  return `${baseUrl}#narrow/stream/${streamId}-${sname}/topic/${t}/near/${msgId}`;\n}\n\nfunction parseState(raw) {\n  if (!raw) return { cursor: {}, version: 0 };\n  if (typeof raw === 'object') return raw;\n  try {\n    return JSON.parse(String(raw));\n  } catch {\n    return { cursor: {}, version: 0 };\n  }\n}\n\nconst realm = String($json.realm || 'default').trim() || 'default';\nconst zulipRealm = String($json.zulip_realm || realm).trim() || realm;\nconst stateKey = String($json.state_key || 'zulip_backfill_to_sor.decisions');\nconst pageSize = Number.parseInt(String($json.page_size ?? 50), 10) || 50;\nconst includePrivate = Boolean($json.include_private);\nconst streamPrefix = String($json.stream_prefix || '').trim();\nconst decisionPrefixes = parsePrefixes($json.decision_prefixes || '/decision');\n\nconst state = parseState($json.state);\nconst cursor = (state && typeof state === 'object' && state.cursor && typeof state.cursor === 'object') ? state.cursor : {};\nconst expectedVersion = Number(state?.version || 0);\nconst lastMessageId = Number.parseInt(String(cursor.last_message_id ?? cursor.lastMessageId ?? '0'), 10) || 0;\n\nlet baseUrl = resolveFromMap(zulipRealm, $env.N8N_ZULIP_API_BASE_URL, $env.N8N_ZULIP_API_BASE_URL, $env.ZULIP_BASE_URL || $env.N8N_ZULIP_API_BASE_URL);\nbaseUrl = baseUrl.replace(/\\/$/, '');\nif (baseUrl.endsWith('/api/v1')) baseUrl = baseUrl.slice(0, -'/api/v1'.length);\nif (baseUrl.endsWith('/api/v1/')) baseUrl = baseUrl.slice(0, -'/api/v1/'.length);\nbaseUrl = baseUrl.replace(/\\/$/, '');\n\nconst email = resolveFromMap(zulipRealm, $env.N8N_ZULIP_BOT_EMAIL, $env.N8N_ZULIP_BOT_EMAIL, $env.ZULIP_BOT_EMAIL || $env.N8N_ZULIP_BOT_EMAIL);\nconst apiKey = resolveFromMap(zulipRealm, $env.N8N_ZULIP_BOT_TOKEN, $env.N8N_ZULIP_BOT_TOKEN || $env.ZULIP_BOT_TOKEN, $env.ZULIP_BOT_API_KEY || $env.N8N_ZULIP_BOT_TOKEN || $env.ZULIP_BOT_TOKEN);\n\nconst missing = [];\nif (!baseUrl) missing.push('ZULIP_BASE_URL');\nif (!email) missing.push('ZULIP_BOT_EMAIL');\nif (!apiKey) missing.push('ZULIP_BOT_API_KEY');\n\nif (missing.length) {\n  return [{\n    json: {\n      ok: true,\n      realm,\n      zulip_realm: zulipRealm,\n      state_key: stateKey,\n      skipped: true,\n      reason: 'missing zulip credentials (test)',\n      missing,\n      cursor,\n      expected_version: expectedVersion\n    }\n  }];\n}\n\nconst httpRequest = this.helpers.httpRequest;\nconst auth = Buffer.from(`${email}:${apiKey}`).toString('base64');\nconst headers = { Authorization: `Basic ${auth}` };\n\nconst anchor = lastMessageId > 0 ? String(lastMessageId) : 'oldest';\n\nlet data;\ntry {\n  data = await httpRequest({\n    method: 'GET',\n    url: `${baseUrl}/api/v1/messages`,\n    qs: {\n      anchor,\n      num_before: 0,\n      num_after: Math.min(Math.max(pageSize, 1), 1000),\n      apply_markdown: 'false'\n    },\n    headers,\n    json: true,\n    timeout: 30000\n  });\n} catch (err) {\n  const upstreamStatus = err?.statusCode ?? err?.response?.statusCode ?? err?.response?.status ?? null;\n  return [{\n    json: {\n      ok: false,\n      realm,\n      zulip_realm: zulipRealm,\n      state_key: stateKey,\n      error: String(err?.message || err),\n      upstream_status: upstreamStatus,\n      cursor,\n      expected_version: expectedVersion\n    }\n  }];\n}\n\nconst messages = Array.isArray(data?.messages) ? data.messages : [];\nconst newMessages = messages.filter((m) => {\n  const id = Number.parseInt(String(m?.id ?? ''), 10);\n  return Number.isFinite(id) && id > lastMessageId;\n});\n\nlet newLastMessageId = null;\nlet newLastMessageTs = null;\nfor (const m of newMessages) {\n  const id = Number.parseInt(String(m?.id ?? ''), 10);\n  const ts = Number.parseInt(String(m?.date_sent ?? ''), 10);\n  if (Number.isFinite(id) && (newLastMessageId === null || id > newLastMessageId)) newLastMessageId = id;\n  if (Number.isFinite(ts) && (newLastMessageTs === null || ts > newLastMessageTs)) newLastMessageTs = ts;\n}\n\nconst events = [];\nfor (const m of newMessages) {\n  const msgType = String(m?.type || '');\n  if (!includePrivate && msgType === 'private') continue;\n\n  let streamName = '';\n  let streamId = null;\n  let topic = '';\n\n  if (msgType === 'stream') {\n    streamName = String(m?.display_recipient || '');\n    streamId = m?.stream_id ?? null;\n    topic = String(m?.subject || '');\n    if (streamPrefix && !streamName.startsWith(streamPrefix)) continue;\n  } else {\n    streamName = 'private';\n    streamId = null;\n    topic = String(m?.subject || '');\n  }\n\n  const content = String(m?.content || '');\n  if (!isDecision(content, decisionPrefixes)) continue;\n\n  const msgId = Number.parseInt(String(m?.id ?? ''), 10);\n  const occurredAtUnix = Number.parseInt(String(m?.date_sent ?? ''), 10);\n  if (!Number.isFinite(msgId) || !Number.isFinite(occurredAtUnix)) continue;\n\n  const actor = {\n    id: m?.sender_id ?? null,\n    email: m?.sender_email ?? null,\n    name: m?.sender_full_name ?? null\n  };\n  const actorType = actor.email ? 'human' : 'unknown';\n\n  const replyTarget = {\n    source: 'zulip',\n    message_id: msgId,\n    stream_id: streamId,\n    stream: streamName,\n    topic,\n    url: zulipMessageUrl(baseUrl, streamId, streamName, topic, msgId)\n  };\n\n  events.push({\n    occurred_at_unix: occurredAtUnix,\n    actor,\n    actor_type: actorType,\n    action: 'decision.recorded',\n    source: 'zulip',\n    resource_type: 'zulip_message',\n    correlation_id: null,\n    reply_target: replyTarget,\n    summary: 'Zulip decision (backfill)',\n    message: content,\n    after: { zulip_message_id: msgId },\n    integrity: { event_key: `zulip:decision:${msgId}` }\n  });\n}\n\nreturn [{\n  json: {\n    ok: true,\n    dry_run: true,\n    realm,\n    zulip_realm: zulipRealm,\n    state_key: stateKey,\n    cursor,\n    expected_version: expectedVersion,\n    fetched_messages: messages.length,\n    new_messages: newMessages.length,\n    decision_events: events.length,\n    new_last_message_id: newLastMessageId,\n    new_last_message_ts: newLastMessageTs,\n    events\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "5",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, input: $items(\"Build Input\")[0].json, result: $json } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Input": {
+      "main": [
+        [
+          {
+            "node": "Get State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get State": {
+      "main": [
+        [
+          {
+            "node": "Fetch Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Page": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

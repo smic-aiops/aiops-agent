@@ -1,5 +1,0 @@
-# Generated test/evidence outputs
-iq_test_itsm_core_*.jsonl
-oq_test_itsm_core_*.jsonl
-*.log
-

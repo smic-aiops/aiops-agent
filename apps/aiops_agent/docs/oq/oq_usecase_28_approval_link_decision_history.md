@@ -43,5 +43,5 @@ AIOpsAgent が提示した承認導線（approve/deny）について、**リン�
 
 ## 関連
 - `apps/aiops_agent/docs/zulip_chat_bot.md`
-- `apps/itsm_core/integrations/zulip_gitlab_issue_sync/README.md`
+- `apps/itsm_core/zulip_gitlab_issue_sync/README.md`
 - `docs/usage-guide.md`

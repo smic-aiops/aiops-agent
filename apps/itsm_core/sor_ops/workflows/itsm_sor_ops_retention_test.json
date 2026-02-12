@@ -1,0 +1,107 @@
+{
+  "name": "itsm-sor-ops-retention-test",
+  "active": false,
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ],
+      "parameters": {
+        "path": "itsm/sor/ops/retention/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Build Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ],
+      "parameters": {
+        "jsCode": "function parseIntSafe(raw, fallback) {\n  const n = Number.parseInt(String(raw ?? ''), 10);\n  return Number.isFinite(n) && n >= 0 ? n : fallback;\n}\n\nconst body = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\nconst realm = String(body.realm || process.env.N8N_REALM || 'default').trim() || 'default';\nconst maxRows = parseIntSafe(body.max_rows ?? process.env.ITSM_SOR_RETENTION_MAX_ROWS, 500);\n\nreturn [{ json: { realm, max_rows: maxRows } }];\n"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Retention Dry Run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        860,
+        200
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      },
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($json.realm ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    GREATEST(0, COALESCE(NULLIF('{{ String($json.max_rows ?? 500) }}',''), '500')::int) AS max_rows\n)\nSELECT\n  v.realm_key AS realm,\n  v.max_rows,\n  itsm.apply_retention_batch(itsm.set_rls_context(v.realm_key), true, v.max_rows) AS summary\nFROM v;"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, input: $items(\"Build Input\")[0].json, result: $json } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Input": {
+      "main": [
+        [
+          {
+            "node": "Retention Dry Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retention Dry Run": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+

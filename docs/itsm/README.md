@@ -17,7 +17,7 @@
   - 最終決定は **Zulip または GitLab Issue** 上で行い、決定マーカー（Zulip: `/decision` / GitLab: `[DECISION]`/`決定:`）で明示する
     - 構造化された判断/承認/決定の “正（SoR）” は共有 RDS（`itsm.audit_event` / `itsm.approval`）
     - GitLab はレビュー/議論/根拠リンク/版管理などの **補助証跡（Change & Evidence）**
-  - （任意）決定マーカーに一致しない場合でも、LLM 判定が有効な環境では「決定/承認」に該当する表現が **決定として自動認定**され得る（デフォルト: 有効。無効化は `ZULIP_GITLAB_DECISION_LLM_ENABLED=false`。誤判定に注意。詳細は `apps/itsm_core/integrations/zulip_gitlab_issue_sync/README.md`）
+  - （任意）決定マーカーに一致しない場合でも、LLM 判定が有効な環境では「決定/承認」に該当する表現が **決定として自動認定**され得る（デフォルト: 有効。無効化は `ZULIP_GITLAB_DECISION_LLM_ENABLED=false`。誤判定に注意。詳細は `apps/itsm_core/zulip_gitlab_issue_sync/README.md`）
   - AIOpsAgent の承認リンク（approve/deny）や `auto_enqueue`（自動承認/自動実行）で確定した内容も **決定**として扱われ、Zulip へ `/decision` が投稿される。過去の承認（決定）サマリは `/decisions` で参照する
   - 例外的に GitLab 側で決定を記録する場合は、先頭に `[DECISION]` / `決定:` を付けると Zulip に通知される（環境設定が必要）
 
@@ -40,19 +40,25 @@
 - 主要エンティティ（最小核）: `itsm.incident` / `itsm.service_request` / `itsm.problem` / `itsm.change_request` / `itsm.configuration_item` など（参照整合性は FK で担保）
 
 適用/バックフィル（推奨）:
-- スキーマ適用: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh`
-- 既存の承認履歴バックフィル: `apps/itsm_core/integrations/aiops_approval_history_backfill_to_sor/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
-- GitLab Issue 全件 → SoR レコード backfill（n8n）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_issue_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor`）
-  - 起動スクリプト: `apps/itsm_core/integrations/gitlab_backfill_to_sor/scripts/backfill_gitlab_issues_to_sor.sh`
-- GitLab の過去決定（Issue 本文/Note）バックフィル（n8n）: `apps/itsm_core/integrations/gitlab_backfill_to_sor/workflows/gitlab_decision_backfill_to_sor.json`
+- スキーマ適用: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh`
+- 既存の承認履歴バックフィル（一次/手動）: `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
+  - 継続運用（差分・定期）: `apps/itsm_core/aiops_approval_history_backfill_to_sor/workflows/itsm_aiops_approval_history_backfill_job.json`（Cron 既定: 毎時 35分。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`）
+  - スモーク: `apps/itsm_core/aiops_approval_history_backfill_to_sor/workflows/itsm_aiops_approval_history_backfill_test.json`（Webhook: `POST /webhook/itsm/sor/aiops/approval_history/backfill/test`）
+- GitLab Issue 全件 → SoR レコード backfill（n8n）: `apps/itsm_core/gitlab_backfill_to_sor/workflows/gitlab_issue_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor`）
+  - 起動スクリプト: `apps/itsm_core/gitlab_backfill_to_sor/scripts/backfill_gitlab_issues_to_sor.sh`
+- GitLab の過去決定（Issue 本文/Note）バックフィル（n8n）: `apps/itsm_core/gitlab_backfill_to_sor/workflows/gitlab_decision_backfill_to_sor.json`
   - LLM 判定のみで「取り漏れ最小化」を優先し、`decision.recorded` に加えて `decision.candidate_detected` / `decision.classification_failed` を SoR に残して後からレビュー可能にする（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
-- Zulip の過去決定メッセージバックフィル（GitLab を経由しない）: `apps/itsm_core/integrations/zulip_backfill_to_sor/scripts/backfill_zulip_decisions_to_sor.sh`（`--dry-run-scan` で走査のみ、`--execute` で投入。DM は既定除外で必要なら `--include-private`。決定マーカーは `--decision-prefixes`（または `ZULIP_DECISION_PREFIXES`）で上書き可能）
+- Zulip の過去決定メッセージバックフィル（一次/手動, GitLab を経由しない）: `apps/itsm_core/zulip_backfill_to_sor/scripts/backfill_zulip_decisions_to_sor.sh`（`--dry-run-scan` で走査のみ、`--execute` で投入。DM は既定除外で必要なら `--include-private`。決定マーカーは `--decision-prefixes`（または `ZULIP_DECISION_PREFIXES`）で上書き可能）
+  - 継続運用（差分・定期）: `apps/itsm_core/zulip_backfill_to_sor/workflows/itsm_zulip_backfill_decisions_job.json`（Cron 既定: 毎時 25分。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`）
+  - スモーク: `apps/itsm_core/zulip_backfill_to_sor/workflows/itsm_zulip_backfill_decisions_test.json`（Webhook: `POST /webhook/itsm/sor/zulip/backfill/decisions/test`）
+  - 状態保持: SoR の `itsm.integration_state` に処理済み範囲（カーソル）を保存し、未処理分のみを小分けに実行
+  - 注: 定期運用の保持/匿名化（retention/PII redaction）も `apps/itsm_core/sor_ops/workflows/` で Cron 実行できる（既定: retention 毎日 03:10 / PII redaction 毎時 15分。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`）
 
 RLS（Row Level Security）導入（段階適用推奨）:
-- RLS ポリシー適用: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls.sql`
-- （n8n が DB 直叩きの場合はほぼ必須）RLS コンテキスト（app.*）の既定値投入: `apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh`
-- （強化/任意）RLS の FORCE（テーブル所有者バイパスを禁止）: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls_force.sql`
-- `apps/itsm_core/scripts/deploy_workflows.sh`（または `scripts/apps/deploy_all_workflows.sh`）から有効化する場合は、環境変数 `N8N_APPLY_ITSM_SOR_RLS=true`（必要なら `N8N_APPLY_ITSM_SOR_RLS_FORCE=true`）を使用
+- RLS ポリシー適用: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls.sql`
+- （n8n が DB 直叩きの場合はほぼ必須）RLS コンテキスト（app.*）の既定値投入: `apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh`
+- （強化/任意）RLS の FORCE（テーブル所有者バイパスを禁止）: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls_force.sql`
+- `apps/itsm_core/scripts/deploy_workflows.sh`（ITSM Core 配下を一括。必要なら `scripts/apps/deploy_all_workflows.sh` で全アプリ一括）から有効化する場合は、環境変数 `N8N_APPLY_ITSM_SOR_RLS=true`（必要なら `N8N_APPLY_ITSM_SOR_RLS_FORCE=true`）を使用
   - 依存関係チェック（推奨）: `N8N_CHECK_ITSM_SOR_SCHEMA=true`（デフォルト有効）
   - RLS コンテキスト既定値（任意）: `N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT=true`（`ALTER ROLE ... SET app.*` を投入）
   - 注意: RLS を有効化すると、`itsm.*` へのアクセスは `app.realm_key`（または `app.realm_id`）が必須になります（未設定は fail close / エラー）。
@@ -60,7 +66,7 @@ RLS（Row Level Security）導入（段階適用推奨）:
 
 監査イベントの改ざん耐性（推奨）:
 - DB 側: `apps/itsm_core/sql/itsm_sor_core.sql` で `itsm.audit_event` を append-only + ハッシュチェーン化（INSERT 時に `integrity.prev_hash/hash` を自動付与）
-- 外部アンカー（WORM）: Terraform で `itsm_audit_event_anchor_enabled=true` を有効化し、`apps/itsm_core/scripts/anchor_itsm_audit_event_hash.sh` を定期実行してチェーン先頭を S3 Object Lock に固定
+- 外部アンカー（WORM）: Terraform で `itsm_audit_event_anchor_enabled=true` を有効化し、`apps/itsm_core/sor_ops/scripts/anchor_itsm_audit_event_hash.sh` を定期実行してチェーン先頭を S3 Object Lock に固定
 - 監査チェック: `itsm.audit_event_verify_hash_chain(realm_id)` で `ok=false` が無いことを確認
 
 ### Sulu admin での参照（決定一覧の検索/フィルタ）
@@ -627,10 +633,10 @@ GRAFANA_DRY_RUN="true" \
 ### GitLabメンション通知（n8n）
 GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@username` を抽出し、Zulip DM へ通知する連携です。
 
-- 仕様書: `../../apps/itsm_core/integrations/gitlab_mention_notify/README.md`
-- 実装: `../../apps/itsm_core/integrations/gitlab_mention_notify/`
-  - n8n workflow: `../../apps/itsm_core/integrations/gitlab_mention_notify/workflows/gitlab_mention_notify.json`
-  - デプロイスクリプト: `../../apps/itsm_core/integrations/gitlab_mention_notify/scripts/deploy_workflows.sh`
+- 仕様書: `../../apps/itsm_core/gitlab_mention_notify/README.md`
+- 実装: `../../apps/itsm_core/gitlab_mention_notify/`
+  - n8n workflow: `../../apps/itsm_core/gitlab_mention_notify/workflows/gitlab_mention_notify.json`
+  - デプロイスクリプト: `../../apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh`
 
 #### 事前準備
 - 対応表（例外のみ・テンプレ）: `mention_user_mapping.md`
@@ -660,7 +666,7 @@ GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@usern
 
 #### デプロイ（n8nへの注入）
 ```bash
-../../apps/itsm_core/integrations/gitlab_mention_notify/scripts/deploy_workflows.sh
+../../apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh
 ```
 
 必要に応じて `ACTIVATE=true` を付けて有効化します。
@@ -672,7 +678,7 @@ GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@usern
 
 自動登録する場合:
 ```bash
-../../apps/itsm_core/integrations/gitlab_mention_notify/scripts/setup_gitlab_group_webhook.sh
+../../apps/itsm_core/gitlab_mention_notify/scripts/setup_gitlab_group_webhook.sh
 ```
 `gitlab_realm_admin_tokens_yaml` を利用して、レルムごとのグループにWebhookを作成/更新します。
 
@@ -696,7 +702,7 @@ GitLab の `@username` を Keycloak/Zulip のユーザーに突合するため�
 
 ### 対応表（例外のみ）
 
-`../../apps/itsm_core/integrations/gitlab_mention_notify/workflows/gitlab_mention_notify.json` は、Markdown の表を読み取り、以下の列名を参照します。
+`../../apps/itsm_core/gitlab_mention_notify/workflows/gitlab_mention_notify.json` は、Markdown の表を読み取り、以下の列名を参照します。
 
 - 必須: `gitlab_mention`（または `mention`）
 - 任意: `zulip_user_id`（または `zulip_id`）

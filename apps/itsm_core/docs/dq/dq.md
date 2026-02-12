@@ -10,8 +10,8 @@
 - 本 README: `apps/itsm_core/README.md`
 - スキーマ（正）: `apps/itsm_core/sql/itsm_sor_core.sql`
 - RLS: `apps/itsm_core/sql/itsm_sor_rls.sql` / `apps/itsm_core/sql/itsm_sor_rls_force.sql`
-- 運用スクリプト: `apps/itsm_core/scripts/`
-- ワークフロー: `apps/itsm_core/workflows/` / `apps/itsm_core/integrations/*/workflows/`
+- 運用スクリプト（正）: `apps/itsm_core/sor_ops/scripts/`
+- ワークフロー: `apps/itsm_core/sor_webhooks/workflows/` / `apps/itsm_core/<app>/workflows/`
 - OQ: `apps/itsm_core/docs/oq/oq.md`
 - CS: `apps/itsm_core/docs/cs/ai_behavior_spec.md`
 

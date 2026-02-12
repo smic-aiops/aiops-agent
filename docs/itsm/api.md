@@ -4,10 +4,10 @@
 
 現時点の実装（MVP）は主に以下で提供されています：
 
-- SoR の DDL/運用: `apps/itsm_core/sql/` / `apps/itsm_core/scripts/`
+- SoR の DDL/運用: `apps/itsm_core/sql/` / `apps/itsm_core/sor_ops/scripts/`
 - 外部連携の入口（暫定）: n8n Webhook / Public API（ワークフロー同期）
-  - SoR core workflows: `apps/itsm_core/workflows/`
-  - integrations workflows: `apps/itsm_core/integrations/*/workflows/`
+  - SoR core workflows: `apps/itsm_core/sor_webhooks/workflows/`
+  - sub-app workflows: `apps/itsm_core/<app>/workflows/`
 
 ## 1. 目的（将来）
 
@@ -26,4 +26,3 @@
 - OpenAPI の草案（エンドポイント/スキーマ/認可）
 - 認可モデル（Keycloak / RLS / 例外 ACL）の整理
 - n8n Webhook で提供している入口の棚卸しと移行計画
-

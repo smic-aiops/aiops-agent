@@ -17,7 +17,7 @@
 
 ## 対応表（例外のみ）
 
-`apps/itsm_core/integrations/gitlab_mention_notify/workflows/gitlab_mention_notify.json` は、Markdown の表を読み取り、以下の列名を参照します。
+`apps/itsm_core/gitlab_mention_notify/workflows/gitlab_mention_notify.json` は、Markdown の表を読み取り、以下の列名を参照します。
 
 - 必須: `gitlab_mention`（または `mention`）
 - 任意: `zulip_user_id`（または `zulip_id`）

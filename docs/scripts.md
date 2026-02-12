@@ -153,7 +153,7 @@
 - `scripts/plan_apply_all_tfvars.sh` - 既存 tfvars を検出して `terraform plan/apply` をまとめて実行
 - `scripts/apps/deploy_all_workflows.sh` - 次をまとめて実行（`--with-tests` で `run_oq.sh` も実行）
   - `apps/<app>/scripts/deploy*_workflows.sh`
-  - `apps/itsm_core/integrations/<app>/scripts/deploy*_workflows.sh`
+  - `apps/itsm_core/<app>/scripts/deploy*_workflows.sh`
 - `scripts/apps/create_oq_evidence_run_md.sh` - OQ の証跡 Markdown を作成（出力: `apps/<app>/docs/oq/evidence/evidence_run_YYYY-MM-DD.md`、`--dry-run` 対応）
 - `scripts/apps/export_aiops_agent_environment_to_tfvars.sh` - `terraform.apps.tfvars` の `aiops_agent_environment` を生成/補完（最後に `terraform apply -refresh-only --auto-approve`）
 - `scripts/apps/report_aiops_rag_status.sh` - Qdrant / GitLab EFS 同期 / n8n 実行状況をレポート（既定 DRY_RUN）

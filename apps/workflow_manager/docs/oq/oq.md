@@ -23,8 +23,8 @@ flowchart LR
 ```
 
 補足:
-- Zulip↔GitLab Issue 同期は `apps/itsm_core/integrations/zulip_gitlab_issue_sync/docs/oq/oq.md` を参照してください。
-- GitLab Issue メトリクス集計→S3 出力は `apps/itsm_core/integrations/gitlab_issue_metrics_sync/docs/oq/oq.md` を参照してください。
+- Zulip↔GitLab Issue 同期は `apps/itsm_core/zulip_gitlab_issue_sync/docs/oq/oq.md` を参照してください。
+- GitLab Issue メトリクス集計→S3 出力は `apps/itsm_core/gitlab_issue_metrics_sync/docs/oq/oq.md` を参照してください。
 
 ## 接続パターン（外部アクセス）
 

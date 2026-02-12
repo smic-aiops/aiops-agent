@@ -1,6 +1,6 @@
 # ITSM Core 要求（Requirements）
 
-本書は `apps/itsm_core/` の要求（What/Why）を定義します。詳細な利用方法・手順・実装は `apps/itsm_core/README.md` と `apps/itsm_core/docs/`、スキーマ（`apps/itsm_core/sql/`）、運用スクリプト（`apps/itsm_core/scripts/`）、ワークフロー（`apps/itsm_core/workflows/` および `apps/itsm_core/integrations/*/workflows/`）を正とします。
+本書は `apps/itsm_core/` の要求（What/Why）を定義します。詳細な利用方法・手順・実装は `apps/itsm_core/README.md` と `apps/itsm_core/docs/`、スキーマ（`apps/itsm_core/sql/`）、運用スクリプト（`apps/itsm_core/sor_ops/scripts/`）、ワークフロー（`apps/itsm_core/sor_webhooks/workflows/` および `apps/itsm_core/<app>/workflows/`）を正とします。
 
 ## 1. 対象
 
@@ -13,6 +13,22 @@ ITSM の SoR（System of Record）を PostgreSQL（共有 RDS）上の `itsm.*` 
 - RLS/保持/削除/匿名化/監査アンカー等の運用をスクリプト化し、再現性と証跡を担保する。
 
 ## 2.1 代表ユースケース（DQ/設計シナリオ由来）
+
+ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本アプリ（ITSM Core）は以下のユースケースを主に支援します。
+
+- 03 リスク管理: `scripts/itsm/gitlab/templates/general-management/docs/usecases/03_risk_management.md.tpl`
+- 07 コンプライアンス: `scripts/itsm/gitlab/templates/general-management/docs/usecases/07_compliance.md.tpl`
+- 09 変更判断: `scripts/itsm/gitlab/templates/general-management/docs/usecases/09_change_decision.md.tpl`
+- 12 インシデント管理: `scripts/itsm/gitlab/templates/service-management/docs/usecases/12_incident_management.md.tpl`
+- 15 変更とリリース: `scripts/itsm/gitlab/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
+- 19 廃止・移行（保持/削除/匿名化の運用含む）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/19_retirement_and_migration.md.tpl`
+- 22 自動化（ワークフロー/スクリプト運用）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 24 セキュリティ（RLS/最小権限/秘匿管理）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/24_security.md.tpl`
+- 26 標準化（スキーマ/運用手順の標準化）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/26_standardization.md.tpl`
+- 27 データ基盤（SoR）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- 31 SoR（System of Record）運用: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
+
+以下の UC-ITSM-* は「本アプリ固有の運用シナリオ（実装観点）」であり、ユースケース本文の正は上記テンプレートです。
 
 - UC-ITSM-01: SoR の DDL を適用し、依存スキーマを検査できる
 - UC-ITSM-02: SoR へ監査イベント（`itsm.audit_event`）を冪等に投入できる

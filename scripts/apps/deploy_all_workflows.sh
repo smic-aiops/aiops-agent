@@ -21,7 +21,7 @@ Options:
 Notes:
   - This orchestrates per-app workflow sync scripts under:
       - apps/<app>/scripts/
-      - apps/itsm_core/integrations/<app>/scripts/
+      - apps/itsm_core/<app>/scripts/
   - Tokens/URLs are resolved by each app script from env and/or terraform outputs.
 USAGE
 }
@@ -111,7 +111,7 @@ resolve_scripts_dir_for_app() {
     return 0
   fi
 
-  local integration="${REPO_ROOT}/apps/itsm_core/integrations/${app}/scripts"
+  local integration="${REPO_ROOT}/apps/itsm_core/${app}/scripts"
   if [[ -d "${integration}" ]]; then
     printf '%s' "${integration}"
     return 0
@@ -138,7 +138,7 @@ resolve_oq_script() {
 
 detect_apps() {
   local d
-  for d in "${REPO_ROOT}/apps/"* "${REPO_ROOT}/apps/itsm_core/integrations/"*; do
+  for d in "${REPO_ROOT}/apps/"* "${REPO_ROOT}/apps/itsm_core/"*; do
     [[ -d "${d}" ]] || continue
     local app
     app="$(basename "${d}")"
@@ -220,6 +220,25 @@ if [[ "${#FINAL_APPS[@]}" -eq 0 ]]; then
   exit 1
 fi
 
+# Avoid deploying ITSM Core sub-apps twice:
+# - apps/itsm_core/scripts/deploy_workflows.sh now deploys apps/itsm_core/**/workflows by default.
+# - When --only is NOT specified and itsm_core is selected, skip apps under apps/itsm_core/*.
+if [[ "${#ONLY_APPS[@]}" -eq 0 ]] && is_in_list "itsm_core" ${FINAL_APPS[@]:+"${FINAL_APPS[@]}"}; then
+  pruned=()
+  for app in "${FINAL_APPS[@]}"; do
+    if [[ "${app}" == "itsm_core" ]]; then
+      pruned+=("${app}")
+      continue
+    fi
+    scripts_dir="$(resolve_scripts_dir_for_app "${app}")"
+    if [[ "${scripts_dir}" == "${REPO_ROOT}/apps/itsm_core/"* ]]; then
+      continue
+    fi
+    pruned+=("${app}")
+  done
+  FINAL_APPS=("${pruned[@]}")
+fi
+
 if is_truthy "${DRY_RUN}"; then
   export N8N_DRY_RUN="true"
   export DRY_RUN="true"
@@ -249,7 +268,14 @@ run_app_deploy() {
   fi
 
   echo "==> ${app}: deploy"
-  if ! "${deploy_script}"; then
+  if [[ "${app}" == "itsm_core" ]]; then
+    if ! WITH_TESTS=false "${deploy_script}"; then
+      echo "!! ${app}: deploy failed" >&2
+      failures=$((failures + 1))
+      failed_apps+=("${app} (deploy)")
+      return 1
+    fi
+  elif ! "${deploy_script}"; then
     echo "!! ${app}: deploy failed" >&2
     failures=$((failures + 1))
     failed_apps+=("${app} (deploy)")

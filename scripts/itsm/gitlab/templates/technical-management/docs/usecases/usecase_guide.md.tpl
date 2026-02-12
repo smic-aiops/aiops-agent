@@ -7,7 +7,7 @@
 - GitLab CE＋Zulip＋Keycloak＋n8n＋Grafana
 - 合言葉は「全部 Issue」「価値は流れる」
 
-## 技術管理（21–30）
+## 技術管理（21–31）
 - 21. [DevOps（開発と運用の連携）](21_devops.md)
 - 22. [自動化](22_automation.md)
 - 23. [予兆検知](23_proactive_detection.md)
@@ -18,6 +18,7 @@
 - 28. [PoC（技術検証）](28_poc.md)
 - 29. [クラウド最適化](29_cloud_optimization.md)
 - 30. [開発者体験](30_developer_experience.md)
+- 31. [SoR（System of Record）運用](31_system_of_record.md)
 
 ## イベント通知（AWS）
 - 通知ルート: CloudWatch → n8n → Zulip / GitLab / Grafana

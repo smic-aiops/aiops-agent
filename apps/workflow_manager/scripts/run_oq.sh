@@ -37,7 +37,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 terraform_output() {
-  terraform -chdir="${REPO_ROOT}" output -raw "$1"
+  terraform -chdir="${REPO_ROOT}" output -raw "$1" 2>/dev/null || true
 }
 
 terraform_output_json() {
@@ -70,25 +70,45 @@ resolve_gitlab_project_path() {
 }
 
 if [[ -z "${REALM}" ]]; then
-  REALM="$(terraform_output default_realm)"
+  if ${DRY_RUN}; then
+    REALM="default"
+  else
+    REALM="$(terraform_output default_realm)"
+  fi
 fi
+REALM="${REALM:-default}"
 
-if [[ -z "${N8N_BASE_URL}" ]]; then
+if [[ -z "${N8N_BASE_URL}" ]] && ! ${DRY_RUN}; then
   N8N_BASE_URL="$(terraform_output_json n8n_realm_urls | python3 -c 'import json,sys; realm=sys.argv[1]; data=json.load(sys.stdin); print(data.get(realm, ""))' "${REALM}")"
 fi
 
-if [[ -z "${N8N_BASE_URL}" ]]; then
+if [[ -z "${N8N_BASE_URL}" ]] && ! ${DRY_RUN}; then
   N8N_BASE_URL="$(terraform_output_json service_urls | python3 -c 'import json,sys; print(json.load(sys.stdin).get("n8n", ""))')"
 fi
 
 if [[ -z "${N8N_BASE_URL}" ]]; then
-  echo "Failed to resolve N8N base URL" >&2
-  exit 1
+  if ${DRY_RUN}; then
+    echo "[dry-run] Failed to resolve N8N base URL. Use --n8n-base-url to override." >&2
+    N8N_BASE_URL="https://<unresolved_n8n_base_url>"
+  else
+    echo "Failed to resolve N8N base URL" >&2
+    exit 1
+  fi
 fi
 
-N8N_WORKFLOWS_TOKEN="$(terraform_output N8N_WORKFLOWS_TOKEN)"
-GITLAB_ADMIN_TOKEN="$(terraform_output gitlab_admin_token)"
-GITLAB_API_BASE_URL="$(terraform_output_json service_urls | python3 -c 'import json,sys; print((json.load(sys.stdin).get("gitlab", "").rstrip("/") + "/api/v4").rstrip("/"))')"
+if ${DRY_RUN}; then
+  N8N_WORKFLOWS_TOKEN="${N8N_WORKFLOWS_TOKEN:-<unresolved_n8n_workflows_token>}"
+  GITLAB_ADMIN_TOKEN="${GITLAB_ADMIN_TOKEN:-<unresolved_gitlab_admin_token>}"
+  GITLAB_API_BASE_URL="${GITLAB_API_BASE_URL:-https://<unresolved_gitlab_base_url>/api/v4}"
+else
+  N8N_WORKFLOWS_TOKEN="$(terraform_output N8N_WORKFLOWS_TOKEN)"
+  if [[ -z "${N8N_WORKFLOWS_TOKEN}" ]]; then
+    echo "Failed to resolve N8N_WORKFLOWS_TOKEN" >&2
+    exit 1
+  fi
+  GITLAB_ADMIN_TOKEN="$(terraform_output gitlab_admin_token)"
+  GITLAB_API_BASE_URL="$(terraform_output_json service_urls | python3 -c 'import json,sys; print((json.load(sys.stdin).get("gitlab", "").rstrip("/") + "/api/v4").rstrip("/"))')"
+fi
 GITLAB_PROJECT_PATH="$(resolve_gitlab_project_path "${REALM}")"
 GITLAB_WORKFLOW_CATALOG_MD_PATH="docs/workflow_catalog.md"
 N8N_API_KEY_FOR_REALM="$(

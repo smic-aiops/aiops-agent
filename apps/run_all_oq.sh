@@ -26,7 +26,7 @@ Options:
 Behavior:
   - Discovers OQ runners under:
       - apps/*/scripts/run_oq.sh
-      - apps/itsm_core/integrations/*/scripts/run_oq.sh
+      - apps/itsm_core/*/scripts/run_oq.sh
     and executes them in a stable order.
   - Evidence location/format is owned by each app script.
 USAGE
@@ -64,7 +64,7 @@ main() {
   scripts="$(
     {
       find apps -mindepth 3 -maxdepth 3 -type f -path 'apps/*/scripts/run_oq.sh'
-      find apps/itsm_core/integrations -mindepth 3 -maxdepth 3 -type f -path 'apps/itsm_core/integrations/*/scripts/run_oq.sh' 2>/dev/null || true
+      find apps/itsm_core -mindepth 3 -maxdepth 3 -type f -path 'apps/itsm_core/*/scripts/run_oq.sh' 2>/dev/null || true
     } | LC_ALL=C sort -u
   )"
   if [[ -z "${scripts}" ]]; then

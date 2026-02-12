@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sync n8n workflows in apps/itsm_core/workflows (SoR core) via the n8n Public API.
+# Sync n8n workflows for ITSM Core sub-apps (apps/itsm_core/**/workflows) via the n8n Public API.
 #
 # Required:
 #   N8N_API_KEY
@@ -9,15 +9,15 @@ set -euo pipefail
 #   N8N_PUBLIC_API_BASE_URL (defaults to terraform output service_urls.n8n)
 #   N8N_API_KEY_<REALMKEY> : realm-scoped n8n API key (e.g. N8N_API_KEY_TENANT_B)
 #   N8N_AGENT_REALMS : comma/space-separated realm list (default: terraform output N8N_AGENT_REALMS)
-#   WORKFLOW_DIR (default: apps/itsm_core/workflows)
+#   WORKFLOW_DIR : set to sync only one workflows/ directory (used by per-subapp wrappers)
 #   ACTIVATE (default: false)
 #   DRY_RUN (default: false)
 #   N8N_CURL_INSECURE (default: false)
 #   SKIP_API_WHEN_DRY_RUN (default: true)
 #
-# Post-sync smoke tests (optional; writes audit_event records):
-#   N8N_RUN_TEST_WORKFLOWS (default: false)
-#   N8N_TEST_MESSAGE (default: "SoR smoke test")
+# Post-sync smoke tests (optional; executed per sub-app via scripts/run_oq.sh):
+#   WITH_TESTS (default: true when WORKFLOW_DIR is unset; else false)
+#   N8N_POST_DEPLOY_SLEEP_SEC (default: 5; only when ACTIVATE=true)
 #
 # Optional SoR bootstrap (shared RDS Postgres itsm.*):
 #   N8N_APPLY_ITSM_SOR_SCHEMA (default: true)       Apply apps/itsm_core/sql/itsm_sor_core.sql
@@ -48,6 +48,36 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${REPO_ROOT}"
 
+usage() {
+  cat <<'USAGE'
+Usage: apps/itsm_core/scripts/deploy_workflows.sh [options]
+
+Options:
+  --workflow-dir <dir>    Sync only this workflows/ directory (default: discover apps/itsm_core/**/workflows)
+  --dry-run               Plan-only (no API sync when SKIP_API_WHEN_DRY_RUN=true)
+  --activate              Activate workflows after sync (default: auto when WITH_TESTS=true)
+  --with-tests            After sync, run each sub-app OQ (default: true when --workflow-dir is unset)
+  --without-tests         Skip post-sync OQ (default: false when --workflow-dir is set)
+  -h, --help              Show this help
+
+Notes:
+  - Most controls are environment variables (see header comments in this file).
+  - This script does NOT read *.tfvars directly.
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --workflow-dir) WORKFLOW_DIR="${2:-}"; shift 2 ;;
+    --dry-run) DRY_RUN="true"; shift ;;
+    --activate) ACTIVATE="true"; shift ;;
+    --with-tests) WITH_TESTS="true"; shift ;;
+    --without-tests) WITH_TESTS="false"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
 resolve_default_sor_realm_key() {
   if [[ -n "${N8N_ITSM_SOR_REALM_KEY:-}" ]]; then
     printf '%s' "${N8N_ITSM_SOR_REALM_KEY}"
@@ -68,7 +98,7 @@ apply_itsm_sor_schema_if_enabled() {
   if ! is_truthy "${N8N_APPLY_ITSM_SOR_SCHEMA}"; then
     return
   fi
-  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/import_itsm_sor_core_schema.sh")
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh")
   if is_truthy "${DRY_RUN}"; then
     cmd+=(--dry-run)
   fi
@@ -80,7 +110,7 @@ apply_itsm_sor_rls_if_enabled() {
   if ! is_truthy "${N8N_APPLY_ITSM_SOR_RLS}"; then
     return
   fi
-  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sql/itsm_sor_rls.sql")
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sql/itsm_sor_rls.sql")
   if is_truthy "${DRY_RUN}"; then
     cmd+=(--dry-run)
   fi
@@ -92,7 +122,7 @@ apply_itsm_sor_rls_force_if_enabled() {
   if ! is_truthy "${N8N_APPLY_ITSM_SOR_RLS_FORCE}"; then
     return
   fi
-  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sql/itsm_sor_rls_force.sql")
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sql/itsm_sor_rls_force.sql")
   if is_truthy "${DRY_RUN}"; then
     cmd+=(--dry-run)
   fi
@@ -104,7 +134,7 @@ check_itsm_sor_schema_if_enabled() {
   if ! is_truthy "${N8N_CHECK_ITSM_SOR_SCHEMA}"; then
     return
   fi
-  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/check_itsm_sor_schema.sh")
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/check_itsm_sor_schema.sh")
   if is_truthy "${DRY_RUN}"; then
     cmd+=(--dry-run)
   fi
@@ -119,7 +149,7 @@ configure_itsm_sor_rls_context_if_enabled() {
   local realm_key
   realm_key="$(resolve_default_sor_realm_key)"
   local principal_id="${N8N_ITSM_SOR_PRINCIPAL_ID:-automation}"
-  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh" --realm-key "${realm_key}" --principal-id "${principal_id}")
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh" --realm-key "${realm_key}" --principal-id "${principal_id}")
   if is_truthy "${DRY_RUN}"; then
     cmd+=(--dry-run)
   else
@@ -259,13 +289,15 @@ invoke_webhook_json() {
   printf '%s' "${body}"
 }
 
-WORKFLOW_DIR="${WORKFLOW_DIR:-apps/itsm_core/workflows}"
+WORKFLOW_DIR="${WORKFLOW_DIR:-}"
+ACTIVATE_WAS_SET=false
+if [[ -n "${ACTIVATE+x}" ]]; then
+  ACTIVATE_WAS_SET=true
+fi
 ACTIVATE="${ACTIVATE:-false}"
 DRY_RUN="${DRY_RUN:-false}"
 N8N_CURL_INSECURE="${N8N_CURL_INSECURE:-}"
 SKIP_API_WHEN_DRY_RUN="${SKIP_API_WHEN_DRY_RUN:-true}"
-RUN_TEST_WORKFLOWS="${N8N_RUN_TEST_WORKFLOWS:-false}"
-TEST_MESSAGE="${N8N_TEST_MESSAGE:-SoR smoke test}"
 N8N_APPLY_ITSM_SOR_SCHEMA="${N8N_APPLY_ITSM_SOR_SCHEMA:-true}"
 N8N_APPLY_ITSM_SOR_RLS="${N8N_APPLY_ITSM_SOR_RLS:-false}"
 N8N_APPLY_ITSM_SOR_RLS_FORCE="${N8N_APPLY_ITSM_SOR_RLS_FORCE:-false}"
@@ -273,11 +305,110 @@ N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT="${N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT:-false}
 N8N_CHECK_ITSM_SOR_SCHEMA="${N8N_CHECK_ITSM_SOR_SCHEMA:-true}"
 N8N_ITSM_SOR_REALM_KEY="${N8N_ITSM_SOR_REALM_KEY:-}"
 N8N_ITSM_SOR_PRINCIPAL_ID="${N8N_ITSM_SOR_PRINCIPAL_ID:-automation}"
+N8N_POST_DEPLOY_SLEEP_SEC="${N8N_POST_DEPLOY_SLEEP_SEC:-5}"
 
-shopt -s nullglob
-files=("${WORKFLOW_DIR}"/*.json)
-if [ "${#files[@]}" -eq 0 ]; then
-  echo "[n8n] No workflow json files found under ${WORKFLOW_DIR}" >&2
+WITH_TESTS="${WITH_TESTS:-}"
+if [[ -z "${WITH_TESTS}" ]]; then
+  if [[ -z "${WORKFLOW_DIR}" ]]; then
+    WITH_TESTS="true"
+  else
+    WITH_TESTS="false"
+  fi
+fi
+
+if is_truthy "${DRY_RUN}"; then
+  WITH_TESTS="false"
+fi
+
+if is_truthy "${WITH_TESTS}" && ! ${ACTIVATE_WAS_SET}; then
+  ACTIVATE="true"
+fi
+
+discover_workflow_dirs() {
+  if [[ -n "${WORKFLOW_DIR}" ]]; then
+    printf '%s\n' "${WORKFLOW_DIR}"
+    return 0
+  else
+    find apps/itsm_core -mindepth 2 -maxdepth 3 -type d -name workflows 2>/dev/null | LC_ALL=C sort -u
+    return 0
+  fi
+}
+
+infer_app_from_workflow_dir() {
+  local d="$1"
+  if [[ "${d}" == apps/itsm_core/sor_webhooks/workflows ]]; then
+    printf 'sor_webhooks'
+    return 0
+  fi
+  if [[ "${d}" == apps/itsm_core/*/workflows ]]; then
+    printf '%s' "${d#apps/itsm_core/}" | cut -d/ -f1
+    return 0
+  fi
+  printf ''
+}
+
+script_supports_flag() {
+  local script="$1"
+  local flag="$2"
+  local help=""
+  help="$(bash "${script}" --help 2>/dev/null || true)"
+  if [[ -z "${help}" ]]; then
+    help="$(bash "${script}" -h 2>/dev/null || true)"
+  fi
+  local escaped=""
+  escaped="$(printf '%s' "${flag}" | sed -e 's/[][\\.^$*+?(){}|]/\\\\&/g')"
+  local pattern="(^|[[:space:]])${escaped}([[:space:]]|$)"
+  printf '%s' "${help}" | LC_ALL=C grep -Eq "${pattern}"
+}
+
+run_oq_for_app() {
+  local app="$1"
+  local realm="$2"
+
+  local oq="${REPO_ROOT}/apps/itsm_core/${app}/scripts/run_oq.sh"
+  if [[ ! -x "${oq}" ]]; then
+    echo "[oq] skip: no runner: app=${app}" >&2
+    return 0
+  fi
+
+  if is_truthy "${ACTIVATE}" && ! is_truthy "${DRY_RUN}"; then
+    sleep "${N8N_POST_DEPLOY_SLEEP_SEC}"
+  fi
+
+  echo "[oq] app=${app} realm=${realm}"
+  local -a args=()
+  if script_supports_flag "${oq}" "--realm-key"; then
+    args+=(--realm-key "${realm}")
+  elif script_supports_flag "${oq}" "--realm"; then
+    args+=(--realm "${realm}")
+  fi
+  if ! bash "${oq}" "${args[@]}"; then
+    echo "[oq] failed: app=${app} realm=${realm}" >&2
+    return 1
+  fi
+}
+
+WORKFLOW_DIRS=()
+while IFS= read -r line; do
+  [[ -n "${line}" ]] && WORKFLOW_DIRS+=("${line}")
+done < <(discover_workflow_dirs || true)
+if [[ "${#WORKFLOW_DIRS[@]}" -eq 0 ]]; then
+  echo "[n8n] No workflows/ directories found under apps/itsm_core/**/workflows" >&2
+  exit 1
+fi
+
+has_any_workflow_json=false
+for d in "${WORKFLOW_DIRS[@]}"; do
+  shopt -s nullglob
+  files=("${d}"/*.json)
+  shopt -u nullglob
+  if [[ "${#files[@]}" -gt 0 ]]; then
+    has_any_workflow_json=true
+    break
+  fi
+done
+if ! ${has_any_workflow_json}; then
+  echo "[n8n] No workflow json files found under apps/itsm_core/**/workflows" >&2
   exit 1
 fi
 
@@ -304,15 +435,25 @@ check_itsm_sor_schema_if_enabled
 
 if is_truthy "${DRY_RUN}" && is_truthy "${SKIP_API_WHEN_DRY_RUN}"; then
   echo "[n8n] DRY_RUN: skipping API sync."
-  for file in "${files[@]}"; do
-    wf_name="$(jq -r '.name // empty' "${file}")"
-    echo "[n8n] dry-run: would sync ${wf_name} (${file})"
+  for d in "${WORKFLOW_DIRS[@]}"; do
+    app="$(infer_app_from_workflow_dir "${d}")"
+    shopt -s nullglob
+    files=("${d}"/*.json)
+    shopt -u nullglob
+    if [[ "${#files[@]}" -eq 0 ]]; then
+      continue
+    fi
+    echo "[n8n] dry-run: app=${app:-unknown} dir=${d}"
+    for file in "${files[@]}"; do
+      wf_name="$(jq -r '.name // empty' "${file}")"
+      echo "[n8n] dry-run: would sync ${wf_name} (${file})"
+    done
   done
-	  if is_truthy "${RUN_TEST_WORKFLOWS}"; then
-	    echo "[n8n] dry-run: would run smoke tests via /webhook/itsm/sor/audit_event/test and /webhook/itsm/sor/aiops/write/test"
-	  fi
-	  exit 0
-	fi
+  if is_truthy "${WITH_TESTS}"; then
+    echo "[oq] dry-run: would run per-app OQ (smoke tests)"
+  fi
+  exit 0
+fi
 
 N8N_PUBLIC_API_BASE_URL="${N8N_PUBLIC_API_BASE_URL:-}"
 N8N_PUBLIC_API_BASE_URL="$(derive_n8n_public_base_url "${N8N_PUBLIC_API_BASE_URL}")"
@@ -339,36 +480,85 @@ for realm in "${TARGET_REALMS[@]}"; do
   require_var "N8N_PUBLIC_API_BASE_URL" "${realm_public_api_base_url}"
   require_var "N8N_API_KEY" "${realm_n8n_api_key}"
 
-  echo "[n8n] realm=${realm_label} syncing workflows under ${WORKFLOW_DIR}"
+  failures=0
+  failed_parts=()
+  oq_ran_apps=()
 
-  for file in "${files[@]}"; do
-    wf_json="$(cat "${file}")"
-    wf_name="$(jq -r '.name // empty' <<<"${wf_json}")"
-    require_var "workflow.name (${file})" "${wf_name}"
-
-    search_url="${realm_public_api_base_url}/api/v1/workflows?filter=$(urlencode "{\"name\":\"${wf_name}\"}")"
-    existing_id="$(curl -sS -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${search_url}" | jq -r '.data[0].id // empty' || true)"
-    if [[ -n "${existing_id}" ]]; then
-      echo "[n8n] update: ${wf_name} (id=${existing_id})"
-      curl -sS -X PUT -H "X-N8N-API-KEY: ${realm_n8n_api_key}" -H "Content-Type: application/json" \
-        --data "${wf_json}" "${realm_public_api_base_url}/api/v1/workflows/${existing_id}" >/dev/null
-      if is_truthy "${ACTIVATE}"; then
-        curl -sS -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${realm_public_api_base_url}/api/v1/workflows/${existing_id}/activate" >/dev/null || true
+  is_in_list() {
+    local needle="$1"
+    shift
+    local item
+    for item in "$@"; do
+      if [[ "${item}" == "${needle}" ]]; then
+        return 0
       fi
-    else
-      echo "[n8n] create: ${wf_name}"
-      created_id="$(curl -sS -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" -H "Content-Type: application/json" \
-        --data "${wf_json}" "${realm_public_api_base_url}/api/v1/workflows" | jq -r '.id // empty' || true)"
-      if is_truthy "${ACTIVATE}" && [[ -n "${created_id}" ]]; then
-        curl -sS -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${realm_public_api_base_url}/api/v1/workflows/${created_id}/activate" >/dev/null || true
+    done
+    return 1
+  }
+
+  for d in "${WORKFLOW_DIRS[@]}"; do
+    app="$(infer_app_from_workflow_dir "${d}")"
+    shopt -s nullglob
+    files=("${d}"/*.json)
+    shopt -u nullglob
+    if [[ "${#files[@]}" -eq 0 ]]; then
+      continue
+    fi
+
+    echo "[n8n] realm=${realm_label} app=${app:-unknown} syncing workflows under ${d}"
+
+    for file in "${files[@]}"; do
+      wf_json="$(cat "${file}")"
+      wf_name="$(jq -r '.name // empty' <<<"${wf_json}")"
+      require_var "workflow.name (${file})" "${wf_name}"
+
+      search_url="${realm_public_api_base_url}/api/v1/workflows?filter=$(urlencode "{\"name\":\"${wf_name}\"}")"
+      existing_id="$(curl -sS -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${search_url}" | jq -r '.data[0].id // empty' || true)"
+      if [[ -n "${existing_id}" ]]; then
+        echo "[n8n] update: ${wf_name} (id=${existing_id})"
+        curl -sS -X PUT -H "X-N8N-API-KEY: ${realm_n8n_api_key}" -H "Content-Type: application/json" \
+          --data "${wf_json}" "${realm_public_api_base_url}/api/v1/workflows/${existing_id}" >/dev/null
+        if is_truthy "${ACTIVATE}"; then
+          curl -sS -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${realm_public_api_base_url}/api/v1/workflows/${existing_id}/activate" >/dev/null || true
+        fi
+      else
+        echo "[n8n] create: ${wf_name}"
+        created_id="$(curl -sS -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" -H "Content-Type: application/json" \
+          --data "${wf_json}" "${realm_public_api_base_url}/api/v1/workflows" | jq -r '.id // empty' || true)"
+        if is_truthy "${ACTIVATE}" && [[ -n "${created_id}" ]]; then
+          curl -sS -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${realm_public_api_base_url}/api/v1/workflows/${created_id}/activate" >/dev/null || true
+        fi
+      fi
+    done
+
+    if is_truthy "${WITH_TESTS}" && [[ -n "${app}" ]]; then
+      if ! run_oq_for_app "${app}" "${realm_label}"; then
+        failures=$((failures + 1))
+        failed_parts+=("${app} (oq)")
+      else
+        oq_ran_apps+=("${app}")
       fi
     fi
   done
 
-		  if is_truthy "${RUN_TEST_WORKFLOWS}"; then
-		    echo "[n8n] realm=${realm_label} running smoke tests (writes to itsm.audit_event)"
-		    invoke_webhook_json "${realm_public_api_base_url}" "itsm/sor/audit_event/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\"}" >/dev/null
-		    result="$(invoke_webhook_json "${realm_public_api_base_url}" "itsm/sor/aiops/write/test" "{\"realm\":\"${realm_label}\",\"message\":\"${TEST_MESSAGE}\",\"webhook_base_url\":\"${realm_public_api_base_url%/}/webhook\"}")"
-		    echo "[n8n] smoke-test result: ${result}"
-		  fi
-		done
+  if is_truthy "${WITH_TESTS}"; then
+    while IFS= read -r oq_path; do
+      extra_app="$(basename "$(dirname "$(dirname "${oq_path}")")")"
+      if is_in_list "${extra_app}" ${oq_ran_apps[@]:+"${oq_ran_apps[@]}"}; then
+        continue
+      fi
+      if ! run_oq_for_app "${extra_app}" "${realm_label}"; then
+        failures=$((failures + 1))
+        failed_parts+=("${extra_app} (oq)")
+      else
+        oq_ran_apps+=("${extra_app}")
+      fi
+    done < <(find apps/itsm_core -mindepth 3 -maxdepth 3 -type f -path 'apps/itsm_core/*/scripts/run_oq.sh' 2>/dev/null | LC_ALL=C sort -u)
+  fi
+
+  if [[ "${failures}" -gt 0 ]]; then
+    echo "[n8n] realm=${realm_label} completed with failures: ${failures}" >&2
+    printf ' - %s\n' "${failed_parts[@]}" >&2
+    exit 1
+  fi
+done

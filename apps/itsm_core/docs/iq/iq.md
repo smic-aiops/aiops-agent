@@ -8,9 +8,9 @@
 
 - スキーマ（正）: `apps/itsm_core/sql/itsm_sor_core.sql`
 - 運用スクリプト:
-  - DDL 適用: `apps/itsm_core/scripts/import_itsm_sor_core_schema.sh`
-  - 依存チェック: `apps/itsm_core/scripts/check_itsm_sor_schema.sh`
-  - RLS コンテキスト既定値: `apps/itsm_core/scripts/configure_itsm_sor_rls_context.sh`
+  - DDL 適用: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh`
+  - 依存チェック: `apps/itsm_core/sor_ops/scripts/check_itsm_sor_schema.sh`
+  - RLS コンテキスト既定値: `apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh`
 - ワークフロー同期: `apps/itsm_core/scripts/deploy_workflows.sh`
 - OQ: `apps/itsm_core/docs/oq/oq.md`
 
@@ -33,19 +33,19 @@
 ### 1. DDL 適用（差分確認）
 
 ```bash
-apps/itsm_core/scripts/import_itsm_sor_core_schema.sh --dry-run
+apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --dry-run
 ```
 
 ### 2. DDL 適用（反映）
 
 ```bash
-apps/itsm_core/scripts/import_itsm_sor_core_schema.sh
+apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh
 ```
 
 ### 3. 依存チェック
 
 ```bash
-apps/itsm_core/scripts/check_itsm_sor_schema.sh
+apps/itsm_core/sor_ops/scripts/check_itsm_sor_schema.sh
 ```
 
 ### 4. ワークフロー同期（差分確認）
