@@ -7,7 +7,7 @@
 - GitLab CE＋Zulip＋Keycloak＋n8n＋Grafana
 - 合言葉は「全部 Issue」「価値は流れる」
 
-## 一般管理プラクティス（1–10）
+## 一般管理プラクティス（1–10, 32）
 - 01. [戦略→実行→効果測定](01_strategy_execution_measurement.md)
 - 02. [需要と優先度](02_demand_prioritization.md)
 - 03. [リスク管理](03_risk_management.md)
@@ -18,6 +18,7 @@
 - 08. [データ意思決定](08_data_driven_decision_making.md)
 - 09. [変更判断](09_change_decision.md)
 - 10. [KPI是正](10_kpi_correction.md)
+- 32. [サービス財務管理（コスト可視化と意思決定）](32_service_financial_management.md)
 
 ## イベント通知（AWS）
 - 通知ルート: CloudWatch → n8n → Zulip / GitLab / Grafana

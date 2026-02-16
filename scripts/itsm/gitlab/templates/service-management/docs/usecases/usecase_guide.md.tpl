@@ -7,7 +7,7 @@
 - GitLab CE＋Zulip＋Keycloak＋n8n＋Grafana
 - 合言葉は「全部 Issue」「価値は流れる」
 
-## サービス管理（11–20）
+## サービス管理（11–20, 33）
 - 11. [顧客要求→改善](11_customer_request_to_improvement.md)
 - 12. [インシデント](12_incident_management.md)
 - 13. [品質保証（SLA）](13_quality_assurance_sla.md)
@@ -18,6 +18,7 @@
 - 18. [キャパ調整](18_capacity_planning.md)
 - 19. [廃止・移行](19_retirement_and_migration.md)
 - 20. [価値報告](20_value_reporting.md)
+- 33. [問題管理（RCA と再発防止）](33_problem_management.md)
 
 関連リンク:
 
