@@ -11,7 +11,7 @@
 - ワークフロー:
   - `apps/itsm_core/gitlab_issue_rag/workflows/gitlab_issue_rag_sync.json`
   - `apps/itsm_core/gitlab_issue_rag/workflows/gitlab_issue_rag_test.json`
-- DB 定義: `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql`
+- DB 定義: `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql`
 - 同期スクリプト: `apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh`
 - OQ: `apps/itsm_core/gitlab_issue_rag/docs/oq/oq.md`（および `apps/itsm_core/gitlab_issue_rag/docs/oq/oq_s*.md`）
 - CS: `apps/itsm_core/gitlab_issue_rag/docs/cs/ai_behavior_spec.md`
@@ -39,7 +39,7 @@
 
 ## 入口条件（Entry）
 
-- `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql` の適用手順と前提が README に明記されている
+- `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql` の適用手順と前提が README に明記されている
 - OQ シナリオ（取得/embedding/差分同期/観測性）が整理されている（`apps/itsm_core/gitlab_issue_rag/docs/oq/oq.md`）
 
 ## 出口条件（Exit）

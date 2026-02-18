@@ -131,9 +131,9 @@ AI 関連の成果物は分離し、**変更管理下の構成アイテム（con
 
 ## 内容
 
-- `apps/*/docs/cs/ai_behavior_spec.md`（例: `apps/aiops_agent/docs/cs/ai_behavior_spec.md`）  
+- `apps/*/docs/cs/ai_behavior_spec.md`（例: `apps/aiops_agent/orchestrator/docs/cs/ai_behavior_spec.md`）  
   AI の意図された振る舞い、制約、監督（オーバーサイト）を定義する
-- プロンプト（例: `apps/aiops_agent/data/default/prompt/`）  
+- プロンプト（例: `apps/aiops_agent/orchestrator/data/default/prompt/`）  
   環境別に管理されたプロンプト
 - ツール権限定義（未整備）  
   例: `tool_permissions.yaml`（現在このリポジトリには存在しない）

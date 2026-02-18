@@ -79,14 +79,14 @@ flowchart LR
 ### ディレクトリ構成
 - `apps/itsm_core/gitlab_issue_rag/workflows/`: n8n ワークフロー（JSON）
 - `apps/itsm_core/gitlab_issue_rag/scripts/`: n8n 同期（アップロード）・OQ 実行スクリプト
-- `apps/itsm_core/gitlab_issue_rag/sql/`: pgvector テーブル/インデックス定義
+- `apps/itsm_core/gitlab_issue_rag/schema/`: pgvector テーブル/インデックス定義
 - `apps/itsm_core/gitlab_issue_rag/docs/cs/`: CS（Configuration Specification: 設計・構成定義）
 - `apps/itsm_core/gitlab_issue_rag/docs/oq/`: OQ（運用適格性確認）
 - `apps/itsm_core/gitlab_issue_rag/data/default/prompt/system.md`: サブアプリ単位の中心プロンプト（System 相当）
 
 ### セットアップ手順（最短）
 1. pgvector のテーブルを作成（初回のみ）:
-   - `psql ... -f apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql`
+   - `psql ... -f apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql`
 2. n8n に Postgres 資格情報を作成（ワークフローの Postgres ノードに紐付くよう設定）
 3. ワークフローを n8n に同期:
    - `apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh`（内部で `deploy_issue_rag_workflows.sh` を呼ぶ）
@@ -168,7 +168,7 @@ Intended Use に適合することを、最小の検証で示す。
 
 **文書/手順（最小）**
 - 同期: `apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh`（`DRY_RUN=true` で差分確認）
-- 初期 DB: `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql` の適用
+- 初期 DB: `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql` の適用
 
 ---
 

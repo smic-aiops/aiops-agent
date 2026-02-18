@@ -36,15 +36,15 @@
 
 ### ステップ 4（構成/仕様）：AIOps Agent / ワークフローを整備する
 
-- 要件（URS 相当）: `apps/aiops_agent/docs/app_requirements.md`
-- 仕様（FS/DS 相当）: `apps/aiops_agent/docs/aiops_agent_specification.md`
-- 設計: `apps/aiops_agent/docs/aiops_agent_design.md`
-- 実装メモ: `apps/aiops_agent/docs/aiops_agent_implementation.md`
+- 要件（URS 相当）: `apps/aiops_agent/orchestrator/docs/app_requirements.md`
+- 仕様（FS/DS 相当）: `apps/aiops_agent/orchestrator/docs/aiops_agent_specification.md`
+- 設計: `apps/aiops_agent/orchestrator/docs/aiops_agent_design.md`
+- 実装メモ: `apps/aiops_agent/orchestrator/docs/aiops_agent_implementation.md`
 - 代表例（ワークフロー側の OQ）: `apps/workflow_manager/docs/oq/oq.md`
 
 ### ステップ 5〜6（IQ/OQ/PQ）：検証を実行し、証跡を残す
 
-- DQ/IQ/OQ/PQ: `apps/aiops_agent/docs/{dq,iq,oq,pq}/`
+- DQ/IQ/OQ/PQ: `apps/aiops_agent/orchestrator/docs/{dq,iq,oq,pq}/`
 - 証跡保存・変更記録: `docs/change-management.md`
 
 ### その他

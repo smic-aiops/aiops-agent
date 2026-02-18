@@ -276,14 +276,12 @@ emit_action_line "gitlab_issue_rag_deploy_workflows" "gitlab_issue_rag deploy" "
 echo
 
 emit_text_header "フェーズ: AIOps エージェント セットアップ"
-emit_text_kv "aiops_agent workflows (all)" "count=$(count_glob "${REPO_ROOT}/apps/aiops_agent/workflows/*.json")"
-emit_text_kv "aiops_agent workflows (deploy)" "count=$(find "${REPO_ROOT}/apps/aiops_agent/workflows" -maxdepth 1 -type f -name '*.json' ! -name '*_test.json' 2>/dev/null | wc -l | tr -d ' ')"
-emit_text_kv "aiops_agent prompt" "dir=$([[ -d "${REPO_ROOT}/apps/aiops_agent/prompt" ]] && echo exists || echo missing)"
-emit_text_kv "aiops_agent policy" "dir=$([[ -d "${REPO_ROOT}/apps/aiops_agent/policy" ]] && echo exists || echo missing)"
-emit_text_kv "aiops_agent realm data (default)" "prompt=$([[ -d "${REPO_ROOT}/apps/aiops_agent/data/default/prompt" ]] && echo exists || echo missing) policy=$([[ -d "${REPO_ROOT}/apps/aiops_agent/data/default/policy" ]] && echo exists || echo missing)"
+emit_text_kv "aiops_agent workflows (all)" "count=$(find "${REPO_ROOT}/apps/aiops_agent" -type f -name '*.json' -path '*/workflows/*' 2>/dev/null | wc -l | tr -d ' ')"
+emit_text_kv "aiops_agent workflows (deploy)" "count=$(find \"${REPO_ROOT}/apps/aiops_agent\" -type f -name '*.json' -path '*/workflows/*' ! -name '*_test.json' 2>/dev/null | wc -l | tr -d ' ')"
+emit_text_kv "aiops_agent realm data (default)" "prompt=$([[ -d \"${REPO_ROOT}/apps/aiops_agent/orchestrator/data/default/prompt\" ]] && echo exists || echo missing) policy=$([[ -d \"${REPO_ROOT}/apps/aiops_agent/orchestrator/data/default/policy\" ]] && echo exists || echo missing)"
 echo "実行ログ:"
-emit_action_line "aiops_agent_setup" "setup_aiops_agent" "apps/aiops_agent/scripts/setup_aiops_agent.sh"
-emit_action_line "aiops_agent_deploy_workflows" "aiops_agent deploy workflows" "apps/aiops_agent/scripts/deploy_workflows.sh"
+emit_action_line "aiops_agent_setup" "setup_aiops_agent" "apps/aiops_agent/orchestrator/scripts/setup_aiops_agent.sh"
+emit_action_line "aiops_agent_deploy_workflows" "aiops_agent deploy workflows" "apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh"
 echo
 
 emit_text_header "補足"

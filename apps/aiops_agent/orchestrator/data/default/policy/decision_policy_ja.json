@@ -1,0 +1,1020 @@
+{
+  "version": "ja-5",
+  "notes": "意思決定ポリシー（上限/語彙/既定値/条件分岐/フォールバック）の事実データ。最終判断の条件分岐は各プロンプト本文に集約し、コード側に閾値/例外を散らさない。",
+  "limits": {
+    "common": {
+      "confidence_range": {
+        "min": 0.0,
+        "max": 1.0
+      }
+    },
+    "llm_input_tokens": 6000,
+    "llm_output_tokens": 1200,
+    "llm": {
+      "max_calls_per_event": 8,
+      "max_calls_per_minute": 120,
+      "max_concurrent_calls": 4
+    },
+    "interaction_parse": {
+      "max_clarifying_questions": 2
+    },
+    "adapter_classify": {
+      "max_clarifying_questions": 2,
+      "max_impacted_resources": 10
+    },
+    "jobs_preview": {
+      "max_candidates": 3,
+      "max_clarifying_questions": 2,
+      "max_missing_params": 10
+    },
+    "routing_decide": {
+      "max_clarifying_questions": 2
+    },
+    "initial_reply": {
+      "max_clarifying_questions": 2
+    },
+    "feedback_decide": {
+      "max_followups": 3,
+      "max_closed_followups": 1
+    },
+    "feedback_request_render": {
+      "max_clarifying_questions": 1
+    },
+    "rag_router": {
+      "max_clarifying_questions": 2,
+      "top_k_default": 5,
+      "top_k_cap": 10
+    },
+    "orchestrator": {
+      "max_recent_feedback": 5,
+      "max_recent_approvals": 5
+    },
+    "enrichment_plan": {
+      "chat_context_default_max_messages": 10,
+      "chat_context_max_messages_cap": 20,
+      "logs_default_time_window_minutes": 60,
+      "logs_time_window_minutes_cap": 60
+    },
+    "routing_candidates": {
+      "max_candidates": 20
+    },
+    "context_summary": {
+      "min_sentences": 1,
+      "max_sentences": 3
+    },
+    "job_result_reply": {
+      "max_payload_chars": 1800
+    }
+  },
+  "taxonomy": {
+    "form_vocab": [
+      "standard",
+      "non_standard"
+    ],
+    "category_vocab": [
+      "service_request",
+      "incident",
+      "problem",
+      "change"
+    ],
+    "impact_vocab": [
+      "low",
+      "medium",
+      "high",
+      "critical"
+    ],
+    "urgency_vocab": [
+      "low",
+      "medium",
+      "high",
+      "critical"
+    ],
+    "priority_vocab": [
+      "p1",
+      "p2",
+      "p3",
+      "p4"
+    ],
+    "event_kind_vocab": [
+      "request",
+      "approval",
+      "feedback",
+      "other"
+    ],
+    "event_type_vocab": [
+      "message",
+      "mention",
+      "command",
+      "notification",
+      "callback",
+      "webhook"
+    ],
+    "approval_decision_vocab": [
+      "approve",
+      "deny"
+    ],
+    "impact_scope_vocab": [
+      "service",
+      "infra",
+      "tenant"
+    ],
+    "risk_level_vocab": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "rag_mode_vocab": [
+      "kedb_documents",
+      "gitlab_management_docs",
+      "problem_management",
+      "web_search"
+    ],
+    "management_domain_vocab": [
+      "general_management",
+      "service_management",
+      "technical_management"
+    ],
+    "enrichment_method_vocab": [
+      "payload",
+      "rest",
+      "workflow_api",
+      "official_api",
+      "none"
+    ],
+    "enrichment_direction_vocab": [
+      "around",
+      "before",
+      "after"
+    ],
+    "enrichment_target_vocab": [
+      "rag",
+      "cmdb",
+      "runbook",
+      "logs",
+      "metrics",
+      "conversation_context"
+    ],
+    "case_status_vocab": [
+      "open",
+      "closed"
+    ],
+    "job_status_vocab": [
+      "queued",
+      "running",
+      "succeeded",
+      "failed",
+      "canceled",
+      "unknown"
+    ],
+    "error_code_vocab": [
+      "invalid_request",
+      "unauthorized",
+      "forbidden",
+      "not_found",
+      "timeout",
+      "rate_limited",
+      "conflict",
+      "dependency_failure",
+      "internal_error",
+      "unknown"
+    ],
+    "error_class_vocab": [
+      "client_error",
+      "server_error",
+      "dependency_error",
+      "policy_violation",
+      "validation_error",
+      "timeout",
+      "rate_limit"
+    ],
+    "backpressure_mode_vocab": [
+      "normal",
+      "degraded",
+      "manual_triage"
+    ],
+    "context_status_vocab": [
+      "active",
+      "completed",
+      "expired"
+    ],
+    "approval_status_vocab": [
+      "pending",
+      "approved",
+      "denied",
+      "expired",
+      "error"
+    ],
+    "priority_matrix": [
+      {
+        "priority": "p1",
+        "when": {
+          "impact": [
+            "critical"
+          ],
+          "urgency": [
+            "*"
+          ]
+        }
+      },
+      {
+        "priority": "p1",
+        "when": {
+          "impact": [
+            "high"
+          ],
+          "urgency": [
+            "high"
+          ]
+        }
+      },
+      {
+        "priority": "p2",
+        "when": {
+          "impact": [
+            "high"
+          ],
+          "urgency": [
+            "*"
+          ]
+        }
+      },
+      {
+        "priority": "p2",
+        "when": {
+          "impact": [
+            "medium"
+          ],
+          "urgency": [
+            "high"
+          ]
+        }
+      },
+      {
+        "priority": "p3",
+        "default": true
+      }
+    ],
+    "routing": {
+      "urgent_priorities": [
+        "p1"
+      ],
+      "urgent_impacts": [
+        "critical"
+      ]
+    },
+    "problem_status_open_vocab": [
+      "new",
+      "investigating",
+      "known_error"
+    ],
+    "next_action_vocab": [
+      "auto_enqueue",
+      "require_approval",
+      "reply_only",
+      "ask_clarification",
+      "reject"
+    ]
+  },
+  "defaults": {
+    "approval_policy": "ops:standard",
+    "backpressure": {
+      "mode": "normal",
+      "modes": {
+        "normal": {
+          "summary_max_sentences": 3,
+          "needs_manual_triage": false
+        },
+        "degraded": {
+          "summary_max_sentences": 2,
+          "needs_manual_triage": false
+        },
+        "manual_triage": {
+          "summary_max_sentences": 1,
+          "needs_manual_triage": true
+        }
+      }
+    },
+    "routing_candidate_query": {
+      "category": "service_request",
+      "impact": "medium",
+      "urgency": "medium",
+      "priority": "p3"
+    },
+    "adapter_classify": {
+      "form": "non_standard",
+      "category": "incident",
+      "impact": "medium",
+      "urgency": "medium",
+      "priority": "p3",
+      "needs_clarification": true
+    },
+    "interaction_parse": {
+      "default_event_kind": "other",
+      "fallback_clarifying_questions": [
+        "依頼・承認・評価のどれですか？"
+      ],
+      "approval_token_pattern": "^[A-Za-z0-9._-]+$",
+      "allowed_event_kinds": [
+        "request",
+        "approval",
+        "feedback",
+        "other"
+      ],
+      "smile_score_range": {
+        "min": 1,
+        "max": 4
+      },
+      "rationale": ""
+    },
+    "rag_router": {
+      "mode": "kedb_documents",
+      "query_strategy": "normalized_event_text",
+      "filters": {
+        "use_service_name": true,
+        "use_ci_ref": true,
+        "use_problem_number": true,
+        "use_known_error_number": true
+      }
+    },
+    "enrichment_plan": {
+      "can_proceed_without_enrichment": true,
+      "targets": [
+        { "target": "rag", "enabled": true },
+        { "target": "cmdb", "enabled": true },
+        { "target": "runbook", "enabled": true }
+      ],
+      "chat_context": {
+        "enabled": true,
+        "method": "payload",
+        "max_messages": 0,
+        "direction": "around",
+        "include_links": true
+      },
+      "system_context": {
+        "cmdb": { "enabled": true },
+        "logs": { "enabled": true, "time_window_minutes": 0 },
+        "metrics": { "enabled": true, "time_window_minutes": 0 }
+      }
+    },
+    "jobs_preview": {
+      "next_action": "ask_clarification",
+      "required_confirm_by_next_action": {
+        "auto_enqueue": false,
+        "require_approval": true,
+        "reply_only": false,
+        "ask_clarification": true,
+        "reject": true
+      },
+      "summary_fallback_template": "AI Ops ジョブ: {event}",
+      "risk_level": "medium",
+      "impact_scope": "service",
+      "token_issue_actions": [
+        "auto_enqueue",
+        "require_approval"
+      ],
+      "default_confidence": 0.5,
+      "next_action_vocab": [
+        "auto_enqueue",
+        "require_approval",
+        "reply_only",
+        "ask_clarification",
+        "reject"
+      ]
+    },
+    "routing_decide": {
+      "needs_manual_triage": true
+    },
+    "initial_reply": {
+      "fallback_questions": [
+        "依頼内容（何をしたいか）",
+        "対象（サービス名/CI/環境）"
+      ],
+      "approval_command_hint": "approve <token> / deny <token>"
+    },
+    "feedback_decide": {
+      "case_status": "open"
+    },
+    "feedback_request_render": {
+      "default_text": "feedback <job_id> <resolved:true|false> <score> <comment>"
+    },
+    "job_result_reply": {
+      "success_template": "ジョブ {job_id} を完了しました。\n\n結果: {result}\n{trace_line}\n{feedback_request}",
+      "failure_template": "ジョブ {job_id} が失敗しました。\n\nエラー: {error}\n{trace_line}\n{feedback_request}",
+      "unknown_status_template": "ジョブ {job_id} の結果を受け取りました。\n\n結果: {result}\n{trace_line}\n{feedback_request}"
+    },
+    "context_summary": {
+      "include_fields": [
+        "what_happened",
+        "impact",
+        "next_clue"
+      ]
+    },
+    "feedback": {
+      "smile_score_range": {
+        "min": 1,
+        "max": 4
+      },
+      "resolved_values": [
+        "true",
+        "false"
+      ]
+    },
+    "user_guidance_templates": {
+      "on_failure": "処理が失敗しました。次に行うこと: 1) エラー内容/状況を共有 2) 再試行の可否を教えてください 3) 影響範囲（ユーザー/サービス/環境）を教えてください。",
+      "on_insufficient_confirmation": "実行前に確認が必要です。次に行うこと: {questions}（不明なら「不明」と返信してください）。",
+      "on_manual_triage": "自動判断できないため手動トリアージに回します。次に行うこと: 1) 影響/緊急度 2) 期限や希望時間 3) 関係者/連絡先 4) 参考ログや再現手順を共有してください。"
+    }
+  },
+  "thresholds": {
+    "jobs_preview": {
+      "confidence_min_for_auto_enqueue": 0.6
+    },
+    "backpressure": {
+      "queue_depth_warn": 100,
+      "queue_depth_degraded": 300,
+      "queue_depth_manual_triage": 800
+    }
+  },
+  "dq": {
+    "metric_window_days_default": 7,
+    "evidence_dir_template": "evidence/dq/{dq_run_id}",
+    "scenario_pass_rate_min": 0.9,
+    "critical_scenario_pass_rate_min": 1.0,
+    "json_validity_rate_min": 0.99,
+    "pii_violation_max": 0,
+    "false_positive_rate_pct_max": 5,
+    "unresolved_rate_pct_max": 15,
+    "preview_score_min": 3.5,
+    "manual_triage_rate_pct_max": 30,
+    "llm_latency_ms_p95_max": 1000,
+    "llm_error_rate_pct_max": 1,
+    "degradation": {
+      "critical_pass_rate_drop_max_pct": 1,
+      "json_validity_drop_max_pct": 1,
+      "pii_violation_increase_max": 0,
+      "ops_metric_degrade_max_pct": 5
+    }
+  },
+  "rules": {
+    "common": {
+      "no_fabrication": true,
+      "evidence_scope": {
+        "use_only_inputs": true,
+        "allowed_inputs": [
+          "normalized_event",
+          "context",
+          "iam_context",
+          "policy_context",
+          "rag_results",
+          "catalog",
+          "approval_history",
+          "feedback_history"
+        ],
+        "disallow_external_knowledge": true
+      },
+      "language_policy": {
+        "language": "ja",
+        "tone": "polite",
+        "style": "concise"
+      },
+      "rationale_policy": {
+        "short": true,
+        "no_sensitive": true,
+        "require_input_citation": true,
+        "evidence_tag_vocab": [
+          "normalized_event",
+          "context",
+          "iam_context",
+          "policy_context",
+          "rag_results",
+          "catalog",
+          "approval_history",
+          "feedback_history"
+        ]
+      },
+      "role_constraints": {
+        "decision_only": true,
+        "no_execution": true,
+        "no_side_effects": true
+      },
+      "pii_handling": {
+        "mask": true,
+        "mask_token": "(伏字)",
+        "mask_points": [
+          "ingest",
+          "pre_llm"
+        ],
+        "metrics": {
+          "record_counts": true
+        },
+        "allow_fields": [
+          "approval_token",
+          "job_id"
+        ]
+      },
+      "uncertainty_handling": {
+        "ask_clarification": true,
+        "lower_confidence": true,
+        "safe_side": true
+      },
+      "output_format": {
+        "json_only": true,
+        "no_markdown": true
+      },
+      "output_constraints": {
+        "require_all_keys": true,
+        "value_case": "lower",
+        "language": "ja"
+      },
+      "url_policy": {
+        "allow_unprovided_urls": false
+      },
+      "policy_ownership": {
+        "source_of_truth": "policy_context.rules / defaults / limits / fallbacks / taxonomy",
+        "disallow_inline_rules": true,
+        "hard_constraints_only_in_code": true,
+        "op_settings_only_in_config": true
+      }
+    },
+    "adapter_classify": {
+      "framework": "ITSM",
+      "form_rules": [
+        {
+          "when": "定型依頼/明確な手順/定期作業/ルーチン運用",
+          "then_form": "standard"
+        },
+        {
+          "when": "障害/原因不明/調査/再発/劣化/アラート",
+          "then_form": "non_standard"
+        }
+      ],
+      "category_rules": [
+        {
+          "when": "アクセス要求/設定変更/情報照会/運用依頼",
+          "then_category": "service_request"
+        },
+        {
+          "when": "障害/劣化/アラート/停止/エラー増加/SLO 逸脱",
+          "then_category": "incident"
+        },
+        {
+          "when": "再発/根本原因/恒久対策/既知エラー/回避策照会",
+          "then_category": "problem"
+        },
+        {
+          "when": "デプロイ/リリース/ロールバック/変更作業",
+          "then_category": "change"
+        }
+      ],
+      "safety_bias_rules": [
+        {
+          "when": "破壊的/広範囲/権限逸脱の可能性",
+          "then": {
+            "impact_bias": "raise",
+            "priority_bias": "raise",
+            "category_override": "incident"
+          }
+        }
+      ],
+      "priority_matrix_usage": "taxonomy.priority_matrix を上から評価し、最初に一致した priority を採用する。"
+    },
+    "interaction_parse": {
+      "event_kind_order": [
+        "approval",
+        "feedback",
+        "request",
+        "other"
+      ],
+      "missing_grammar_handling": {
+        "fallback_event_kind": "other",
+        "needs_clarification": true,
+        "use_defaults": true
+      },
+      "approval": {
+        "requires_token": true,
+        "requires_decision": true
+      },
+      "feedback": {
+        "requires_job_id": true,
+        "requires_resolved": true,
+        "requires_score": true
+      },
+      "comment_handling": {
+        "optional": true,
+        "mask_pii": true,
+        "empty_when_missing": true
+      },
+      "job_id_handling": "pass_through"
+    },
+    "rag_router": {
+      "selection_rules": [
+        {
+          "when": "外部/インターネット/ウェブ/公式サイト/仕様/リリースノート/最新情報/ニュース/障害情報/料金/価格/バージョン/脆弱性（CVE 等）/EOL/EOS/天気/天候/気温/降水確率/予報",
+          "then_mode": "web_search",
+          "oq_scenarios": [
+            {
+              "id": "OQ-RAG-WEB-001",
+              "text": "公式サイトで最新の料金（価格）やリリースノートを確認して。",
+              "expected_rag_mode": "web_search"
+            },
+            {
+              "id": "OQ-RAG-WEB-002",
+              "text": "今日の東京の天気をインターネットで調べて教えて。",
+              "expected_rag_mode": "web_search"
+            }
+          ]
+        },
+        {
+          "when": "問題番号/既知エラー番号/Workaround ID/原因/担当/状態/根本原因",
+          "then_mode": "problem_management",
+          "oq_scenarios": [
+            {
+              "id": "OQ-RAG-PROB-001",
+              "text": "問題番号 PRB-0001 の根本原因と回避策を確認して。",
+              "expected_rag_mode": "problem_management"
+            }
+          ]
+        },
+        {
+          "when": "CloudWatch アラート/通知/アラーム/サービス停止",
+          "then_mode": "gitlab_management_docs",
+          "oq_scenarios": [
+            {
+              "id": "OQ-RAG-CW-001",
+              "text": "CloudWatch アラーム HighErrorRate が発報した。Runbook/対応手順を確認して。",
+              "expected_rag_mode": "gitlab_management_docs"
+            }
+          ]
+        },
+        {
+          "when": "一般管理/サービス管理/技術管理の規程/申請/運用ルール/オンボーディング/ナレッジ（GitLab Wiki/MD/ソース参照）",
+          "then_mode": "gitlab_management_docs",
+          "oq_scenarios": [
+            {
+              "id": "OQ-RAG-GITLAB-001",
+              "text": "サービス管理の運用ルール（GitLab Wiki）を確認して。",
+              "expected_rag_mode": "gitlab_management_docs"
+            }
+          ]
+        },
+        {
+          "when": "症状/ログ/アラーム/自由記述/類似文書探索",
+          "then_mode": "kedb_documents",
+          "oq_scenarios": [
+            {
+              "id": "OQ-RAG-KEDB-001",
+              "text": "ログに 502 が出ている。類似の既知エラーを探して。",
+              "expected_rag_mode": "kedb_documents"
+            }
+          ]
+        }
+      ],
+      "cloudwatch_runbook_policy": [
+        "CloudWatch アラート/通知/アラームの場合は Runbook を優先参照する",
+        "Runbook が見つからない場合は KEDB/既知エラーを参照する"
+      ],
+      "ambiguity_handling": {
+        "on_ambiguous": "needs_clarification",
+        "fallback_mode": "kedb_documents"
+      },
+      "query_rules": {
+        "style": "検索に効く短い日本語フレーズ",
+        "sanitize_pii": true
+      },
+      "filters_policy": {
+        "unknown_value": "null",
+        "allow_partial": true
+      }
+    },
+    "enrichment_plan": {
+      "source_focus": {
+        "chat": [
+          "conversation_context"
+        ],
+        "monitoring": [
+          "alert_details",
+          "logs",
+          "metrics",
+          "cmdb",
+          "runbook"
+        ]
+      },
+      "method_selection": {
+        "allow_methods": [
+          "payload",
+          "rest",
+          "workflow_api",
+          "official_api"
+        ],
+        "prefer_fast_methods": true
+      },
+      "failure_handling": {
+        "can_proceed_without_enrichment": true,
+        "require_clarification_when_risky": true
+      }
+    },
+    "routing_decide": {
+      "input_semantics": {
+        "routing_candidates": "エスカレーション表から抽出された候補行の配列。policy_id/service_name/ci_name/escalation_level/reply_target/notify_targets/SLA 等の事実フィールドを含む。",
+        "context_age_minutes": "このケース（context）の経過時間（分）。SLA/エスカレーション判断に使う。"
+      },
+      "match_order": [
+        "service_and_ci",
+        "service_only",
+        "generic"
+      ],
+      "escalation_rules": [
+        {
+          "when": "context_age_minutes >= escalate_after_minutes",
+          "then": "prefer_higher_level"
+        }
+      ],
+      "urgent_rules": {
+        "urgent_priorities": "taxonomy.routing.urgent_priorities",
+        "urgent_impacts": "taxonomy.routing.urgent_impacts"
+      },
+      "reply_target_policy": {
+        "prefer_original_thread": true,
+        "platform_specifics_in_policy": true
+      },
+      "fail_safe_policy": {
+        "stop_on_missing_reply_target": false,
+        "prefer_safe_candidate": true
+      }
+    },
+    "jobs_preview": {
+      "decision_order": [
+        "force_required_confirm",
+        "reply_only",
+        "ask_clarification",
+        "require_approval",
+        "auto_enqueue",
+        "reject"
+      ],
+      "reply_only_conditions": [
+        "運用依頼/承認/評価ではない雑談/世間話/挨拶/一般質問",
+        "用語/概念の意味（例: SLO/SLI/エラーバジェット等）を聞く質問",
+        "明確な実行意図（実行対象/操作/環境/期限）が無い",
+        "作業の提案や承認導線へ誘導する必要が無い"
+      ],
+      "ask_clarification_conditions": [
+        "workflow_id が特定できない",
+        "重要パラメータ不足",
+        "confidence が閾値未満",
+        "曖昧性が高い"
+      ],
+      "require_approval_conditions": [
+        "approval_policy_doc.policies[approval_policy].force_required_confirm=true の場合",
+        "risk_level が承認対象（approval_policy_doc.policies[approval_policy].risk_requires_confirm に一致する場合）",
+        "impact_scope が承認対象（approval_policy_doc.policies[approval_policy].impact_scope_requires_confirm に一致する場合）",
+        "required_roles が承認対象（approval_policy_doc.policies[approval_policy].required_role_requires_confirm に一致する場合）",
+        "required_groups が承認対象（approval_policy_doc.policies[approval_policy].required_group_requires_confirm に一致する場合）",
+        "ambiguity_score が閾値以上"
+      ],
+      "auto_enqueue_conditions": [
+        "入力が十分で安全に実行でき、承認対象条件に該当しない",
+        "監視通知（source=cloudwatch 系）かつ monitoring_workflow_hints に一致し、run_window が 24x7 相当で、approval_policy_doc.policies[approval_policy].default_required_confirm=false の場合"
+      ],
+      "reject_conditions": [
+        "実行不適合/権限逸脱/対象外"
+      ],
+      "candidate_selection_rules": [
+        "workflow_id はカタログ整合を最優先にする",
+        "automation_hint 等の候補があってもカタログ整合を必ず確認する",
+        "params は実行に必要な最小セットのみを埋める",
+        "曖昧な値は埋めず missing_params と clarifying_questions で回収する"
+      ],
+      "runbook_policy": [
+        "CloudWatch アラート/通知の場合は Runbook の手順を優先し、該当する workflow を候補に含める",
+        "Runbook が見つからない場合は KEDB/既知エラーを参照して安全側に判断する"
+      ],
+      "monitoring_workflow_hints": [
+        {
+          "when": "source が cloudwatch 系 かつ alarmName/text が「Sulu down（サービス停止）」を示唆する",
+          "match_hints": [
+            "alarmName/text に suluservicedown を含む",
+            "alarmName/text に sulu と down を含む",
+            "alarmName/text に sulu-updown を含む"
+          ],
+          "prefer_workflow_id": "wf.sulu_service_control",
+          "default_params": {
+            "action": "restart"
+          },
+          "params_policy": [
+            "realm は iam_context.realm を優先し、無ければ normalized_event.tenant などから推定する",
+            "realm が確定できない場合は params に入れず missing_params で回収する"
+          ]
+        }
+      ],
+      "normalization_policy": {
+        "prefer_catalog_metadata": true,
+        "map_to_latest_iam": true,
+        "normalization_status_field": "catalog_metadata.normalization_status",
+        "fallback_policy_ref": "rules.jobs_preview.normalization_fallback"
+      },
+      "normalization_fallback": [
+        "normalized_realm/roles/groups が欠損または不一致なら、安全側の判断（要承認/追加質問）に寄せる",
+        "normalization_status が manual_review_needed の場合は手動レビューを優先する"
+      ],
+      "required_confirm_by_next_action": "defaults.jobs_preview.required_confirm_by_next_action",
+      "token_issue_actions": "defaults.jobs_preview.token_issue_actions"
+    },
+    "initial_reply": {
+      "message_flow": {
+        "reply_only": [
+          "chat"
+        ],
+        "ask_clarification": [
+          "ask",
+          "questions",
+          "missing_params"
+        ],
+        "reject": [
+          "reject",
+          "summary",
+          "optional_next"
+        ],
+        "require_approval": [
+          "needs_approval",
+          "summary",
+          "expires",
+          "how_to_approve"
+        ],
+        "auto_enqueue": [
+          "accepted",
+          "async_notice",
+          "summary",
+          "job_id"
+        ]
+      },
+      "approval_guidance": {
+        "prefer_text_commands": true,
+        "use_interaction_grammar_templates": true
+      }
+    },
+    "feedback_decide": {
+      "case_status_rules": [
+        "resolved=true かつ未解決語が無いなら closed",
+        "resolved=false なら open",
+        "job_result が failed で回復根拠が無いなら open"
+      ],
+      "conflict_resolution": {
+        "prefer_comment": true,
+        "request_followup_on_conflict": true
+      }
+    },
+    "feedback_request_render": {
+      "method_order": [
+        "buttons",
+        "text"
+      ],
+      "use_text_fallback": true,
+      "use_interaction_grammar": true,
+      "target_fields": [
+        "resolved",
+        "smile_score",
+        "comment"
+      ]
+    },
+    "job_result_reply": {
+      "payload_handling": {
+        "summarize_over_limit": true,
+        "prefer_summary_when_long": true
+      },
+      "success_flow": [
+        "summary",
+        "result",
+        "next_hint",
+        "feedback_request"
+      ],
+      "failure_flow": [
+        "failure",
+        "error",
+        "impact_or_next",
+        "feedback_request"
+      ],
+      "status_groups": {
+        "success": [
+          "succeeded"
+        ],
+        "failure": [
+          "failed",
+          "canceled"
+        ],
+        "unknown": [
+          "unknown"
+        ]
+      },
+      "retryable_handling": {
+        "suggest_retry": true,
+        "avoid_auto_retry": true
+      },
+      "feedback_request_policy": {
+        "required": true,
+        "position": "tail",
+        "fallback_on_missing": true
+      }
+    },
+    "backpressure": {
+      "mode_by_queue_depth": [
+        {
+          "when": "queue_depth >= thresholds.backpressure.queue_depth_manual_triage",
+          "then_mode": "manual_triage"
+        },
+        {
+          "when": "queue_depth >= thresholds.backpressure.queue_depth_degraded",
+          "then_mode": "degraded"
+        },
+        {
+          "when": "otherwise",
+          "then_mode": "normal"
+        }
+      ],
+      "degradation_actions": "defaults.backpressure.modes"
+    },
+    "context_summary": {
+      "style": "短く分かりやすい",
+      "include": "defaults.context_summary.include_fields"
+    }
+  },
+  "fallbacks": {
+    "approval_ack_messages": {
+      "approve": "承認を受け付けました。処理は順番待ちに登録されました。{job_line}",
+      "deny": "承認を拒否しました。"
+    },
+    "adapter_classify": {
+      "classification": {
+        "category": "incident",
+        "form": "non_standard",
+        "subtype": "triage"
+      },
+      "impact": "medium",
+      "urgency": "medium",
+      "priority": "p3",
+      "needs_clarification": true,
+      "confidence": 0,
+      "rationale": "LLM分類に失敗したため、暫定のフォールバックを適用"
+    },
+    "interaction_parse": {
+      "default_event_kind": "other",
+      "clarifying_questions": [
+        "依頼・承認・評価のどれですか？"
+      ],
+      "rationale": "モデル出力が無効なため要確認",
+      "approval_token_pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "rag_router": {
+      "mode": "kedb_documents",
+      "reason": "llm_failed_fallback_default",
+      "query_strategy": "normalized_event_text",
+      "filters": {
+        "use_service_name": true,
+        "use_ci_ref": true,
+        "use_problem_number": true,
+        "use_known_error_number": true
+      }
+    },
+    "jobs_preview": {
+      "invalid_output_next_action": "ask_clarification",
+      "invalid_workflow_next_action": "ask_clarification",
+      "missing_workflow_next_action": "ask_clarification",
+      "default_confidence_on_invalid": 0.0,
+      "rationale_on_invalid": "プレビュー出力が無効なため要確認",
+      "rationale_on_invalid_workflow": "実行ワークフローがカタログに存在しないため要確認",
+      "rationale_on_missing_workflow": "workflow_id を特定できないため要確認"
+    },
+    "routing_decide": {
+      "needs_manual_triage": true,
+      "confidence": 0,
+      "reason_map": {
+        "output_missing": "routing_decide_output_missing",
+        "selected_policy_id_missing": "selected_policy_id_missing",
+        "selected_policy_not_found": "selected_policy_not_found_in_candidates",
+        "reply_target_missing": "reply_target_missing"
+      }
+    },
+    "initial_reply": {
+      "templates": {
+        "auto_enqueue": "リクエストを受け付けました。処理は順番待ちに登録されました。\n\n概要: {summary}\n{job_line}",
+        "require_approval": "承認が必要です。\n\n概要: {summary}\n有効期限: {expires_at}",
+        "ask_clarification": "追加で確認したいことがあります。\n\n概要: {summary}",
+        "reject": "この依頼は自動実行できません。\n\n概要: {summary}"
+      },
+      "default_template": "依頼内容を確認中です。\n\n概要: {summary}"
+    },
+    "feedback_decide": {
+      "case_status": "open",
+      "confidence": 0,
+      "rationale": "モデル出力が無効なため安全側（open）にフォールバック"
+    },
+    "feedback_request_render": {
+      "default_text": "feedback <job_id> <resolved:true|false> <score> <comment>",
+      "clarifying_question": "job_id を教えてください"
+    },
+    "job_result_reply": {
+      "success_template": "ジョブ {job_id} を完了しました。\n\n結果: {result}\n{trace_line}\n{feedback_request}",
+      "failure_template": "ジョブ {job_id} が失敗しました。\n\nエラー: {error}\n{trace_line}\n{feedback_request}",
+      "unknown_status_template": "ジョブ {job_id} の結果を受け取りました。\n\n結果: {result}\n{trace_line}\n{feedback_request}"
+    }
+  }
+}

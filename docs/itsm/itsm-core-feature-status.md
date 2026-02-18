@@ -15,15 +15,15 @@
 
 | 機能 | 状態 | 根拠（実装） | 補足（不足/注意） |
 |---|---|---|---|
-| SoR スキーマ（`itsm.*`） | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql` | ここが実装の正（MVP）。 |
-| レコード（最小核）: Incident / SRQ / Problem / Change | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql` | 列/状態遷移/必須項目は最小限。`service_id` 等は NULL 許容。 |
-| CMDB（最小核）: Service / CI / CI relation | 部分実装 | `apps/itsm_core/sql/itsm_sor_core.sql` | テーブルはあるが、**投入/同期の運用経路**が未整備（現状の CMDB 正は GitLab `cmdb/` 前提）。 |
-| 外部参照（GitLab/Zulip 等）: `itsm.external_ref` | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql` | `ref_key` ユニークで重複投入を防止。 |
-| 採番（INC/CHG/SRQ/PRB など） | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.next_record_number`） | 幅/接頭辞は呼び出し側（ワークフロー）で決定。 |
-| 監査イベント（追記型）: `itsm.audit_event` | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql` | `integrity.event_key` を使った冪等投入が前提。 |
-| 承認（共通）: `itsm.approval` | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql` | 現状の書き込み主体は AIOpsAgent。 |
-| タグ/コメント/添付/ACL | 部分実装 | `apps/itsm_core/sql/itsm_sor_core.sql` | テーブルはあるが、投入/運用経路（UI/API/ワークフロー）が未整備。 |
-| ポリモーフィック参照の参照整合性（comment/attachment/tag/acl の FK） | 部分実装 | `apps/itsm_core/sql/itsm_sor_core.sql` | `resource_type/resource_id` は汎用参照のため、DB の FK で完全担保できません（必要ならトリガ/分割テーブルが必要）。 |
+| SoR スキーマ（`itsm.*`） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | ここが実装の正（MVP）。 |
+| レコード（最小核）: Incident / SRQ / Problem / Change | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | 列/状態遷移/必須項目は最小限。`service_id` 等は NULL 許容。 |
+| CMDB（最小核）: Service / CI / CI relation | 部分実装 | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | テーブルはあるが、**投入/同期の運用経路**が未整備（現状の CMDB 正は GitLab `cmdb/` 前提）。 |
+| 外部参照（GitLab/Zulip 等）: `itsm.external_ref` | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | `ref_key` ユニークで重複投入を防止。 |
+| 採番（INC/CHG/SRQ/PRB など） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.next_record_number`） | 幅/接頭辞は呼び出し側（ワークフロー）で決定。 |
+| 監査イベント（追記型）: `itsm.audit_event` | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | `integrity.event_key` を使った冪等投入が前提。 |
+| 承認（共通）: `itsm.approval` | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | 現状の書き込み主体は AIOpsAgent。 |
+| タグ/コメント/添付/ACL | 部分実装 | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | テーブルはあるが、投入/運用経路（UI/API/ワークフロー）が未整備。 |
+| ポリモーフィック参照の参照整合性（comment/attachment/tag/acl の FK） | 部分実装 | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | `resource_type/resource_id` は汎用参照のため、DB の FK で完全担保できません（必要ならトリガ/分割テーブルが必要）。 |
 
 ## 2. SoR 適用（DDL）とデプロイ統合
 
@@ -38,9 +38,9 @@
 |---|---|---|---|
 | Zulip 決定メッセージ本文を `itsm.audit_event(action=decision.recorded)` に投入 | 実装済み | `apps/itsm_core/zulip_gitlab_issue_sync/workflows/zulip_gitlab_issue_sync.json` | 先頭 prefix 判定 +（任意）LLM 判定。 |
 | GitLab 決定（Issue/Note）本文を `itsm.audit_event(action=decision.recorded)` に投入 | 実装済み | `apps/itsm_core/zulip_gitlab_issue_sync/workflows/gitlab_decision_notify.json` | 先頭 prefix 判定 +（任意）LLM 判定。 |
-| AIOpsAgent の approve/deny を `itsm.approval` + `itsm.audit_event` に投入 | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.aiops_*`）/ 呼び出し元: `apps/aiops_agent/workflows/aiops_adapter_approval.json`（Postgres: `SELECT itsm.aiops_*`）/ （互換）`apps/itsm_core/sor_webhooks/workflows/itsm_sor_aiops_approval_*.json`（Webhook） | `approval.approved/rejected/comment_added` を記録。 |
-| AIOpsAgent の auto_enqueue（自動承認）を `itsm.audit_event` に投入 | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.aiops_insert_auto_enqueue_audit_event`）/ 呼び出し元: `apps/aiops_agent/workflows/aiops_adapter_ingest.json`（Postgres: `SELECT itsm.aiops_*`）/ （互換）`apps/itsm_core/sor_webhooks/workflows/itsm_sor_aiops_auto_enqueue.json`（Webhook） | `decision.recorded` として記録。 |
-| `/decisions`（時系列サマリ）を SoR ベースへ刷新 | 実装済み | `apps/aiops_agent/workflows/aiops_adapter_ingest.json` | `reply_target(stream/topic)` で抽出。legacy 参照は fallback。 |
+| AIOpsAgent の approve/deny を `itsm.approval` + `itsm.audit_event` に投入 | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.aiops_*`）/ 呼び出し元: `apps/aiops_agent/adapter/workflows/aiops_adapter_approval.json`（Postgres: `SELECT itsm.aiops_*`）/ （互換）`apps/itsm_core/sor_webhooks/workflows/itsm_sor_aiops_approval_*.json`（Webhook） | `approval.approved/rejected/comment_added` を記録。 |
+| AIOpsAgent の auto_enqueue（自動承認）を `itsm.audit_event` に投入 | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.aiops_insert_auto_enqueue_audit_event`）/ 呼び出し元: `apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json`（Postgres: `SELECT itsm.aiops_*`）/ （互換）`apps/itsm_core/sor_webhooks/workflows/itsm_sor_aiops_auto_enqueue.json`（Webhook） | `decision.recorded` として記録。 |
+| `/decisions`（時系列サマリ）を SoR ベースへ刷新 | 実装済み | `apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json` | `reply_target(stream/topic)` で抽出。legacy 参照は fallback。 |
 | 「決定に近い自然言語」を自動認定（LLM 分類） | 実装済み | `apps/itsm_core/zulip_gitlab_issue_sync/workflows/zulip_gitlab_issue_sync.json`, `apps/itsm_core/zulip_gitlab_issue_sync/workflows/gitlab_decision_notify.json` | 実際に判定するには `*_DECISION_LLM_API_KEY` 等が必要。誤判定リスクあり。 |
 
 ## 4. バックフィル（必須）
@@ -66,9 +66,9 @@
 
 | 機能 | 状態 | 根拠（実装） | 補足（不足/注意） |
 |---|---|---|---|
-| RLS（Row Level Security）/ポリシー | 実装済み | `apps/itsm_core/sql/itsm_sor_rls.sql`, `apps/itsm_core/sql/itsm_sor_rls_force.sql`, `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.set_rls_context`）, `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh`, `apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh` | 運用: RLS を適用すると `itsm.*` へのアクセスは `app.realm_key`/`app.realm_id` が必須（未設定は fail close / エラー）。n8n/直DB は (A) ロール既定値（`ALTER ROLE ... SET app.*`）で固定するか、(B) 各 SQL の先頭で `itsm.set_rls_context(..., local=true)` を呼んで statement 内で確実化する（複数 statement の場合は各 statement で呼ぶ）。 |
-| 監査イベントの改ざん耐性（append-only + ハッシュチェーン + 外部アンカー） | 実装済み | `apps/itsm_core/sql/itsm_sor_core.sql` / `apps/itsm_core/sor_ops/scripts/anchor_itsm_audit_event_hash.sh` / Terraform(`itsm_audit_event_anchor_*`) | S3 アンカーは `itsm_audit_event_anchor_enabled=true` の上で定期実行が必要（推奨）。 |
-| アーカイブ/保持期間/削除（運用・監査要件） | 部分実装 | `docs/itsm/data-retention.md`, `apps/itsm_core/sql/itsm_sor_core.sql`, `apps/itsm_core/sor_ops/scripts/apply_itsm_sor_retention.sh` | レルム別 `itsm.retention_policy` と purge 関数/ジョブ（dry-run→execute）を追加。監査ログ（`audit_event`）の物理削除は既定で無効。添付実体の削除はストレージ側（S3 lifecycle 等）が正。 |
+| RLS（Row Level Security）/ポリシー | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_rls.sql`, `apps/itsm_core/sor_ops/sql/itsm_sor_rls_force.sql`, `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.set_rls_context`）, `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh`, `apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh` | 運用: RLS を適用すると `itsm.*` へのアクセスは `app.realm_key`/`app.realm_id` が必須（未設定は fail close / エラー）。n8n/直DB は (A) ロール既定値（`ALTER ROLE ... SET app.*`）で固定するか、(B) 各 SQL の先頭で `itsm.set_rls_context(..., local=true)` を呼んで statement 内で確実化する（複数 statement の場合は各 statement で呼ぶ）。 |
+| 監査イベントの改ざん耐性（append-only + ハッシュチェーン + 外部アンカー） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` / `apps/itsm_core/sor_ops/scripts/anchor_itsm_audit_event_hash.sh` / Terraform(`itsm_audit_event_anchor_*`) | S3 アンカーは `itsm_audit_event_anchor_enabled=true` の上で定期実行が必要（推奨）。 |
+| アーカイブ/保持期間/削除（運用・監査要件） | 部分実装 | `docs/itsm/data-retention.md`, `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`, `apps/itsm_core/sor_ops/scripts/apply_itsm_sor_retention.sh` | レルム別 `itsm.retention_policy` と purge 関数/ジョブ（dry-run→execute）を追加。監査ログ（`audit_event`）の物理削除は既定で無効。添付実体の削除はストレージ側（S3 lifecycle 等）が正。 |
 
 ## 7. UI/API（SoR の利用者導線）
 

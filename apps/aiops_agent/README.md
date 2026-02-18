@@ -9,7 +9,7 @@
 `apps/README.md` の共通フォーマットに従い、リスクベース（CSA）で最小限の成果物として本 README と検証証跡を維持する。
 
 **内容**
-- 設計・仕様・運用の Single Source of Truth（SSoT）は `apps/aiops_agent/docs/` を参照する（特に `apps/aiops_agent/docs/aiops_agent_design.md`）。
+- 設計・仕様・運用の Single Source of Truth（SSoT）は `apps/aiops_agent/orchestrator/docs/` を参照する（特に `apps/aiops_agent/orchestrator/docs/aiops_agent_design.md`）。
 - 秘密情報（API key 等）は tfvars に平文で置かず、SSM/Secrets Manager → n8n 環境変数注入を前提とする。
 
 ---
@@ -24,13 +24,10 @@
 - 非対象: LLM/外部AI API 自体の製品バリデーション、外部サービス（Zulip/GitLab/Keycloak 等）自体のバリデーション、ネットワーク/認証基盤（Terraform/IaC 側）全般
 - バリデーション成果物（最小）:
   - 本 README
-  - DQ/IQ/OQ/PQ:
-    - `apps/aiops_agent/docs/dq/`
-    - `apps/aiops_agent/docs/iq/`
-    - `apps/aiops_agent/docs/oq/`
-    - `apps/aiops_agent/docs/pq/`
-  - 要求/仕様/設計/実装/利用方法: `apps/aiops_agent/docs/`
-  - 実行補助: `apps/aiops_agent/scripts/`（`run_iq_tests_aiops_agent.sh`, `run_dq_scenarios.py`, `run_oq_runner.sh` など）
+  - 要求（サブアプリ別）: `apps/aiops_agent/*/docs/app_requirements.md`
+  - DQ/IQ/OQ/PQ（サブアプリ別）: `apps/aiops_agent/*/docs/{dq,iq,oq,pq}/`
+  - 要求/仕様/設計/実装/利用方法（全体 SSoT）: `apps/aiops_agent/orchestrator/docs/`
+  - 実行補助: `apps/aiops_agent/*/scripts/`（全体の入口は `apps/aiops_agent/orchestrator/scripts/`）
 
 ---
 
@@ -45,10 +42,10 @@ ITSM/AI Ops のユースケースにおいて、チャット/イベント入力�
 - 高レベル構成（例）
   - Chat/Event → n8n（Adapter/Orchestrator/Job Engine/Approval/Feedback）→ 外部 API（Zulip/GitLab/Service Control/LLM 等）→ 返信/記録
 - SSoT（設計・運用）
-  - ドキュメント: `apps/aiops_agent/docs/README.md`
-  - ルール/語彙/閾値: `apps/aiops_agent/data/default/policy/`
-  - プロンプト本文: `apps/aiops_agent/data/default/prompt/`
-  - 注入の正: `apps/aiops_agent/scripts/deploy_workflows.sh`（`prompt_map` / `policy_map`）
+  - ドキュメント: `apps/aiops_agent/orchestrator/docs/README.md`
+  - ルール/語彙/閾値: `apps/aiops_agent/orchestrator/data/default/policy/`
+  - プロンプト本文: `apps/aiops_agent/orchestrator/data/default/prompt/`
+  - 注入の正: `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh`（`prompt_map` / `policy_map`）
 
 ### 構成図（Mermaid / 現行実装）
 
@@ -68,21 +65,34 @@ flowchart LR
 ```
 
 ### ディレクトリ構成
-- `apps/aiops_agent/workflows/`: AIOps Agent のワークフロー定義（JSON）
-- `apps/aiops_agent/scripts/`: 同期（アップロード）・DB seed 取り込み・DQ/IQ/OQ テスト補助
-- `apps/aiops_agent/sql/`: `aiops_*` テーブル群のスキーマ・seed
-- `apps/aiops_agent/data/`: レルム別のプロンプト/ポリシー/DQ シナリオ等
-  - 既定: `apps/aiops_agent/data/default/prompt/`, `apps/aiops_agent/data/default/policy/`, `apps/aiops_agent/data/default/dq/`
-  - レルム別上書き（任意）: `apps/aiops_agent/data/<realm>/prompt/`, `apps/aiops_agent/data/<realm>/policy/`, `apps/aiops_agent/data/<realm>/dq/`
-- `apps/aiops_agent/docs/`: 要求/仕様/設計/実装/利用方法、DQ/IQ/OQ/PQ の説明文書（共通ベース）
+- `apps/aiops_agent/<sub_app>/`: サブアプリ（個別の workflows/scripts/docs/data/sql 等を保持）
+  - `apps/aiops_agent/<sub_app>/docs/`: サブアプリ docs（Requirements/DQ/IQ/OQ/PQ/usage など）
+  - `apps/aiops_agent/<sub_app>/workflows/`: n8n ワークフロー定義（JSON）
+  - `apps/aiops_agent/<sub_app>/scripts/`: 同期（アップロード）・DB seed 取り込み・DQ/IQ/OQ テスト補助
+  - `apps/aiops_agent/<sub_app>/{prompt,policy}/`: サブアプリの中心プロンプト/ポリシー（構成）
+  - `apps/aiops_agent/<sub_app>/{schema,sql}/`: 入出力/DB/補助 SQL（任意）
+  - `apps/aiops_agent/<sub_app>/data/`: 補助データ・テストデータ（任意）
+- `apps/aiops_agent/knowledge_store/sql/`: `aiops_*` テーブル群のスキーマ・seed（DB の正）
+- `apps/aiops_agent/orchestrator/data/`: レルム別のプロンプト/ポリシー/DQ シナリオ等（全体の中心）
+  - 既定: `apps/aiops_agent/orchestrator/data/default/prompt/`, `apps/aiops_agent/orchestrator/data/default/policy/`, `apps/aiops_agent/orchestrator/data/default/dq/`
+  - レルム別上書き（任意）: `apps/aiops_agent/orchestrator/data/<realm>/prompt/`, `apps/aiops_agent/orchestrator/data/<realm>/policy/`, `apps/aiops_agent/orchestrator/data/<realm>/dq/`
+- `apps/aiops_agent/orchestrator/docs/`: 要求/仕様/設計/実装/利用方法（全体 SSoT）、DQ/IQ/OQ/PQ の説明文書（共通ベース）
 - `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/`: 共通ベース docs への **realm overlay**（組織別拡張。CIR 同期で追記する Requirements/DQ はここへ書く。`name_prefix` は `terraform output -raw name_prefix` を正とする）
 - `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/workflows/`: （任意）realm 固有の n8n ワークフロー差分（共通 workflows を上書きする用途）
 - `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/data/`: （任意）realm 固有の data 差分
-- `apps/aiops_agent/docs/cs/`: CS（Configuration Specification: 設計・構成定義）
-- `apps/aiops_agent/docs/dq/`: DQ（設計適格性確認）
-- `apps/aiops_agent/docs/iq/`: IQ（設置時適格性確認）
-- `apps/aiops_agent/docs/oq/`: OQ（運用適格性確認）
-- `apps/aiops_agent/docs/pq/`: PQ（性能適格性確認）
+
+### サブアプリ一覧（正）
+各サブアプリは原則として以下を保持する（統一インタフェース）:
+- 要求: `apps/aiops_agent/<sub_app>/docs/app_requirements.md`
+- デプロイ: `apps/aiops_agent/<sub_app>/scripts/deploy_workflows.sh`
+- OQ: `apps/aiops_agent/<sub_app>/scripts/run_oq.sh`
+
+| sub_app | 役割（概要） | 要求 | デプロイ | OQ |
+|---|---|---|---|---|
+| `adapter` | 外部入力（chat/event）受信、承認/フィードバック/コールバックの入出力 | `apps/aiops_agent/adapter/docs/app_requirements.md` | `apps/aiops_agent/adapter/scripts/deploy_workflows.sh` | `apps/aiops_agent/adapter/scripts/run_oq.sh` |
+| `orchestrator` | 状況整理・提案・ガードレール、ジョブの preview/enqueue、全体の SSoT | `apps/aiops_agent/orchestrator/docs/app_requirements.md` | `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh` | `apps/aiops_agent/orchestrator/scripts/run_oq.sh` |
+| `execution_engine` | Job Engine（キュー/worker）: 実行委譲と回復（リトライ等） | `apps/aiops_agent/execution_engine/docs/app_requirements.md` | `apps/aiops_agent/execution_engine/scripts/deploy_workflows.sh` | `apps/aiops_agent/execution_engine/scripts/run_oq.sh` |
+| `knowledge_store` | ContextStore/ApprovalStore/Problem Management の読み書き・dedupe 等 | `apps/aiops_agent/knowledge_store/docs/app_requirements.md` | `apps/aiops_agent/knowledge_store/scripts/deploy_workflows.sh` | `apps/aiops_agent/knowledge_store/scripts/run_oq.sh` |
 
 ### Webhook（代表）
 n8n の Webhook ベース URL を `https://n8n.example.com/webhook` とした場合のパス。
@@ -116,7 +126,7 @@ n8n の Webhook ベース URL を `https://n8n.example.com/webhook` とした場
 ワークフロー・資格情報（Postgres/AWS/Zulip/OpenAI など）・プロンプト/ポリシー注入をまとめて同期する。
 
 ```bash
-apps/aiops_agent/scripts/deploy_workflows.sh
+apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh
 ```
 
 **必須（同期を実行する場合）**
@@ -135,10 +145,10 @@ apps/aiops_agent/scripts/deploy_workflows.sh
   - `N8N_REALM_DATA_DIR_BASE`（既定 `apps/aiops_agent/data`）
 
 ### DB（ContextStore / ApprovalStore / Problem Management）
-- スキーマ: `apps/aiops_agent/sql/`
+- スキーマ: `apps/aiops_agent/knowledge_store/sql/`
 - seed 取り込み:
-  - `apps/aiops_agent/scripts/import_aiops_problem_management_seed.sh`
-  - `apps/aiops_agent/scripts/import_aiops_approval_history_seed.sh`
+  - `apps/aiops_agent/knowledge_store/scripts/import_aiops_problem_management_seed.sh`
+  - `apps/aiops_agent/knowledge_store/scripts/import_aiops_approval_history_seed.sh`
 
 ---
 
@@ -147,9 +157,9 @@ apps/aiops_agent/scripts/deploy_workflows.sh
 患者安全・製品品質・データ完全性の観点で、重大なリスクのみを識別し、対策を明記する。
 
 **内容（例: critical のみ）**
-- 誤実行（不適切な自動対応）→ プレビュー/承認フロー、ポリシーによるガードレール、dry-run/フォールバック（詳細は `apps/aiops_agent/docs/oq/`）
-- 情報漏えい（チャット本文/トークン/機密）→ 秘密情報のマスキング、SSM/Secrets 管理、ログ方針（詳細は `apps/aiops_agent/docs/oq/oq_usecase_18_secret_handling_in_chat.md` 等）
-- データ完全性（文脈の取り違い）→ trace_id 伝播、会話継続の規則、dedupe/ContextStore（詳細は `apps/aiops_agent/docs/oq/`）
+- 誤実行（不適切な自動対応）→ プレビュー/承認フロー、ポリシーによるガードレール、dry-run/フォールバック（詳細は `apps/aiops_agent/orchestrator/docs/oq/`）
+- 情報漏えい（チャット本文/トークン/機密）→ 秘密情報のマスキング、SSM/Secrets 管理、ログ方針（詳細は `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_18_secret_handling_in_chat.md` 等）
+- データ完全性（文脈の取り違い）→ trace_id 伝播、会話継続の規則、dedupe/ContextStore（詳細は `apps/aiops_agent/orchestrator/docs/oq/`）
 
 ---
 
@@ -160,10 +170,10 @@ Intended Use に適合することを、最小の検証で示す。
 **内容**
 - DQ/IQ/OQ/PQ を分離し、OQ はユースケース（シナリオ）ベースで実施する。
 - 起点文書:
-  - DQ: `apps/aiops_agent/docs/dq/dq.md`
-  - IQ: `apps/aiops_agent/docs/iq/iq.md`
-  - OQ: `apps/aiops_agent/docs/oq/oq.md`（`oq_usecase_*.md`）
-  - PQ: `apps/aiops_agent/docs/pq/pq.md`
+  - DQ: `apps/aiops_agent/orchestrator/docs/dq/dq.md`
+  - IQ: `apps/aiops_agent/orchestrator/docs/iq/iq.md`
+  - OQ: `apps/aiops_agent/orchestrator/docs/oq/oq.md`（`oq_usecase_*.md`）
+  - PQ: `apps/aiops_agent/orchestrator/docs/pq/pq.md`
 
 ---
 
@@ -172,8 +182,8 @@ Intended Use に適合することを、最小の検証で示す。
 対象環境にシステム（ワークフロー/設定）が正しく設置されていることを確認する。
 
 **文書/手順（最小）**
-- 同期: `apps/aiops_agent/scripts/deploy_workflows.sh`（`N8N_DRY_RUN=true` で差分確認）
-- IQ テスト: `apps/aiops_agent/scripts/run_iq_tests_aiops_agent.sh`
+- 同期: `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh`（`N8N_DRY_RUN=true` で差分確認）
+- IQ テスト: `apps/aiops_agent/orchestrator/scripts/run_iq_tests_aiops_agent.sh`
 
 ---
 
@@ -182,13 +192,13 @@ Intended Use に適合することを、最小の検証で示す。
 重要機能（受信、文脈処理、承認、実行委譲、フィードバック、ガードレール）が意図どおり動作することを確認する。
 
 **文書**
-- `apps/aiops_agent/docs/oq/oq.md`（`oq_usecase_*.md` から生成）
-- 個別シナリオ: `apps/aiops_agent/docs/oq/oq_usecase_*.md`
+- `apps/aiops_agent/orchestrator/docs/oq/oq.md`（`oq_usecase_*.md` から生成）
+- 個別シナリオ: `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_*.md`
 
 **実行（例）**
-- `apps/aiops_agent/scripts/run_oq.sh`（既定: 個別シナリオを一括実行）
-- `apps/aiops_agent/scripts/run_oq_runner.sh`
-- 個別: `apps/aiops_agent/scripts/run_oq_usecase_05_trace_id_propagation.sh` など
+- `apps/aiops_agent/orchestrator/scripts/run_oq.sh`（既定: 個別シナリオを一括実行）
+- `apps/aiops_agent/orchestrator/scripts/run_oq_runner.sh`
+- 個別: `apps/aiops_agent/orchestrator/scripts/run_oq_usecase_05_trace_id_propagation.sh` など
 
 補足:
 - OQ 実行前に `scripts/generate_oq_md.sh --app apps/aiops_agent` を実行し、`oq.md` の生成領域を最新化する
@@ -200,7 +210,7 @@ Intended Use に適合することを、最小の検証で示す。
 応答時間・コスト・安定性（リトライ/回復）に対する成立性を確認する。
 
 **文書**
-- `apps/aiops_agent/docs/pq/pq.md`
+- `apps/aiops_agent/orchestrator/docs/pq/pq.md`
 
 ---
 

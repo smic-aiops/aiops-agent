@@ -56,9 +56,9 @@
   - 注: 定期運用の保持/匿名化（retention/PII redaction）も `apps/itsm_core/sor_ops/workflows/` で Cron 実行できる（既定: retention 毎日 03:10 / PII redaction 毎時 15分。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`）
 
 RLS（Row Level Security）導入（段階適用推奨）:
-- RLS ポリシー適用: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls.sql`
+- RLS ポリシー適用: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sor_ops/sql/itsm_sor_rls.sql`
 - （n8n が DB 直叩きの場合はほぼ必須）RLS コンテキスト（app.*）の既定値投入: `apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh`
-- （強化/任意）RLS の FORCE（テーブル所有者バイパスを禁止）: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sql/itsm_sor_rls_force.sql`
+- （強化/任意）RLS の FORCE（テーブル所有者バイパスを禁止）: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sor_ops/sql/itsm_sor_rls_force.sql`
 - `apps/itsm_core/scripts/deploy_workflows.sh`（ITSM Core 配下を一括。必要なら `scripts/apps/deploy_all_workflows.sh` で全アプリ一括）から有効化する場合は、環境変数 `N8N_APPLY_ITSM_SOR_RLS=true`（必要なら `N8N_APPLY_ITSM_SOR_RLS_FORCE=true`）を使用
   - 依存関係チェック（推奨）: `N8N_CHECK_ITSM_SOR_SCHEMA=true`（デフォルト有効）
   - RLS コンテキスト既定値（任意）: `N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT=true`（`ALTER ROLE ... SET app.*` を投入）
@@ -66,7 +66,7 @@ RLS（Row Level Security）導入（段階適用推奨）:
   - n8n の SQL では、各 SQL 文の先頭で `itsm.set_rls_context(...)` を呼ぶ形（statement 内で `app.*` をセット）を推奨します（複数 statement の場合は各 statement で呼ぶ）。
 
 監査イベントの改ざん耐性（推奨）:
-- DB 側: `apps/itsm_core/sql/itsm_sor_core.sql` で `itsm.audit_event` を append-only + ハッシュチェーン化（INSERT 時に `integrity.prev_hash/hash` を自動付与）
+- DB 側: `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` で `itsm.audit_event` を append-only + ハッシュチェーン化（INSERT 時に `integrity.prev_hash/hash` を自動付与）
 - 外部アンカー（WORM）: Terraform で `itsm_audit_event_anchor_enabled=true` を有効化し、`apps/itsm_core/sor_ops/scripts/anchor_itsm_audit_event_hash.sh` を定期実行してチェーン先頭を S3 Object Lock に固定
 - 監査チェック: `itsm.audit_event_verify_hash_chain(realm_id)` で `ok=false` が無いことを確認
 
@@ -724,7 +724,7 @@ GitLab の `@username` を Keycloak/Zulip のユーザーに突合するため�
 
 ## Zulip 連携設定
 
-Zulip Bot（要求・仕様・実装・送信スタブ）を本 README に統合しました。より厳密な仕様（アプリ側の正の情報源）は `../../apps/aiops_agent/docs/zulip_chat_bot.md` を参照してください。
+Zulip Bot（要求・仕様・実装・送信スタブ）を本 README に統合しました。より厳密な仕様（アプリ側の正の情報源）は `../../apps/aiops_agent/orchestrator/docs/zulip_chat_bot.md` を参照してください。
 
 ### 要求
 
@@ -748,7 +748,7 @@ Zulip Bot（要求・仕様・実装・送信スタブ）を本 README に統合
 
 Zulip の同一レルムに外部ユーザーを招待できる運用を想定する場合、Zulip 受信後に **送信者メールが Keycloak の同一レルムに存在するか**をチェックし、未登録なら「回答できない」旨を返信して以降の処理（LLM/ジョブ投入）を止められます。
 
-- 実装: `../../apps/aiops_agent/workflows/aiops_adapter_ingest.json` の `Verify Keycloak Membership (Zulip)` ノード
+- 実装: `../../apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json` の `Verify Keycloak Membership (Zulip)` ノード
 - 動作: `actor.email` を Keycloak Admin API で検索し、0 件なら `Build Keycloak Reject Message (Ingest)` 経由で返信して終了
 - 注意: Keycloak 管理資格情報を n8n に渡す必要があります（SSM 注入）。本番は最小権限のサービスアカウント化を推奨します。
 
@@ -800,7 +800,7 @@ Zulip の Outgoing Webhook（bot_type=3）は、受信側が Webhook の **HTTP 
 n8n のフローから Zulip へ通知を送る場合は、Bot を作成して API キーを n8n の Credential に登録しておきます。
 
 1. Zulip 管理者の API キーが `terraform.itsm.tfvars`/SSM に入っていることを確認する（未設定なら `bash scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh` で DB から拾い、`zulip_admin_api_key` を更新）。
-2. `bash apps/aiops_agent/scripts/refresh_zulip_mess_bot.sh` を実行して送信専用 Bot を作成/取得し、`terraform.itsm.tfvars` の Bot 設定（トークン等）を更新する。既定では `VERIFY_AFTER=true` のため、更新後に `apps/aiops_agent/scripts/verify_zulip_aiops_agent_bots.sh --execute` による Bot 登録検証も自動で実行される（スキップしたい場合は `VERIFY_AFTER=false`）。
+2. `bash apps/aiops_agent/adapter/scripts/refresh_zulip_mess_bot.sh` を実行して送信専用 Bot を作成/取得し、`terraform.itsm.tfvars` の Bot 設定（トークン等）を更新する。既定では `VERIFY_AFTER=true` のため、更新後に `apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh --execute` による Bot 登録検証も自動で実行される（スキップしたい場合は `VERIFY_AFTER=false`）。
    - 送信専用 Bot（mess）の既定 `ZULIP_BOT_SHORT_NAME`: `aiops-agent-mess-{realm}`（注: 現行実装では `{realm}` は置換せずそのまま short_name として扱う）
 3. 本リポジトリの AIOps ワークフローは、n8n の環境変数（SSM 注入）から **レルム単位の値**を参照して `Authorization: Basic ...` を組み立てるため、通常は n8n の `Zulip API` Credential を作成する必要はありません。
    - `terraform apply` により、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` から **レルム別 SSM パラメータ**が書き込まれ、n8n に `N8N_ZULIP_BOT_TOKEN` / `N8N_ZULIP_BOT_EMAIL` / `N8N_ZULIP_API_BASE_URL` がレルム単位で注入されます。
@@ -832,9 +832,9 @@ JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ
 
 #### ボットタイプ（運用の呼び分け）
 
-- `mess`: 送信用 Bot（n8n -> Zulip 通知など）をレルムごとに作成/取得し、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` を更新。`apps/aiops_agent/scripts/refresh_zulip_mess_bot.sh`
+- `mess`: 送信用 Bot（n8n -> Zulip 通知など）をレルムごとに作成/取得し、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` を更新。`apps/aiops_agent/adapter/scripts/refresh_zulip_mess_bot.sh`
 - `outgoing`: Outgoing Webhook bot（bot_type=3）の作成/更新＋`terraform.itsm.tfvars` の `zulip_outgoing_tokens_yaml`/`zulip_outgoing_bot_emails_yaml` を更新。`scripts/itsm/n8n/refresh_zulip_bot.sh`
-- `verify`: Bot 登録の検証。`apps/aiops_agent/scripts/verify_zulip_aiops_agent_bots.sh`
+- `verify`: Bot 登録の検証。`apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh`
 
 ### Bot 再利用ポリシー（重要）
 
@@ -856,7 +856,7 @@ JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ
 - AI Ops Agent 側の受信口は `POST /ingest/zulip` を推奨とし、Zulip 側の Webhook URL もこのパスに固定する。
 - 通常の依頼・承認・フィードバック等はすべてこの受信口で受ける。
 - イベント種別の推定とフィールド抽出はプロンプト内のポリシー＋条件分岐で `event_kind` を JSON 出力させ、語彙は `policy_context.taxonomy.event_kind_vocab` を正とする。
-- コードは署名/冪等性/スキーマ検証、承認トークンの形式/TTL/ワンタイム性検証などのハード制約に限定する（承認/評価コマンドの具体例は `../../apps/aiops_agent/data/default/policy/interaction_grammar_ja.json` を正とする）。
+- コードは署名/冪等性/スキーマ検証、承認トークンの形式/TTL/ワンタイム性検証などのハード制約に限定する（承認/評価コマンドの具体例は `../../apps/aiops_agent/orchestrator/data/default/policy/interaction_grammar_ja.json` を正とする）。
 
 ### 検証（送信スタブ）
 

@@ -60,7 +60,7 @@ AI は管理された自律モデルの下で動作する：
 - IQ/OQ/PQ: `apps/itsm_core/gitlab_issue_rag/docs/iq/`, `apps/itsm_core/gitlab_issue_rag/docs/oq/`, `apps/itsm_core/gitlab_issue_rag/docs/pq/`
 - ワークフロー定義: `apps/itsm_core/gitlab_issue_rag/workflows/`
 - 同期/検証スクリプト: `apps/itsm_core/gitlab_issue_rag/scripts/`
-- DB スキーマ: `apps/itsm_core/gitlab_issue_rag/sql/`
+- DB スキーマ: `apps/itsm_core/gitlab_issue_rag/schema/`
 - ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
 
 これらは変更管理下の構成品目（CI）として管理される。

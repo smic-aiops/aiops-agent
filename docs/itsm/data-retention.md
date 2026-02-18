@@ -1,6 +1,6 @@
 # ITSM SoR: アーカイブ/保持期間/削除（MVP 方針）
 
-このドキュメントは `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.*`）の **保持/削除/匿名化** 方針と、MVP としての最小実装を定義します。
+このドキュメントは `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.*`）の **保持/削除/匿名化** 方針と、MVP としての最小実装を定義します。
 
 ## 前提（MVPの割り切り）
 

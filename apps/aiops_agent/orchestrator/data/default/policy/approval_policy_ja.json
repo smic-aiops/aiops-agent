@@ -1,0 +1,22 @@
+{
+  "version": "ja-3",
+  "notes": "承認要否の最終判断は `apps/aiops_agent/prompt/jobs_preview_ja.txt` のプロンプト内ポリシーで行う（コード側で閾値判定しない）。本JSONは参照用/将来の外部ポリシー配信のための形。",
+  "token": {
+    "ttl_seconds": 900
+  },
+  "policies": {
+    "ops:standard": {
+      "description": "標準承認ポリシー（高リスク・広範囲・高曖昧性を承認対象とする）",
+      "risk_requires_confirm": ["high"],
+      "impact_scope_requires_confirm": ["infra", "tenant"],
+      "required_role_requires_confirm": ["admin", "secops"],
+      "required_group_requires_confirm": ["ops-oncall"],
+      "ambiguity_requires_confirm_threshold": 0.7,
+      "default_required_confirm": false
+    },
+    "ops:strict": {
+      "description": "厳格ポリシー（常に承認が必要）",
+      "force_required_confirm": true
+    }
+  }
+}

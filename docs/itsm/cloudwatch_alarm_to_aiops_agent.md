@@ -45,7 +45,7 @@ n8n の CloudWatch 受信処理（`Validate CloudWatch`）の冒頭で以下を�
   - `x-aiops-webhook-token` が一致しないリクエストは `401 unauthorized`
 
 実装:
-- `apps/aiops_agent/workflows/aiops_adapter_ingest.json`（`Validate CloudWatch` ノード）
+- `apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json`（`Validate CloudWatch` ノード）
 
 Lambda からの POST は以下ヘッダを付けます。
 
@@ -91,7 +91,7 @@ Sulu の up/down（ALB TargetGroup の `UnHealthyHostCount`）および **停止
 `send_stub_event.py` は `N8N_CLOUDWATCH_WEBHOOK_SECRET` が環境変数にある場合、`X-AIOPS-WEBHOOK-TOKEN` を自動付与します。
 
 実装:
-- `apps/aiops_agent/scripts/send_stub_event.py`
+- `apps/aiops_agent/adapter/scripts/send_stub_event.py`
 
 ## 運用メモ（ローテーション）
 

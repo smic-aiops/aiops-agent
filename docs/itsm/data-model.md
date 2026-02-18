@@ -4,7 +4,7 @@
 狙いは **ITSM コア DB（PostgreSQL/RDS）を “正のデータ（System of Record）”** として定義し、**GitLab は変更/証跡（Change & Evidence）へ寄せる** ことです。
 
 実装との関係:
-- 本リポジトリの **実装（MVP）の正** は `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.*` スキーマ）です。
+- 本リポジトリの **実装（MVP）の正** は `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.*` スキーマ）です。
 - 本書は「最小核（MVP）」に加えて、段階拡張（将来追加）も含むため、列/制約が実装より多い場合があります（運用で必要になったものから DDL へ追随します）。
 
 ---
@@ -485,7 +485,7 @@ Incident/Change/Export 等の “承認” を共通テーブルで扱い、**�
   - `zulip_backfill_to_sor.decisions`（Zulip 決定メッセージ → SoR の差分 backfill）
 
 実装（SSoT）:
-- テーブル: `apps/itsm_core/sql/itsm_sor_core.sql`（`itsm.integration_state`）
+- テーブル: `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.integration_state`）
 - 参照: `itsm.get_integration_state(realm_id, state_key)`
 
 ---
@@ -539,7 +539,7 @@ API サービスが DB 接続後に以下を `SET LOCAL` する前提:
 推奨パターン B（API サービス等、同一コネクションで複数 realm を扱う可能性がある場合）:
 
 - **必ずトランザクションごとに `SET LOCAL app.*`** を行う（または、単一 SQL 文の先頭で `set_config('app.*', ..., true)` を同一文内に含めて確実化する）。
-- このリポジトリでは、単一 SQL 文内で RLS コンテキスト（`app.*`）を **確実にセットする helper** として `itsm.set_rls_context(...)` を `apps/itsm_core/sql/itsm_sor_core.sql` に実装しています。
+- このリポジトリでは、単一 SQL 文内で RLS コンテキスト（`app.*`）を **確実にセットする helper** として `itsm.set_rls_context(...)` を `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` に実装しています。
   - 例: `WITH ctx AS (SELECT itsm.set_rls_context('<realm_key>', '<principal_id>', '[]'::jsonb, '[]'::jsonb, true)) SELECT ...;`
   - n8n の Postgres ノード（autocommit）の場合は `local=true`（statement/transaction ローカル）を推奨します。
   - 複数 statement を 1 クエリで投げる場合は、**各 statement** の先頭で `itsm.set_rls_context(...)` を呼んでください。

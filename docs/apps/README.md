@@ -204,16 +204,16 @@ aiops_agent_environment = {
 
 #### AIOps Agent
 
-- `apps/aiops_agent/scripts/deploy_workflows.sh` - n8n Public API でワークフロー/認証情報を同期する。
-- `apps/aiops_agent/scripts/import_aiops_approval_history_seed.sh` - 承認履歴のスキーマ/シードを DB に適用する。
-- `apps/aiops_agent/scripts/import_aiops_problem_management_seed.sh` - 問題管理のスキーマ/シードを DB に適用する。
-- `apps/aiops_agent/scripts/run_dq_llm_quality_report.sh` - DQ 指標を集計し品質レポートを出力する。
-- `apps/aiops_agent/scripts/run_iq_tests_aiops_agent.sh` - n8n/カタログ API の IQ テストを実行し結果を出力する。
+- `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh` - n8n Public API でワークフロー/認証情報を同期する。
+- `apps/aiops_agent/knowledge_store/scripts/import_aiops_approval_history_seed.sh` - 承認履歴のスキーマ/シードを DB に適用する。
+- `apps/aiops_agent/knowledge_store/scripts/import_aiops_problem_management_seed.sh` - 問題管理のスキーマ/シードを DB に適用する。
+- `apps/aiops_agent/orchestrator/scripts/run_dq_llm_quality_report.sh` - DQ 指標を集計し品質レポートを出力する。
+- `apps/aiops_agent/orchestrator/scripts/run_iq_tests_aiops_agent.sh` - n8n/カタログ API の IQ テストを実行し結果を出力する。
 
 #### ITSM Core（SoR）
 
 - `apps/itsm_core/scripts/deploy_workflows.sh` - ITSM Core 配下（SoR core + サブアプリ）のワークフロー群（バックフィル/検証等）を n8n に同期し、必要ならサブアプリ OQ（スモーク）を順次実行する（`WITH_TESTS=false` で無効化）。
-- `apps/itsm_core/scripts/run_oq.sh` - ITSM Core 配下の各サブアプリ OQ を順次実行してレポートする。
+- `apps/itsm_core/scripts/run_oqs.sh` - ITSM Core 配下の各サブアプリ OQ を順次実行してレポートする（互換: `apps/itsm_core/scripts/run_oq.sh`）。
 
 #### ITSM Core（サブアプリ）
 
@@ -235,4 +235,4 @@ aiops_agent_environment = {
 
 ## OQ（運用適格性確認）
 
-OQ（正常系/異常系/冪等性）と証跡保存は `apps/aiops_agent/docs/oq/oq.md` を参照してください。
+OQ（正常系/異常系/冪等性）と証跡保存は `apps/aiops_agent/orchestrator/docs/oq/oq.md` を参照してください。

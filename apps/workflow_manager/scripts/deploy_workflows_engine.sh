@@ -30,9 +30,9 @@ set -euo pipefail
 #   DB_HOST/DB_PORT/DB_NAME    : override Postgres connection details for credential injection
 #   DB_USER/DB_PASSWORD        : override Postgres credentials for credential injection
 #   DB_PASSWORD_COMMAND        : command to resolve password (defaults to terraform output rds_postgresql)
-#   N8N_PROMPT_DIR        : directory that stores prompt files (default: apps/aiops_agent/data/default/prompt)
+#   N8N_PROMPT_DIR        : directory that stores prompt files (default: apps/aiops_agent/orchestrator/data/default/prompt)
 #   N8N_PROMPT_LOCK       : "true" to keep existing prompt text when updating workflows (default: false)
-#   N8N_POLICY_DIR        : directory that stores policy files (default: apps/aiops_agent/data/default/policy)
+#   N8N_POLICY_DIR        : directory that stores policy files (default: apps/aiops_agent/orchestrator/data/default/policy)
 #   N8N_AGENT_REALMS      : comma/space-separated realm list (default: terraform output N8N_AGENT_REALMS)
 #   N8N_REALM_DATA_DIR_BASE : base dir for realm-specific prompt/policy overrides (default: apps/workflow_manager/data)
 #   N8N_REALM_OVERLAY_DIR_BASE : base dir for realm overlay overrides (data/workflows) (default: vendor/<name_prefix>/apps/workflow_manager/realms; fallback: apps/workflow_manager/realms)
@@ -200,10 +200,10 @@ if [[ -z "${WORKFLOW_DIR_AGENT:-}" ]]; then
   WORKFLOW_DIR_AGENT="${WORKFLOW_DIR_SERVICE_REQUEST}"
 fi
 if [[ -z "${N8N_PROMPT_DIR:-}" ]]; then
-  N8N_PROMPT_DIR="${REPO_ROOT}/apps/aiops_agent/data/default/prompt"
+  N8N_PROMPT_DIR="${REPO_ROOT}/apps/aiops_agent/orchestrator/data/default/prompt"
 fi
 if [[ -z "${N8N_POLICY_DIR:-}" ]]; then
-  N8N_POLICY_DIR="${REPO_ROOT}/apps/aiops_agent/data/default/policy"
+  N8N_POLICY_DIR="${REPO_ROOT}/apps/aiops_agent/orchestrator/data/default/policy"
 fi
 export WORKFLOW_DIR_AGENT N8N_PROMPT_DIR N8N_POLICY_DIR
 
@@ -408,9 +408,9 @@ WORKFLOW_DIR_AGENT="${WORKFLOW_DIR_AGENT:-${WORKFLOW_DIR}}"
 WORKFLOW_DIRS=()
 WORKFLOW_DIRS+=("${WORKFLOW_DIR_AGENT}")
 RESET_STATIC_DATA="${RESET_STATIC_DATA:-${N8N_RESET_STATIC_DATA:-false}}"
-PROMPT_DIR="${N8N_PROMPT_DIR:-apps/aiops_agent/data/default/prompt}"
+PROMPT_DIR="${N8N_PROMPT_DIR:-apps/aiops_agent/orchestrator/data/default/prompt}"
 PROMPT_LOCK="${N8N_PROMPT_LOCK:-false}"
-POLICY_DIR="${N8N_POLICY_DIR:-apps/aiops_agent/data/default/policy}"
+POLICY_DIR="${N8N_POLICY_DIR:-apps/aiops_agent/orchestrator/data/default/policy}"
 N8N_DB_CREDENTIAL_NAME="${N8N_DB_CREDENTIAL_NAME:-aiops-postgres}"
 N8N_DB_CREDENTIAL_ID="${N8N_DB_CREDENTIAL_ID:-}"
 N8N_AWS_CREDENTIAL_NAME="${N8N_AWS_CREDENTIAL_NAME:-aiops-aws}"
@@ -2071,7 +2071,7 @@ sync_workflows_for_realm() {
   elif [[ -n "${realm}" ]]; then
     REALM_DATA_DIR="${N8N_REALM_DATA_DIR_BASE}/${realm}"
     if [[ ! -d "${REALM_DATA_DIR}" ]]; then
-      local fallback_realm_data_dir="${REPO_ROOT}/apps/aiops_agent/data/${realm}"
+      local fallback_realm_data_dir="${REPO_ROOT}/apps/aiops_agent/orchestrator/data/${realm}"
       if [[ -d "${fallback_realm_data_dir}" ]]; then
         REALM_DATA_DIR="${fallback_realm_data_dir}"
       else

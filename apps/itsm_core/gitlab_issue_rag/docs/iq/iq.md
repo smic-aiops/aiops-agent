@@ -9,7 +9,7 @@
 - ワークフロー:
   - `apps/itsm_core/gitlab_issue_rag/workflows/gitlab_issue_rag_sync.json`
   - `apps/itsm_core/gitlab_issue_rag/workflows/gitlab_issue_rag_test.json`
-- DB 初期化: `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql`
+- DB 初期化: `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql`
 - 同期スクリプト: `apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh`
 - OQ: `apps/itsm_core/gitlab_issue_rag/docs/oq/oq.md`
 - CS: `apps/itsm_core/gitlab_issue_rag/docs/cs/ai_behavior_spec.md`
@@ -24,7 +24,7 @@
 
 | ID | 目的 | 実施 | 期待結果 |
 | --- | --- | --- | --- |
-| IQ-GIR-DB-001 | DB 初期化（初回のみ） | 目視/SQL | `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql` が適用済みである |
+| IQ-GIR-DB-001 | DB 初期化（初回のみ） | 目視/SQL | `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql` が適用済みである |
 | IQ-GIR-DEP-001 | 同期の dry-run | コマンド | `DRY_RUN=true` で差分が表示され、エラーがない |
 | IQ-GIR-DEP-002 | ワークフロー同期（upsert） | コマンド | 同期が成功し、n8n 上に反映される |
 | IQ-GIR-WH-001 | pgvector 健全性（テスト Webhook） | HTTP | `POST /webhook/gitlab/issue/rag/test` が応答し、`pgvector=true` が確認できる |
@@ -33,7 +33,7 @@
 
 ### 1. DB 初期化（初回のみ）
 
-`apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql` を適用します（接続情報は環境に依存）。
+`apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql` を適用します（接続情報は環境に依存）。
 
 ### 2. 同期（差分確認）
 

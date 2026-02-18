@@ -26,6 +26,8 @@
 - 非対象: 外部サービス（GitLab/Sulu 等）自体の製品バリデーション、ネットワーク/認証基盤（Terraform/IaC 側）全般
 - バリデーション成果物（最小）:
   - 本 README
+  - 要求（サブアプリ別）: `apps/workflow_manager/*/docs/app_requirements.md`
+  - DQ/IQ/OQ/PQ（サブアプリ別）: `apps/workflow_manager/*/docs/{dq,iq,oq,pq}/`
   - OQ 文書:
     - Workflow Catalog: `apps/workflow_manager/workflow_catalog/docs/oq/oq.md`（整備: `scripts/generate_oq_md.sh`）
     - Service Request: `apps/workflow_manager/service_request/docs/oq/oq.md`（整備: `scripts/generate_oq_md.sh`）
@@ -106,6 +108,17 @@ flowchart LR
 - `apps/workflow_manager/data/`: 補助データ・テスト結果など
 - `vendor/<name_prefix>/apps/workflow_manager/realms/<realm_key>/data/`: （任意）realm 固有の data 差分（既存の置き場と併用可）
 - `apps/workflow_manager/docs/oq/`: OQ（overview）
+
+### サブアプリ一覧（正）
+各サブアプリは原則として以下を保持する（統一インタフェース）:
+- 要求: `apps/workflow_manager/<sub_app>/docs/app_requirements.md`
+- デプロイ: `apps/workflow_manager/<sub_app>/scripts/deploy_workflows.sh`
+- OQ: `apps/workflow_manager/<sub_app>/scripts/run_oq.sh`
+
+| sub_app | 役割（概要） | 要求 | デプロイ | OQ |
+|---|---|---|---|---|
+| `workflow_catalog` | ワークフローカタログ API（list/get）の提供 | `apps/workflow_manager/workflow_catalog/docs/app_requirements.md` | `apps/workflow_manager/workflow_catalog/scripts/deploy_workflows.sh` | `apps/workflow_manager/workflow_catalog/scripts/run_oq.sh` |
+| `service_request` | サービス制御（例: Sulu）・サービスカタログ同期などの運用ワークフロー提供 | `apps/workflow_manager/service_request/docs/app_requirements.md` | `apps/workflow_manager/service_request/scripts/deploy_workflows.sh` | `apps/workflow_manager/service_request/scripts/run_oq.sh` |
 
 補足:
 - Zulip↔GitLab Issue 同期は `apps/itsm_core/zulip_gitlab_issue_sync/` に分離。

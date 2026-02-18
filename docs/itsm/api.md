@@ -4,7 +4,7 @@
 
 現時点の実装（MVP）は主に以下で提供されています：
 
-- SoR の DDL/運用: `apps/itsm_core/sql/` / `apps/itsm_core/sor_ops/scripts/`
+- SoR の DDL/運用: `apps/itsm_core/sor_ops/sql/` / `apps/itsm_core/sor_ops/scripts/`
 - 外部連携の入口（暫定）: n8n Webhook / Public API（ワークフロー同期）
   - SoR core workflows: `apps/itsm_core/sor_webhooks/workflows/`
   - sub-app workflows: `apps/itsm_core/<app>/workflows/`

@@ -76,28 +76,29 @@ flowchart LR
 
 ### サブアプリ一覧（正）
 各サブアプリは原則として以下を保持する（統一インタフェース）:
+- 要求: `apps/itsm_core/<sub_app>/docs/app_requirements.md`
 - 中心プロンプト: `apps/itsm_core/<sub_app>/data/default/prompt/system.md`
 - デプロイ: `apps/itsm_core/<sub_app>/scripts/deploy_workflows.sh`
 - OQ: `apps/itsm_core/<sub_app>/scripts/run_oq.sh`
 
-| sub_app | 種別 | 役割（概要） | デプロイ | OQ |
-|---|---|---|---|---|
-| `sor_ops` | hybrid | SoR 運用（DDL/RLS/保持/匿名化/監査アンカー等）+ 定期ジョブ（保持/PII redaction） | `apps/itsm_core/sor_ops/scripts/deploy_workflows.sh` | `apps/itsm_core/sor_ops/scripts/run_oq.sh` |
-| `sor_webhooks` | n8n | SoR コア Webhook（スモークテスト/互換 Webhook 等） | `apps/itsm_core/sor_webhooks/scripts/deploy_workflows.sh` | `apps/itsm_core/sor_webhooks/scripts/run_oq.sh` |
-| `gitlab_backfill_to_sor` | n8n | GitLab 過去データ（Issue/決定）→ SoR | `apps/itsm_core/gitlab_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh` |
-| `zulip_backfill_to_sor` | hybrid | Zulip 過去メッセージ（決定）→ SoR（状態保持・定期バックフィル） | `apps/itsm_core/zulip_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_backfill_to_sor/scripts/run_oq.sh` |
-| `aiops_approval_history_backfill_to_sor` | hybrid | legacy `aiops_approval_history` → SoR（状態保持・定期バックフィル） | `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/run_oq.sh` |
-| `cloudwatch_event_notify` | n8n | CloudWatch/SNS 等の通知を整形し Zulip/GitLab/Grafana へ連携 | `apps/itsm_core/cloudwatch_event_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/cloudwatch_event_notify/scripts/run_oq.sh` |
-| `gitlab_issue_metrics_sync` | n8n | GitLab issue メトリクス集計（S3 出力） | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/run_oq.sh` |
-| `gitlab_issue_rag` | n8n | GitLab issue/notes → pgvector（RAG 用） | `apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_rag/scripts/run_oq.sh` |
-| `cir_usecase_list` | n8n | CIR（一般管理/継続的改善）で `状態/Approved` の Issue を一覧し、ユースケース（`UC-*`）を抽出して返す | `apps/itsm_core/cir_usecase_list/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_usecase_list/scripts/run_oq.sh` |
-| `cir_auto_label` | n8n | CIR テンプレ起票時に `ITSM/継続的改善` / `状態/New` を自動付与（Issue Hook） | `apps/itsm_core/cir_auto_label/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_auto_label/scripts/run_oq.sh` |
-| `cir_status_notify` | n8n | CIR Issue の `状態/Approved` / `状態/Closed` ラベル付与を検知し、起票者へ Zulip DM を送信（SoR による冪等） | `apps/itsm_core/cir_status_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_status_notify/scripts/run_oq.sh` |
-| `cir_issue_close` | n8n | system.md 実行完了後に CIR Issue を `状態/Closed` + close し、結果サマリ note を追記（重複抑止） | `apps/itsm_core/cir_issue_close/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_issue_close/scripts/run_oq.sh` |
-| `gitlab_mention_notify` | n8n | GitLab mention を Zulip へ通知 | `apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_mention_notify/scripts/run_oq.sh` |
-| `gitlab_push_notify` | n8n | GitLab push を Zulip へ通知 | `apps/itsm_core/gitlab_push_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_push_notify/scripts/run_oq.sh` |
-| `zulip_gitlab_issue_sync` | n8n | Zulip ↔ GitLab Issue 同期 | `apps/itsm_core/zulip_gitlab_issue_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_gitlab_issue_sync/scripts/run_oq.sh` |
-| `zulip_stream_sync` | n8n | Zulip stream の作成/アーカイブ同期 | `apps/itsm_core/zulip_stream_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_stream_sync/scripts/run_oq.sh` |
+| sub_app | 種別 | 役割（概要） | 要求 | デプロイ | OQ |
+|---|---|---|---|---|---|
+| `sor_ops` | hybrid | SoR 運用（DDL/RLS/保持/匿名化/監査アンカー等）+ 定期ジョブ（保持/PII redaction） | `apps/itsm_core/sor_ops/docs/app_requirements.md` | `apps/itsm_core/sor_ops/scripts/deploy_workflows.sh` | `apps/itsm_core/sor_ops/scripts/run_oq.sh` |
+| `sor_webhooks` | n8n | SoR コア Webhook（スモークテスト/互換 Webhook 等） | `apps/itsm_core/sor_webhooks/docs/app_requirements.md` | `apps/itsm_core/sor_webhooks/scripts/deploy_workflows.sh` | `apps/itsm_core/sor_webhooks/scripts/run_oq.sh` |
+| `gitlab_backfill_to_sor` | n8n | GitLab 過去データ（Issue/決定）→ SoR | `apps/itsm_core/gitlab_backfill_to_sor/docs/app_requirements.md` | `apps/itsm_core/gitlab_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh` |
+| `zulip_backfill_to_sor` | hybrid | Zulip 過去メッセージ（決定）→ SoR（状態保持・定期バックフィル） | `apps/itsm_core/zulip_backfill_to_sor/docs/app_requirements.md` | `apps/itsm_core/zulip_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_backfill_to_sor/scripts/run_oq.sh` |
+| `aiops_approval_history_backfill_to_sor` | hybrid | legacy `aiops_approval_history` → SoR（状態保持・定期バックフィル） | `apps/itsm_core/aiops_approval_history_backfill_to_sor/docs/app_requirements.md` | `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/run_oq.sh` |
+| `cloudwatch_event_notify` | n8n | CloudWatch/SNS 等の通知を整形し Zulip/GitLab/Grafana へ連携 | `apps/itsm_core/cloudwatch_event_notify/docs/app_requirements.md` | `apps/itsm_core/cloudwatch_event_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/cloudwatch_event_notify/scripts/run_oq.sh` |
+| `gitlab_issue_metrics_sync` | n8n | GitLab issue メトリクス集計（S3 出力） | `apps/itsm_core/gitlab_issue_metrics_sync/docs/app_requirements.md` | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/run_oq.sh` |
+| `gitlab_issue_rag` | n8n | GitLab issue/notes → pgvector（RAG 用） | `apps/itsm_core/gitlab_issue_rag/docs/app_requirements.md` | `apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_rag/scripts/run_oq.sh` |
+| `cir_usecase_list` | n8n | CIR（一般管理/継続的改善）で `状態/Approved` の Issue を一覧し、ユースケース（`UC-*`）を抽出して返す | `apps/itsm_core/cir_usecase_list/docs/app_requirements.md` | `apps/itsm_core/cir_usecase_list/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_usecase_list/scripts/run_oq.sh` |
+| `cir_auto_label` | n8n | CIR テンプレ起票時に `ITSM/継続的改善` / `状態/New` を自動付与（Issue Hook） | `apps/itsm_core/cir_auto_label/docs/app_requirements.md` | `apps/itsm_core/cir_auto_label/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_auto_label/scripts/run_oq.sh` |
+| `cir_status_notify` | n8n | CIR Issue の `状態/Approved` / `状態/Closed` ラベル付与を検知し、起票者へ Zulip DM を送信（SoR による冪等） | `apps/itsm_core/cir_status_notify/docs/app_requirements.md` | `apps/itsm_core/cir_status_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_status_notify/scripts/run_oq.sh` |
+| `cir_issue_close` | n8n | system.md 実行完了後に CIR Issue を `状態/Closed` + close し、結果サマリ note を追記（重複抑止） | `apps/itsm_core/cir_issue_close/docs/app_requirements.md` | `apps/itsm_core/cir_issue_close/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_issue_close/scripts/run_oq.sh` |
+| `gitlab_mention_notify` | n8n | GitLab mention を Zulip へ通知 | `apps/itsm_core/gitlab_mention_notify/docs/app_requirements.md` | `apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_mention_notify/scripts/run_oq.sh` |
+| `gitlab_push_notify` | n8n | GitLab push を Zulip へ通知 | `apps/itsm_core/gitlab_push_notify/docs/app_requirements.md` | `apps/itsm_core/gitlab_push_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_push_notify/scripts/run_oq.sh` |
+| `zulip_gitlab_issue_sync` | n8n | Zulip ↔ GitLab Issue 同期 | `apps/itsm_core/zulip_gitlab_issue_sync/docs/app_requirements.md` | `apps/itsm_core/zulip_gitlab_issue_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_gitlab_issue_sync/scripts/run_oq.sh` |
+| `zulip_stream_sync` | n8n | Zulip stream の作成/アーカイブ同期 | `apps/itsm_core/zulip_stream_sync/docs/app_requirements.md` | `apps/itsm_core/zulip_stream_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_stream_sync/scripts/run_oq.sh` |
 
 注: Cron の既定スケジュールは各サブアプリの `workflows/*.json` と `README.md` を正とする（必要なら n8n UI で調整する）。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`。
 

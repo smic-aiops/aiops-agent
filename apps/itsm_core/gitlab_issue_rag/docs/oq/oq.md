@@ -43,7 +43,7 @@ flowchart LR
 - n8n に次のワークフローが同期済みであること
   - `apps/itsm_core/gitlab_issue_rag/workflows/gitlab_issue_rag_sync.json`
   - `apps/itsm_core/gitlab_issue_rag/workflows/gitlab_issue_rag_test.json`
-- `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql` が適用済みであること
+- `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql` が適用済みであること
 - 環境変数（`apps/itsm_core/gitlab_issue_rag/README.md` 記載）が設定済みであること
 
 ## OQ ケース（接続パターン別）
@@ -144,11 +144,11 @@ flowchart LR
   - Code node: `Embed Chunks`
   - Code node: `Build Upsert Items`
   - Postgres node: `Upsert Issue Chunks`
-- SQL: `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql`
+- SQL: `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql`
 
 #### 前提（最低限）
 
-- Postgres（pgvector）に `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql` が適用済み
+- Postgres（pgvector）に `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql` が適用済み
 - n8n の Postgres 資格情報 `RDS Postgres` が疎通できる
 - embedding を有効化する場合
   - `N8N_EMBEDDING_API_KEY`（または `OPENAI_API_KEY`）

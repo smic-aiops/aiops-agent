@@ -11,11 +11,11 @@
   - Code node: `Embed Chunks`
   - Code node: `Build Upsert Items`
   - Postgres node: `Upsert Issue Chunks`
-- SQL: `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql`
+- SQL: `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql`
 
 ## 前提（最低限）
 
-- Postgres（pgvector）に `apps/itsm_core/gitlab_issue_rag/sql/gitlab_issue_rag.sql` が適用済み
+- Postgres（pgvector）に `apps/itsm_core/gitlab_issue_rag/schema/gitlab_issue_rag.sql` が適用済み
 - n8n の Postgres 資格情報 `RDS Postgres` が疎通できる
 - embedding を有効化する場合
   - `N8N_EMBEDDING_API_KEY`（または `OPENAI_API_KEY`）
@@ -40,4 +40,3 @@
 - DB クエリ例:
   - `SELECT document_id, chunk_index, source_url, source_updated_at, embedding IS NOT NULL AS has_embedding FROM itsm_gitlab_issue_documents ORDER BY updated_at DESC LIMIT 10;`
 - n8n 実行ログ（Upsert Issue Chunks の成功）
-
