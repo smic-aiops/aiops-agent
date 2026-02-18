@@ -16,7 +16,7 @@
 - IQ/oq/PQ: `apps/aiops_agent/orchestrator/docs/iq/iq.md` / `apps/aiops_agent/orchestrator/docs/oq/oq.md` / `apps/aiops_agent/orchestrator/docs/pq/pq.md`
 - プロンプト/ポリシー: `apps/aiops_agent/orchestrator/data/default/prompt/`, `apps/aiops_agent/orchestrator/data/default/policy/`（レルム別上書き: `apps/aiops_agent/orchestrator/data/<realm>/{prompt,policy}/`）
 - 参照ワークフロー: `apps/aiops_agent/*/workflows/`
-- ContextStore: `apps/aiops_agent/knowledge_store/schema/aiops_context_store.sql`
+- ContextStore: `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql`
 - プロンプト注入の正: `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh` の `prompt_map`
 
 ## 入口条件（Entry）

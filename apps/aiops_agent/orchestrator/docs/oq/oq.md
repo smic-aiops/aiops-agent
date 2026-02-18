@@ -63,7 +63,7 @@ python3 apps/aiops_agent/adapter/scripts/send_stub_event.py --base-url "<adapter
 - `apps/aiops_agent/execution_engine/workflows/aiops_job_engine_queue.json`（`jobs/enqueue` と Queue/Worker。参照実装は **stub 実行**）
   - `apps/aiops_agent/adapter/workflows/aiops_adapter_callback.json`（callback 受信〜結果通知）
   - `apps/aiops_agent/orchestrator/workflows/aiops_oq_runner.json`（OQ 実行）
-- ContextStore スキーマが適用済みであること（`apps/aiops_agent/knowledge_store/schema/aiops_context_store.sql`）
+- ContextStore スキーマが適用済みであること（`apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql`）
 - ワークフローが利用する Postgres Credential が、上記 DB を指していること
 
 ## 実行（推奨）
@@ -632,7 +632,7 @@ LIMIT 20;
 #### 前提
 - `apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json` で該当ソースの Webhook（`/ingest/<source>`）が有効
 - `apps/aiops_agent/orchestrator/workflows/aiops_orchestrator.json` および `apps/aiops_agent/execution_engine/workflows/aiops_job_engine_queue.json` がインポート・有効
-- Postgres に `apps/aiops_agent/knowledge_store/schema/aiops_context_store.sql` で定義されたテーブルが用意されている
+- Postgres に `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql` で定義されたテーブルが用意されている
 - チャット送信で使う署名/トークン（Slack signing secret や Zulip outgoing token など）が `N8N_*` 環境変数または送信パラメータで設定済み
 - `apps/aiops_agent/adapter/scripts/send_stub_event.py` を使う環境が整っている（ローカル又は `aiops-oq-runner` でスタブ送信）
 

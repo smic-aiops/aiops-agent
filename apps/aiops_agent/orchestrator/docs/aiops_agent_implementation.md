@@ -13,7 +13,7 @@ apps 配下アプリの README は、CSV/CSA の最小ドキュメントセッ�
 エスカレーション表のソース・オブ・トゥルースは **GitLab のサービス管理プロジェクト内 MD** とし、n8n では **static data にキャッシュ**して参照します。
 
 - テンプレート: `apps/aiops_agent/orchestrator/docs/templates/escalation_matrix.md`
-- 参照実装のスキーマ（互換/開発用）: `apps/aiops_agent/knowledge_store/schema/aiops_context_store.sql`
+- 参照実装のスキーマ（互換/開発用）: `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql`
 
 **注意点**
 
@@ -22,7 +22,7 @@ apps 配下アプリの README は、CSV/CSA の最小ドキュメントセッ�
 
 **互換運用**
 
-- 既存の DB 参照を使う場合は `apps/aiops_agent/knowledge_store/schema/aiops_context_store.sql` を適用する。
+- 既存の DB 参照を使う場合は `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql` を適用する。
 
 ## 2. 問題管理DB（ITSM / Postgres）
 
@@ -30,8 +30,8 @@ apps 配下アプリの README は、CSV/CSA の最小ドキュメントセッ�
 
 **参照実装（Postgres）**
 
-- `apps/aiops_agent/knowledge_store/schema/aiops_problem_management.sql`
-- サンプルデータ: `apps/aiops_agent/knowledge_store/schema/aiops_problem_management_seed.sql`
+- `apps/aiops_agent/knowledge_store/sql/aiops_problem_management.sql`
+- サンプルデータ: `apps/aiops_agent/knowledge_store/sql/aiops_problem_management_seed.sql`
 - 取り込み例: `bash apps/aiops_agent/knowledge_store/scripts/import_aiops_problem_management_seed.sh`
 - 主要テーブル:
   - `itsm_problem`: Problem レコード（状態、優先度、根本原因、影響サービス/CI など）
@@ -145,7 +145,7 @@ WHERE ke.known_error_id = ANY($1);
 
 ## 4. 参照実装（このリポジトリ）
 
-- DB スキーマ: `apps/aiops_agent/knowledge_store/schema/aiops_context_store.sql`
+- DB スキーマ: `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql`
   - n8n workflow:
     - `apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json`（受信〜正規化〜Preview、Zulip の承認/評価もここに集約。短文時の topic context は Zulip API から取得し、**HTML を除去したテキスト**として `normalized_event.zulip_topic_context.messages` に保存。LLM 入力は **現在の発言を先頭**に保ったまま、過去発言を末尾へ補助的に付与する）
     - `apps/aiops_agent/adapter/workflows/aiops_adapter_callback.json`（ジョブ完了 callback〜返信）
@@ -229,7 +229,7 @@ n8n の Chat ノード（OpenAI 互換）は **アダプター/オーケスト�
   - `prompt_hash`: `prompt_text` のハッシュ（SHA-256/MD5 いずれか）
   - `policy_version`: LLM に渡した `policy_context.version` を記録し、「どの意思決定ポリシーがそのプロンプトに影響したか」を追跡する。
 - 戻し方: n8n の Code ノードで参照する `prompt_key`/`prompt_version` を既存履歴に合わせるか、該当 `prompt_text` を再反映する。
-- スキーマ定義: `apps/aiops_agent/knowledge_store/schema/aiops_context_store.sql` に `aiops_prompt_history` を含める。
+- スキーマ定義: `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql` に `aiops_prompt_history` を含める。
 - プロンプトファイル: `apps/aiops_agent/orchestrator/data/default/prompt/` に用途別のプロンプトを配置し、`apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh` 実行時に Chat ノードへ差し込む（レルム別上書きは `apps/aiops_agent/orchestrator/data/<realm>/prompt/`）。
   - 例: `apps/aiops_agent/orchestrator/data/default/prompt/aiops_chat_core_ja.txt`、`apps/aiops_agent/orchestrator/data/default/prompt/jobs_preview_ja.txt`、`apps/aiops_agent/orchestrator/data/default/prompt/job_result_reply_ja.txt`
 - 反映制御: `N8N_PROMPT_LOCK=true` を指定すると、既存ワークフローのプロンプトを保持したままノード更新のみを行う。

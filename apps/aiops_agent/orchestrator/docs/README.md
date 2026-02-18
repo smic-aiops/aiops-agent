@@ -37,5 +37,5 @@ flowchart LR
 - ルール/語彙/閾値/テンプレート: `apps/aiops_agent/orchestrator/data/default/policy/*.json`
 - プロンプト本文: `apps/aiops_agent/orchestrator/data/default/prompt/*.txt`
   - レルム別上書き（任意）: `apps/aiops_agent/orchestrator/data/<realm>/{policy,prompt}/*`
-- 事実データ/Seed/スキーマ: `apps/aiops_agent/orchestrator/data/*`, `apps/aiops_agent/knowledge_store/schema/*`
+- 事実データ/Seed/スキーマ: `apps/aiops_agent/orchestrator/data/*`, `apps/aiops_agent/knowledge_store/sql/*`
 - プロンプト注入の正: `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh` の `prompt_map`（`prompt_key` と prompt ファイル名は一致しない場合があります）

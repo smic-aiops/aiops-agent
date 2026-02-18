@@ -800,8 +800,8 @@ Zulip の Outgoing Webhook（bot_type=3）は、受信側が Webhook の **HTTP 
 n8n のフローから Zulip へ通知を送る場合は、Bot を作成して API キーを n8n の Credential に登録しておきます。
 
 1. Zulip 管理者の API キーが `terraform.itsm.tfvars`/SSM に入っていることを確認する（未設定なら `bash scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh` で DB から拾い、`zulip_admin_api_key` を更新）。
-2. `bash apps/aiops_agent/adapter/scripts/refresh_zulip_mess_bot.sh` を実行して送信専用 Bot を作成/取得し、`terraform.itsm.tfvars` の Bot 設定（トークン等）を更新する。既定では `VERIFY_AFTER=true` のため、更新後に `apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh --execute` による Bot 登録検証も自動で実行される（スキップしたい場合は `VERIFY_AFTER=false`）。
-   - 送信専用 Bot（mess）の既定 `ZULIP_BOT_SHORT_NAME`: `aiops-agent-mess-{realm}`（注: 現行実装では `{realm}` は置換せずそのまま short_name として扱う）
+2. `bash scripts/itsm/n8n/refresh_zulip_mess_bot.sh` を実行して送信専用 Bot を作成/取得し、`terraform.itsm.tfvars` の Bot 設定（トークン等）を更新する。既定では `VERIFY_AFTER=true` のため、更新後に `apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh --execute` による Bot 登録検証も自動で実行される（スキップしたい場合は `VERIFY_AFTER=false`）。
+   - 送信専用 Bot（mess）の既定 `ZULIP_BOT_SHORT_NAME`: `aiops-agent-mess-{realm}`（`{realm}` は置換される）
 3. 本リポジトリの AIOps ワークフローは、n8n の環境変数（SSM 注入）から **レルム単位の値**を参照して `Authorization: Basic ...` を組み立てるため、通常は n8n の `Zulip API` Credential を作成する必要はありません。
    - `terraform apply` により、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` から **レルム別 SSM パラメータ**が書き込まれ、n8n に `N8N_ZULIP_BOT_TOKEN` / `N8N_ZULIP_BOT_EMAIL` / `N8N_ZULIP_API_BASE_URL` がレルム単位で注入されます。
    - 参照用の SSM パラメータ名は `terraform output` の `aiops_zulip_*_param_by_realm` で確認できます。
@@ -832,7 +832,7 @@ JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ
 
 #### ボットタイプ（運用の呼び分け）
 
-- `mess`: 送信用 Bot（n8n -> Zulip 通知など）をレルムごとに作成/取得し、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` を更新。`apps/aiops_agent/adapter/scripts/refresh_zulip_mess_bot.sh`
+- `mess`: 送信用 Bot（n8n -> Zulip 通知など）をレルムごとに作成/取得し、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` を更新。`scripts/itsm/n8n/refresh_zulip_mess_bot.sh`
 - `outgoing`: Outgoing Webhook bot（bot_type=3）の作成/更新＋`terraform.itsm.tfvars` の `zulip_outgoing_tokens_yaml`/`zulip_outgoing_bot_emails_yaml` を更新。`scripts/itsm/n8n/refresh_zulip_bot.sh`
 - `verify`: Bot 登録の検証。`apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh`
 

@@ -10,8 +10,8 @@ Usage:
   apps/aiops_agent/knowledge_store/scripts/import_aiops_approval_history_seed.sh [options]
 
 Options:
-  --schema PATH           Schema SQL to apply (default: apps/aiops_agent/knowledge_store/schema/aiops_approval_history.sql)
-  --seed PATH             Seed SQL to apply (default: apps/aiops_agent/knowledge_store/schema/aiops_approval_history_seed.sql)
+  --schema PATH           Schema SQL to apply (default: apps/aiops_agent/knowledge_store/sql/aiops_approval_history.sql)
+  --seed PATH             Seed SQL to apply (default: apps/aiops_agent/knowledge_store/sql/aiops_approval_history_seed.sql)
   --schema-only           Apply schema only
   --seed-only             Apply seed only
   --ecs-exec              Run psql via ECS Exec (useful when RDS is private)
@@ -58,8 +58,8 @@ require_cmd() {
   fi
 }
 
-SCHEMA_FILE="${SCHEMA_FILE:-apps/aiops_agent/knowledge_store/schema/aiops_approval_history.sql}"
-SEED_FILE="${SEED_FILE:-apps/aiops_agent/knowledge_store/schema/aiops_approval_history_seed.sql}"
+SCHEMA_FILE="${SCHEMA_FILE:-apps/aiops_agent/knowledge_store/sql/aiops_approval_history.sql}"
+SEED_FILE="${SEED_FILE:-apps/aiops_agent/knowledge_store/sql/aiops_approval_history_seed.sql}"
 APPLY_SCHEMA="true"
 APPLY_SEED="true"
 ECS_EXEC="${ECS_EXEC:-true}"

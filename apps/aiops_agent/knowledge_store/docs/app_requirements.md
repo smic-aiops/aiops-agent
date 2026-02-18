@@ -1,6 +1,6 @@
 # AIOps Knowledge Store 要求（Requirements）
 
-本書は `apps/aiops_agent/knowledge_store/` の要求（What/Why）を定義します。詳細な利用方法・手順・実装は `apps/aiops_agent/README.md`、SQL（`apps/aiops_agent/knowledge_store/schema/`）、ワークフロー（`apps/aiops_agent/knowledge_store/workflows/`）、運用スクリプト（`apps/aiops_agent/knowledge_store/scripts/`）を正とします。
+本書は `apps/aiops_agent/knowledge_store/` の要求（What/Why）を定義します。詳細な利用方法・手順・実装は `apps/aiops_agent/README.md`、SQL（`apps/aiops_agent/knowledge_store/sql/`）、ワークフロー（`apps/aiops_agent/knowledge_store/workflows/`）、運用スクリプト（`apps/aiops_agent/knowledge_store/scripts/`）を正とします。
 
 ## 1. 対象
 

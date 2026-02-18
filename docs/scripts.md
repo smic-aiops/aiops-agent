@@ -112,7 +112,7 @@
 - `scripts/itsm/zulip/generate_realm_creation_link_for_zulip.sh` - Zulip 組織作成用リンクを生成
 - `scripts/itsm/zulip/delete_aiops_users.sh` - レルム横断で aiops-* ユーザーを削除（`--dry-run` 対応）
 - `scripts/itsm/zulip/ensure_zulip_streams.sh` - Zulip のストリームを作成/更新（初期セットアップ用）
-- `apps/aiops_agent/adapter/scripts/refresh_zulip_mess_bot.sh` - Zulip 送信用 Bot（mess）を作成し、トークン等を更新（実行後に検証も実施）
+- `scripts/itsm/n8n/refresh_zulip_mess_bot.sh` - Zulip 送信用 Bot（mess）を作成し、トークン等を更新（実行後に検証も実施）
 - `scripts/itsm/n8n/refresh_zulip_bot.sh` - Zulip Outgoing Webhook bot（bot_type=3）を作成/更新し、`terraform.itsm.tfvars` のトークンを更新
   - 注（2026-02-03）: Terraform output の旧名 `AIOPS_ZULIP_*` は削除しました。`N8N_ZULIP_*` を使用してください。
 - `apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh` - レルムごとの Zulip API で Bot 登録を検証
@@ -424,7 +424,7 @@
 - `n8n_encryption_key`: `bash scripts/itsm/n8n/restore_n8n_encryption_key_tfvars.sh`
 - `zulip_admin_api_key`: `bash scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh`
 - `zulip_admin_api_keys_yaml`: `bash scripts/itsm/zulip/refresh_zulip_admin_api_keys.sh`
-- `zulip_mess_bot_tokens_yaml` / `zulip_mess_bot_emails_yaml` / `zulip_api_mess_base_urls_yaml`: `bash apps/aiops_agent/adapter/scripts/refresh_zulip_mess_bot.sh`
+- `zulip_mess_bot_tokens_yaml` / `zulip_mess_bot_emails_yaml` / `zulip_api_mess_base_urls_yaml`: `bash scripts/itsm/n8n/refresh_zulip_mess_bot.sh`
 - `zulip_outgoing_tokens_yaml` / `zulip_outgoing_bot_emails_yaml`: `bash scripts/itsm/n8n/refresh_zulip_bot.sh`
 - `gitlab_admin_token`: `bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
 - `gitlab_realm_admin_tokens_yaml`: `bash scripts/itsm/gitlab/refresh_realm_group_tokens_with_bot_cleanup.sh`（変数名は `GITLAB_REALM_TOKENS_VAR_NAME` で変更可。既定では旧トークン削除時に group bot を `delete` するため、自己管理 GitLab の管理者権限が必要）

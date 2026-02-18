@@ -402,7 +402,7 @@ Unified Decision（論理）は `tool_calls` に「次に取るべきアクシ�
 * 各 LLM 呼び出しは既存の `prompt_version` に加えて、`policy_version` も明示的に定義した上で `aiops_prompt_history`/監査ログへ収集することで、ポリシー文書のバージョン更新時にも参照可能な状態を維持します。`prompt_hash` はあくまで文面の整合性で、ポリシーの意図は `policy_version` で把握します。
 * 正規化イベント（`NormalizedEvent`）は `schema_version`/`metadata.schema_version` を持ち、スキーマの構造やキー名称が変更された場合には文字列を更新します。既存の `NormalizedEvent` に対しては `metadata.schema_version` を見て分岐し、変換が不要な場合は旧仕様のまま読み出しつつ、必要に応じてマイグレーションバッチでフィールドを付与する設計とします。
 * 互換性ポリシー: 重大な意味変更（語彙追加・必須項目追加・応答構造変更）の際はバージョンをインクリメントし、旧バージョンのレコードを読めるデコード経路（`schema_version`/`policy_context.version` に基づく判定）とフォールバックロジック（例: `policy_context.defaults` へ戻す）を維持します。新バージョンの導入前にテスト環境でプロンプト履歴・コンテキスト・監査ログを再生し、`schema_version` の切り替えが現場で安全に行えることを確認してください。
-* マイグレーション方針: バージョン切り替えリリースでは `apps/aiops_agent/knowledge_store/schema/aiops_context_store.sql` にあるスキーマ定義や、必要な ETL/バッチを手順化して `NormalizedEvent`/`policy_context` の既存レコードに `metadata.schema_version`/`policy_context.version` を追加・更新します。`aiops_prompt_history` も `policy_version` を更新する対象に含め、リリースノートには旧バージョンからの移行手順とリスクを記載し、ロールアウト中は `schema_version` によるログ出力/アラートを監視します。
+* マイグレーション方針: バージョン切り替えリリースでは `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql` にあるスキーマ定義や、必要な ETL/バッチを手順化して `NormalizedEvent`/`policy_context` の既存レコードに `metadata.schema_version`/`policy_context.version` を追加・更新します。`aiops_prompt_history` も `policy_version` を更新する対象に含め、リリースノートには旧バージョンからの移行手順とリスクを記載し、ロールアウト中は `schema_version` によるログ出力/アラートを監視します。
 
 #### 2.12.2 正規化イベント（NormalizedEvent）
 
@@ -479,7 +479,7 @@ Unified Decision（論理）は `tool_calls` に「次に取るべきアクシ�
 
 **参照実装（Postgres）**
 
-参照実装のスキーマは `apps/aiops_agent/knowledge_store/schema/aiops_context_store.sql` を正とし、n8n が利用する Postgres インスタンスに `aiops_*` テーブルとして同居させます。次のテーブルを利用します。
+参照実装のスキーマは `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql` を正とし、n8n が利用する Postgres インスタンスに `aiops_*` テーブルとして同居させます。次のテーブルを利用します。
 
 * `aiops_dedupe`：`dedupe_key` → `context_id` の対応（重複排除）
 * `aiops_context`：`context_id` を中心に `reply_target`/`actor`/`normalized_event` を保持（`status`/`closed_at` を持てるようにする）
