@@ -95,6 +95,7 @@
 - `scripts/itsm/gitlab/pull_gitlab_runner_image.sh` - GitLab Runner の upstream イメージを pull し `./images/` へ tar としてキャッシュ（CIで必要な `apk` パッケージ候補も表示）
 - `scripts/itsm/gitlab/build_and_push_gitlab_runner.sh` - GitLab Runner イメージを ECR に push（`./docker/gitlab-runner` が存在する場合はカスタム Runner をビルドして CI ツールを焼き込む）
   - `GITLAB_RUNNER_CI_APK_PACKAGES` で焼き込む `apk add` を上書き可能（例: `bash curl jq yq ripgrep`）
+- `scripts/itsm/gitlab/ensure_gitlab_runner.sh` - GitLab Runner を GitLab API で作成/更新し、Runner token を SSM へ保存（tags/run_untagged/locked も設定）
 - `scripts/itsm/gitlab/refresh_realm_group_tokens_with_bot_cleanup.sh` - レルム単位のグループトークンを更新し `terraform.itsm.tfvars` を更新（旧トークン削除時に group bot を `delete`/`block`）
 - `scripts/itsm/gitlab/provision_grafana_itsm_event_inbox.sh` - ITSM 用の Grafana Inbox（通知先/フォルダ等）をプロビジョニング
 - `scripts/itsm/gitlab/show_gitlab_root_password.sh` - GitLab root パスワードを表示
@@ -316,6 +317,30 @@
 - 注意:
   - 秘密情報のため Git へコミットしないでください。
 
+### `scripts/itsm/gitlab/ensure_gitlab_runner.sh`
+
+- 目的: GitLab API で GitLab Runner を作成/更新し、Runner の属性（`tags` / `run_untagged` / `locked`）を設定したうえで、Runner authentication token を **SSM SecureString** に保存します。
+- 位置づけ:
+  - 本リポジトリの Runner は **ECS/Fargate + shell executor** です（GitLab CI の `image:` 指定は原則として効かず、Runner コンテナ上で job を実行します）。
+  - Runner の `tags` / `run_untagged` / `locked` は GitLab 側属性として管理します（Runner の `config.toml` に埋め込まない設計）。
+- 事前準備:
+  - `aws sso login --profile "$(terraform output -raw aws_profile)"`
+  - GitLab が稼働していて `terraform output -raw gitlab_api_base_url` が取得できること（または `GITLAB_API_BASE_URL` を直指定）
+  - GitLab 管理者トークンが SSM にあること（基本: `scripts/itsm/gitlab/refresh_gitlab_admin_token.sh` → `terraform apply -refresh-only`）
+- 入出力（キー受け渡し）:
+  - 入力（既定）: SSM `gitlab_admin_token_parameter_name`（Terraform output）→ `GITLAB_TOKEN`
+  - 出力: SSM `gitlab_runner_token_parameter_name`（Terraform output。既定では `/${name_prefix}/gitlab/runner/token`）
+  - 注意: 本スクリプトは **tfvars を更新しません**（SSM へ直接書き込み）。
+- 代表的な実行例:
+  - `DRY_RUN=true bash scripts/itsm/gitlab/ensure_gitlab_runner.sh --dry-run`
+  - `bash scripts/itsm/gitlab/ensure_gitlab_runner.sh --rotate-token`
+  - 実行後に Runner を反映するには `bash scripts/itsm/gitlab/redeploy_gitlab_runner.sh` を実行します。
+- Runner の選択（CI 側の注意）:
+  - Runner に `tags` を設定した場合、CI ジョブ側でも `tags:` を指定してこの Runner に job を割り当ててください。
+- Terraform との競合注意:
+  - Terraform 変数 `gitlab_runner_token` をセットすると Terraform が同じ SSM パラメータを管理・上書きする可能性があります。
+  - 原則として `gitlab_runner_token` は **未設定（null）**にして、token は本スクリプトで SSM に投入する運用を推奨します。
+
 ### `scripts/itsm/gitlab/refresh_realm_group_tokens_with_bot_cleanup.sh`
 
 - 目的: レルム単位の GitLab グループアクセストークンを再発行し、`terraform.itsm.tfvars` の `gitlab_realm_admin_tokens_yaml` を更新します（旧トークン削除時に group bot を `delete|block`）。
@@ -432,6 +457,12 @@
 - `grafana_api_tokens_by_realm`: `bash scripts/itsm/grafana/refresh_grafana_api_tokens.sh`
 - `monitoring_yaml`: `bash scripts/itsm/gitlab/provision_grafana_itsm_event_inbox.sh`
 - `sulu_admin_password`: `bash scripts/itsm/sulu/refresh_sulu_admin_user.sh`
+
+## SSM を直接更新するスクリプト（一覧）
+
+以下は、tfvars/state を経由せずに **SSM Parameter Store** を直接更新します（Terraform が同名パラメータを管理している場合は競合に注意）。
+
+- GitLab Runner token: `bash scripts/itsm/gitlab/ensure_gitlab_runner.sh`
 
 補足（AIOps Agent / Workflow 同期の credential ID など）:
 - 各 `deploy*_workflows.sh` は、必要に応じて `TFVARS_FILE`（既定: `terraform.apps.tfvars`）へ `aiops_agent_environment` を更新し、n8n 側の credential ID を保存します。

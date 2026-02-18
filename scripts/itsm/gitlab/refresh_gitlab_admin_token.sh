@@ -3,6 +3,10 @@ set -euo pipefail
 
 # Create a GitLab admin personal access token via gitlab-rails and write it to terraform.itsm.tfvars.
 #
+# Related:
+# - scripts/itsm/gitlab/ensure_gitlab_runner.sh uses the admin token (from SSM) to create/update a GitLab Runner
+#   and store the Runner authentication token into SSM.
+#
 # Requirements:
 # - AWS CLI v2 + Session Manager Plugin
 # - ECS Exec enabled (this Terraform stack sets enable_execute_command = true)

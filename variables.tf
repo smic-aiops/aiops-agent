@@ -1856,7 +1856,7 @@ variable "create_gitlab" {
 variable "create_gitlab_runner" {
   description = "Whether to create GitLab Runner (shell executor on Fargate) resources"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_gitlab_autostop" {
@@ -1989,6 +1989,12 @@ variable "gitlab_runner_run_untagged" {
   description = "Whether the runner can pick untagged jobs"
   type        = bool
   default     = true
+}
+
+variable "gitlab_runner_locked" {
+  description = "Whether the runner is locked to the current project/group (GitLab-side runner attribute; managed via scripts)"
+  type        = bool
+  default     = false
 }
 
 variable "gitlab_runner_environment" {

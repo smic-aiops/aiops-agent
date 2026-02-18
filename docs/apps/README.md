@@ -29,7 +29,7 @@ apps 配下のワークフローは、n8n から周辺サービス（例: Qdrant
 
 - 例: `["tenant-a"]` のように **運用対象レルムだけ**を指定します（`realms` 全体とは別）。
 - これが空だと、次の同期/セットアップ系が **スキップ/失敗**しやすくなります:
-  - `apps/<app>/scripts/deploy_workflows.sh`
+  - `apps/<app>/scripts/deploy_all_workflows.sh`
   - `apps/itsm_core/<app>/scripts/deploy_workflows.sh`
 - 各デプロイスクリプトは `N8N_AGENT_REALMS`（環境変数）で上書きもできますが、基本は Terraform 側（tfvars）を正にしてください。
 
@@ -174,6 +174,8 @@ bash scripts/apps/deploy_all_workflows.sh --activate
 - `--with-tests`（OQ 実行）で GitLab 連携の OQ/ワークフローを通す場合、事前に GitLab のトークン/secret を `refresh_*.sh` で揃えてください（未実施だと `GITLAB_*` 不足で失敗しやすい）:
   - `bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
   - `bash scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh`
+- GitLab CI を自己ホスト Runner（ECS/Fargate shell executor）で動かす場合は、Runner 作成/更新と token の SSM 保存を先に実施してください:
+  - `bash scripts/itsm/gitlab/ensure_gitlab_runner.sh --rotate-token`
 - n8n への同期スクリプトは `X-N8N-API-KEY` を要求するため、**事前に API key を用意**してください（未発行なら `bash scripts/itsm/n8n/refresh_n8n_api_key.sh`。手動で渡す場合は `N8N_API_KEY` 環境変数でも可）。
 - Zulip 連携を含むワークフロー/OQ を通したい場合は、事前に Zulip 初期セットアップ（組織/管理者ユーザー作成 → API key 反映 → n8n bot 反映 → terraform apply → n8n 再デプロイ）を完了させてください:
   - `bash scripts/itsm/zulip/generate_realm_creation_link_for_zulip.sh`（新規組織/realm の場合）
@@ -204,6 +206,8 @@ aiops_agent_environment = {
 
 #### AIOps Agent
 
+- `apps/aiops_agent/scripts/deploy_all_workflows.sh` - AIOps Agent 配下の各サブアプリの `deploy_workflows.sh` を順次実行してレポートする。
+- `apps/aiops_agent/scripts/run_all_oq.sh` - AIOps Agent 配下の各サブアプリの `run_oq.sh` を順次実行してレポートする。
 - `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh` - n8n Public API でワークフロー/認証情報を同期する。
 - `apps/aiops_agent/knowledge_store/scripts/import_aiops_approval_history_seed.sh` - 承認履歴のスキーマ/シードを DB に適用する。
 - `apps/aiops_agent/knowledge_store/scripts/import_aiops_problem_management_seed.sh` - 問題管理のスキーマ/シードを DB に適用する。
@@ -212,8 +216,8 @@ aiops_agent_environment = {
 
 #### ITSM Core（SoR）
 
-- `apps/itsm_core/scripts/deploy_workflows.sh` - ITSM Core 配下（SoR core + サブアプリ）のワークフロー群（バックフィル/検証等）を n8n に同期し、必要ならサブアプリ OQ（スモーク）を順次実行する（`WITH_TESTS=false` で無効化）。
-- `apps/itsm_core/scripts/run_oqs.sh` - ITSM Core 配下の各サブアプリ OQ を順次実行してレポートする（互換: `apps/itsm_core/scripts/run_oq.sh`）。
+- `apps/itsm_core/scripts/deploy_all_workflows.sh` - ITSM Core 配下（SoR core + サブアプリ）のワークフロー群（バックフィル/検証等）を n8n に同期し、必要ならサブアプリ OQ（スモーク）を順次実行する（`WITH_TESTS=false` で無効化）。
+- `apps/itsm_core/scripts/run_all_oq.sh` - ITSM Core 配下の各サブアプリ OQ を順次実行してレポートする。
 
 #### ITSM Core（サブアプリ）
 
@@ -226,7 +230,8 @@ aiops_agent_environment = {
 
 #### Workflow Manager
 
-- `apps/workflow_manager/scripts/deploy_workflows.sh` - Workflow Manager のワークフローを n8n に反映する。
+- `apps/workflow_manager/scripts/deploy_all_workflows.sh` - Workflow Manager のワークフローを n8n に反映する。
+- `apps/workflow_manager/scripts/run_all_oq.sh` - Workflow Manager 配下の各サブアプリ OQ を順次実行してレポートする。
 
 #### GitLab メンション通知
 

@@ -40,12 +40,17 @@ if ! declare -p ITSM_FORCE_UPDATE_INCLUDED_REALMS >/dev/null 2>&1; then
 fi
 
 tf_output_json() {
-  terraform -chdir="${REPO_ROOT}" output -json "$1" 2>/dev/null || true
+  local output
+  output="$(terraform -chdir="${REPO_ROOT}" output -no-color -json "$1" 2>/dev/null || true)"
+  if [[ -n "${output}" && "${output}" != *"No outputs found"* ]]; then
+    printf '%s' "${output}"
+  fi
 }
 
 tf_output_raw() {
   local output
-  if output="$(terraform -chdir="${REPO_ROOT}" output -raw "$1" 2>/dev/null)"; then
+  output="$(terraform -chdir="${REPO_ROOT}" output -no-color -raw "$1" 2>/dev/null || true)"
+  if [[ -n "${output}" && "${output}" != "null" && "${output}" != *"No outputs found"* ]]; then
     printf '%s' "${output}"
   fi
 }

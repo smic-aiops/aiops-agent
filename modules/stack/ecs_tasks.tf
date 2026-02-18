@@ -661,7 +661,9 @@ locals {
   ssm_param_arns_keycloak    = { for k, v in merge(local.default_ssm_params_keycloak, var.keycloak_db_ssm_params, var.keycloak_ssm_params, local.optional_smtp_params_keycloak) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
   ssm_param_arns_odoo        = { for k, v in merge(local.default_ssm_params_odoo, var.odoo_ssm_params, local.optional_smtp_params_odoo, local.optional_oidc_params_odoo) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
   ssm_param_arns_gitlab      = { for k, v in merge(local.default_ssm_params_gitlab, var.gitlab_db_ssm_params, var.gitlab_ssm_params, local.optional_smtp_params_gitlab, local.optional_oidc_params_gitlab) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
-  default_ssm_params_gitlab_runner = local.gitlab_runner_token_write_enabled ? {
+  # Always inject the runner authentication token from SSM when GitLab Runner is enabled.
+  # The token itself is expected to be provisioned out-of-band (e.g. scripts/itsm/gitlab/ensure_gitlab_runner.sh).
+  default_ssm_params_gitlab_runner = var.create_ecs && var.create_gitlab_runner ? {
     GITLAB_RUNNER_TOKEN = local.gitlab_runner_token_parameter_name
   } : {}
   ssm_param_arns_gitlab_runner = {

@@ -59,7 +59,7 @@ RLS（Row Level Security）導入（段階適用推奨）:
 - RLS ポリシー適用: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sor_ops/sql/itsm_sor_rls.sql`
 - （n8n が DB 直叩きの場合はほぼ必須）RLS コンテキスト（app.*）の既定値投入: `apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh`
 - （強化/任意）RLS の FORCE（テーブル所有者バイパスを禁止）: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sor_ops/sql/itsm_sor_rls_force.sql`
-- `apps/itsm_core/scripts/deploy_workflows.sh`（ITSM Core 配下を一括。必要なら `scripts/apps/deploy_all_workflows.sh` で全アプリ一括）から有効化する場合は、環境変数 `N8N_APPLY_ITSM_SOR_RLS=true`（必要なら `N8N_APPLY_ITSM_SOR_RLS_FORCE=true`）を使用
+- `apps/itsm_core/scripts/deploy_all_workflows.sh`（ITSM Core 配下を一括。必要なら `scripts/apps/deploy_all_workflows.sh` で全アプリ一括）から有効化する場合は、環境変数 `N8N_APPLY_ITSM_SOR_RLS=true`（必要なら `N8N_APPLY_ITSM_SOR_RLS_FORCE=true`）を使用
   - 依存関係チェック（推奨）: `N8N_CHECK_ITSM_SOR_SCHEMA=true`（デフォルト有効）
   - RLS コンテキスト既定値（任意）: `N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT=true`（`ALTER ROLE ... SET app.*` を投入）
   - 注意: RLS を有効化すると、`itsm.*` へのアクセスは `app.realm_key`（または `app.realm_id`）が必須になります（未設定は fail close / エラー）。
@@ -112,6 +112,9 @@ bash scripts/itsm/n8n/refresh_n8n_api_key.sh
 # - GitLab 管理者トークン / Webhook secret（GitLab 連携ワークフロー/OQ が必要とする）
 bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh
 bash scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh
+# - GitLab Runner（ECS/Fargate shell executor）を使う場合: Runner を作成/更新し token を SSM へ保存
+#   ※ 初回は token を確実に取得するため `--rotate-token` 推奨
+bash scripts/itsm/gitlab/ensure_gitlab_runner.sh --rotate-token
 # - Grafana API token（Grafana API を使うワークフロー/スクリプトがある場合）
 bash scripts/itsm/grafana/refresh_grafana_api_tokens.sh
 # - Sulu 管理者ユーザー（Sulu を運用する場合）
@@ -389,6 +392,22 @@ scripts/itsm/gitlab/refresh_gitlab_admin_token.sh
 例:
 - `TOKEN_LIFETIME_DAYS=180 scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
 - `TOKEN_EXPIRES_AT=2026-12-31 scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
+
+### GitLab Runner の作成/更新（ECS/Fargate shell executor）
+GitLab API で GitLab Runner を作成/更新し、Runner の属性（`tags` / `run_untagged` / `locked`）を設定したうえで、Runner authentication token を **SSM SecureString** に保存します。
+
+- 仕様: [`docs/scripts.md`](../scripts.md)
+
+```bash
+# まずはドライラン（何をするかだけ表示）
+DRY_RUN=true scripts/itsm/gitlab/ensure_gitlab_runner.sh --dry-run
+
+# 初回は token を確実に得るため `--rotate-token` 推奨
+scripts/itsm/gitlab/ensure_gitlab_runner.sh --rotate-token
+
+# token を ECS Runner に反映
+scripts/itsm/gitlab/redeploy_gitlab_runner.sh
+```
 
 ### GitLab レルム管理トークンの生成と n8n 連携
 GitLab グループアクセストークンをレルム単位で発行し、`terraform.itsm.tfvars` に反映します。Terraform apply 時にレルムを判定し、該当 n8n コンテナへ `GITLAB_ADMIN_TOKEN` を注入して GitLab API に接続します。

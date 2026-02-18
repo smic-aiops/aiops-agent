@@ -620,6 +620,21 @@ output "gitlab_api_base_url" {
   sensitive   = true
 }
 
+output "gitlab_runner_tags" {
+  description = "GitLab Runner tags (for scripts/itsm/gitlab/ensure_gitlab_runner.sh)"
+  value       = var.gitlab_runner_tags
+}
+
+output "gitlab_runner_run_untagged" {
+  description = "Whether the GitLab Runner can pick untagged jobs (for scripts)"
+  value       = var.gitlab_runner_run_untagged
+}
+
+output "gitlab_runner_locked" {
+  description = "Whether the GitLab Runner is locked (GitLab-side attribute; for scripts)"
+  value       = var.gitlab_runner_locked
+}
+
 output "grafana_athena_output_bucket" {
   description = "S3 bucket used for Grafana Athena query results"
   value       = module.stack.grafana_athena_output_bucket

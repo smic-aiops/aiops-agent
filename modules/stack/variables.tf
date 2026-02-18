@@ -772,7 +772,7 @@ variable "create_gitlab" {
 variable "create_gitlab_runner" {
   description = "Whether to create GitLab Runner (shell executor on Fargate) resources"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "create_grafana" {
