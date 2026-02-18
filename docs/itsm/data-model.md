@@ -146,6 +146,9 @@ erDiagram
 | `id` | `uuid` |  | PK |
 | `realm_key` | `text` | `tenant-a` | Keycloak realm 名に一致（ユニーク） |
 | `name` | `text` | `Tenant A` | 表示名 |
+| `default_timezone` | `text` | `Asia/Tokyo` | SLA/MTTR の business clock 既定 TZ（IANA TZ） |
+| `default_business_hours_key` | `text` | `jp_standard` | SLA/MTTR の営業時間キー既定（`itsm.business_hours.hours_key`） |
+| `default_calendar_key` | `text` | `jp` | SLA/MTTR のカレンダーキー既定（`itsm.business_calendar.calendar_key`） |
 | `created_at` | `timestamptz` |  |  |
 
 補足:
@@ -255,11 +258,68 @@ erDiagram
 | `owner_group_id` | `text` | `kc-group-id` | Keycloak group ID（※DB は正を持たない） |
 | `criticality` | `text` | `low/medium/high` | check 制約推奨 |
 | `status` | `text` | `active/retired` | |
+| `timezone` | `text` | `Asia/Tokyo` | SLA/MTTR の business clock TZ（任意、NULL は realm 既定） |
+| `business_hours_key` | `text` | `jp_standard` | 営業時間キー（任意、NULL は realm 既定） |
+| `calendar_key` | `text` | `jp` | カレンダーキー（任意、NULL は realm 既定） |
 | `created_at` | `timestamptz` |  | |
 | `updated_at` | `timestamptz` |  | |
 
 参照:
 - Incident/Change/CI は `service_id` を持ち、影響範囲・責任分界・ACL の基点にする
+
+#### `itsm.business_calendar`（SLA/MTTR カレンダー）
+
+SLA/MTTR の “business day” 判定（週末/祝日）に使うカレンダー定義です。
+
+| 列 | 型 | 例 | 備考 |
+|---|---|---|---|
+| `id` | `uuid` |  | PK |
+| `realm_id` | `uuid` |  | FK |
+| `calendar_key` | `text` | `jp` | テナント内キー |
+| `timezone` | `text` | `Asia/Tokyo` | 休日判定の基準 TZ（IANA TZ） |
+| `weekend_dows` | `smallint[]` | `{0,6}` | 週末（`EXTRACT(dow)` の 0=Sun..6=Sat） |
+| `active` | `boolean` | `true` | |
+| `created_at` | `timestamptz` |  | |
+| `updated_at` | `timestamptz` |  | |
+
+#### `itsm.business_calendar_holiday`（カレンダー祝日）
+
+祝日を **ローカル日付（`date`）** で登録します（外部 API での自動取得はしません）。
+
+| 列 | 型 | 例 | 備考 |
+|---|---|---|---|
+| `id` | `uuid` |  | PK |
+| `realm_id` | `uuid` |  | FK |
+| `business_calendar_id` | `uuid` |  | FK → `business_calendar.id` |
+| `holiday_date` | `date` | `2026-01-01` | ローカル日付 |
+| `name` | `text` | `New Year's Day` | 任意 |
+| `created_at` | `timestamptz` |  | |
+
+#### `itsm.business_hours`（SLA/MTTR 営業時間）
+
+| 列 | 型 | 例 | 備考 |
+|---|---|---|---|
+| `id` | `uuid` |  | PK |
+| `realm_id` | `uuid` |  | FK |
+| `hours_key` | `text` | `jp_standard` | テナント内キー |
+| `timezone` | `text` | `Asia/Tokyo` | 参照用（ウィンドウは service/realm の TZ で評価） |
+| `active` | `boolean` | `true` | |
+| `created_at` | `timestamptz` |  | |
+| `updated_at` | `timestamptz` |  | |
+
+#### `itsm.business_hours_window`（営業時間ウィンドウ）
+
+`dow` ごとの時間帯を複数登録できます。`end_time <= start_time` の場合は翌日跨ぎのウィンドウとして扱います（例: 22:00-06:00）。
+
+| 列 | 型 | 例 | 備考 |
+|---|---|---|---|
+| `id` | `uuid` |  | PK |
+| `realm_id` | `uuid` |  | FK |
+| `business_hours_id` | `uuid` |  | FK → `business_hours.id` |
+| `dow` | `smallint` | `1` | 0=Sun..6=Sat |
+| `start_time` | `time` | `09:00:00` | |
+| `end_time` | `time` | `18:00:00` | |
+| `created_at` | `timestamptz` |  | |
 
 #### `itsm.configuration_item`（CI）
 
@@ -425,8 +485,8 @@ SLO の逸脱（breach）を **イベントとして**構造化保存します�
 #### `itsm.sla_metrics`（VIEW: SLA 計測）
 
 `incident` / `service_request` を横断して、SLA（受付/応答/解決/期限）を算出したビューです。
-- 期限（`*_due_at`）は「目標分 + 停止区間（分）」で延長されます。
-- `*_breached` は「停止区間を差し引いた経過分」が目標を超えたかで判定します。
+- 期限（`*_due_at`）は「目標（business minutes） + 停止区間（business minutes）」で延長されます。
+- `*_breached` は「停止区間を差し引いた経過（business minutes）」が目標を超えたかで判定します。
 - 実体は `itsm.sla_metrics_at(p_at timestamptz)`（関数）であり、`itsm.sla_metrics` は `p_at=NOW()` のショートカットです（任意時点のスナップショット算出に利用できます）。
 
 例（RLS コンテキストを statement 内で設定）:

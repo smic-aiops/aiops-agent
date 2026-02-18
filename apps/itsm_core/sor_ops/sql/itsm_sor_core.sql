@@ -35,6 +35,18 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION itsm._minutes_between(p_from timestamptz, p_to timestamptz)
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN p_from IS NULL OR p_to IS NULL THEN NULL
+    WHEN p_to < p_from THEN NULL
+    ELSE ROUND(EXTRACT(epoch FROM (p_to - p_from)) / 60.0, 2)
+  END;
+$$;
+
 -- -----------------------------------------------------------------------------
 -- Realm (tenant)
 -- -----------------------------------------------------------------------------
@@ -46,6 +58,18 @@ CREATE TABLE IF NOT EXISTS itsm.realm (
   created_at timestamptz NOT NULL DEFAULT NOW(),
   updated_at timestamptz NOT NULL DEFAULT NOW()
 );
+
+-- Default business clock settings (SLA/MTTR).
+-- - Default: Asia/Tokyo + Japan standard business hours + Japan calendar.
+-- - Per-service override is stored on itsm.service.* (CMDB).
+ALTER TABLE IF EXISTS itsm.realm
+  ADD COLUMN IF NOT EXISTS default_timezone text NOT NULL DEFAULT 'Asia/Tokyo';
+
+ALTER TABLE IF EXISTS itsm.realm
+  ADD COLUMN IF NOT EXISTS default_business_hours_key text NOT NULL DEFAULT 'jp_standard';
+
+ALTER TABLE IF EXISTS itsm.realm
+  ADD COLUMN IF NOT EXISTS default_calendar_key text NOT NULL DEFAULT 'jp';
 
 DROP TRIGGER IF EXISTS itsm_realm_touch_updated_at ON itsm.realm;
 CREATE TRIGGER itsm_realm_touch_updated_at
@@ -336,6 +360,17 @@ CREATE TABLE IF NOT EXISTS itsm.service (
   UNIQUE (realm_id, number)
 );
 
+-- Optional overrides for the SLA business clock (NULL => realm defaults).
+-- These values are intended to be populated from CMDB when available.
+ALTER TABLE IF EXISTS itsm.service
+  ADD COLUMN IF NOT EXISTS timezone text NULL;
+
+ALTER TABLE IF EXISTS itsm.service
+  ADD COLUMN IF NOT EXISTS business_hours_key text NULL;
+
+ALTER TABLE IF EXISTS itsm.service
+  ADD COLUMN IF NOT EXISTS calendar_key text NULL;
+
 DROP TRIGGER IF EXISTS itsm_service_touch_updated_at ON itsm.service;
 CREATE TRIGGER itsm_service_touch_updated_at
 BEFORE UPDATE ON itsm.service
@@ -494,6 +529,463 @@ FOR EACH ROW
 EXECUTE FUNCTION itsm._touch_updated_at();
 
 -- -----------------------------------------------------------------------------
+-- Business calendar / business hours (SLA clock)
+-- -----------------------------------------------------------------------------
+--
+-- Purpose:
+-- - Measure SLA/MTTR using business minutes (timezone + business hours + holidays/weekends).
+-- - Defaults are realm-level (itsm.realm.*) and can be overridden per service (itsm.service.*).
+--
+-- Defaults:
+-- - timezone: Asia/Tokyo
+-- - calendar_key: jp (weekend: Sat/Sun; holidays are stored in DB table)
+-- - business_hours_key: jp_standard (Mon-Fri 09:00-18:00)
+
+CREATE TABLE IF NOT EXISTS itsm.business_calendar (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id      uuid NOT NULL REFERENCES itsm.realm(id) ON DELETE CASCADE,
+  calendar_key  text NOT NULL,
+  timezone      text NOT NULL DEFAULT 'Asia/Tokyo',
+  weekend_dows  smallint[] NOT NULL DEFAULT ARRAY[0, 6]::smallint[], -- 0=Sun ... 6=Sat (Postgres EXTRACT(dow))
+  active        boolean NOT NULL DEFAULT true,
+  created_at    timestamptz NOT NULL DEFAULT NOW(),
+  updated_at    timestamptz NOT NULL DEFAULT NOW(),
+  UNIQUE (realm_id, calendar_key)
+);
+
+DROP TRIGGER IF EXISTS itsm_business_calendar_touch_updated_at ON itsm.business_calendar;
+CREATE TRIGGER itsm_business_calendar_touch_updated_at
+BEFORE UPDATE ON itsm.business_calendar
+FOR EACH ROW
+EXECUTE FUNCTION itsm._touch_updated_at();
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'itsm_business_calendar_weekend_dows_chk') THEN
+    ALTER TABLE itsm.business_calendar
+      ADD CONSTRAINT itsm_business_calendar_weekend_dows_chk
+      CHECK (weekend_dows <@ ARRAY[0, 1, 2, 3, 4, 5, 6]::smallint[]);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS itsm_business_calendar_lookup_idx
+  ON itsm.business_calendar (realm_id, calendar_key, active);
+
+CREATE TABLE IF NOT EXISTS itsm.business_calendar_holiday (
+  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id              uuid NOT NULL REFERENCES itsm.realm(id) ON DELETE CASCADE,
+  business_calendar_id  uuid NOT NULL REFERENCES itsm.business_calendar(id) ON DELETE CASCADE,
+  holiday_date          date NOT NULL,
+  name                 text NULL,
+  created_at            timestamptz NOT NULL DEFAULT NOW(),
+  UNIQUE (realm_id, business_calendar_id, holiday_date)
+);
+
+CREATE INDEX IF NOT EXISTS itsm_business_calendar_holiday_lookup_idx
+  ON itsm.business_calendar_holiday (realm_id, business_calendar_id, holiday_date);
+
+CREATE TABLE IF NOT EXISTS itsm.business_hours (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id     uuid NOT NULL REFERENCES itsm.realm(id) ON DELETE CASCADE,
+  hours_key    text NOT NULL,
+  timezone     text NOT NULL DEFAULT 'Asia/Tokyo',
+  active       boolean NOT NULL DEFAULT true,
+  created_at   timestamptz NOT NULL DEFAULT NOW(),
+  updated_at   timestamptz NOT NULL DEFAULT NOW(),
+  UNIQUE (realm_id, hours_key)
+);
+
+DROP TRIGGER IF EXISTS itsm_business_hours_touch_updated_at ON itsm.business_hours;
+CREATE TRIGGER itsm_business_hours_touch_updated_at
+BEFORE UPDATE ON itsm.business_hours
+FOR EACH ROW
+EXECUTE FUNCTION itsm._touch_updated_at();
+
+CREATE INDEX IF NOT EXISTS itsm_business_hours_lookup_idx
+  ON itsm.business_hours (realm_id, hours_key, active);
+
+CREATE TABLE IF NOT EXISTS itsm.business_hours_window (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id           uuid NOT NULL REFERENCES itsm.realm(id) ON DELETE CASCADE,
+  business_hours_id  uuid NOT NULL REFERENCES itsm.business_hours(id) ON DELETE CASCADE,
+  dow               smallint NOT NULL, -- 0=Sun ... 6=Sat
+  start_time        time NOT NULL,
+  end_time          time NOT NULL,
+  created_at        timestamptz NOT NULL DEFAULT NOW(),
+  UNIQUE (realm_id, business_hours_id, dow, start_time, end_time)
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'itsm_business_hours_window_dow_chk') THEN
+    ALTER TABLE itsm.business_hours_window
+      ADD CONSTRAINT itsm_business_hours_window_dow_chk
+      CHECK (dow >= 0 AND dow <= 6);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'itsm_business_hours_window_time_chk') THEN
+    ALTER TABLE itsm.business_hours_window
+      ADD CONSTRAINT itsm_business_hours_window_time_chk
+      CHECK (start_time <> end_time);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS itsm_business_hours_window_lookup_idx
+  ON itsm.business_hours_window (realm_id, business_hours_id, dow, start_time);
+
+CREATE OR REPLACE FUNCTION itsm._seed_realm_business_defaults(p_realm_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_tz text;
+  v_hours_id uuid;
+BEGIN
+  SELECT COALESCE(NULLIF(BTRIM(default_timezone), ''), 'Asia/Tokyo')
+  INTO v_tz
+  FROM itsm.realm
+  WHERE id = p_realm_id;
+
+  v_tz := COALESCE(v_tz, 'Asia/Tokyo');
+
+  INSERT INTO itsm.business_calendar (realm_id, calendar_key, timezone, weekend_dows, active)
+  VALUES (p_realm_id, 'jp', v_tz, ARRAY[0, 6]::smallint[], true)
+  ON CONFLICT (realm_id, calendar_key) DO UPDATE
+    SET timezone = EXCLUDED.timezone,
+        active = true,
+        updated_at = NOW();
+
+  INSERT INTO itsm.business_hours (realm_id, hours_key, timezone, active)
+  VALUES (p_realm_id, 'jp_standard', v_tz, true)
+  ON CONFLICT (realm_id, hours_key) DO UPDATE
+    SET timezone = EXCLUDED.timezone,
+        active = true,
+        updated_at = NOW();
+
+  SELECT id INTO v_hours_id
+  FROM itsm.business_hours
+  WHERE realm_id = p_realm_id AND hours_key = 'jp_standard'
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  IF v_hours_id IS NOT NULL THEN
+    INSERT INTO itsm.business_hours_window (realm_id, business_hours_id, dow, start_time, end_time)
+    SELECT p_realm_id, v_hours_id, d::smallint, '09:00'::time, '18:00'::time
+    FROM generate_series(1, 5) AS d
+    ON CONFLICT DO NOTHING;
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm._realm_after_insert_seed_business_defaults()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  PERFORM itsm._seed_realm_business_defaults(NEW.id);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS itsm_realm_seed_business_defaults ON itsm.realm;
+CREATE TRIGGER itsm_realm_seed_business_defaults
+AFTER INSERT ON itsm.realm
+FOR EACH ROW
+EXECUTE FUNCTION itsm._realm_after_insert_seed_business_defaults();
+
+-- Backfill defaults for existing realms (idempotent upsert).
+SELECT itsm._seed_realm_business_defaults(id) FROM itsm.realm;
+
+CREATE OR REPLACE FUNCTION itsm.resolve_business_config(
+  p_realm_id uuid,
+  p_service_id uuid DEFAULT NULL
+)
+RETURNS TABLE (
+  timezone text,
+  business_calendar_id uuid,
+  business_hours_id uuid
+)
+LANGUAGE sql
+STABLE
+AS $$
+  WITH base AS (
+    SELECT
+      r.id AS realm_id,
+      COALESCE(NULLIF(BTRIM(s.timezone), ''), r.default_timezone, 'Asia/Tokyo') AS tz,
+      COALESCE(NULLIF(BTRIM(s.calendar_key), ''), r.default_calendar_key, 'jp') AS cal_key,
+      COALESCE(NULLIF(BTRIM(s.business_hours_key), ''), r.default_business_hours_key, 'jp_standard') AS hours_key
+    FROM itsm.realm r
+    LEFT JOIN itsm.service s
+      ON s.id = p_service_id
+     AND s.realm_id = r.id
+    WHERE r.id = p_realm_id
+    LIMIT 1
+  )
+  SELECT
+    b.tz AS timezone,
+    (
+      SELECT c.id
+      FROM itsm.business_calendar c
+      WHERE c.realm_id = b.realm_id
+        AND c.calendar_key = b.cal_key
+        AND c.active = true
+      ORDER BY c.created_at DESC
+      LIMIT 1
+    ) AS business_calendar_id,
+    (
+      SELECT h.id
+      FROM itsm.business_hours h
+      WHERE h.realm_id = b.realm_id
+        AND h.hours_key = b.hours_key
+        AND h.active = true
+      ORDER BY h.created_at DESC
+      LIMIT 1
+    ) AS business_hours_id
+  FROM base b;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.is_business_day(
+  p_realm_id uuid,
+  p_business_calendar_id uuid,
+  p_local_date date
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT CASE
+    WHEN p_business_calendar_id IS NULL THEN true
+    ELSE COALESCE((
+      SELECT
+        NOT (
+          EXTRACT(dow FROM p_local_date)::smallint = ANY (COALESCE(c.weekend_dows, ARRAY[0, 6]::smallint[]))
+          OR EXISTS (
+            SELECT 1
+            FROM itsm.business_calendar_holiday h
+            WHERE h.realm_id = p_realm_id
+              AND h.business_calendar_id = p_business_calendar_id
+              AND h.holiday_date = p_local_date
+          )
+        )
+      FROM itsm.business_calendar c
+      WHERE c.realm_id = p_realm_id
+        AND c.id = p_business_calendar_id
+        AND c.active = true
+      LIMIT 1
+    ), true)
+  END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.business_minutes_between_config(
+  p_realm_id uuid,
+  p_timezone text,
+  p_business_calendar_id uuid,
+  p_business_hours_id uuid,
+  p_from timestamptz,
+  p_to timestamptz
+)
+RETURNS numeric
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT CASE
+    WHEN p_from IS NULL OR p_to IS NULL THEN NULL
+    WHEN p_to < p_from THEN NULL
+    WHEN p_business_hours_id IS NULL THEN itsm._minutes_between(p_from, p_to) -- fallback: 24/7
+    ELSE COALESCE((
+      WITH params AS (
+        SELECT
+          COALESCE(NULLIF(BTRIM(p_timezone), ''), 'Asia/Tokyo') AS tz,
+          p_business_calendar_id AS cal_id,
+          p_business_hours_id AS hours_id,
+          p_from AS from_ts,
+          p_to AS to_ts,
+          (p_from AT TIME ZONE COALESCE(NULLIF(BTRIM(p_timezone), ''), 'Asia/Tokyo'))::date AS start_date,
+          (p_to AT TIME ZONE COALESCE(NULLIF(BTRIM(p_timezone), ''), 'Asia/Tokyo'))::date AS end_date
+      ),
+      days AS (
+        SELECT g.d::date AS local_date, p.*
+        FROM params p
+        CROSS JOIN LATERAL generate_series(p.start_date::timestamp, p.end_date::timestamp, interval '1 day') AS g(d)
+      ),
+      windows AS (
+        SELECT
+          d.tz,
+          d.cal_id,
+          d.hours_id,
+          d.from_ts,
+          d.to_ts,
+          d.local_date,
+          w.start_time,
+          w.end_time
+        FROM days d
+        JOIN itsm.business_hours_window w
+          ON w.realm_id = p_realm_id
+         AND w.business_hours_id = d.hours_id
+         AND w.dow = EXTRACT(dow FROM d.local_date)::smallint
+        WHERE itsm.is_business_day(p_realm_id, d.cal_id, d.local_date) = true
+      ),
+      overlaps AS (
+        SELECT
+          GREATEST(
+            0,
+            EXTRACT(epoch FROM (
+              LEAST(
+                to_ts,
+                CASE
+                  WHEN end_time > start_time
+                    THEN ((local_date::timestamp + end_time) AT TIME ZONE tz)
+                  ELSE (((local_date + 1)::timestamp + end_time) AT TIME ZONE tz)
+                END
+              ) - GREATEST(
+                from_ts,
+                ((local_date::timestamp + start_time) AT TIME ZONE tz)
+              )
+            ))
+          ) AS overlap_seconds
+        FROM windows
+        WHERE ((local_date::timestamp + start_time) AT TIME ZONE tz) < to_ts
+          AND (
+            CASE
+              WHEN end_time > start_time
+                THEN ((local_date::timestamp + end_time) AT TIME ZONE tz)
+              ELSE (((local_date + 1)::timestamp + end_time) AT TIME ZONE tz)
+            END
+          ) > from_ts
+      )
+      SELECT ROUND(SUM(overlap_seconds) / 60.0, 2)
+      FROM overlaps
+    ), 0)
+  END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.business_minutes_between(
+  p_realm_id uuid,
+  p_service_id uuid,
+  p_from timestamptz,
+  p_to timestamptz
+)
+RETURNS numeric
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT itsm.business_minutes_between_config(
+    p_realm_id,
+    cfg.timezone,
+    cfg.business_calendar_id,
+    cfg.business_hours_id,
+    p_from,
+    p_to
+  )
+  FROM itsm.resolve_business_config(p_realm_id, p_service_id) AS cfg;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.add_business_minutes_config(
+  p_realm_id uuid,
+  p_timezone text,
+  p_business_calendar_id uuid,
+  p_business_hours_id uuid,
+  p_start timestamptz,
+  p_minutes numeric
+)
+RETURNS timestamptz
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  v_tz text;
+  v_remaining numeric;
+  v_current timestamptz;
+  v_local_date date;
+  v_window record;
+  v_window_start timestamptz;
+  v_window_end timestamptz;
+  v_available numeric;
+BEGIN
+  IF p_start IS NULL OR p_minutes IS NULL THEN
+    RETURN NULL;
+  END IF;
+  IF p_minutes <= 0 THEN
+    RETURN p_start;
+  END IF;
+
+  IF p_business_hours_id IS NULL THEN
+    RETURN p_start + make_interval(secs => (p_minutes * 60.0)::double precision);
+  END IF;
+
+  v_tz := COALESCE(NULLIF(BTRIM(p_timezone), ''), 'Asia/Tokyo');
+  v_remaining := p_minutes;
+  v_current := p_start;
+
+  WHILE v_remaining > 0 LOOP
+    v_local_date := (v_current AT TIME ZONE v_tz)::date;
+
+    IF itsm.is_business_day(p_realm_id, p_business_calendar_id, v_local_date) = false THEN
+      v_current := ((v_local_date + 1)::timestamp AT TIME ZONE v_tz);
+      CONTINUE;
+    END IF;
+
+    FOR v_window IN
+      SELECT w.dow, w.start_time, w.end_time
+      FROM itsm.business_hours_window w
+      WHERE w.realm_id = p_realm_id
+        AND w.business_hours_id = p_business_hours_id
+        AND w.dow = EXTRACT(dow FROM v_local_date)::smallint
+      ORDER BY w.start_time ASC
+    LOOP
+      v_window_start := (v_local_date::timestamp + v_window.start_time) AT TIME ZONE v_tz;
+      IF v_window.end_time > v_window.start_time THEN
+        v_window_end := (v_local_date::timestamp + v_window.end_time) AT TIME ZONE v_tz;
+      ELSE
+        v_window_end := ((v_local_date + 1)::timestamp + v_window.end_time) AT TIME ZONE v_tz;
+      END IF;
+
+      IF v_current < v_window_start THEN
+        v_current := v_window_start;
+      END IF;
+      IF v_current >= v_window_end THEN
+        CONTINUE;
+      END IF;
+
+      v_available := ROUND(EXTRACT(epoch FROM (v_window_end - v_current)) / 60.0, 2);
+      IF v_remaining <= v_available THEN
+        RETURN v_current + make_interval(secs => (v_remaining * 60.0)::double precision);
+      END IF;
+
+      v_remaining := v_remaining - v_available;
+      v_current := v_window_end;
+    END LOOP;
+
+    -- No remaining windows today; jump to next local day start.
+    v_current := ((v_local_date + 1)::timestamp AT TIME ZONE v_tz);
+  END LOOP;
+
+  RETURN v_current;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.add_business_minutes(
+  p_realm_id uuid,
+  p_service_id uuid,
+  p_start timestamptz,
+  p_minutes numeric
+)
+RETURNS timestamptz
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT itsm.add_business_minutes_config(
+    p_realm_id,
+    cfg.timezone,
+    cfg.business_calendar_id,
+    cfg.business_hours_id,
+    p_start,
+    p_minutes
+  )
+  FROM itsm.resolve_business_config(p_realm_id, p_service_id) AS cfg;
+$$;
+
+-- -----------------------------------------------------------------------------
 -- SLA measurement (MVP): receipt/response/resolution/deadlines + pause windows
 -- -----------------------------------------------------------------------------
 --
@@ -503,7 +995,6 @@ EXECUTE FUNCTION itsm._touch_updated_at();
 -- - Pause windows are recorded explicitly to support "SLA clock stop" semantics.
 --
 -- Out of scope (MVP):
--- - Business hours calendars / holidays
 -- - Automatic inference of first_response_at from external systems
 -- - Full SLO (availability/latency) time-series storage (handled by Athena/Grafana)
 
@@ -604,18 +1095,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS itsm_sla_pause_one_open_uniq
   ON itsm.sla_pause (realm_id, resource_type, resource_id)
   WHERE resumed_at IS NULL;
 
-CREATE OR REPLACE FUNCTION itsm._minutes_between(p_from timestamptz, p_to timestamptz)
-RETURNS numeric
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT CASE
-    WHEN p_from IS NULL OR p_to IS NULL THEN NULL
-    WHEN p_to < p_from THEN NULL
-    ELSE ROUND(EXTRACT(epoch FROM (p_to - p_from)) / 60.0, 2)
-  END;
-$$;
-
 CREATE OR REPLACE FUNCTION itsm.sla_pause_minutes(
   p_realm_id uuid,
   p_resource_type text,
@@ -641,6 +1120,67 @@ AS $$
     AND resource_id = p_resource_id
     AND paused_at < p_to
     AND COALESCE(resumed_at, p_to) > p_from;
+$$;
+
+-- Business-hours-aware pause minutes (SLA clock stop).
+CREATE OR REPLACE FUNCTION itsm.sla_pause_business_minutes_config(
+  p_realm_id uuid,
+  p_resource_type text,
+  p_resource_id uuid,
+  p_timezone text,
+  p_business_calendar_id uuid,
+  p_business_hours_id uuid,
+  p_from timestamptz,
+  p_to timestamptz
+)
+RETURNS numeric
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(ROUND(SUM(
+    itsm.business_minutes_between_config(
+      p_realm_id,
+      p_timezone,
+      p_business_calendar_id,
+      p_business_hours_id,
+      GREATEST(paused_at, p_from),
+      LEAST(COALESCE(resumed_at, p_to), p_to)
+    )
+  ), 2), 0)
+  FROM itsm.sla_pause
+  WHERE realm_id = p_realm_id
+    AND resource_type = p_resource_type
+    AND resource_id = p_resource_id
+    AND p_from IS NOT NULL
+    AND p_to IS NOT NULL
+    AND p_to > p_from
+    AND paused_at < p_to
+    AND COALESCE(resumed_at, p_to) > p_from;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm.sla_pause_business_minutes(
+  p_realm_id uuid,
+  p_resource_type text,
+  p_resource_id uuid,
+  p_service_id uuid,
+  p_from timestamptz,
+  p_to timestamptz
+)
+RETURNS numeric
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT itsm.sla_pause_business_minutes_config(
+    p_realm_id,
+    p_resource_type,
+    p_resource_id,
+    cfg.timezone,
+    cfg.business_calendar_id,
+    cfg.business_hours_id,
+    p_from,
+    p_to
+  )
+  FROM itsm.resolve_business_config(p_realm_id, p_service_id) AS cfg;
 $$;
 
 CREATE OR REPLACE FUNCTION itsm.select_sla_target(
@@ -775,24 +1315,27 @@ AS $$
     END AS resolution_observed_at,
     CASE
       WHEN b.started_at IS NULL THEN NULL
-      ELSE itsm._minutes_between(b.started_at, COALESCE(b.first_response_at, p_at))
+      ELSE itsm.business_minutes_between(b.realm_id, b.service_id, b.started_at, COALESCE(b.first_response_at, p_at))
     END AS response_minutes_raw,
     CASE
       WHEN b.started_at IS NULL THEN NULL
-      ELSE itsm.sla_pause_minutes(b.realm_id, b.resource_type, b.resource_id, b.started_at, COALESCE(b.first_response_at, p_at))
+      ELSE itsm.sla_pause_business_minutes(b.realm_id, b.resource_type, b.resource_id, b.service_id, b.started_at, COALESCE(b.first_response_at, p_at))
     END AS response_pause_minutes,
     CASE
       WHEN b.started_at IS NULL THEN NULL
       ELSE GREATEST(
         0,
-        COALESCE(itsm._minutes_between(b.started_at, COALESCE(b.first_response_at, p_at)), 0)
-          - COALESCE(itsm.sla_pause_minutes(b.realm_id, b.resource_type, b.resource_id, b.started_at, COALESCE(b.first_response_at, p_at)), 0)
+        COALESCE(itsm.business_minutes_between(b.realm_id, b.service_id, b.started_at, COALESCE(b.first_response_at, p_at)), 0)
+          - COALESCE(itsm.sla_pause_business_minutes(b.realm_id, b.resource_type, b.resource_id, b.service_id, b.started_at, COALESCE(b.first_response_at, p_at)), 0)
       )
     END AS response_minutes,
     CASE
       WHEN b.started_at IS NULL OR t.response_target_minutes IS NULL THEN NULL
-      ELSE b.started_at + make_interval(
-        secs => ((t.response_target_minutes::numeric + COALESCE(itsm.sla_pause_minutes(b.realm_id, b.resource_type, b.resource_id, b.started_at, COALESCE(b.first_response_at, p_at)), 0)) * 60.0)::double precision
+      ELSE itsm.add_business_minutes(
+        b.realm_id,
+        b.service_id,
+        b.started_at,
+        (t.response_target_minutes::numeric + COALESCE(itsm.sla_pause_business_minutes(b.realm_id, b.resource_type, b.resource_id, b.service_id, b.started_at, COALESCE(b.first_response_at, p_at)), 0))
       )
     END AS response_due_at,
     CASE
@@ -800,31 +1343,34 @@ AS $$
       ELSE (
         GREATEST(
           0,
-          COALESCE(itsm._minutes_between(b.started_at, COALESCE(b.first_response_at, p_at)), 0)
-            - COALESCE(itsm.sla_pause_minutes(b.realm_id, b.resource_type, b.resource_id, b.started_at, COALESCE(b.first_response_at, p_at)), 0)
+          COALESCE(itsm.business_minutes_between(b.realm_id, b.service_id, b.started_at, COALESCE(b.first_response_at, p_at)), 0)
+            - COALESCE(itsm.sla_pause_business_minutes(b.realm_id, b.resource_type, b.resource_id, b.service_id, b.started_at, COALESCE(b.first_response_at, p_at)), 0)
         ) > t.response_target_minutes::numeric
       )
     END AS response_breached,
     CASE
       WHEN b.started_at IS NULL THEN NULL
-      ELSE itsm._minutes_between(b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at))
+      ELSE itsm.business_minutes_between(b.realm_id, b.service_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at))
     END AS resolution_minutes_raw,
     CASE
       WHEN b.started_at IS NULL THEN NULL
-      ELSE itsm.sla_pause_minutes(b.realm_id, b.resource_type, b.resource_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at))
+      ELSE itsm.sla_pause_business_minutes(b.realm_id, b.resource_type, b.resource_id, b.service_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at))
     END AS resolution_pause_minutes,
     CASE
       WHEN b.started_at IS NULL THEN NULL
       ELSE GREATEST(
         0,
-        COALESCE(itsm._minutes_between(b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0)
-          - COALESCE(itsm.sla_pause_minutes(b.realm_id, b.resource_type, b.resource_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0)
+        COALESCE(itsm.business_minutes_between(b.realm_id, b.service_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0)
+          - COALESCE(itsm.sla_pause_business_minutes(b.realm_id, b.resource_type, b.resource_id, b.service_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0)
       )
     END AS resolution_minutes,
     CASE
       WHEN b.started_at IS NULL OR t.resolution_target_minutes IS NULL THEN NULL
-      ELSE b.started_at + make_interval(
-        secs => ((t.resolution_target_minutes::numeric + COALESCE(itsm.sla_pause_minutes(b.realm_id, b.resource_type, b.resource_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0)) * 60.0)::double precision
+      ELSE itsm.add_business_minutes(
+        b.realm_id,
+        b.service_id,
+        b.started_at,
+        (t.resolution_target_minutes::numeric + COALESCE(itsm.sla_pause_business_minutes(b.realm_id, b.resource_type, b.resource_id, b.service_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0))
       )
     END AS resolution_due_at,
     CASE
@@ -832,8 +1378,8 @@ AS $$
       ELSE (
         GREATEST(
           0,
-          COALESCE(itsm._minutes_between(b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0)
-            - COALESCE(itsm.sla_pause_minutes(b.realm_id, b.resource_type, b.resource_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0)
+          COALESCE(itsm.business_minutes_between(b.realm_id, b.service_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0)
+            - COALESCE(itsm.sla_pause_business_minutes(b.realm_id, b.resource_type, b.resource_id, b.service_id, b.started_at, COALESCE(COALESCE(b.closed_at, b.resolved_at), p_at)), 0)
         ) > t.resolution_target_minutes::numeric
       )
     END AS resolution_breached

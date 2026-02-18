@@ -356,3 +356,96 @@ DQ は `apps/aiops_agent/orchestrator/docs/dq/dq.md` を正とし、設計変更
 - プロンプト/ポリシーの差分と `prompt_hash` を `aiops_prompt_history` で追跡できる
 - モデル設定（温度/Top-p/最大トークン）は証跡として保存する
 - IQ/oq/PQ の結果が変更ログに紐付き、追跡可能である
+
+## 自動トリアージ集計（Postgres: aiops_*）
+
+一次トリアージ（`impact`/`urgency`/`priority` 等）の判定結果は、参照実装では **Context Store（Postgres）**の `aiops_context.normalized_event` に保存されます（n8n ワークフローでマージ）。
+また、同一 `dedupe_key` の再受信回数・継続時間は `aiops_dedupe.seen_count` / `last_seen_at` に集計されます。
+
+集計表示（期間指定）は SQL view を用意してあるため、任意のUI（pgAdmin / BI / Grafana(Postgres datasource) 等）から参照できます。
+
+- view 定義: `apps/aiops_agent/knowledge_store/sql/aiops_triage_reporting_views.sql`
+
+### 1) 優先度・深刻度マトリクス（Priority Matrix）
+
+```sql
+SELECT
+  context_id,
+  created_at,
+  service_name,
+  ci_name,
+  impact,
+  urgency,
+  priority,
+  category,
+  subtype,
+  impacted_resources
+FROM aiops_reporting_priority_matrix
+WHERE created_at BETWEEN '2026-01-01T00:00:00Z'::timestamptz
+  AND '2026-01-02T00:00:00Z'::timestamptz
+ORDER BY
+  CASE priority WHEN 'p1' THEN 1 WHEN 'p2' THEN 2 WHEN 'p3' THEN 3 WHEN 'p4' THEN 4 ELSE 99 END,
+  created_at DESC;
+```
+
+### 2) アラート・グルーピング表（Correlation List / dedupe）
+
+```sql
+SELECT
+  dedupe_key,
+  parent_context_id,
+  service_name,
+  category,
+  priority,
+  seen_count,
+  duration_seconds,
+  first_seen_at,
+  last_seen_at
+FROM aiops_reporting_correlation_list
+WHERE last_seen_at BETWEEN '2026-01-01T00:00:00Z'::timestamptz
+  AND '2026-01-02T00:00:00Z'::timestamptz
+ORDER BY seen_count DESC, last_seen_at DESC;
+```
+
+### 3) エスカレーション・ステータス表
+
+```sql
+SELECT
+  context_id,
+  created_at,
+  service_name,
+  priority,
+  assignment_group,
+  assignment_role,
+  job_status,
+  job_result_status,
+  approval_id,
+  approval_expires_at,
+  approved_at,
+  used_at
+FROM aiops_reporting_escalation_status
+WHERE created_at BETWEEN '2026-01-01T00:00:00Z'::timestamptz
+  AND '2026-01-02T00:00:00Z'::timestamptz
+ORDER BY created_at DESC;
+```
+
+### 4) 異常スコア・リスク一覧表（Anomaly Scoring）
+
+異常スコアは入力側（監視基盤/ML）で算出して `normalized_event` に入れる前提です（参照実装では未強制）。
+
+```sql
+SELECT
+  context_id,
+  created_at,
+  service_name,
+  host,
+  metric_name,
+  anomaly_score,
+  deviation_pct,
+  predicted_value,
+  actual_value
+FROM aiops_reporting_anomaly_scoring
+WHERE created_at BETWEEN '2026-01-01T00:00:00Z'::timestamptz
+  AND '2026-01-02T00:00:00Z'::timestamptz
+ORDER BY created_at DESC;
+```

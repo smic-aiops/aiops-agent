@@ -6,6 +6,8 @@ ITSM SoR（RDS PostgreSQL `itsm.*`）に保存された Incident / Service Reque
 
 出力は Athena で参照し、Grafana（SLA/SLO ダッシュボード）や月次レポートの KPI に利用します。
 
+注: `itsm.sla_metrics_at(p_at)` が返す `*_minutes` は business minutes（timezone + 営業時間 + 祝日/週末 + `sla_pause` 控除）です。既定は `Asia/Tokyo` + `jp_standard` + `jp` で、service/CMDB に設定があれば上書きされます。
+
 ## 前提（依存）
 
 - SoR に `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` が適用済みであること
@@ -52,4 +54,3 @@ S3 key（既定）:
 
 - OQ: `apps/itsm_core/itsm_sla_metrics_sync/docs/oq/oq.md`
 - OQ 実行スクリプト: `apps/itsm_core/itsm_sla_metrics_sync/scripts/run_oq.sh`
-

@@ -69,6 +69,10 @@ BEGIN
   FOREACH t IN ARRAY ARRAY[
     'service',
     'configuration_item',
+    'business_calendar',
+    'business_calendar_holiday',
+    'business_hours',
+    'business_hours_window',
     'incident',
     'change_request',
     'service_request',
