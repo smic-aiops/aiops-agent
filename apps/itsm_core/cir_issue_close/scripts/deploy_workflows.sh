@@ -10,7 +10,7 @@ fi
 
 export WORKFLOW_DIR="${WORKFLOW_DIR:-${APP_DIR}/workflows}"
 export WITH_TESTS="${WITH_TESTS:-true}"
-exec bash "${REPO_ROOT}/apps/itsm_core/scripts/deploy_workflows.sh"
+exec bash "${REPO_ROOT}/apps/itsm_core/scripts/deploy_all_workflows.sh"
 
 resolve_n8n_api_key_for_realm() {
   local realm="$1"

@@ -62,5 +62,5 @@ apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/deploy_workflows.s
 - `apps/itsm_core/aiops_approval_history_backfill_to_sor/sql/`: 予約（必要に応じて補助 SQL を配置）
 
 ## 参照
-- SoR（SSoT）: `apps/itsm_core/sql/`
+- SoR（SSoT）: `apps/itsm_core/sor_ops/sql/`
 - OQ: `apps/itsm_core/aiops_approval_history_backfill_to_sor/docs/oq/oq.md`

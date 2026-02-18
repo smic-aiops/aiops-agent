@@ -6,7 +6,7 @@
 
 ## 前提
 
-- SoR の DDL が適用済みであること（`apps/itsm_core/sql/itsm_sor_core.sql`）
+- SoR の DDL が適用済みであること（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`）
 - AWS CLI / jq /（必要に応じて）terraform が利用できること
 
 ## チェック項目（最小）
@@ -25,4 +25,3 @@
 
 - `--help` の実行ログ（日時、実行者）
 - dry-run 出力（realm/期間/実行経路/SSM パス）
-

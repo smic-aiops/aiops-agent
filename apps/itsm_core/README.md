@@ -10,7 +10,7 @@
 
 **内容**
 - ITSM の “正（SoR）” を PostgreSQL（共有 RDS）上の `itsm.*` スキーマとして提供し、関連する運用スクリプト（DDL 適用、RLS、保持/削除、匿名化、監査アンカー、バックフィル等）を集約する。
-- SoR の仕様・運用・検証の入口を本 README に集約し、詳細は `apps/itsm_core/docs/`（Requirements/DQ/IQ/OQ/PQ）を参照する。
+- SoR の仕様・運用・検証の入口を本 README に集約し、横断ドキュメントは `apps/itsm_core/sor_ops/docs/itsm_core/`（Requirements/DQ/IQ/OQ/PQ/AIS）を参照する。
 - 組織（realm）ごとの拡張が必要な Requirements/DQ は、共通ベース（`apps/itsm_core/**/docs/`）を編集せず、`vendor/<name_prefix>/apps/itsm_core/**/realms/<realm_key>/docs/` へ **realm overlay** として追記する（`name_prefix` は `terraform output -raw name_prefix` を正とする）。
 - 秘密情報（DB 資格情報、API キー等）は tfvars に平文で置かず、SSM/Secrets Manager → 環境変数注入を前提とする。
 
@@ -32,13 +32,13 @@
   - ネットワーク/認証基盤（Terraform/IaC 側）全般
 - バリデーション成果物（最小）:
   - 本 README
-  - Requirements: `apps/itsm_core/docs/app_requirements.md`
-  - CS（AIS）: `apps/itsm_core/docs/cs/ai_behavior_spec.md`
+  - Requirements: `apps/itsm_core/sor_ops/docs/itsm_core/app_requirements.md`
+  - CS（AIS）: `apps/itsm_core/sor_ops/docs/itsm_core/cs/ai_behavior_spec.md`
 - DQ/IQ/OQ/PQ:
-  - `apps/itsm_core/docs/dq/dq.md`
-  - `apps/itsm_core/docs/iq/iq.md`
-  - `apps/itsm_core/docs/oq/oq.md`
-  - `apps/itsm_core/docs/pq/pq.md`
+  - `apps/itsm_core/sor_ops/docs/itsm_core/dq/dq.md`
+  - `apps/itsm_core/sor_ops/docs/itsm_core/iq/iq.md`
+  - `apps/itsm_core/sor_ops/docs/itsm_core/oq/oq.md`
+  - `apps/itsm_core/sor_ops/docs/itsm_core/pq/pq.md`
 
 ---
 
@@ -66,9 +66,9 @@ flowchart LR
 ```
 
 ### ディレクトリ構成
-- `apps/itsm_core/sql/`: SoR スキーマ（SSoT）/RLS
+- `apps/itsm_core/sor_ops/sql/`: SoR スキーマ（SSoT）/RLS
 - `apps/itsm_core/scripts/`: ITSM Core 配下の **統合オーケストレータ**（一括 deploy / 一括 OQ）
-- `apps/itsm_core/docs/`: ITSM Core の横断ドキュメント（Requirements/DQ/IQ/OQ/PQ/AIS）（共通ベース）
+- `apps/itsm_core/sor_ops/docs/itsm_core/`: ITSM Core の横断ドキュメント（Requirements/DQ/IQ/OQ/PQ/AIS）（共通ベース）
 - `vendor/<name_prefix>/apps/itsm_core/realms/<realm_key>/docs/`: （任意）共通ベース docs への **realm overlay**（組織別拡張）
 - `apps/itsm_core/<sub_app>/`: サブアプリ（個別の workflows/scripts/docs/data/sql を保持）
   - `apps/itsm_core/<sub_app>/docs/`: サブアプリ docs（共通ベース）
@@ -90,6 +90,8 @@ flowchart LR
 | `aiops_approval_history_backfill_to_sor` | hybrid | legacy `aiops_approval_history` → SoR（状態保持・定期バックフィル） | `apps/itsm_core/aiops_approval_history_backfill_to_sor/docs/app_requirements.md` | `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/deploy_workflows.sh` | `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/run_oq.sh` |
 | `cloudwatch_event_notify` | n8n | CloudWatch/SNS 等の通知を整形し Zulip/GitLab/Grafana へ連携 | `apps/itsm_core/cloudwatch_event_notify/docs/app_requirements.md` | `apps/itsm_core/cloudwatch_event_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/cloudwatch_event_notify/scripts/run_oq.sh` |
 | `gitlab_issue_metrics_sync` | n8n | GitLab issue メトリクス集計（S3 出力） | `apps/itsm_core/gitlab_issue_metrics_sync/docs/app_requirements.md` | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/run_oq.sh` |
+| `gitlab_dora_metrics_sync` | n8n | GitLab DORA 指標（デプロイ頻度/変更リードタイム/変更失敗率）の集計（S3 出力） | `apps/itsm_core/gitlab_dora_metrics_sync/docs/app_requirements.md` | `apps/itsm_core/gitlab_dora_metrics_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_dora_metrics_sync/scripts/run_oq.sh` |
+| `itsm_sla_metrics_sync` | n8n | ITSM SoR の SLA 計測（日次集計 / S3 出力） | `apps/itsm_core/itsm_sla_metrics_sync/docs/app_requirements.md` | `apps/itsm_core/itsm_sla_metrics_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/itsm_sla_metrics_sync/scripts/run_oq.sh` |
 | `gitlab_issue_rag` | n8n | GitLab issue/notes → pgvector（RAG 用） | `apps/itsm_core/gitlab_issue_rag/docs/app_requirements.md` | `apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_rag/scripts/run_oq.sh` |
 | `cir_usecase_list` | n8n | CIR（一般管理/継続的改善）で `状態/Approved` の Issue を一覧し、ユースケース（`UC-*`）を抽出して返す | `apps/itsm_core/cir_usecase_list/docs/app_requirements.md` | `apps/itsm_core/cir_usecase_list/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_usecase_list/scripts/run_oq.sh` |
 | `cir_auto_label` | n8n | CIR テンプレ起票時に `ITSM/継続的改善` / `状態/New` を自動付与（Issue Hook） | `apps/itsm_core/cir_auto_label/docs/app_requirements.md` | `apps/itsm_core/cir_auto_label/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_auto_label/scripts/run_oq.sh` |
@@ -105,21 +107,21 @@ flowchart LR
 ### 統合オーケストレータ（推奨）
 ```bash
 # ワークフロー同期（全サブアプリ）
-apps/itsm_core/scripts/deploy_workflows.sh --dry-run
+apps/itsm_core/scripts/deploy_all_workflows.sh --dry-run
 
 # OQ（一括）
-apps/itsm_core/scripts/run_oq.sh --realm default --dry-run
+apps/itsm_core/scripts/run_all_oq.sh --realm default --dry-run
 ```
 
 ---
 
 ## 主要ファイル（SSoT）
 
-- スキーマ（正）: `apps/itsm_core/sql/itsm_sor_core.sql`
-- RLS: `apps/itsm_core/sql/itsm_sor_rls.sql`
-- RLS FORCE（強化）: `apps/itsm_core/sql/itsm_sor_rls_force.sql`
-- RLS 運用補助: `itsm.set_rls_context(...)`（`apps/itsm_core/sql/itsm_sor_core.sql` 内。n8n/autocommit の “SQL 文内で app.* をセット” を想定）
-- AIOpsAgent SoR 書き込み（SoR 直SQLの置き換え）: `itsm.aiops_*`（`apps/itsm_core/sql/itsm_sor_core.sql`）
+- スキーマ（正）: `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`
+- RLS: `apps/itsm_core/sor_ops/sql/itsm_sor_rls.sql`
+- RLS FORCE（強化）: `apps/itsm_core/sor_ops/sql/itsm_sor_rls_force.sql`
+- RLS 運用補助: `itsm.set_rls_context(...)`（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` 内。n8n/autocommit の “SQL 文内で app.* をセット” を想定）
+- AIOpsAgent SoR 書き込み（SoR 直SQLの置き換え）: `itsm.aiops_*`（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`）
 
 ---
 
@@ -133,8 +135,8 @@ apps/itsm_core/scripts/run_oq.sh --realm default --dry-run
 ## n8n ワークフロー（代表）
 
 - ワークフロー定義（JSON）は各サブアプリの `workflows/` に配置する（例: SoR コアは `apps/itsm_core/sor_webhooks/README.md`、GitLab backfill は `apps/itsm_core/gitlab_backfill_to_sor/README.md`）。
-- デプロイは ITSM Core 統合オーケストレータ（`apps/itsm_core/scripts/deploy_workflows.sh`）または各サブアプリの `scripts/deploy_workflows.sh` で行う。
-- OQ は `apps/itsm_core/scripts/run_oq.sh`（一括）または各サブアプリの `scripts/run_oq.sh` で行う。
+- デプロイは ITSM Core 統合オーケストレータ（`apps/itsm_core/scripts/deploy_all_workflows.sh`）または各サブアプリの `apps/itsm_core/<sub_app>/scripts/deploy_workflows.sh` で行う。
+- OQ は `apps/itsm_core/scripts/run_all_oq.sh`（一括）または各サブアプリの `apps/itsm_core/<sub_app>/scripts/run_oq.sh` で行う。
 
 ---
 
@@ -165,7 +167,7 @@ Intended Use に適合することを、最小の検証で示す。
 対象環境に SoR が正しく設置されていることを確認する。
 
 **文書**
-- `apps/itsm_core/docs/iq/iq.md`
+- `apps/itsm_core/sor_ops/docs/itsm_core/iq/iq.md`
 
 ---
 
@@ -174,15 +176,15 @@ Intended Use に適合することを、最小の検証で示す。
 重要機能（SoR 書き込み、バックフィル投入、ワークフロー同期、冪等性）が意図どおり動作することを確認する。
 
 **文書**
-- OQ（入口）: `apps/itsm_core/docs/oq/oq.md`
+- OQ（入口）: `apps/itsm_core/sor_ops/docs/itsm_core/oq/oq.md`
 - OQ（SoR core / Webhook）: `apps/itsm_core/sor_webhooks/docs/oq/oq.md`（`oq_*.md` から生成）
 
 **実行**
-- OQ 実行補助（ITSM Core 配下一括）: `apps/itsm_core/scripts/run_oq.sh`
+- OQ 実行補助（ITSM Core 配下一括）: `apps/itsm_core/scripts/run_all_oq.sh`
 - OQ 実行補助（SoR core / Webhook のみ）: `apps/itsm_core/sor_webhooks/scripts/run_oq.sh`
 
 補足:
-- OQ 文書を更新した場合は `scripts/generate_oq_md.sh --app apps/itsm_core/<app>` を実行して、各アプリの `docs/oq/oq.md` を更新する。
+- OQ 文書を更新した場合は `scripts/generate_oq_md.sh --app apps/itsm_core/<app>` を実行して、各サブアプリの `apps/itsm_core/<app>/docs/oq/oq.md` を更新する。
 
 ---
 
@@ -191,7 +193,7 @@ Intended Use に適合することを、最小の検証で示す。
 データ量・実行頻度・外部 API 制約（GitLab/LLM）に対する成立性を確認する。
 
 **文書**
-- `apps/itsm_core/docs/pq/pq.md`
+- `apps/itsm_core/sor_ops/docs/itsm_core/pq/pq.md`
 
 ---
 

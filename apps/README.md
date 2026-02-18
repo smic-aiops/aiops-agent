@@ -31,12 +31,22 @@ flowchart LR
 | `itsm_core` | Cron / 手動 Webhook | GitLab API / LLM API / Postgres（RDS, `itsm.*`） | ITSM SoR（監査/決定/承認）の投入・バックフィル・検証（ワークフロー集約） |
 | `cloudwatch_event_notify` | CloudWatch/SNS | Zulip/GitLab/Grafana | 監視イベントの整形通知、記録、参照リンク付与 |
 | `gitlab_issue_metrics_sync` | Cron / 手動 Webhook | GitLab → S3 | Issue データの集計と履歴出力（KPI/レポート用） |
+| `gitlab_dora_metrics_sync` | Cron / 手動 Webhook | GitLab → S3 | DORA 指標（デプロイ頻度/変更リードタイム/変更失敗率）の集計と履歴出力（DevOps KPI 用） |
+| `itsm_sla_metrics_sync` | Cron / 手動 Webhook | Postgres（RDS, `itsm.*`）→ S3 | SLA 計測（応答/解決/期限/逸脱）の集計と履歴出力（SLA/MTTR KPI 用） |
 | `gitlab_issue_rag` | Cron / 手動 Webhook | GitLab → Embedding API → Postgres（pgvector） | Issue/議論を RAG 用データソース（pgvector）へ同期 |
 | `gitlab_mention_notify` | GitLab Webhook | Zulip（DM 等）/（任意）GitLab API | `@mention` の到達性向上（通知） |
 | `gitlab_push_notify` | GitLab Webhook | Zulip | Push の要約通知 |
 | `workflow_manager` | AIOps Agent 等（Catalog API） | n8n API / GitLab / Service Control | ワークフローカタログ API、サービスリクエスト系ワークフロー |
 | `zulip_gitlab_issue_sync` | Cron / 手動 Webhook | Zulip ↔ GitLab（＋任意 S3） | Zulip の会話と GitLab Issue の同期 |
 | `zulip_stream_sync` | CMDB 等 | Zulip | ストリーム作成/アーカイブの同期 |
+
+## サブアプリの独立性（デプロイ/動作）チェック
+
+各サブアプリ（`apps/*/*`）が単体でデプロイでき、かつ OQ（スモーク）が実行できることを **DRY_RUN** で検証します。
+
+- まとめて検証（推奨）: `bash scripts/verify_subapp_independence.sh`
+- 静的チェックのみ（実行なし）: `bash scripts/verify_subapp_independence.sh --static-only`
+- Terraform 出力参照の整合チェック: `bash scripts/verify_apps_scripts_tf_resolution.sh --no-terraform-check`
 
 ## README（CSV）フォーマット（最小ドキュメントセット）
 
@@ -235,7 +245,7 @@ realm_key: <realm_key>（例: smoc / tenant-a。`default` を暗黙採用しな�
 
 ---
 
-## `docs/cs/`（Configuration Specification）と `ai_behavior_spec.md`
+## `<app_root>/docs/cs/`（Configuration Specification）と `ai_behavior_spec.md`
 
 各アプリは `<app_root>/docs/cs/` を **Configuration Specification（CS: 設計・構成定義）** の置き場として使用します。
 ここには、ワークフローやプロンプト等の「実装（設定）」そのものではなく、**「AI に何を考えさせ、何をさせ、何をさせないか」**を、人間（監査官・QA・開発者）が理解できる形で定義した文書を配置します。
@@ -253,7 +263,7 @@ realm_key: <realm_key>（例: smoc / tenant-a。`default` を暗黙採用しな�
 ---
 ## AI Ops 実装ガイド（任意・メモ）
 
-本書は「AI をどう置くか」の考え方メモです。監査向けの正式ドキュメントは `apps/*/docs/`（要求/仕様/設計/検証）を正とします。
+本書は「AI をどう置くか」の考え方メモです。監査向けの正式ドキュメントは、各アプリ README が指す `apps/**/docs/`（例: `apps/<app>/*/docs/`, `apps/itsm_core/<sub_app>/docs/`, `apps/itsm_core/sor_ops/docs/itsm_core/`, `apps/workflow_manager/*/docs/`, `apps/workflow_manager/workflow_catalog/docs/shared/`）を正とします。
 
 - n8n などのワークフローで人が判断しているポイントに AI をそっと置いてみる発想でシナリオを考える
 - シナリオのイン/アウトを決め、手作業ならどれくらい時間がかかるかも見積もる

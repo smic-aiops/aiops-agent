@@ -19,6 +19,9 @@
 | サービス要求処理時間 |  |  |  |  |
 | 一次完結率 |  |  |  |  |
 
+注:
+- `SLA達成率` / `MTTR` は、SoR（RDS Postgres `itsm.*`）→ n8n `itsm_sla_metrics_sync` → S3/Athena → Grafana の集計結果を参照する想定
+
 ## 3. 主要トピック（Issueリンク）
 - インシデント:
 - 問題（RCA/恒久対策）:

@@ -30,7 +30,7 @@
 | 機能 | 状態 | 根拠（実装） | 補足（不足/注意） |
 |---|---|---|---|
 | SoR DDL 適用スクリプト（dry-run あり、tfvars 直読みなし） | 実装済み | `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh` | DB 接続情報は terraform output/SSM から解決。 |
-| デプロイ時に DDL を先に適用してからワークフロー同期 | 実装済み | `apps/itsm_core/scripts/deploy_workflows.sh` | `N8N_APPLY_ITSM_SOR_SCHEMA`（デフォルト有効）。必要なら `N8N_CHECK_ITSM_SOR_SCHEMA=true`（依存チェック; 既定有効）と併用。 |
+| デプロイ時に DDL を先に適用してからワークフロー同期 | 実装済み | `apps/itsm_core/scripts/deploy_all_workflows.sh` | `N8N_APPLY_ITSM_SOR_SCHEMA`（デフォルト有効）。必要なら `N8N_CHECK_ITSM_SOR_SCHEMA=true`（依存チェック; 既定有効）と併用。 |
 
 ## 3. 「決定/承認」を SoR へ集約（誰が・いつ・何を・どう決めたか）
 
@@ -59,7 +59,8 @@
 | GitLab Issue → SoR レコード upsert（最小） | 実装済み | `apps/itsm_core/zulip_gitlab_issue_sync/workflows/zulip_gitlab_issue_sync.json` | `itsm.external_ref(ref_type=gitlab_issue)` をキーに作成/更新。 |
 | ステータス遷移（状態機械）/必須フィールド検証 | 未実装 | （なし） | DB の CHECK は最小。業務ルールは未整備。 |
 | サービスカタログ（Request catalog） | 未実装 | （なし） | 既存はワークフロー/テンプレ中心（`apps/workflow_manager`）。SoR 側のモデルは未整備。 |
-| SLA/SLO 計測（受付/解決/期限） | 未実装 | （なし） | メトリクス集計はクラウド側基盤寄り。SoR の SLA テーブル/計測は未実装。 |
+| SLA/SLO 計測（受付/解決/期限） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.sla_target`/`itsm.sla_pause`/`itsm.sla_metrics`/`itsm.slo_breach`） | SLA は SoR で目標値/停止区間を保持し、ビューで経過/期限/逸脱を算出。SLO は時系列は Athena/Grafana を正とし、SoR には逸脱イベント（`slo_breach`）を記録できる。 |
+| SLA 計測の集計（S3/Athena 用・日次） | 実装済み | `apps/itsm_core/itsm_sla_metrics_sync/workflows/itsm_sla_metrics_sync.json` | `itsm.sla_metrics_at(p_at)` を入力に `metrics.json` / `sla_events.jsonl` を S3 に出力（既定: 前日UTC）。 |
 | 参照整合性強化（service_id/ci などの必須化、辞書化） | 未実装 | （なし） | 段階導入の設計が必要（現状は NULL 許容）。 |
 
 ## 6. セキュリティ/ガバナンス（DB運用）

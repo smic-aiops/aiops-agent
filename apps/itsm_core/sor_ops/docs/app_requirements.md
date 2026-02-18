@@ -55,6 +55,6 @@
 
 ## 正（SSoT）
 
-- スキーマ（正）: `apps/itsm_core/sql/`
+- スキーマ（正）: `apps/itsm_core/sor_ops/sql/`
 - 運用スクリプト（正）: `apps/itsm_core/sor_ops/scripts/`
 - DQ/IQ/OQ/PQ: `apps/itsm_core/sor_ops/docs/`

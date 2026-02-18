@@ -13,7 +13,7 @@ Usage:
   apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh [options]
 
 Options:
-  --schema PATH           Schema SQL to apply (default: apps/itsm_core/sql/itsm_sor_core.sql)
+  --schema PATH           Schema SQL to apply (default: apps/itsm_core/sor_ops/sql/itsm_sor_core.sql)
   --dry-run               Print planned actions only
   --ecs-exec              Run psql via ECS Exec (useful when RDS is private) (default: true)
   --ecs-cluster NAME      ECS cluster name
@@ -63,7 +63,7 @@ require_cmd() {
   fi
 }
 
-SCHEMA_FILE="${SCHEMA_FILE:-apps/itsm_core/sql/itsm_sor_core.sql}"
+SCHEMA_FILE="${SCHEMA_FILE:-apps/itsm_core/sor_ops/sql/itsm_sor_core.sql}"
 ECS_EXEC="${ECS_EXEC:-true}"
 LOCAL_PSQL="${LOCAL_PSQL:-false}"
 DRY_RUN="${DRY_RUN:-false}"

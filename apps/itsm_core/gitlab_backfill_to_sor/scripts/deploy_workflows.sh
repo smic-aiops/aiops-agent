@@ -9,5 +9,5 @@ if [[ -z "${REPO_ROOT}" ]]; then
 fi
 
 export WORKFLOW_DIR="${WORKFLOW_DIR:-${APP_DIR}/workflows}"
-exec bash "${REPO_ROOT}/apps/itsm_core/scripts/deploy_workflows.sh"
+exec bash "${REPO_ROOT}/apps/itsm_core/scripts/deploy_all_workflows.sh"
 

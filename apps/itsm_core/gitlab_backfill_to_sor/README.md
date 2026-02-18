@@ -35,5 +35,5 @@ apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh
 ```
 
 ## 参照
-- SoR（SSoT）: `apps/itsm_core/sql/`
+- SoR（SSoT）: `apps/itsm_core/sor_ops/sql/`
 - OQ: `apps/itsm_core/gitlab_backfill_to_sor/docs/oq/oq.md`

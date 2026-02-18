@@ -49,7 +49,7 @@ bash apps/aiops_agent/orchestrator/scripts/run_iq_tests_aiops_agent.sh
 
 ## 成果物
 
-- `apps/workflow_manager/data/iq_test_aiops_agent_*.jsonl`（テスト結果の JSON Lines）
+- `evidence/iq/aiops_agent/iq_test_aiops_agent_*.jsonl`（テスト結果の JSON Lines）
 
 ## DQ 連携（証跡）
 

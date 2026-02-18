@@ -22,7 +22,7 @@
 ## 事前準備（Grafana連携の例）
 - 認証: Keycloak の OIDC で Grafana にSSO（閲覧権限はロールで制御）
 - 導線: 技術管理 Issue に `{{GRAFANA_BASE_URL}}` とダッシュボードUIDを記載
-- 展開指標: S3 へは sulu の CloudWatch Logs のみを集約し、Athena で集計 → Grafana が参照
+- 展開指標（DORA）: n8n の `gitlab_dora_metrics_sync` が GitLab API（Deployments/MRs）を日次集計して S3 に保存 → Athena で集計 → Grafana が参照
 - 通知: n8n が GitLab CI の結果を受け、Zulip 通知 + Issue コメントを自動化
 
 ## 実施手順（GitLab）

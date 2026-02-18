@@ -34,7 +34,7 @@ set -euo pipefail
 #   N8N_PROMPT_LOCK       : "true" to keep existing prompt text when updating workflows (default: false)
 #   N8N_POLICY_DIR        : directory that stores policy files (default: apps/aiops_agent/orchestrator/data/default/policy)
 #   N8N_AGENT_REALMS      : comma/space-separated realm list (default: terraform output N8N_AGENT_REALMS)
-#   N8N_REALM_DATA_DIR_BASE : base dir for realm-specific prompt/policy overrides (default: apps/workflow_manager/data)
+#   N8N_REALM_DATA_DIR_BASE : base dir for realm-specific prompt/policy overrides (default: apps/workflow_manager/workflow_catalog/data/shared)
 #   N8N_REALM_OVERLAY_DIR_BASE : base dir for realm overlay overrides (data/workflows) (default: vendor/<name_prefix>/apps/workflow_manager/realms; fallback: apps/workflow_manager/realms)
 #   ZULIP_BASIC_CREDENTIAL_NAME : name for the Zulip httpBasicAuth credential (default: aiops-zulip-basic)
 #   ZULIP_BASIC_CREDENTIAL_ID   : credential ID to update instead of creating a new one
@@ -306,7 +306,7 @@ N8N_PUBLIC_API_BASE_URL="${N8N_PUBLIC_API_BASE_URL%/}"
 DEFAULT_N8N_PUBLIC_API_BASE_URL="${N8N_PUBLIC_API_BASE_URL}"
 DEFAULT_N8N_API_BASE_URL="${N8N_API_BASE_URL}"
 N8N_AGENT_REALMS="${N8N_AGENT_REALMS:-}"
-N8N_REALM_DATA_DIR_BASE="${N8N_REALM_DATA_DIR_BASE:-apps/workflow_manager/data}"
+N8N_REALM_DATA_DIR_BASE="${N8N_REALM_DATA_DIR_BASE:-apps/workflow_manager/workflow_catalog/data/shared}"
 if [[ -z "${N8N_REALM_OVERLAY_DIR_BASE:-}" ]]; then
   prefix_from_tf=""
   if command -v terraform >/dev/null 2>&1; then

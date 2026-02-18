@@ -1,0 +1,11 @@
+# 利用方法（Usage）
+
+本ディレクトリは `apps/itsm_core/gitlab_dora_metrics_sync/` の利用方法に関する補足ドキュメント置き場です。
+正（SSoT）は `apps/itsm_core/gitlab_dora_metrics_sync/README.md` と `apps/itsm_core/gitlab_dora_metrics_sync/scripts/` を参照してください。
+
+## よく使うコマンド（例）
+
+```bash
+DRY_RUN=true apps/itsm_core/gitlab_dora_metrics_sync/scripts/deploy_workflows.sh
+apps/itsm_core/gitlab_dora_metrics_sync/scripts/run_oq.sh --dry-run
+```

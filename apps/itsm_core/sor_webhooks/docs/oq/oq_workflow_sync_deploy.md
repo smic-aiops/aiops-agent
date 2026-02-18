@@ -2,7 +2,7 @@
 
 ## 目的
 
-`apps/itsm_core/scripts/deploy_workflows.sh` により、ITSM Core 配下（`apps/itsm_core/**/workflows/`）のワークフロー群が n8n Public API へ upsert されることを確認する（dry-run の差分確認も含む）。
+`apps/itsm_core/scripts/deploy_all_workflows.sh` により、ITSM Core 配下（`apps/itsm_core/**/workflows/`）のワークフロー群が n8n Public API へ upsert されることを確認する（dry-run の差分確認も含む）。
 
 ## 受け入れ基準
 
@@ -16,13 +16,13 @@
 DRY_RUN=true \
 WORKFLOW_DIR=apps/itsm_core/sor_webhooks/workflows \
 WITH_TESTS=false \
-apps/itsm_core/scripts/deploy_workflows.sh
+apps/itsm_core/scripts/deploy_all_workflows.sh
 
 # 実行（必要なら有効化も）
 ACTIVATE=true \
 WORKFLOW_DIR=apps/itsm_core/sor_webhooks/workflows \
 WITH_TESTS=false \
-apps/itsm_core/scripts/deploy_workflows.sh
+apps/itsm_core/scripts/deploy_all_workflows.sh
 ```
 
 補足:

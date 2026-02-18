@@ -5,7 +5,7 @@
 このリポジトリでは、n8n のワークフロー定義を Git 管理し、n8n Public API 経由で同期（upsert）できます。Git 管理された JSON を更新したら `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh` を実行してください。
 
 - AI Ops Agent 側の既定ディレクトリ: `apps/aiops_agent/*/workflows/`
-- Service Request Workflow Manager 側（サービスリクエスト）の配布: `apps/workflow_manager/scripts/deploy_workflows.sh`
+- Service Request Workflow Manager 側（サービスリクエスト）の配布: `apps/workflow_manager/scripts/deploy_all_workflows.sh`
 
 - 対象スクリプト: `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh`
 - 必要なもの: `bash` / `curl` / `jq` / `python3`

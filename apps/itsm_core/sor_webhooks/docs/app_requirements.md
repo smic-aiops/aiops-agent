@@ -30,5 +30,5 @@
 ## 正（SSoT）
 
 - ワークフロー: `apps/itsm_core/sor_webhooks/workflows/`
-- 同期（ITSM Core 配下）: `apps/itsm_core/scripts/deploy_workflows.sh`
+- 同期（ITSM Core 配下）: `apps/itsm_core/scripts/deploy_all_workflows.sh`
 - OQ: `apps/itsm_core/sor_webhooks/docs/oq/oq.md`

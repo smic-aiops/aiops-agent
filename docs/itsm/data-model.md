@@ -308,6 +308,8 @@ erDiagram
 | `assignee_group_id` | `text` | `kc-group-id` | |
 | `assignee_principal_id` | `text` | `kc-sub` | |
 | `started_at` | `timestamptz` |  | SLA 計測起点 |
+| `acknowledged_at` | `timestamptz` |  | 受付/担当引受（任意） |
+| `first_response_at` | `timestamptz` |  | 初回応答（任意） |
 | `resolved_at` | `timestamptz` |  | |
 | `closed_at` | `timestamptz` |  | |
 | `visibility` | `text` | `internal/confidential` | **ACL の補助**（後述） |
@@ -354,9 +356,87 @@ erDiagram
 | `assignee_group_id` | `text` | `kc-group-id` | |
 | `catalog_item_key` | `text` | `access.add_group_member` | カタログの識別子（GitLab/DB どちらが正でもよいが固定する） |
 | `inputs` | `jsonb` | `{ "target_user": "..." }` | フォーム入力（PII は最小化） |
+| `started_at` | `timestamptz` |  | SLA 計測起点（任意） |
+| `acknowledged_at` | `timestamptz` |  | 受付/担当引受（任意） |
+| `first_response_at` | `timestamptz` |  | 初回応答（任意） |
+| `resolved_at` | `timestamptz` |  | 充足（任意） |
+| `closed_at` | `timestamptz` |  | |
 | `visibility` | `text` | `internal/confidential` | |
 | `created_at` | `timestamptz` |  | |
 | `updated_at` | `timestamptz` |  | |
+
+#### `itsm.sla_target`（SLA 目標値）
+
+SLA の目標（応答/解決）を構造化して保持します。優先順位（上から順に優先）:
+1) `service_id` が一致するもの  
+2) `priority` が一致するもの  
+3) `service_id` / `priority` が `NULL` の全体既定  
+
+| 列 | 型 | 例 | 備考 |
+|---|---|---|---|
+| `id` | `uuid` |  | PK |
+| `realm_id` | `uuid` |  | FK |
+| `target_key` | `text` | `svc_api_p1` | テナント内ユニーク |
+| `resource_type` | `text` | `incident/service_request/...` | 対象レコード種別 |
+| `service_id` | `uuid` |  | 対象サービス（NULL は全体既定） |
+| `priority` | `text` | `p1` | 任意（NULL は全優先度共通） |
+| `response_target_minutes` | `int` | `60` | 応答目標（任意） |
+| `resolution_target_minutes` | `int` | `240` | 解決目標（任意） |
+| `active` | `boolean` | `true` | |
+| `effective_from` | `timestamptz` |  | 適用開始 |
+| `effective_to` | `timestamptz` |  | 適用終了（任意） |
+| `created_at` | `timestamptz` |  | |
+| `updated_at` | `timestamptz` |  | |
+
+#### `itsm.sla_pause`（SLA 停止区間）
+
+SLA を止める（保留）区間を記録します。SLA 期限（due）や経過時間の算定時に差し引きます。
+
+| 列 | 型 | 例 | 備考 |
+|---|---|---|---|
+| `id` | `uuid` |  | PK |
+| `realm_id` | `uuid` |  | FK |
+| `resource_type` | `text` | `incident/service_request/...` | 対象レコード種別 |
+| `resource_id` | `uuid` |  | 対象レコード ID |
+| `paused_at` | `timestamptz` |  | 停止開始 |
+| `resumed_at` | `timestamptz` |  | 停止終了（任意） |
+| `reason` | `text` | `waiting_customer` | 任意 |
+| `created_by_principal_id` | `text` | `kc-sub` | 任意 |
+| `created_at` | `timestamptz` |  | |
+| `updated_at` | `timestamptz` |  | |
+
+#### `itsm.slo_breach`（SLO 逸脱イベント）
+
+SLO の逸脱（breach）を **イベントとして**構造化保存します（時系列そのものは Athena/Grafana 側が正）。
+
+| 列 | 型 | 例 | 備考 |
+|---|---|---|---|
+| `id` | `uuid` |  | PK |
+| `realm_id` | `uuid` |  | FK |
+| `service_id` | `uuid` |  | 対象サービス（任意） |
+| `objective_key` | `text` | `availability_30d` | 逸脱した SLO の識別子 |
+| `breach_started_at` | `timestamptz` |  | 逸脱開始 |
+| `breach_ended_at` | `timestamptz` |  | 逸脱終了（任意） |
+| `severity` | `text` | `critical` | 任意 |
+| `source` | `text` | `grafana/athena/...` | 任意 |
+| `evidence` | `jsonb` | `{ "dashboard_url": "...", "query": "..." }` | 根拠リンク/クエリ（任意） |
+| `created_at` | `timestamptz` |  | |
+
+#### `itsm.sla_metrics`（VIEW: SLA 計測）
+
+`incident` / `service_request` を横断して、SLA（受付/応答/解決/期限）を算出したビューです。
+- 期限（`*_due_at`）は「目標分 + 停止区間（分）」で延長されます。
+- `*_breached` は「停止区間を差し引いた経過分」が目標を超えたかで判定します。
+- 実体は `itsm.sla_metrics_at(p_at timestamptz)`（関数）であり、`itsm.sla_metrics` は `p_at=NOW()` のショートカットです（任意時点のスナップショット算出に利用できます）。
+
+例（RLS コンテキストを statement 内で設定）:
+```sql
+WITH v AS (SELECT itsm.set_rls_context('default'))
+SELECT *
+FROM itsm.sla_metrics
+ORDER BY started_at DESC NULLS LAST
+LIMIT 50;
+```
 
 #### `itsm.problem`（問題）
 

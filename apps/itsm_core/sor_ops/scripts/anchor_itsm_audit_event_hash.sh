@@ -495,7 +495,7 @@ else
   fi
 
   if [[ -z "${QUERY_RESULT}" ]]; then
-    echo "ERROR: No hash-chain head found. Ensure apps/itsm_core/sql/itsm_sor_core.sql (hash-chain trigger) is applied and events are being inserted." >&2
+    echo "ERROR: No hash-chain head found. Ensure apps/itsm_core/sor_ops/sql/itsm_sor_core.sql (hash-chain trigger) is applied and events are being inserted." >&2
     exit 1
   fi
 

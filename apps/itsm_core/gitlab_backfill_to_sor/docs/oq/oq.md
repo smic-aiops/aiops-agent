@@ -7,7 +7,7 @@ GitLab バックフィルのテスト投入 Webhook により、SoR への投入
 ## 前提
 
 - n8n にワークフローが同期済みであること（`apps/itsm_core/gitlab_backfill_to_sor/workflows/*.json`）
-- SoR の DDL が適用済みであること（`apps/itsm_core/sql/itsm_sor_core.sql`）
+- SoR の DDL が適用済みであること（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`）
 
 ## OQ ケース（要約）
 
@@ -160,4 +160,3 @@ apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh
 
 ---
 <!-- OQ_SCENARIOS_END -->
-

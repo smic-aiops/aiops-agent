@@ -37,12 +37,13 @@
 - 通知: Grafana Alerting → n8n → Zulip 通知 + GitLab Issue 起票
 
 ## 実施手順（GitLab / Grafana / n8n）
-1. Athena の集計クエリを用意し、Grafana に SLA/SLO ダッシュボードを作成  
-2. CMDB にダッシュボード参照情報（UID/URL/変数/PromQL/対象メトリクス/集計期間）を記入  
-3. [docs/sla_master.md](../sla_master.md) に SLA/SLO 定義（目標/定義/算出元/計測期間）を記入・更新  
-4. 定義変更は Issue テンプレ「SLA/SLO 定義」で起票し履歴管理する  
-5. Grafana Alerting → n8n → Zulip + Issue 起票で逸脱対応を回す  
-6. 月次レポートに Grafana ダッシュボードの結果を反映する  
+1. SoR（RDS Postgres `itsm.*`）の SLA 計測（応答/解決/期限/逸脱）を n8n の `itsm_sla_metrics_sync` が日次集計して S3 に保存 → Athena で参照 → Grafana が可視化  
+2. Athena の集計クエリを用意し、Grafana に SLA/SLO ダッシュボードを作成  
+3. CMDB にダッシュボード参照情報（UID/URL/変数/PromQL/対象メトリクス/集計期間）を記入  
+4. [docs/sla_master.md](../sla_master.md) に SLA/SLO 定義（目標/定義/算出元/計測期間）を記入・更新  
+5. 定義変更は Issue テンプレ「SLA/SLO 定義」で起票し履歴管理する  
+6. Grafana Alerting → n8n → Zulip + Issue 起票で逸脱対応を回す  
+7. 月次レポートに Grafana ダッシュボードの結果を反映する  
 
 
 ## CMDB 設定（Grafanaダッシュボード）

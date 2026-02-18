@@ -226,7 +226,7 @@ if [[ "${#FINAL_APPS[@]}" -eq 0 ]]; then
 fi
 
 # Avoid deploying ITSM Core sub-apps twice:
-# - apps/itsm_core/scripts/deploy_workflows.sh now deploys apps/itsm_core/**/workflows by default.
+# - apps/itsm_core/scripts/deploy_all_workflows.sh now deploys apps/itsm_core/**/workflows by default.
 # - When --only is NOT specified and itsm_core is selected, skip apps under apps/itsm_core/*.
 if [[ "${#ONLY_APPS[@]}" -eq 0 ]] && is_in_list "itsm_core" ${FINAL_APPS[@]:+"${FINAL_APPS[@]}"}; then
   pruned=()

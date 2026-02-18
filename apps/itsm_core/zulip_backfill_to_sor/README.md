@@ -73,5 +73,5 @@ apps/itsm_core/zulip_backfill_to_sor/scripts/deploy_workflows.sh --dry-run
 - `apps/itsm_core/zulip_backfill_to_sor/sql/`: 予約（必要に応じて補助 SQL を配置）
 
 ## 参照
-- SoR（SSoT）: `apps/itsm_core/sql/`
+- SoR（SSoT）: `apps/itsm_core/sor_ops/sql/`
 - OQ: `apps/itsm_core/zulip_backfill_to_sor/docs/oq/oq.md`

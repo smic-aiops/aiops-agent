@@ -36,7 +36,7 @@
 
 ## 入口条件（Entry）
 
-- SoR の DDL が適用済みである（`apps/itsm_core/sql/itsm_sor_core.sql`）
+- SoR の DDL が適用済みである（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`）
 - 参照/運用対象の realm が決まっている（`--realm-key`）
 - 秘密情報がリポジトリに含まれていない（tfstate/tfvars/ログの取り扱い含む）
 
@@ -56,4 +56,3 @@
 - dry-run 出力（対象 realm/期間/実行方式）
 - 実行ログ（実施日時、実行者、対象環境、投入件数）
 - SoR 側の確認ログ（必要に応じて）
-

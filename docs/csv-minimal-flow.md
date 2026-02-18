@@ -40,7 +40,7 @@
 - 仕様（FS/DS 相当）: `apps/aiops_agent/orchestrator/docs/aiops_agent_specification.md`
 - 設計: `apps/aiops_agent/orchestrator/docs/aiops_agent_design.md`
 - 実装メモ: `apps/aiops_agent/orchestrator/docs/aiops_agent_implementation.md`
-- 代表例（ワークフロー側の OQ）: `apps/workflow_manager/docs/oq/oq.md`
+- 代表例（ワークフロー側の OQ）: `apps/workflow_manager/workflow_catalog/docs/shared/oq/oq.md`
 
 ### ステップ 5〜6（IQ/OQ/PQ）：検証を実行し、証跡を残す
 

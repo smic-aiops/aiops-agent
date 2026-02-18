@@ -6,7 +6,7 @@
 
 ## 前提
 
-- SoR の DDL が適用済みであること（`apps/itsm_core/sql/itsm_sor_core.sql`）
+- SoR の DDL が適用済みであること（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`）
 - 対象 realm_key が決まっていること（`--realm-key`）
 
 ## OQ ケース（要約）
@@ -165,4 +165,3 @@ curl -sS -X POST \\
 
 ---
 <!-- OQ_SCENARIOS_END -->
-

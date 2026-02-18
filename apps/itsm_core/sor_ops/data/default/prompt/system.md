@@ -38,7 +38,7 @@
   - `mode=apply` のときのみ n8n webhook `POST /webhook/itsm/cir/usecases/approved/list` を呼ぶ（`dry_run=false`）。`mode=dry-run` は外部 HTTP を呼ばず、追記もしない（不足情報のみ列挙）
 
 - 仕様/要求の更新: 共通ベースを参照しつつ、realm overlay `vendor/<name_prefix>/apps/itsm_core/sor_ops/realms/<realm_key>/docs/` を点検し、変更時は DQ/IQ/OQ/PQ を更新する（共通ベース docs は編集しない）
-- 実装修正: `apps/itsm_core/sql/`, `apps/itsm_core/sor_ops/scripts/`, `apps/itsm_core/sor_ops/workflows/` を修正し、dry-run/plan-only で崩れないことを確認する
+- 実装修正: `apps/itsm_core/sor_ops/sql/`, `apps/itsm_core/sor_ops/scripts/`, `apps/itsm_core/sor_ops/workflows/` を修正し、dry-run/plan-only で崩れないことを確認する
 - OQ 整備: `apps/itsm_core/sor_ops/docs/oq/oq_*.md` を更新し、`scripts/generate_oq_md.sh --app apps/itsm_core/sor_ops` で `oq.md` を更新する
 - OQ 実行: `apps/itsm_core/sor_ops/scripts/run_oq.sh`（dry-run の証跡保存）
 - workflow 同期: `apps/itsm_core/sor_ops/scripts/deploy_workflows.sh`（必要なら dry-run → apply）
@@ -67,6 +67,6 @@
 - 要求（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/sor_ops/realms/<realm_key>/docs/app_requirements.md`
 - DQ/IQ/OQ/PQ（共通ベース）: `apps/itsm_core/sor_ops/docs/dq/`, `apps/itsm_core/sor_ops/docs/iq/`, `apps/itsm_core/sor_ops/docs/oq/`, `apps/itsm_core/sor_ops/docs/pq/`
 - DQ（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/sor_ops/realms/<realm_key>/docs/dq/dq.md`
-- スキーマ（正）: `apps/itsm_core/sql/`
+- スキーマ（正）: `apps/itsm_core/sor_ops/sql/`
 - スクリプト（正）: `apps/itsm_core/sor_ops/scripts/`
 - CIR→Docs 同期テンプレ: `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md`

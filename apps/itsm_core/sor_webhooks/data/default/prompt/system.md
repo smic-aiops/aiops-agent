@@ -38,8 +38,8 @@
 - 仕様/要求の更新: 共通ベースを参照しつつ、realm overlay `vendor/<name_prefix>/apps/itsm_core/sor_webhooks/realms/<realm_key>/docs/` を点検し、変更時は DQ/IQ/OQ/PQ を更新する（共通ベース docs は編集しない）
 - ワークフロー修正: `apps/itsm_core/sor_webhooks/workflows/*.json` を更新（エンドポイント維持）
 - OQ 整備: `apps/itsm_core/sor_webhooks/docs/oq/oq_*.md` を更新し、`scripts/generate_oq_md.sh --app apps/itsm_core/sor_webhooks` で `oq.md` を更新する
-- デプロイ実行: `apps/itsm_core/sor_webhooks/scripts/deploy_workflows.sh`（または ITSM Core 一括: `apps/itsm_core/scripts/deploy_workflows.sh`）
-- OQ 実行: `apps/itsm_core/sor_webhooks/scripts/run_oq.sh`（または ITSM Core 一括: `apps/itsm_core/scripts/run_oq.sh`）
+- デプロイ実行: `apps/itsm_core/sor_webhooks/scripts/deploy_workflows.sh`（または ITSM Core 一括: `apps/itsm_core/scripts/deploy_all_workflows.sh`）
+- OQ 実行: `apps/itsm_core/sor_webhooks/scripts/run_oq.sh`（または ITSM Core 一括: `apps/itsm_core/scripts/run_all_oq.sh`）
 - 変更記録: `docs/change-management.md` に変更点・理由・実施日・承認者を記録
 - 作業結果レポート: 変更一覧サマリ・残課題・次回改善案を記載
 - CIRクローズ（完了時）:

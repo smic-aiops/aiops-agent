@@ -9,7 +9,7 @@
 `apps/README.md` の共通フォーマットに従い、リスクベース（CSA）で最小限の成果物として本 README と検証証跡を維持する。
 
 **内容**
-- 本アプリの仕様・運用・検証の入口を README に集約し、詳細は `apps/workflow_manager/workflow_catalog/` / `apps/workflow_manager/service_request/` / `apps/workflow_manager/scripts/` / `apps/workflow_manager/docs/` を参照する。
+- 本アプリの仕様・運用・検証の入口を README に集約し、詳細は `apps/workflow_manager/workflow_catalog/` / `apps/workflow_manager/service_request/` / `apps/workflow_manager/scripts/` / `apps/workflow_manager/workflow_catalog/docs/shared/` を参照する。
 - 秘密情報は tfvars に平文で置かず、SSM/Secrets Manager → n8n 環境変数注入を前提とする。
 
 ---
@@ -31,7 +31,7 @@
   - OQ 文書:
     - Workflow Catalog: `apps/workflow_manager/workflow_catalog/docs/oq/oq.md`（整備: `scripts/generate_oq_md.sh`）
     - Service Request: `apps/workflow_manager/service_request/docs/oq/oq.md`（整備: `scripts/generate_oq_md.sh`）
-  - OQ 実行補助: `apps/workflow_manager/scripts/run_oq.sh`
+  - OQ 実行補助: `apps/workflow_manager/scripts/run_all_oq.sh`
 
 ---
 
@@ -100,14 +100,12 @@ flowchart LR
   - `docs/`: IQ/OQ など
 - `vendor/<name_prefix>/apps/workflow_manager/realms/<realm_key>/workflows/`: （任意）realm 固有の n8n ワークフロー差分（共通 workflows を上書きする用途。`name_prefix` は `terraform output -raw name_prefix` を正とする）
 - `apps/workflow_manager/scripts/`: 互換エントリポイント（全体同期/全体 OQ）と実体（engine）
-- `apps/workflow_manager/docs/`: 補足ドキュメント（overview）
+- `apps/workflow_manager/workflow_catalog/docs/shared/`: 共通の補足ドキュメント（overview）
 - `vendor/<name_prefix>/apps/workflow_manager/realms/<realm_key>/docs/`: 共通ベース docs への **realm overlay**（組織別拡張。CIR 同期で追記する Requirements/DQ はここへ書く）
-- `apps/workflow_manager/docs/cs/`: CS（Configuration Specification: 設計・構成定義）
-- `apps/workflow_manager/prompt/`: レルム別上書き（プロンプト）
-- `apps/workflow_manager/policy/`: レルム別上書き（ポリシー）
-- `apps/workflow_manager/data/`: 補助データ・テスト結果など
+- `apps/workflow_manager/workflow_catalog/docs/shared/cs/`: 共通 CS（Configuration Specification: 設計・構成定義）
+- `apps/workflow_manager/workflow_catalog/data/shared/`: 共通 data（補助データなど）
 - `vendor/<name_prefix>/apps/workflow_manager/realms/<realm_key>/data/`: （任意）realm 固有の data 差分（既存の置き場と併用可）
-- `apps/workflow_manager/docs/oq/`: OQ（overview）
+- `apps/workflow_manager/workflow_catalog/docs/shared/oq/`: OQ（overview）
 
 ### サブアプリ一覧（正）
 各サブアプリは原則として以下を保持する（統一インタフェース）:
@@ -126,7 +124,7 @@ flowchart LR
 
 ### 同期（n8n Public API へ upsert）
 ```bash
-apps/workflow_manager/scripts/deploy_workflows.sh
+apps/workflow_manager/scripts/deploy_all_workflows.sh
 ```
 
 **必須（同期を実行する場合）**
@@ -168,7 +166,7 @@ Intended Use に適合することを、最小の検証で示す。
 対象環境にワークフローが正しく設置されていることを確認する。
 
 **文書/手順（最小）**
-- 同期: `apps/workflow_manager/scripts/deploy_workflows.sh`（`N8N_DRY_RUN=true` で差分確認）
+- 同期: `apps/workflow_manager/scripts/deploy_all_workflows.sh`（`N8N_DRY_RUN=true` で差分確認）
 
 ---
 
@@ -179,10 +177,10 @@ Intended Use に適合することを、最小の検証で示す。
 **文書**
 - Workflow Catalog: `apps/workflow_manager/workflow_catalog/docs/oq/oq.md`
 - Service Request: `apps/workflow_manager/service_request/docs/oq/oq.md`
-- 補足: `apps/workflow_manager/docs/README.md`
+- 補足: `apps/workflow_manager/workflow_catalog/docs/shared/README.md`
 
 **実行**
-- `apps/workflow_manager/scripts/run_oq.sh`
+- `apps/workflow_manager/scripts/run_all_oq.sh`
 
 補足:
 - OQ 実行前に `scripts/generate_oq_md.sh` を実行し、各 `oq.md` の生成領域を最新化する

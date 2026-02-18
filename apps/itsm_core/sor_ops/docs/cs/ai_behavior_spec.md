@@ -18,4 +18,4 @@
 - DQ/IQ/OQ/PQ（共通ベース）: `apps/itsm_core/sor_ops/docs/dq/`, `apps/itsm_core/sor_ops/docs/iq/`, `apps/itsm_core/sor_ops/docs/oq/`, `apps/itsm_core/sor_ops/docs/pq/`
 - DQ（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/sor_ops/realms/<realm_key>/docs/dq/dq.md`
 - 運用スクリプト（正）: `apps/itsm_core/sor_ops/scripts/`
-- スキーマ（正）: `apps/itsm_core/sql/`
+- スキーマ（正）: `apps/itsm_core/sor_ops/sql/`

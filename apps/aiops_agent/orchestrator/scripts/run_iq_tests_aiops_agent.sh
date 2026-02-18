@@ -5,7 +5,7 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 cd "${REPO_ROOT}"
 
-OUT_DIR="${N8N_IQ_TEST_OUTPUT_DIR:-apps/workflow_manager/data}"
+OUT_DIR="${N8N_IQ_TEST_OUTPUT_DIR:-evidence/iq/aiops_agent}"
 RUN_INGEST_TESTS="${N8N_RUN_INGEST_TESTS:-false}"
 
 mkdir -p "${OUT_DIR}"

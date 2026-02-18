@@ -269,7 +269,7 @@ emit_text_kv "workflow_manager workflows" "count=$(find "${REPO_ROOT}/apps/workf
 emit_text_kv "gitlab_push_notify workflows" "count=$(count_glob "${REPO_ROOT}/apps/itsm_core/gitlab_push_notify/workflows/*.json")"
 emit_text_kv "gitlab_issue_rag workflows" "count=$(count_glob "${REPO_ROOT}/apps/itsm_core/gitlab_issue_rag/workflows/*.json")"
 echo "実行ログ:"
-emit_action_line "workflow_manager_deploy_workflows" "workflow_manager deploy" "apps/workflow_manager/scripts/deploy_workflows.sh"
+emit_action_line "workflow_manager_deploy_workflows" "workflow_manager deploy" "apps/workflow_manager/scripts/deploy_all_workflows.sh"
 emit_action_line "gitlab_push_notify_deploy_workflows" "gitlab_push_notify deploy" "apps/itsm_core/gitlab_push_notify/scripts/deploy_workflows.sh"
 emit_action_line "gitlab_push_notify_setup_webhook" "GitLab webhook setup" "apps/itsm_core/gitlab_push_notify/scripts/setup_gitlab_project_webhook.sh"
 emit_action_line "gitlab_issue_rag_deploy_workflows" "gitlab_issue_rag deploy" "apps/itsm_core/gitlab_issue_rag/scripts/deploy_issue_rag_workflows.sh"

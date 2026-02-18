@@ -7,11 +7,11 @@ ITSM SoR（`itsm.*`）の **コア Webhook ワークフロー**（監査イベ�
 ## 対象
 
 - ワークフロー: `apps/itsm_core/sor_webhooks/workflows/`
-- 同期スクリプト: `apps/itsm_core/scripts/deploy_workflows.sh`
+- 同期スクリプト: `apps/itsm_core/scripts/deploy_all_workflows.sh`
 
 ## 前提
 
-- SoR の DDL が適用済みであること（`apps/itsm_core/sql/itsm_sor_core.sql`）
+- SoR の DDL が適用済みであること（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`）
 - n8n が稼働し、n8n Public API が利用可能であること（同期を実施する場合）
 
 ## 証跡（evidence）
@@ -179,7 +179,7 @@ curl -sS -H 'Content-Type: application/json' \
 
 #### 目的
 
-`apps/itsm_core/scripts/deploy_workflows.sh` により、ITSM Core 配下（`apps/itsm_core/**/workflows/`）のワークフロー群が n8n Public API へ upsert されることを確認する（dry-run の差分確認も含む）。
+`apps/itsm_core/scripts/deploy_all_workflows.sh` により、ITSM Core 配下（`apps/itsm_core/**/workflows/`）のワークフロー群が n8n Public API へ upsert されることを確認する（dry-run の差分確認も含む）。
 
 #### 受け入れ基準
 
@@ -193,13 +193,13 @@ curl -sS -H 'Content-Type: application/json' \
 DRY_RUN=true \
 WORKFLOW_DIR=apps/itsm_core/sor_webhooks/workflows \
 WITH_TESTS=false \
-apps/itsm_core/scripts/deploy_workflows.sh
+apps/itsm_core/scripts/deploy_all_workflows.sh
 
 # 実行（必要なら有効化も）
 ACTIVATE=true \
 WORKFLOW_DIR=apps/itsm_core/sor_webhooks/workflows \
 WITH_TESTS=false \
-apps/itsm_core/scripts/deploy_workflows.sh
+apps/itsm_core/scripts/deploy_all_workflows.sh
 ```
 
 補足:
@@ -208,4 +208,3 @@ apps/itsm_core/scripts/deploy_workflows.sh
 
 ---
 <!-- OQ_SCENARIOS_END -->
-

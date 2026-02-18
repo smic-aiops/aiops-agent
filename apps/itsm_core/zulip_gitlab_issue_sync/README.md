@@ -72,7 +72,7 @@ Zulip の会話（顧客要求/対応履歴）と GitLab Issue（記録/作業�
     - LLM 判定で決定が記録された場合、GitLab の `### 決定（Zulip）` コメントに `判定：llm（信頼度: ...）` が追記される
   - SoR（任意だが推奨）
     - 決定メッセージ（本文そのもの）を、共有 RDS(PostgreSQL) の `itsm.audit_event` にも `action=decision.recorded` として記録します（監査・横断検索用）。
-    - 前提: `apps/itsm_core/sql/itsm_sor_core.sql` を RDS に適用済みであること。
+    - 前提: `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` を RDS に適用済みであること。
 	    - 既存データのバックフィル（SoR を“正”として運用する場合は推奨）
 	      - AIOpsAgent の過去承認履歴: `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
 	      - GitLab Issue 全件 → SoR レコード backfill: `apps/itsm_core/gitlab_backfill_to_sor/workflows/gitlab_issue_backfill_to_sor.json`

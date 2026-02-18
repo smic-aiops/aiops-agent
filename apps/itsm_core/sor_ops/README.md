@@ -10,7 +10,7 @@ ITSM SoR（`itsm.*`）の運用（DDL/RLS/保持/匿名化/監査アンカー等
 ## ディレクトリ構成
 - `apps/itsm_core/sor_ops/scripts/`: 運用スクリプト（dry-run/plan-only 前提）
 - `apps/itsm_core/sor_ops/docs/`: DQ/IQ/OQ/PQ（最小）
-- `apps/itsm_core/sql/`: SoR スキーマ（DDL/RLS 等）
+- `apps/itsm_core/sor_ops/sql/`: SoR スキーマ（DDL/RLS 等）
 - `apps/itsm_core/sor_ops/data/default/prompt/system.md`: サブアプリ単位の中心プロンプト（System 相当）
 
 ## 主要スクリプト
@@ -85,11 +85,11 @@ apps/itsm_core/sor_ops/scripts/check_itsm_sor_schema.sh --realm-key default --dr
 
 ## 主要ファイル（SSoT）
 
-- スキーマ（正）: `apps/itsm_core/sql/itsm_sor_core.sql`
-- RLS: `apps/itsm_core/sql/itsm_sor_rls.sql`
-- RLS FORCE（強化）: `apps/itsm_core/sql/itsm_sor_rls_force.sql`
-- RLS 運用補助: `itsm.set_rls_context(...)`（`apps/itsm_core/sql/itsm_sor_core.sql` 内。n8n/autocommit の “SQL 文内で app.* をセット” を想定）
-- AIOpsAgent SoR 書き込み（SoR 直SQLの置き換え）: `itsm.aiops_*`（`apps/itsm_core/sql/itsm_sor_core.sql`）
+- スキーマ（正）: `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`
+- RLS: `apps/itsm_core/sor_ops/sql/itsm_sor_rls.sql`
+- RLS FORCE（強化）: `apps/itsm_core/sor_ops/sql/itsm_sor_rls_force.sql`
+- RLS 運用補助: `itsm.set_rls_context(...)`（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` 内。n8n/autocommit の “SQL 文内で app.* をセット” を想定）
+- AIOpsAgent SoR 書き込み（SoR 直SQLの置き換え）: `itsm.aiops_*`（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`）
 
 ## 運用スクリプト（主要）
 
@@ -99,8 +99,8 @@ apps/itsm_core/sor_ops/scripts/check_itsm_sor_schema.sh --realm-key default --dr
 ## n8n ワークフロー（代表）
 
 - ワークフロー定義（JSON）は各サブアプリの `workflows/` に配置する（例: SoR コアは `apps/itsm_core/sor_webhooks/README.md`、GitLab backfill は `apps/itsm_core/gitlab_backfill_to_sor/README.md`）。
-- デプロイは ITSM Core 統合オーケストレータ（`apps/itsm_core/scripts/deploy_workflows.sh`）または各サブアプリの `scripts/deploy_workflows.sh` で行う。
-- OQ は `apps/itsm_core/scripts/run_oq.sh`（一括）または各サブアプリの `scripts/run_oq.sh` で行う。
+- デプロイは ITSM Core 統合オーケストレータ（`apps/itsm_core/scripts/deploy_all_workflows.sh`）または各サブアプリの `scripts/deploy_workflows.sh` で行う。
+- OQ は `apps/itsm_core/scripts/run_all_oq.sh`（一括）または各サブアプリの `scripts/run_oq.sh` で行う。
 
 ## 4. GxP 影響評価とリスクアセスメント
 
@@ -125,18 +125,18 @@ apps/itsm_core/sor_ops/scripts/check_itsm_sor_schema.sh --realm-key default --dr
 目的: 対象環境に SoR が正しく設置されていることを確認する。
 
 文書:
-- `apps/itsm_core/docs/iq/iq.md`
+- `apps/itsm_core/sor_ops/docs/itsm_core/iq/iq.md`
 
 ## 7. 運転時適格性確認（OQ）
 
 目的: 重要機能（SoR 書き込み、バックフィル投入、ワークフロー同期、冪等性）が意図どおり動作することを確認する。
 
 文書:
-- OQ（入口）: `apps/itsm_core/docs/oq/oq.md`
+- OQ（入口）: `apps/itsm_core/sor_ops/docs/itsm_core/oq/oq.md`
 - OQ（SoR core / Webhook）: `apps/itsm_core/sor_webhooks/docs/oq/oq.md`（`oq_*.md` から生成）
 
 実行:
-- OQ 実行補助（ITSM Core 配下一括）: `apps/itsm_core/scripts/run_oq.sh`
+- OQ 実行補助（ITSM Core 配下一括）: `apps/itsm_core/scripts/run_all_oq.sh`
 - OQ 実行補助（SoR core / Webhook のみ）: `apps/itsm_core/sor_webhooks/scripts/run_oq.sh`
 
 補足:
@@ -147,7 +147,7 @@ apps/itsm_core/sor_ops/scripts/check_itsm_sor_schema.sh --realm-key default --dr
 目的: データ量・実行頻度・外部 API 制約（GitLab/LLM）に対する成立性を確認する。
 
 文書:
-- `apps/itsm_core/docs/pq/pq.md`
+- `apps/itsm_core/sor_ops/docs/itsm_core/pq/pq.md`
 
 ## 9. バリデーションサマリレポート（VSR）
 

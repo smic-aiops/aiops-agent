@@ -142,7 +142,7 @@ apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh
   - AIOpsAgent は n8n の Postgres ノードから `itsm.aiops_*` 関数を呼ぶ（Webhook 依存なし）
 - レルム
   - `N8N_AGENT_REALMS`（未指定なら `terraform output N8N_AGENT_REALMS`）
-  - `N8N_REALM_DATA_DIR_BASE`（既定 `apps/aiops_agent/data`）
+  - `N8N_REALM_DATA_DIR_BASE`（既定 `apps/aiops_agent/orchestrator/data`）
 
 ### DB（ContextStore / ApprovalStore / Problem Management）
 - スキーマ: `apps/aiops_agent/knowledge_store/sql/`
@@ -182,7 +182,7 @@ Intended Use に適合することを、最小の検証で示す。
 対象環境にシステム（ワークフロー/設定）が正しく設置されていることを確認する。
 
 **文書/手順（最小）**
-- 同期: `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh`（`N8N_DRY_RUN=true` で差分確認）
+- 同期: `apps/aiops_agent/scripts/deploy_all_workflows.sh`（サブアプリ一括。`--dry-run` で差分確認。互換: `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh`）
 - IQ テスト: `apps/aiops_agent/orchestrator/scripts/run_iq_tests_aiops_agent.sh`
 
 ---
@@ -196,6 +196,7 @@ Intended Use に適合することを、最小の検証で示す。
 - 個別シナリオ: `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_*.md`
 
 **実行（例）**
+- `apps/aiops_agent/scripts/run_all_oq.sh`（サブアプリ一括。既定は orchestrator のみ実行。`--dry-run` あり）
 - `apps/aiops_agent/orchestrator/scripts/run_oq.sh`（既定: 個別シナリオを一括実行）
 - `apps/aiops_agent/orchestrator/scripts/run_oq_runner.sh`
 - 個別: `apps/aiops_agent/orchestrator/scripts/run_oq_usecase_05_trace_id_propagation.sh` など

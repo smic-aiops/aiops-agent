@@ -54,6 +54,8 @@ apps 配下のディレクトリアプリを一覧化します。詳細は各ア
 | workflow_manager | サービスリクエスト管理のワークフロー群 | `apps/workflow_manager/README.md` |
 | cloudwatch_event_notify | CloudWatch イベント通知のワークフロー | `apps/itsm_core/cloudwatch_event_notify/README.md` |
 | gitlab_issue_metrics_sync | GitLab Issue メトリクス同期 | `apps/itsm_core/gitlab_issue_metrics_sync/README.md` |
+| gitlab_dora_metrics_sync | GitLab DORA 指標（日次）同期 | `apps/itsm_core/gitlab_dora_metrics_sync/README.md` |
+| itsm_sla_metrics_sync | ITSM SLA 計測（日次）同期 | `apps/itsm_core/itsm_sla_metrics_sync/README.md` |
 | gitlab_issue_rag | GitLab Issue の RAG 連携 | `apps/itsm_core/gitlab_issue_rag/README.md` |
 | gitlab_mention_notify | GitLab メンション通知 | `apps/itsm_core/gitlab_mention_notify/README.md` |
 | gitlab_push_notify | GitLab Push 通知 | `apps/itsm_core/gitlab_push_notify/README.md` |

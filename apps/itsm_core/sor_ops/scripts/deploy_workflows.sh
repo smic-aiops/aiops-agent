@@ -6,7 +6,7 @@ usage() {
 Usage: apps/itsm_core/sor_ops/scripts/deploy_workflows.sh [options]
 
 This script syncs the n8n workflows under apps/itsm_core/sor_ops/workflows.
-It is a thin wrapper around apps/itsm_core/scripts/deploy_workflows.sh.
+It is a thin wrapper around apps/itsm_core/scripts/deploy_all_workflows.sh.
 
 Options:
   -n, --dry-run          Alias of --dry-run
@@ -17,7 +17,7 @@ Options:
   -h, --help             Show this help
 
 Notes:
-  - Most controls are environment variables; see apps/itsm_core/scripts/deploy_workflows.sh.
+  - Most controls are environment variables; see apps/itsm_core/scripts/deploy_all_workflows.sh.
 USAGE
 }
 
@@ -41,4 +41,4 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-exec bash "${REPO_ROOT}/apps/itsm_core/scripts/deploy_workflows.sh" "${args[@]}"
+exec bash "${REPO_ROOT}/apps/itsm_core/scripts/deploy_all_workflows.sh" "${args[@]:+"${args[@]}"}"

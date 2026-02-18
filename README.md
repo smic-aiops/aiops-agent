@@ -92,7 +92,7 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 | 構築手順（Installation/Configuration） | 再現性ある環境構築 | `docs/setup-guide.md` / `docs/usage-guide.md` / `docs/itsm/README.md` |
 | DQ（設計適格性確認） | 設計・構成の妥当性確認 | `apps/aiops_agent/orchestrator/docs/dq/dq.md` |
 | IQ（据付適格性確認） | 環境が正しく構築されたことの確認 | `apps/aiops_agent/orchestrator/docs/iq/iq.md` |
-| OQ（運用適格性確認） | 想定ユースケースでの動作確認 | `apps/aiops_agent/orchestrator/docs/oq/oq.md` / `apps/workflow_manager/docs/oq/oq.md` |
+| OQ（運用適格性確認） | 想定ユースケースでの動作確認 | `apps/aiops_agent/orchestrator/docs/oq/oq.md` / `apps/workflow_manager/workflow_catalog/docs/shared/oq/oq.md` |
 | PQ（性能適格性確認） | 性能・限界値の定義と検証 | `apps/aiops_agent/orchestrator/docs/pq/pq.md` |
 | 運用手順（SOP/Runbook相当） | 定常運用・障害対応の明確化 | `apps/aiops_agent/orchestrator/docs/aiops_agent_usage.md` / `apps/aiops_agent/orchestrator/data/default/prompt/README.md` |
 | 変更管理・監査ログ運用 | 変更の統制と証跡の一貫性 | `docs/change-management.md` |
