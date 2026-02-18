@@ -29,6 +29,7 @@ PM「リリースした。…で、その後どうなった？」
 ## 実施手順（GitLab）
 1. 変更 Issue を起票（テンプレ「変更」）  
    - [Issue作成]({{GITLAB_BASE_URL}}/{{GROUP_FULL_PATH}}/{{SERVICE_MANAGEMENT_PROJECT_PATH}}/-/issues/new)
+   - 顧客ID（CMDB）を必ず記入（Sulu の KPI レポートで顧客絞り込みに利用）
 2. 目的・影響・ロールバックを必ず書く（判断材料）  
 3. ボードで状態を進める（審査→承認→実施→検証）  
 4. 実施後、効果（価値）と結果をコメントに残す（測定と報告）  

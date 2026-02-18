@@ -88,7 +88,6 @@ is_truthy() {
 }
 
 admin_assets_need_build() {
-  local key="app.monitoring.ai_nodes"
   local app_js="${SULU_SOURCE_DIR}/assets/admin/app.js"
   local manifest="${SULU_SOURCE_DIR}/public/build/admin/manifest.json"
 
@@ -96,7 +95,28 @@ admin_assets_need_build() {
   if [[ ! -f "${app_js}" ]]; then
     return 1
   fi
-  if ! grep -q "${key}" "${app_js}" 2>/dev/null; then
+
+  # Detect required view keys from app.js (viewRegistry.add('<key>', ...)).
+  local keys
+  keys="$(
+    python3 - <<'PY' "${app_js}" 2>/dev/null || true
+import re
+import sys
+
+path = sys.argv[1]
+try:
+    text = open(path, "r", encoding="utf-8").read()
+except Exception:
+    sys.exit(0)
+
+keys = re.findall(r"viewRegistry\.add\(\s*'([^']+)'\s*,", text)
+for key in keys:
+    key = (key or "").strip()
+    if key:
+        print(key)
+PY
+  )"
+  if [[ -z "${keys}" ]]; then
     return 1
   fi
 
@@ -122,18 +142,24 @@ print((data.get("main.js") or "").strip())
 PY
 )"
     if [[ -n "${main_js}" && -f "${SULU_SOURCE_DIR}/public${main_js}" ]]; then
-      if grep -q "${key}" "${SULU_SOURCE_DIR}/public${main_js}" 2>/dev/null; then
-        return 1
-      fi
-      return 0
+      while IFS= read -r key; do
+        [[ -z "${key}" ]] && continue
+        if ! grep -F -q "${key}" "${SULU_SOURCE_DIR}/public${main_js}" 2>/dev/null; then
+          return 0
+        fi
+      done < <(printf '%s\n' "${keys}")
+      return 1
     fi
   fi
 
-  # Fallback: search the build dir for the key.
-  if grep -R -q "${key}" "${SULU_SOURCE_DIR}/public/build/admin" 2>/dev/null; then
-    return 1
-  fi
-  return 0
+  # Fallback: search the build dir for all required keys.
+  while IFS= read -r key; do
+    [[ -z "${key}" ]] && continue
+    if ! grep -R -F -q "${key}" "${SULU_SOURCE_DIR}/public/build/admin" 2>/dev/null; then
+      return 0
+    fi
+  done < <(printf '%s\n' "${keys}")
+  return 1
 }
 
 build_admin_assets_if_needed() {

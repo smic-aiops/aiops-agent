@@ -371,6 +371,13 @@ ALTER TABLE IF EXISTS itsm.service
 ALTER TABLE IF EXISTS itsm.service
   ADD COLUMN IF NOT EXISTS calendar_key text NULL;
 
+-- Customer identifier (CMDB) to support per-customer KPI aggregation.
+ALTER TABLE IF EXISTS itsm.service
+  ADD COLUMN IF NOT EXISTS customer_id text NULL;
+
+CREATE INDEX IF NOT EXISTS itsm_service_customer_id_idx
+  ON itsm.service (realm_id, customer_id);
+
 DROP TRIGGER IF EXISTS itsm_service_touch_updated_at ON itsm.service;
 CREATE TRIGGER itsm_service_touch_updated_at
 BEFORE UPDATE ON itsm.service
