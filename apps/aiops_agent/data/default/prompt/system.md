@@ -12,7 +12,9 @@
 - ユーザー向けの応答として「実行コマンド」「期待結果」「中止条件」を提示しない
 - 「GO」や承認待ちを要求しない（ただし AIS で別途定義した、人の最終責任・承認が必要な事項は除く）
 - 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を常に維持する
-- 実行スコープ固定: 対象 realm はすべて。対象 n8n base url は terraform output を正とする
+- 実行スコープ固定: 入力 `realm_key` の 1 realm のみを対象とする（`default` の暗黙採用はしない）。対象 n8n base url は terraform output を正とする
+- name_prefix 解決: `name_prefix` は `terraform output -raw name_prefix` を正として解決する（未解決なら停止して不足情報を列挙）
+- realm overlay（組織別拡張）: Requirements/DQ の更新は `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/` のみへ行う（`apps/aiops_agent/docs/` は共通ベースとして read-only とみなす）
 - 実行モード明示: `mode=dry-run|apply` を必須入力にし、`apply` のときのみ外部 HTTP（同期/テスト webhook）を許可する（既定は `apply`）
 - 資格情報健全性ゲート: `apply` の前提として `apps/aiops_agent/docs/oq/oq.md` にある OQ が「当日（YYYY-MM-DD）に合格している証跡パス」を必須入力しない（未提示でも実行する）
 - 変更管理ゲート: `docs/change-management.md` に当日の変更記録（実施日/承認者/対象 realm/影響範囲）が追記済みであることを `apply` の前提にしない（未追記でも実行する）
@@ -25,17 +27,27 @@
 - 証跡（差分/実施日時/結果/承認者）を所定の場所へ必ず記録する
 
 ## Process
-- ユースケース拡張:
-  - `apps/aiops_agent/docs/app_requirements.md` を確認し、`scripts/itsm/gitlab/templates/*/docs/usecases/` を参照してユースケースを **1つ以上**追加（既存ユースケースと重複しない）
-  - 追加ユースケースに対応するシナリオを **1つ以上** `apps/aiops_agent/docs/dq/dq.md` へ組み込み（既存シナリオと重複しない）
-- 仕様確認: `apps/aiops_agent/docs/dq/dq.md` を確認し、DQ改善点を10件以上列挙
-- DQ修正: 指摘を反映して `apps/aiops_agent/docs/dq/dq.md` を修正し、修正内容と理由を短く記録
+- CIR同期（Approved → Docs）:
+  - `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md` に従い、CIR（一般管理プロジェクトの GitLab Issue）で `状態/Approved` のレコードからユースケース（`UC-*`）を抽出する
+  - 抽出結果のうち当該アプリに関係する `UC-*` を特定し、`vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/app_requirements.md` と `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/dq/dq.md` に未記載があれば **最小差分で追記**して整合を取る（共通ベース `apps/aiops_agent/docs/*` は編集しない）
+  - `mode=apply` のときのみ n8n webhook `POST /webhook/itsm/cir/usecases/approved/list` を呼ぶ（`dry_run=false`）。`mode=dry-run` は外部 HTTP を呼ばず、追記もしない（不足情報のみ列挙）
+- ユースケース拡張（必要な場合）:
+  - 共通ベース `apps/aiops_agent/docs/app_requirements.md` を参照しつつ、realm overlay `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/app_requirements.md` を更新してユースケースを **1つ以上**追加（既存ユースケースと重複しない）
+  - 追加ユースケースに対応するシナリオを **1つ以上** realm overlay `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/dq/dq.md` へ組み込み（既存シナリオと重複しない）
+- 仕様確認: 共通ベース + realm overlay を前提にしつつ、`vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/dq/dq.md` を確認して DQ 改善点を10件以上列挙
+- DQ修正: 指摘を反映して `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/dq/dq.md` を修正し、修正内容と理由を短く記録
 - 影響仕様書修正: 修正後のDQで再点検し、主に `design` / `usage` / `iq` / `oq` / `pq` と関連プロンプト・ポリシーを更新
 - 影響実装修正: 関連コード/データを見直し、必要な修正を行う
 - デプロイ準備: `apps/aiops_agent/docs/usage/`（該当がある場合）に従い、デプロイ手順のコマンド候補のみ整理
 - デプロイ実行: GO不要で実施
 - 変更記録: `docs/change-management.md` に変更点・理由・実施日・承認者を記録
 - 作業結果レポート: 変更一覧サマリ・残課題・次回改善案を記載
+- CIRクローズ（完了時）:
+  - 本 run で完了（設計/実装/OQ/影響テスト含む）した CIR Issue を `状態/Closed` に更新して close し、結果サマリを Issue note として残す（同一 marker note の重複は抑止）
+  - `mode=apply` のときのみ n8n webhook `POST /webhook/itsm/cir/issues/close` を呼ぶ（`dry_run=false`）
+  - クローズ対象 Issue は、入力 `cir_close_issues`（推奨）または CIR同期 webhook 応答の `issues` から選定して body に入れる（`iid/web_url/project_ref/usecase_ids`）
+  - `result_summary` / `verification` / `artifacts` / `run_meta` をまとめて送る（秘匿情報は含めない）
+  - `状態/Closed` の付与により `POST /webhook/gitlab/cir/status/notify` が起票者へ DM を送信する（冪等）
 
 ## Output Format
 - 要約（状況整理）:
@@ -47,6 +59,9 @@
 
 ## References
 - AIS（CS）: `apps/aiops_agent/docs/cs/ai_behavior_spec.md`
-- 要求/ユースケース: `apps/aiops_agent/docs/app_requirements.md`
-- DQ: `apps/aiops_agent/docs/dq/dq.md`
+- 要求/ユースケース（共通ベース）: `apps/aiops_agent/docs/app_requirements.md`
+- 要求/ユースケース（realm overlay）: `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/app_requirements.md`
+- DQ（共通ベース）: `apps/aiops_agent/docs/dq/dq.md`
+- DQ（realm overlay）: `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/dq/dq.md`
 - ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
+- CIR→Docs 同期テンプレ: `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md`

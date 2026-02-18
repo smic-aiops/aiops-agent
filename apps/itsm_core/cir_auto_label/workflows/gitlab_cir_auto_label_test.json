@@ -1,0 +1,78 @@
+{
+  "name": "gitlab-cir-auto-label-test",
+  "active": false,
+  "settings": {},
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/cir/auto_label/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e3e3d7e2-22f1-40c0-ae4c-1b5c6cdb0c4a",
+      "name": "Webhook (Test)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const env = $env || {};\n\nconst missing = [];\nif (!String(env.GITLAB_WEBHOOK_SECRET || '').trim() && !String(env.GITLAB_WEBHOOK_SECRETS_JSON || '').trim() && !String(env.GITLAB_WEBHOOK_SECRETS_YAML || '').trim()) {\n  missing.push('GITLAB_WEBHOOK_SECRET');\n}\nif (!String(env.N8N_GITLAB_API_BASE_URL || env.GITLAB_API_BASE_URL || '').trim()) missing.push('GITLAB_API_BASE_URL');\nif (!String(env.N8N_GITLAB_TOKEN || env.GITLAB_TOKEN || env.GITLAB_ADMIN_TOKEN || '').trim()) missing.push('GITLAB_TOKEN');\n\nreturn [{\n  json: {\n    ok: missing.length === 0,\n    status_code: missing.length === 0 ? 200 : 424,\n    missing,\n    tip: 'GitLab Project Hook は /webhook/gitlab/cir/auto_label に issues_events=true で向けてください。'\n  }\n}];\n"
+      },
+      "id": "b1db4a1b-7c20-4b31-8f5b-5d5d3f2a5a64",
+      "name": "Env Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "b1ed1a39-1038-4398-8a1d-4f76f71c8a1a",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Test)": {
+      "main": [
+        [
+          {
+            "node": "Env Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Env Check": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+

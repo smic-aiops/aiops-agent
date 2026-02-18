@@ -1,0 +1,78 @@
+{
+  "name": "itsm-cir-issue-close-test",
+  "active": false,
+  "settings": {},
+  "nodes": [
+    {
+      "parameters": {
+        "path": "itsm/cir/issues/close/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Test)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const env = $env || {};\n\nconst missing = [];\nif (!String(env.N8N_GITLAB_API_BASE_URL || env.GITLAB_API_BASE_URL || env.N8N_GITLAB_BASE_URL || env.GITLAB_BASE_URL || '').trim()) missing.push('GITLAB_API_BASE_URL');\nif (!String(env.N8N_GITLAB_TOKEN || env.GITLAB_TOKEN || env.GITLAB_ADMIN_TOKEN || '').trim()) missing.push('GITLAB_TOKEN');\n\nreturn [{\n  json: {\n    ok: missing.length === 0,\n    status_code: missing.length === 0 ? 200 : 424,\n    missing,\n    tip: 'POST /webhook/itsm/cir/issues/close (dry_run=true) で計画を確認できます。'\n  }\n}];\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "2",
+      "name": "Env Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Test)": {
+      "main": [
+        [
+          {
+            "node": "Env Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Env Check": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

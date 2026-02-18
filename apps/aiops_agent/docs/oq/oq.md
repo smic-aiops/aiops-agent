@@ -1737,7 +1737,7 @@ python3 apps/aiops_agent/scripts/send_stub_event.py \
 - 監視通知（CloudWatch 等）を `source=cloudwatch` として受信できる（OQ-USECASE-02 相当）。
 - 周辺情報収集（enrichment）が有効で、最低限 `runbook` と `cmdb` を参照できる（OQ-USECASE-04 相当）。
 - サービスリクエストカタログが参照可能で、Workflow Manager の `Sulu Service Control` が取得できること。
-  - `apps/workflow_manager/workflows/service_request/aiops_sulu_service_control.json`
+  - `apps/workflow_manager/service_request/workflows/aiops_sulu_service_control.json`
   - `meta.workflowId = wf.sulu_service_control`
 - 自動復旧の実行は Workflow Manager 側のワークフローを実行する（本 OQ では、AIOps Agent が **再起動を選定し実行要求を出せる**ことを主に確認する）。
 
@@ -1794,7 +1794,7 @@ python3 apps/aiops_agent/scripts/send_stub_event.py \
 - `apps/aiops_agent/docs/cs/ai_behavior_spec.md`
 - `apps/aiops_agent/docs/oq/oq_usecase_02_monitoring_auto_reaction.md`
 - `apps/aiops_agent/docs/oq/oq_usecase_04_enrichment.md`
-- `apps/workflow_manager/workflows/service_request/aiops_sulu_service_control.json`
+- `apps/workflow_manager/service_request/workflows/aiops_sulu_service_control.json`
 
 ---
 

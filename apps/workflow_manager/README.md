@@ -9,7 +9,7 @@
 `apps/README.md` の共通フォーマットに従い、リスクベース（CSA）で最小限の成果物として本 README と検証証跡を維持する。
 
 **内容**
-- 本アプリの仕様・運用・検証の入口を README に集約し、詳細は `apps/workflow_manager/docs/oq/` / `apps/workflow_manager/scripts/` / `apps/workflow_manager/docs/` を参照する。
+- 本アプリの仕様・運用・検証の入口を README に集約し、詳細は `apps/workflow_manager/workflow_catalog/` / `apps/workflow_manager/service_request/` / `apps/workflow_manager/scripts/` / `apps/workflow_manager/docs/` を参照する。
 - 秘密情報は tfvars に平文で置かず、SSM/Secrets Manager → n8n 環境変数注入を前提とする。
 
 ---
@@ -26,7 +26,9 @@
 - 非対象: 外部サービス（GitLab/Sulu 等）自体の製品バリデーション、ネットワーク/認証基盤（Terraform/IaC 側）全般
 - バリデーション成果物（最小）:
   - 本 README
-  - OQ 文書: `apps/workflow_manager/docs/oq/oq.md` および `apps/workflow_manager/docs/oq/oq_*.md`（整備: `scripts/generate_oq_md.sh`）
+  - OQ 文書:
+    - Workflow Catalog: `apps/workflow_manager/workflow_catalog/docs/oq/oq.md`（整備: `scripts/generate_oq_md.sh`）
+    - Service Request: `apps/workflow_manager/service_request/docs/oq/oq.md`（整備: `scripts/generate_oq_md.sh`）
   - OQ 実行補助: `apps/workflow_manager/scripts/run_oq.sh`
 
 ---
@@ -82,17 +84,28 @@ flowchart LR
 | `client` | `POST /webhook/sulu/service-control` | 方式は運用設定（例: bearer token） | サービス制御要求（`action`, `realm` など） |
 
 ### ディレクトリ構成
-- `apps/workflow_manager/workflows/`: n8n ワークフロー定義（JSON）
-  - `aiops_workflows_list.json`: ワークフローカタログ API: 一覧
-  - `aiops_workflows_get.json`: ワークフローカタログ API: 取得
-  - `service_request/`: サービスリクエスト関連（Sulu 制御、GitLab サービスカタログ同期など）
-- `apps/workflow_manager/scripts/`: n8n Public API への同期（upsert）、OQ 実行
-- `apps/workflow_manager/docs/`: 補足ドキュメント
+- `apps/workflow_manager/workflow_catalog/`: ワークフローカタログ（機能）
+  - `workflows/`: n8n ワークフロー定義（JSON）
+  - `schema/`: ワークフロー入出力/データ定義（任意）
+  - `sql/`: ワークフローが参照する SQL（任意）
+  - `scripts/`: 同期（upsert）、検証（OQ）
+  - `docs/`: IQ/OQ など
+- `apps/workflow_manager/service_request/`: サービスリクエスト（機能）
+  - `workflows/`: n8n ワークフロー定義（JSON）
+  - `schema/`: ワークフロー入出力/データ定義（任意）
+  - `sql/`: ワークフローが参照する SQL（任意）
+  - `scripts/`: 同期（upsert）、検証（OQ）
+  - `docs/`: IQ/OQ など
+- `vendor/<name_prefix>/apps/workflow_manager/realms/<realm_key>/workflows/`: （任意）realm 固有の n8n ワークフロー差分（共通 workflows を上書きする用途。`name_prefix` は `terraform output -raw name_prefix` を正とする）
+- `apps/workflow_manager/scripts/`: 互換エントリポイント（全体同期/全体 OQ）と実体（engine）
+- `apps/workflow_manager/docs/`: 補足ドキュメント（overview）
+- `vendor/<name_prefix>/apps/workflow_manager/realms/<realm_key>/docs/`: 共通ベース docs への **realm overlay**（組織別拡張。CIR 同期で追記する Requirements/DQ はここへ書く）
 - `apps/workflow_manager/docs/cs/`: CS（Configuration Specification: 設計・構成定義）
 - `apps/workflow_manager/prompt/`: レルム別上書き（プロンプト）
 - `apps/workflow_manager/policy/`: レルム別上書き（ポリシー）
 - `apps/workflow_manager/data/`: 補助データ・テスト結果など
-- `apps/workflow_manager/docs/oq/`: OQ（運用適格性確認）
+- `vendor/<name_prefix>/apps/workflow_manager/realms/<realm_key>/data/`: （任意）realm 固有の data 差分（既存の置き場と併用可）
+- `apps/workflow_manager/docs/oq/`: OQ（overview）
 
 補足:
 - Zulip↔GitLab Issue 同期は `apps/itsm_core/zulip_gitlab_issue_sync/` に分離。
@@ -133,7 +146,7 @@ Intended Use に適合することを、最小の検証で示す。
 
 **内容**
 - OQ を中心に、カタログ API（list/get）と代表サービス制御の成立を確認する。
-- 代表ケースは `apps/workflow_manager/docs/oq/oq.md` と `apps/workflow_manager/docs/` の補足文書で定義する。
+- 代表ケースは各機能の OQ（`apps/workflow_manager/workflow_catalog/docs/oq/oq.md` / `apps/workflow_manager/service_request/docs/oq/oq.md`）で定義する。
 
 ---
 
@@ -151,15 +164,15 @@ Intended Use に適合することを、最小の検証で示す。
 重要機能（カタログ API、サービス制御、外部連携）が意図どおり動作することを確認する。
 
 **文書**
-- `apps/workflow_manager/docs/oq/oq.md`（`oq_*.md` から生成）
-- 個別シナリオ: `apps/workflow_manager/docs/oq/oq_*.md`
+- Workflow Catalog: `apps/workflow_manager/workflow_catalog/docs/oq/oq.md`
+- Service Request: `apps/workflow_manager/service_request/docs/oq/oq.md`
 - 補足: `apps/workflow_manager/docs/README.md`
 
 **実行**
 - `apps/workflow_manager/scripts/run_oq.sh`
 
 補足:
-- OQ 実行前に `scripts/generate_oq_md.sh --app apps/workflow_manager` を実行し、`oq.md` の生成領域を最新化する
+- OQ 実行前に `scripts/generate_oq_md.sh` を実行し、各 `oq.md` の生成領域を最新化する
 
 ---
 

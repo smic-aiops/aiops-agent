@@ -11,6 +11,7 @@ set -euo pipefail
 #   N8N_API_KEY_<REALMKEY> : realm-scoped n8n API key (e.g. N8N_API_KEY_TENANT_B)
 #   N8N_AGENT_REALMS : comma/space-separated realm list (default: terraform output N8N_AGENT_REALMS)
 #   WORKFLOW_DIR (default: apps/itsm_core/zulip_stream_sync/workflows)
+#   N8N_REALM_OVERLAY_DIR_BASE : base dir for realm overlay overrides (workflows) (default: vendor/<name_prefix>/apps/itsm_core/zulip_stream_sync/realms; fallback: apps/itsm_core/zulip_stream_sync/realms)
 #   ACTIVATE (default: false)
 #   DRY_RUN (default: false)
 #   TEST_WEBHOOK (default: true)
@@ -238,6 +239,15 @@ resolve_n8n_public_base_url_for_realm() {
 }
 
 WORKFLOW_DIR="${WORKFLOW_DIR:-${APP_DIR}/workflows}"
+if [[ -z "${N8N_REALM_OVERLAY_DIR_BASE:-}" ]]; then
+  name_prefix="$(tf_output_raw name_prefix 2>/dev/null || true)"
+  if [[ -n "${name_prefix}" && "${name_prefix}" != "null" && "${APP_DIR}" == "${REPO_ROOT}/"* ]]; then
+    app_rel="${APP_DIR#${REPO_ROOT}/}"
+    N8N_REALM_OVERLAY_DIR_BASE="vendor/${name_prefix}/${app_rel}/realms"
+  else
+    N8N_REALM_OVERLAY_DIR_BASE="${APP_DIR}/realms"
+  fi
+fi
 ACTIVATE="${ACTIVATE:-false}"
 DRY_RUN="${DRY_RUN:-false}"
 TEST_WEBHOOK="${TEST_WEBHOOK:-true}"
@@ -470,7 +480,16 @@ for realm in "${TARGET_REALMS[@]}"; do
 
   echo "[n8n] realm=${realm_label} base_url=${N8N_PUBLIC_API_BASE_URL}"
 
-  for file in "${files[@]}"; do
+  files_for_realm=("${files[@]}")
+  overlay_workflow_dir="${N8N_REALM_OVERLAY_DIR_BASE}/${realm_label}/workflows"
+  if [[ -d "${overlay_workflow_dir}" ]]; then
+    overlay_files=("${overlay_workflow_dir}"/*.json)
+    if [[ "${#overlay_files[@]}" -gt 0 ]]; then
+      files_for_realm+=("${overlay_files[@]}")
+    fi
+  fi
+
+  for file in "${files_for_realm[@]}"; do
     jq -e . "${file}" >/dev/null
     wf_name="$(jq -r '.name // empty' "${file}")"
     if [ -z "${wf_name}" ]; then

@@ -74,7 +74,10 @@ flowchart LR
 - `apps/aiops_agent/data/`: レルム別のプロンプト/ポリシー/DQ シナリオ等
   - 既定: `apps/aiops_agent/data/default/prompt/`, `apps/aiops_agent/data/default/policy/`, `apps/aiops_agent/data/default/dq/`
   - レルム別上書き（任意）: `apps/aiops_agent/data/<realm>/prompt/`, `apps/aiops_agent/data/<realm>/policy/`, `apps/aiops_agent/data/<realm>/dq/`
-- `apps/aiops_agent/docs/`: 要求/仕様/設計/実装/利用方法、DQ/IQ/OQ/PQ の説明文書
+- `apps/aiops_agent/docs/`: 要求/仕様/設計/実装/利用方法、DQ/IQ/OQ/PQ の説明文書（共通ベース）
+- `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/`: 共通ベース docs への **realm overlay**（組織別拡張。CIR 同期で追記する Requirements/DQ はここへ書く。`name_prefix` は `terraform output -raw name_prefix` を正とする）
+- `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/workflows/`: （任意）realm 固有の n8n ワークフロー差分（共通 workflows を上書きする用途）
+- `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/data/`: （任意）realm 固有の data 差分
 - `apps/aiops_agent/docs/cs/`: CS（Configuration Specification: 設計・構成定義）
 - `apps/aiops_agent/docs/dq/`: DQ（設計適格性確認）
 - `apps/aiops_agent/docs/iq/`: IQ（設置時適格性確認）
@@ -218,3 +221,11 @@ Intended Use に適合することを、最小の検証で示す。
 **内容**
 - 変更は Git の差分 + 必要最小限の OQ 再実施で追跡する（変更管理は `docs/change-management.md` を参照）。
 - ポリシー/プロンプトの変更は挙動に直結するため、代表 DQ/OQ を再実施して証跡を残す。
+
+### 継続的改善（CIR 起点の半自律/自律拡張）
+
+改善要求を CIR（GitLab 一般管理 Issue）として集約し、運用者承認後に「CIR→ユースケース→requirements/DQ」へ反映して整合を取った上で、
+設計・実装・OQ/PQ（影響確認）を進めてクローズする運用フローを定義します。
+
+- 全体フロー（正）: `docs/itsm/cir_continual_improvement_flow.md`
+- Approved CIR → UC-* 抽出（n8n）: `apps/itsm_core/cir_usecase_list/README.md`

@@ -181,6 +181,7 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 - 環境の利用手順と SSO の流れ: `docs/usage-guide.md`
 - ITSM セットアップ: `docs/itsm/README.md`
 - ITSM コア（SoR）機能一覧（実装状況）: `docs/itsm/itsm-core-feature-status.md`
+- CIR（継続的改善）運用フロー（半自律/自律拡張）: `docs/itsm/cir_continual_improvement_flow.md`
 
 ## 10. ディレクトリ構成（クイック参照）
 

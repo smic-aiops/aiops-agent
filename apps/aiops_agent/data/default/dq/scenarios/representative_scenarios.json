@@ -631,5 +631,67 @@
         ]
       }
     }
+    ,
+    {
+      "id": "DQ-OFF-014",
+      "severity": "medium",
+      "target_prompt": "orchestrator.preview.v1",
+      "endpoint": "jobs/preview",
+      "description": "Improvement request intake: log as a CIR record (GitLab Issue) (dedupe) and acknowledge safely",
+      "input": {
+        "context_id": "auto",
+        "actor": {
+          "id": "user-014",
+          "display_name": "requester"
+        },
+        "normalized_event": {
+          "source": "zulip",
+          "text": "AIOpsAgent さん、xxx ができるようになってください。改善要望です。",
+          "classification": {
+            "category": "service_request",
+            "impact": "low",
+            "urgency": "low",
+            "priority": "p4"
+          },
+          "metadata": {
+            "service_name": "aiops_agent"
+          }
+        },
+        "iam_context": {
+          "roles": [],
+          "groups": []
+        },
+        "policy_context": "auto",
+        "catalog": [
+          {
+            "id": "wf-log-cir",
+            "name": "log-cir-improvement-opportunity",
+            "settings": {
+              "aiops_catalog": {
+                "summary": "Log improvement opportunity as a CIR record (GitLab Issue) (status: New, dedupe)",
+                "params": {
+                  "status": "New",
+                  "management_domain": "general_management"
+                },
+                "required_roles": [],
+                "risk_level": "low",
+                "impact_scope": "service"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "allowed_next_actions": ["auto_enqueue", "ask_clarification", "reply_only"],
+        "must_have_keys": [
+          "next_action",
+          "required_confirm",
+          "missing_params",
+          "clarifying_questions",
+          "confidence",
+          "rationale"
+        ]
+      }
+    }
   ]
 }

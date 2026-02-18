@@ -16,6 +16,7 @@ set -euo pipefail
 #   N8N_ACTIVATE         : "true" to activate workflows after upsert (default: terraform output N8N_ACTIVATE)
 #   N8N_RESET_STATIC_DATA: "true" to overwrite staticData from files (default: false)
 #   N8N_DRY_RUN          : "true" to only print planned actions (default: false)
+#   DRY_RUN              : alias of N8N_DRY_RUN
 #   N8N_INCLUDE_TEST_WORKFLOWS : "true" to include *_test.json workflows (default: false)
 #   N8N_DB_CREDENTIAL_NAME     : n8n credential name for Postgres (default: aiops-postgres)
 #   N8N_DB_CREDENTIAL_ID       : existing credential ID to update instead of creating
@@ -33,6 +34,7 @@ set -euo pipefail
 #   N8N_POLICY_DIR        : directory that stores policy files (default: apps/aiops_agent/data/default/policy)
 #   N8N_AGENT_REALMS      : comma/space-separated realm list (default: terraform output N8N_AGENT_REALMS)
 #   N8N_REALM_DATA_DIR_BASE : base dir for realm-specific prompt/policy overrides (default: apps/aiops_agent/data)
+#   N8N_REALM_OVERLAY_DIR_BASE : base dir for realm overlay overrides (data/workflows) (default: vendor/<name_prefix>/apps/aiops_agent/realms; fallback: apps/aiops_agent/realms)
 #   ZULIP_BASIC_CREDENTIAL_NAME : name for the Zulip httpBasicAuth credential (default: aiops-zulip-basic)
 #   ZULIP_BASIC_CREDENTIAL_ID   : credential ID to update instead of creating a new one
 #   ZULIP_BASIC_USERNAME        : Zulip bot email address (default: terraform output zulip_bot_email)
@@ -90,7 +92,7 @@ if [[ -f "${REPO_ROOT}/scripts/lib/setup_log.sh" ]]; then
   setup_log_install_exit_trap
 fi
 
-DRY_RUN="${N8N_DRY_RUN:-false}"
+DRY_RUN="${DRY_RUN:-${N8N_DRY_RUN:-false}}"
 VALIDATE_LLM_SCHEMAS="${N8N_VALIDATE_LLM_SCHEMAS:-true}"
 
 if is_truthy "${VALIDATE_LLM_SCHEMAS}"; then
@@ -163,6 +165,18 @@ DEFAULT_N8N_PUBLIC_API_BASE_URL="${N8N_PUBLIC_API_BASE_URL}"
 DEFAULT_N8N_API_BASE_URL="${N8N_API_BASE_URL}"
 N8N_AGENT_REALMS="${N8N_AGENT_REALMS:-}"
 N8N_REALM_DATA_DIR_BASE="${N8N_REALM_DATA_DIR_BASE:-apps/aiops_agent/data}"
+if [[ -z "${N8N_REALM_OVERLAY_DIR_BASE:-}" ]]; then
+  prefix_from_tf=""
+  if command -v terraform >/dev/null 2>&1; then
+    prefix_from_tf="$(terraform -chdir="${REPO_ROOT}" output -raw name_prefix 2>/dev/null || true)"
+  fi
+  if [[ -n "${prefix_from_tf}" && "${prefix_from_tf}" != "null" ]]; then
+    N8N_REALM_OVERLAY_DIR_BASE="vendor/${prefix_from_tf}/apps/aiops_agent/realms"
+  else
+    # Backward-compatible default (legacy overlay location).
+    N8N_REALM_OVERLAY_DIR_BASE="apps/aiops_agent/realms"
+  fi
+fi
 
 N8N_DB_ALLOW_UNAUTHORIZED_CERTS="${N8N_DB_ALLOW_UNAUTHORIZED_CERTS:-false}"
 N8N_DB_SSL="${N8N_DB_SSL:-require}"
@@ -1913,6 +1927,8 @@ sync_workflows_for_realm() {
   local realm_label="${realm:-default}"
   local base_url=""
   local realm_key=""
+  local realm_overlay_dir=""
+  local overlay_workflow_dir=""
 
   if [[ -n "${realm}" ]]; then
     realm_key="$(tr '[:lower:]-' '[:upper:]_' <<<"${realm}")"
@@ -1934,10 +1950,24 @@ sync_workflows_for_realm() {
 
   REALM_DATA_DIR=""
   if [[ -n "${realm}" ]]; then
+    realm_overlay_dir="${N8N_REALM_OVERLAY_DIR_BASE}/${realm}"
+    if [[ ! -d "${realm_overlay_dir}" ]]; then
+      realm_overlay_dir=""
+    fi
+  fi
+
+  if [[ -n "${realm_overlay_dir}" && -d "${realm_overlay_dir}/data" ]]; then
+    REALM_DATA_DIR="${realm_overlay_dir}/data"
+  elif [[ -n "${realm}" ]]; then
+    # Backward-compatible: apps/aiops_agent/data/<realm>/*
     REALM_DATA_DIR="${N8N_REALM_DATA_DIR_BASE}/${realm}"
     if [[ ! -d "${REALM_DATA_DIR}" ]]; then
       REALM_DATA_DIR=""
     fi
+  fi
+
+  if [[ -n "${realm_overlay_dir}" && -d "${realm_overlay_dir}/workflows" ]]; then
+    overlay_workflow_dir="${realm_overlay_dir}/workflows"
   fi
 
   local fallback_data_dir=""
@@ -1961,7 +1991,12 @@ sync_workflows_for_realm() {
   OPENAI_CRED_ID=""
   OPENAI_CRED_NAME=""
 
-  WORKFLOW_DIRS_STR="$(IFS=','; echo "${WORKFLOW_DIRS[*]}")"
+  local -a workflow_dirs_for_realm=("${WORKFLOW_DIRS[@]}")
+  if [[ -n "${overlay_workflow_dir}" ]]; then
+    workflow_dirs_for_realm+=("${overlay_workflow_dir}")
+  fi
+
+  WORKFLOW_DIRS_STR="$(IFS=','; echo "${workflow_dirs_for_realm[*]}")"
   if [[ -n "${REALM_DATA_DIR}" || -n "${fallback_data_dir}" ]]; then
     echo "[n8n] realm=${realm_label} base_url=${N8N_PUBLIC_API_BASE_URL}, dirs=${WORKFLOW_DIRS_STR}, activate=${ACTIVATE}, dry_run=${DRY_RUN}, realm_data_dir=${REALM_DATA_DIR:-none}, fallback_data_dir=${fallback_data_dir:-none}"
   else
@@ -1977,7 +2012,7 @@ sync_workflows_for_realm() {
   fi
 
   local files=()
-  for dir in "${WORKFLOW_DIRS[@]}"; do
+  for dir in "${workflow_dirs_for_realm[@]}"; do
     if [[ ! -d "${dir}" ]]; then
       continue
     fi

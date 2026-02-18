@@ -1,0 +1,234 @@
+{
+  "name": "gitlab-cir-status-notify",
+  "active": false,
+  "settings": {},
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/cir/status/notify",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (GitLab)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = ($json && $json.headers) ? $json.headers : {};\nconst body = ($json && $json.body) ? $json.body : ($json ?? {});\nconst env = $env || {};\n\nfunction getHeader(name) {\n  const lower = String(name || '').toLowerCase();\n  if (headers[lower] !== undefined) return headers[lower];\n  if (headers[name] !== undefined) return headers[name];\n  const key = Object.keys(headers).find((k) => k.toLowerCase() === lower);\n  return key ? headers[key] : undefined;\n}\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on', 'enabled'].includes(v);\n}\n\nfunction error(status, message, extra = {}) {\n  return [{\n    json: {\n      ok: false,\n      status_code: status,\n      error: message,\n      ...extra,\n    }\n  }];\n}\n\nfunction pickFirst(paths, fallback = null) {\n  for (const path of paths) {\n    const parts = String(path).split('.').filter(Boolean);\n    let cur = body;\n    for (const part of parts) {\n      if (cur === null || cur === undefined) {\n        cur = undefined;\n        break;\n      }\n      cur = cur?.[part];\n    }\n    if (cur !== undefined && cur !== null && String(cur).trim() !== '') return cur;\n  }\n  return fallback;\n}\n\nfunction parseJsonMap(text) {\n  const raw = String(text || '').trim();\n  if (!raw) return null;\n  try {\n    const parsed = JSON.parse(raw);\n    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;\n  } catch (error) {}\n  return null;\n}\n\nfunction parseYamlMap(text) {\n  const map = {};\n  const lines = String(text || '').split(/\\r?\\n/);\n  for (const line of lines) {\n    const trimmed = String(line || '').trim();\n    if (!trimmed || trimmed.startsWith('#')) continue;\n    const idx = trimmed.indexOf(':');\n    if (idx <= 0) continue;\n    const key = trimmed.slice(0, idx).trim();\n    let value = trimmed.slice(idx + 1).trim();\n    if (!key) continue;\n    if ((value.startsWith('\"') && value.endsWith('\"')) || (value.startsWith(\"'\") && value.endsWith(\"'\"))) {\n      value = value.slice(1, -1);\n    }\n    map[key] = value;\n  }\n  return map;\n}\n\nfunction loadRealmMap(jsonText, yamlText) {\n  const jsonMap = parseJsonMap(jsonText);\n  if (jsonMap && Object.keys(jsonMap).length) return jsonMap;\n  return parseYamlMap(yamlText);\n}\n\nfunction pickRealmValue(map, realmKey) {\n  if (!map || typeof map !== 'object') return '';\n  const realmStr = String(realmKey || '').trim();\n  const candidates = [realmStr, realmStr.toLowerCase(), 'default', '*'];\n  for (const key of candidates) {\n    if (!key) continue;\n    const value = map[key];\n    if (value === undefined || value === null) continue;\n    const trimmed = String(value).trim();\n    if (trimmed) return trimmed;\n  }\n  return '';\n}\n\nfunction deriveRealmFromProjectPath(path) {\n  const p = String(path || '').trim();\n  if (!p) return '';\n  const first = p.split('/')[0] || '';\n  return first.trim();\n}\n\nfunction looksLikeYamlMap(text) {\n  const t = String(text || '').trim();\n  if (!t) return false;\n  if (/^https?:\\/\\//i.test(t)) return false;\n  if (t.includes(String.fromCharCode(10)) || t.includes(String.fromCharCode(13)) || t.includes('\\\\n')) return true;\n  if (/^\\s*(default|\\*)\\s*:\\s*\\S+/i.test(t)) return true;\n  return false;\n}\n\nfunction resolveGitlabWebhookSecretsMap() {\n  const json = String(env.GITLAB_WEBHOOK_SECRETS_JSON || '').trim();\n  const yaml = String(env.GITLAB_WEBHOOK_SECRETS_YAML || '').trim();\n  if (json || yaml) return loadRealmMap(json, yaml);\n  const raw = String(env.GITLAB_WEBHOOK_SECRET || '').trim();\n  if (looksLikeYamlMap(raw)) return loadRealmMap('', raw);\n  return {};\n}\n\nconst eventHeader = String(getHeader('x-gitlab-event') || body.event_type || body.object_kind || '').trim();\nconst event = eventHeader.toLowerCase();\nif (!event.includes('issue')) {\n  return [{ json: { ok: true, status_code: 200, skipped: true, reason: 'not_issue_event', event: eventHeader } }];\n}\n\nconst token = String(getHeader('x-gitlab-token') || '').trim();\nconst scalarSecret = String(env.GITLAB_WEBHOOK_SECRET || '').trim();\nconst secretMap = resolveGitlabWebhookSecretsMap();\n\nconst projectPath = pickFirst(['project.path_with_namespace', 'project.path', 'project.path_with_namespace', 'project_path'], '') || '';\nconst realmFromProject = deriveRealmFromProjectPath(projectPath);\n\nlet matchedSecretKey = '';\nlet expectedSecret = '';\nif (secretMap && Object.keys(secretMap).length) {\n  const candidates = [realmFromProject, (realmFromProject || '').toLowerCase(), 'default', '*'].filter(Boolean);\n  for (const k of candidates) {\n    const v = secretMap[k];\n    if (v !== undefined && v !== null && String(v).trim()) {\n      matchedSecretKey = k;\n      expectedSecret = String(v).trim();\n      break;\n    }\n  }\n}\n\nconst hasAnySecret = Boolean(scalarSecret) || Boolean(expectedSecret);\nif (!hasAnySecret) {\n  return error(424, 'missing webhook secret', { missing: ['GITLAB_WEBHOOK_SECRET'] });\n}\n\nconst mustMatch = expectedSecret || scalarSecret;\nif (mustMatch && token !== mustMatch) {\n  return error(401, 'invalid token', { event: eventHeader });\n}\n\nconst realm = realmFromProject\n  || (matchedSecretKey && matchedSecretKey !== 'default' ? String(matchedSecretKey).trim() : '')\n  || String(env.N8N_REALM || env.N8N_OBSERVER_REALM || env.ZULIP_REALM || 'default').trim()\n  || 'default';\n\nconst dryRun = isTruthy(pickFirst(['dry_run'], false)) || isTruthy(env.ITSM_CIR_NOTIFY_DRY_RUN) || isTruthy(env.GITLAB_CIR_NOTIFY_DRY_RUN);\n\nconst issueId = pickFirst(['object_attributes.id', 'issue.id'], null);\nconst issueIid = pickFirst(['object_attributes.iid', 'issue.iid'], null);\nconst issueTitle = String(pickFirst(['object_attributes.title', 'issue.title'], '') || '').trim();\nconst issueUrl = String(pickFirst(['object_attributes.url', 'issue.url'], '') || '').trim();\nconst issueDescription = String(pickFirst(['object_attributes.description', 'issue.description'], '') || '').trim();\n\nconst updatedAt = String(pickFirst(['object_attributes.updated_at', 'object_attributes.last_edited_at', 'issue.updated_at'], '') || '').trim();\n\nfunction labelTitles(raw) {\n  const labels = Array.isArray(raw) ? raw : [];\n  const out = [];\n  for (const l of labels) {\n    if (l === null || l === undefined) continue;\n    if (typeof l === 'string') {\n      const t = l.trim();\n      if (t) out.push(t);\n      continue;\n    }\n    if (typeof l === 'object') {\n      const t = String(l.title ?? l.name ?? '').trim();\n      if (t) out.push(t);\n    }\n  }\n  return out;\n}\n\nconst changesLabels = (body && typeof body === 'object' && body.changes && typeof body.changes === 'object')\n  ? body.changes.labels\n  : null;\n\nconst changesPrevRaw = (changesLabels && typeof changesLabels === 'object')\n  ? (Array.isArray(changesLabels.previous) ? changesLabels.previous : (Array.isArray(changesLabels.before) ? changesLabels.before : null))\n  : null;\nconst changesCurRaw = (changesLabels && typeof changesLabels === 'object')\n  ? (Array.isArray(changesLabels.current) ? changesLabels.current : (Array.isArray(changesLabels.after) ? changesLabels.after : null))\n  : null;\n\nconst hasLabelsChange = Boolean(changesPrevRaw || changesCurRaw);\nif (!hasLabelsChange) {\n  return [{ json: { ok: true, status_code: 200, skipped: true, reason: 'no_label_change_payload', realm, project_path: projectPath, issue_iid: issueIid, issue_url: issueUrl } }];\n}\n\nconst prevLabels = labelTitles(changesPrevRaw || []);\nconst curLabels = labelTitles(changesCurRaw || pickFirst(['object_attributes.labels', 'labels'], []));\n\nconst curSet = new Set(curLabels);\nconst prevSet = new Set(prevLabels);\nconst added = curLabels.filter((t) => !prevSet.has(t));\n\nconst cirLabel = String(env.ITSM_CIR_LABEL || 'ITSM/継続的改善').trim() || 'ITSM/継続的改善';\nif (!curSet.has(cirLabel)) {\n  return [{ json: { ok: true, status_code: 200, skipped: true, reason: 'not_cir_issue', realm, project_path: projectPath, issue_iid: issueIid, issue_url: issueUrl } }];\n}\n\nconst approvedLabel = String(env.ITSM_CIR_APPROVED_LABEL || '状態/Approved').trim() || '状態/Approved';\nconst closedLabel = String(env.ITSM_CIR_CLOSED_LABEL || '状態/Closed').trim() || '状態/Closed';\n\nlet notifyKind = '';\nlet statusLabel = '';\nif (added.includes(closedLabel)) {\n  notifyKind = 'closed';\n  statusLabel = closedLabel;\n} else if (added.includes(approvedLabel)) {\n  notifyKind = 'approved';\n  statusLabel = approvedLabel;\n}\n\nif (!notifyKind) {\n  return [{ json: { ok: true, status_code: 200, skipped: true, reason: 'no_target_status_label_added', realm, project_path: projectPath, issue_iid: issueIid, issue_url: issueUrl, added_labels: added } }];\n}\n\nfunction extractRequesterEmails(text) {\n  const raw = String(text || '');\n\n  const candidates = [];\n  const rowPatterns = [\n    /\\|\\s*起票者\\s*\\|\\s*([^|\\n]+)\\|/i,\n    /\\|\\s*Submitted\\s*by\\s*\\|\\s*([^|\\n]+)\\|/i,\n    /requester[_\\s-]*email\\s*[:：]\\s*([^\\s\\n]+)/i,\n  ];\n  for (const re of rowPatterns) {\n    const m = raw.match(re);\n    if (m && m[1]) candidates.push(String(m[1]));\n  }\n\n  // Fallback: allow any email in the description.\n  if (candidates.length === 0) candidates.push(raw);\n\n  const joined = candidates.join(' ');\n  const emails = [];\n  const re = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/ig;\n  let mm;\n  while ((mm = re.exec(joined)) !== null) {\n    const e = String(mm[0] || '').trim();\n    if (e) emails.push(e);\n  }\n\n  // De-dupe\n  const seen = new Set();\n  const out = [];\n  for (const e of emails) {\n    const k = e.toLowerCase();\n    if (seen.has(k)) continue;\n    seen.add(k);\n    out.push(e);\n  }\n  return out;\n}\n\nconst recipients = extractRequesterEmails(issueDescription);\nif (recipients.length === 0) {\n  return [{\n    json: {\n      ok: true,\n      status_code: 200,\n      skipped: true,\n      reason: 'missing_requester_email',\n      realm,\n      project_path: projectPath,\n      issue_iid: issueIid,\n      issue_url: issueUrl,\n      status_label: statusLabel,\n      hint: 'Issue description の「起票者」に Zulip メールアドレスを入れてください。'\n    }\n  }];\n}\n\nconst prefixApproved = String(env.ITSM_CIR_NOTIFY_APPROVED_PREFIX || '以前のご要望').trim() || '以前のご要望';\nconst prefixClosed = String(env.ITSM_CIR_NOTIFY_CLOSED_PREFIX || '以前のご要望').trim() || '以前のご要望';\n\nlet notifyText = '';\nif (notifyKind === 'approved') {\n  notifyText = `${prefixApproved}「${issueTitle || '（件名なし）'}」は承認されましたので、これから改善します。`;\n} else {\n  notifyText = `${prefixClosed}「${issueTitle || '（件名なし）'}」は対応が完了したため、クローズしました。`;\n}\n\nconst lines = [\n  notifyText,\n  issueUrl ? `CIR: ${issueUrl}` : null,\n  '',\n  `Status: ${statusLabel}`,\n  `Realm: ${realm}`,\n].filter((v) => v !== null);\nconst content = lines.join('\\n');\n\nconst eventKey = `itsm:cir_notify:${projectPath || 'unknown'}#${issueIid || issueId || 'unknown'}:${statusLabel}:${updatedAt || 'no-ts'}`;\nconst correlationId = `gitlab:${projectPath || 'unknown'}#${issueIid || ''}`;\n\nconst sorAudit = {\n  record_type: 'sor_audit_event',\n  realm,\n  occurred_at: updatedAt || null,\n  action: 'cir.requester_notified',\n  source: 'gitlab',\n  actor_type: 'human',\n  actor: { name: String(pickFirst(['user.username', 'user.name', 'user_username', 'user_name'], 'unknown')) },\n  resource_type: 'gitlab_issue',\n  correlation_id: correlationId,\n  reply_target: {\n    source: 'gitlab',\n    project_path: projectPath || null,\n    issue_iid: issueIid || null,\n    url: issueUrl || null,\n  },\n  summary: notifyKind === 'approved' ? `CIR 承認通知: ${issueTitle}` : `CIR クローズ通知: ${issueTitle}`,\n  message: content,\n  after: {\n    notify_kind: notifyKind,\n    status_label: statusLabel,\n    recipients,\n    gitlab_project_path: projectPath || null,\n    gitlab_issue_url: issueUrl || null,\n  },\n  integrity: { event_key: eventKey }\n};\n\nif (dryRun) {\n  return [{\n    json: {\n      ok: true,\n      status_code: 200,\n      dry_run: true,\n      realm,\n      notify_candidate_flag: '',\n      would_notify: true,\n      notify_kind: notifyKind,\n      status_label: statusLabel,\n      recipients,\n      content,\n      ...sorAudit,\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ok: true,\n    status_code: 200,\n    realm,\n    notify_candidate_flag: 'true',\n    notify_kind: notifyKind,\n    status_label: statusLabel,\n    recipients,\n    content,\n    ...sorAudit,\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Process (Detect Status + Build DM)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.notify_candidate_flag}}",
+              "value2": "true",
+              "operation": "equal"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF Notify Candidate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    itsm.set_rls_context(NULLIF('{{ $json.realm }}','')) AS realm_id,\n    COALESCE(NULLIF(NULLIF('{{ $json.occurred_at }}',''), 'undefined')::timestamptz, NOW()) AS occurred_at,\n    COALESCE(NULLIF('{{ JSON.stringify($json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ String($json.actor_type ?? \"unknown\").replace(/'/g, \"''\") }}', 'undefined'), 'unknown') AS actor_type,\n    '{{ String($json.action || '').replace(/'/g, \"''\") }}' AS action,\n    '{{ String($json.source || '').replace(/'/g, \"''\") }}' AS source,\n    NULLIF('{{ String($json.resource_type || '').replace(/'/g, \"''\") }}','') AS resource_type,\n    NULLIF('{{ String($json.correlation_id || '').replace(/'/g, \"''\") }}','') AS correlation_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.reply_target || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($json.summary || '').replace(/'/g, \"''\") }}','') AS summary,\n    NULLIF('{{ String($json.message || '').replace(/'/g, \"''\") }}','') AS message,\n    COALESCE(NULLIF('{{ JSON.stringify($json.after || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS after,\n    COALESCE(NULLIF('{{ JSON.stringify($json.integrity || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS integrity\n), ins AS (\n  INSERT INTO itsm.audit_event (\n    realm_id, occurred_at, actor, actor_type, action, source,\n    resource_type, correlation_id, reply_target, summary, message, after, integrity\n  )\n  SELECT\n    v.realm_id, v.occurred_at, v.actor, v.actor_type, v.action, v.source,\n    v.resource_type, v.correlation_id, v.reply_target, v.summary, v.message, v.after, v.integrity\n  FROM v\n  ON CONFLICT DO NOTHING\n  RETURNING id\n)\nSELECT\n  COALESCE((SELECT id FROM ins), NULL) AS audit_event_id,\n  EXISTS(SELECT 1 FROM ins) AS inserted;"
+      },
+      "id": "4",
+      "name": "Insert SoR Audit Event (Idempotency Lock)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        880,
+        260
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const orig = $items('Process (Detect Status + Build DM)')[$itemIndex]?.json ?? {}; const ins = $json ?? {}; const inserted = Boolean(ins.inserted); const out = { ...orig, sor_insert: ins, inserted_flag: inserted ? 'true' : '', audit_event_id: ins.audit_event_id ?? null }; if (!inserted) { out.skipped = true; out.reason = 'duplicate_notification'; } return [{ json: out }];",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "5",
+      "name": "Restore Payload After SoR Insert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.inserted_flag}}",
+              "value2": "true",
+              "operation": "equal"
+            }
+          ]
+        }
+      },
+      "id": "6",
+      "name": "IF First Notification",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $json ?? {};\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on', 'enabled'].includes(v);\n}\n\nconst dryRun = Boolean(base.dry_run) || isTruthy($env.ITSM_CIR_NOTIFY_DRY_RUN) || isTruthy($env.GITLAB_CIR_NOTIFY_DRY_RUN);\nif (dryRun) {\n  return [{ json: { ...base, zulip_notify: { ok: true, skipped: true, reason: 'dry_run' } } }];\n}\n\nconst realm = String(base.realm || $env.N8N_REALM || $env.N8N_OBSERVER_REALM || 'default').trim() || 'default';\nconst recipients = Array.isArray(base.recipients) ? base.recipients : [];\nconst content = String(base.content || '').trim();\n\nif (!content) {\n  return [{ json: { ...base, zulip_notify: { ok: false, skipped: true, reason: 'empty_content' } } }];\n}\nif (recipients.length === 0) {\n  return [{ json: { ...base, zulip_notify: { ok: false, skipped: true, reason: 'missing_recipients' } } }];\n}\n\nfunction parseJsonMap(text) {\n  const raw = String(text || '').trim();\n  if (!raw) return null;\n  try {\n    const parsed = JSON.parse(raw);\n    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;\n  } catch (error) {}\n  return null;\n}\n\nfunction parseYamlMap(text) {\n  const map = {};\n  const lines = String(text || '').split(/\\r?\\n/);\n  for (const line of lines) {\n    const trimmed = String(line || '').trim();\n    if (!trimmed || trimmed.startsWith('#')) continue;\n    const idx = trimmed.indexOf(':');\n    if (idx <= 0) continue;\n    const key = trimmed.slice(0, idx).trim();\n    let value = trimmed.slice(idx + 1).trim();\n    if (!key) continue;\n    if ((value.startsWith('\"') && value.endsWith('\"')) || (value.startsWith(\"'\") && value.endsWith(\"'\"))) {\n      value = value.slice(1, -1);\n    }\n    map[key] = value;\n  }\n  return map;\n}\n\nfunction loadRealmMap(jsonText, yamlText) {\n  const jsonMap = parseJsonMap(jsonText);\n  if (jsonMap && Object.keys(jsonMap).length) return jsonMap;\n  return parseYamlMap(yamlText);\n}\n\nfunction pickRealmValue(map, realmKey) {\n  if (!map || typeof map !== 'object') return '';\n  const realmStr = String(realmKey || '').trim();\n  const candidates = [realmStr, realmStr.toLowerCase(), 'default', '*'];\n  for (const key of candidates) {\n    if (!key) continue;\n    const value = map[key];\n    if (value === undefined || value === null) continue;\n    const trimmed = String(value).trim();\n    if (trimmed) return trimmed;\n  }\n  return '';\n}\n\nfunction resolveZulipCredentials(realmKey) {\n  const rk = String(realmKey || '').trim() || 'default';\n\n  const baseFromMap = pickRealmValue(\n    loadRealmMap($env.N8N_ZULIP_API_BASE_URL || '', $env.N8N_ZULIP_API_BASE_URL || ''),\n    rk\n  );\n  const emailFromMap = pickRealmValue(\n    loadRealmMap($env.N8N_ZULIP_BOT_EMAIL || '', $env.N8N_ZULIP_BOT_EMAIL || ''),\n    rk\n  );\n  const keyFromMap = pickRealmValue(\n    loadRealmMap($env.N8N_ZULIP_BOT_TOKEN || '', ($env.N8N_ZULIP_BOT_TOKEN || $env.ZULIP_BOT_TOKEN || '')),\n    rk\n  );\n\n  const fallbackBase = String($env.ZULIP_BASE_URL || $env.N8N_ZULIP_API_BASE_URL || '').trim();\n  const fallbackEmail = String($env.ZULIP_BOT_EMAIL || $env.N8N_ZULIP_BOT_EMAIL || '').trim();\n  const fallbackKey = String($env.ZULIP_BOT_API_KEY || $env.N8N_ZULIP_BOT_TOKEN || $env.ZULIP_BOT_TOKEN || '').trim();\n\n  let baseUrl = baseFromMap || fallbackBase;\n  baseUrl = baseUrl.replace(/\\/+$/, '');\n  if (baseUrl.endsWith('/api/v1')) baseUrl = baseUrl.slice(0, -'/api/v1'.length);\n  baseUrl = baseUrl.replace(/\\/+$/, '');\n\n  const email = emailFromMap || fallbackEmail;\n  const apiKey = keyFromMap || fallbackKey;\n\n  return { base_url: baseUrl, email, api_key: apiKey };\n}\n\nconst zulip = resolveZulipCredentials(realm);\nif (!zulip.base_url || !zulip.email || !zulip.api_key) {\n  return [{\n    json: {\n      ...base,\n      zulip_notify: {\n        ok: false,\n        skipped: true,\n        reason: 'missing_zulip_credentials',\n        realm,\n        has_base_url: Boolean(zulip.base_url),\n        has_email: Boolean(zulip.email),\n        has_api_key: Boolean(zulip.api_key)\n      }\n    }\n  }];\n}\n\nconst apiBase = zulip.base_url.endsWith('/api/v1') ? zulip.base_url : `${zulip.base_url}/api/v1`;\nconst auth = Buffer.from(`${zulip.email}:${zulip.api_key}`).toString('base64');\n\nconst formBody = Object.entries({\n  type: 'private',\n  to: JSON.stringify(recipients),\n  content,\n})\n  .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)\n  .join('&');\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${apiBase}/messages`,\n    headers: {\n      'Content-Type': 'application/x-www-form-urlencoded',\n      Authorization: `Basic ${auth}`,\n    },\n    body: formBody,\n    json: true,\n    timeout: 8000,\n  });\n\n  return [{\n    json: {\n      ...base,\n      zulip_notify: {\n        ok: true,\n        status_code: 200,\n        type: 'private',\n        recipients: recipients,\n        sent_at: new Date().toISOString()\n      }\n    }\n  }];\n} catch (err) {\n  const status = err?.response?.statusCode || err?.statusCode || err?.httpCode || null;\n  const responseBody = err?.response?.body || err?.response?.data || null;\n  return [{\n    json: {\n      ...base,\n      zulip_notify: {\n        ok: false,\n        status_code: status || 500,\n        error: String(err?.message || err),\n        response_body: responseBody,\n      }\n    }\n  }];\n}\n"
+      },
+      "id": "7",
+      "name": "Send Zulip DM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "8",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (GitLab)": {
+      "main": [
+        [
+          {
+            "node": "Process (Detect Status + Build DM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process (Detect Status + Build DM)": {
+      "main": [
+        [
+          {
+            "node": "IF Notify Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Notify Candidate": {
+      "main": [
+        [
+          {
+            "node": "Insert SoR Audit Event (Idempotency Lock)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert SoR Audit Event (Idempotency Lock)": {
+      "main": [
+        [
+          {
+            "node": "Restore Payload After SoR Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Payload After SoR Insert": {
+      "main": [
+        [
+          {
+            "node": "IF First Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF First Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Zulip DM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Zulip DM": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

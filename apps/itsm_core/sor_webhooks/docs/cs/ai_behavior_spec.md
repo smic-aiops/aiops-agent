@@ -12,7 +12,9 @@
 
 ## 参照（構成品目）
 
-- 要求: `apps/itsm_core/sor_webhooks/docs/app_requirements.md`
+- 要求（共通ベース）: `apps/itsm_core/sor_webhooks/docs/app_requirements.md`
+- 要求（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/sor_webhooks/realms/<realm_key>/docs/app_requirements.md`（`name_prefix` は `terraform output -raw name_prefix` を正とする）
+- DQ（共通ベース）: `apps/itsm_core/sor_webhooks/docs/dq/dq.md`
+- DQ（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/sor_webhooks/realms/<realm_key>/docs/dq/dq.md`
 - OQ: `apps/itsm_core/sor_webhooks/docs/oq/oq.md`
 - ワークフロー: `apps/itsm_core/sor_webhooks/workflows/`
-

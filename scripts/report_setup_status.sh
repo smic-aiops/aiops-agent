@@ -265,7 +265,7 @@ emit_action_line "ensure_realm_groups" "GitLab groups + realm admins" "scripts/i
 echo
 
 emit_text_header "フェーズ: サービスリクエスト セットアップ"
-emit_text_kv "workflow_manager workflows" "count=$(count_glob "${REPO_ROOT}/apps/workflow_manager/workflows/*.json")"
+emit_text_kv "workflow_manager workflows" "count=$(find "${REPO_ROOT}/apps/workflow_manager" -type f -name '*.json' -path '*/workflows/*' 2>/dev/null | wc -l | tr -d ' ')"
 emit_text_kv "gitlab_push_notify workflows" "count=$(count_glob "${REPO_ROOT}/apps/itsm_core/gitlab_push_notify/workflows/*.json")"
 emit_text_kv "gitlab_issue_rag workflows" "count=$(count_glob "${REPO_ROOT}/apps/itsm_core/gitlab_issue_rag/workflows/*.json")"
 echo "実行ログ:"

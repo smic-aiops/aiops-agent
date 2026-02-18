@@ -11,6 +11,7 @@
 **内容**
 - ITSM の “正（SoR）” を PostgreSQL（共有 RDS）上の `itsm.*` スキーマとして提供し、関連する運用スクリプト（DDL 適用、RLS、保持/削除、匿名化、監査アンカー、バックフィル等）を集約する。
 - SoR の仕様・運用・検証の入口を本 README に集約し、詳細は `apps/itsm_core/docs/`（Requirements/DQ/IQ/OQ/PQ）を参照する。
+- 組織（realm）ごとの拡張が必要な Requirements/DQ は、共通ベース（`apps/itsm_core/**/docs/`）を編集せず、`vendor/<name_prefix>/apps/itsm_core/**/realms/<realm_key>/docs/` へ **realm overlay** として追記する（`name_prefix` は `terraform output -raw name_prefix` を正とする）。
 - 秘密情報（DB 資格情報、API キー等）は tfvars に平文で置かず、SSM/Secrets Manager → 環境変数注入を前提とする。
 
 ---
@@ -67,8 +68,11 @@ flowchart LR
 ### ディレクトリ構成
 - `apps/itsm_core/sql/`: SoR スキーマ（SSoT）/RLS
 - `apps/itsm_core/scripts/`: ITSM Core 配下の **統合オーケストレータ**（一括 deploy / 一括 OQ）
-- `apps/itsm_core/docs/`: ITSM Core の横断ドキュメント（Requirements/DQ/IQ/OQ/PQ/AIS）
+- `apps/itsm_core/docs/`: ITSM Core の横断ドキュメント（Requirements/DQ/IQ/OQ/PQ/AIS）（共通ベース）
+- `vendor/<name_prefix>/apps/itsm_core/realms/<realm_key>/docs/`: （任意）共通ベース docs への **realm overlay**（組織別拡張）
 - `apps/itsm_core/<sub_app>/`: サブアプリ（個別の workflows/scripts/docs/data/sql を保持）
+  - `apps/itsm_core/<sub_app>/docs/`: サブアプリ docs（共通ベース）
+  - `vendor/<name_prefix>/apps/itsm_core/<sub_app>/realms/<realm_key>/docs/`: （任意）サブアプリ docs の realm overlay（CIR 同期で追記する Requirements/DQ はここへ書く）
 
 ### サブアプリ一覧（正）
 各サブアプリは原則として以下を保持する（統一インタフェース）:
@@ -86,6 +90,10 @@ flowchart LR
 | `cloudwatch_event_notify` | n8n | CloudWatch/SNS 等の通知を整形し Zulip/GitLab/Grafana へ連携 | `apps/itsm_core/cloudwatch_event_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/cloudwatch_event_notify/scripts/run_oq.sh` |
 | `gitlab_issue_metrics_sync` | n8n | GitLab issue メトリクス集計（S3 出力） | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_metrics_sync/scripts/run_oq.sh` |
 | `gitlab_issue_rag` | n8n | GitLab issue/notes → pgvector（RAG 用） | `apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_issue_rag/scripts/run_oq.sh` |
+| `cir_usecase_list` | n8n | CIR（一般管理/継続的改善）で `状態/Approved` の Issue を一覧し、ユースケース（`UC-*`）を抽出して返す | `apps/itsm_core/cir_usecase_list/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_usecase_list/scripts/run_oq.sh` |
+| `cir_auto_label` | n8n | CIR テンプレ起票時に `ITSM/継続的改善` / `状態/New` を自動付与（Issue Hook） | `apps/itsm_core/cir_auto_label/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_auto_label/scripts/run_oq.sh` |
+| `cir_status_notify` | n8n | CIR Issue の `状態/Approved` / `状態/Closed` ラベル付与を検知し、起票者へ Zulip DM を送信（SoR による冪等） | `apps/itsm_core/cir_status_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_status_notify/scripts/run_oq.sh` |
+| `cir_issue_close` | n8n | system.md 実行完了後に CIR Issue を `状態/Closed` + close し、結果サマリ note を追記（重複抑止） | `apps/itsm_core/cir_issue_close/scripts/deploy_workflows.sh` | `apps/itsm_core/cir_issue_close/scripts/run_oq.sh` |
 | `gitlab_mention_notify` | n8n | GitLab mention を Zulip へ通知 | `apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_mention_notify/scripts/run_oq.sh` |
 | `gitlab_push_notify` | n8n | GitLab push を Zulip へ通知 | `apps/itsm_core/gitlab_push_notify/scripts/deploy_workflows.sh` | `apps/itsm_core/gitlab_push_notify/scripts/run_oq.sh` |
 | `zulip_gitlab_issue_sync` | n8n | Zulip ↔ GitLab Issue 同期 | `apps/itsm_core/zulip_gitlab_issue_sync/scripts/deploy_workflows.sh` | `apps/itsm_core/zulip_gitlab_issue_sync/scripts/run_oq.sh` |

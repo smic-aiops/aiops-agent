@@ -18,6 +18,11 @@
 ## ユースケース集
 - [`docs/usecases/usecase_guide.md`](docs/usecases/usecase_guide.md)
 
+## 継続的改善（CIR）運用（要点）
+- CIR（継続的改善レジスター）＝ GitLab Issue（CIR レコード）
+- ステータスはラベル（`状態/New` → `状態/Assess` → `状態/Approved` → `状態/Implement` → `状態/Review` → `状態/Closed`、例外: `状態/On Hold` / `状態/Rejected`）
+- 詳細は `docs/usecases/04_continual_improvement.md` を参照
+
 ## スコープ（一般管理プラクティス）
 - リスク管理 / コンプライアンス
 - 情報セキュリティ管理

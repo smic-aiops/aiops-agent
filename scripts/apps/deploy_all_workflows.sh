@@ -23,6 +23,7 @@ Notes:
       - apps/<app>/scripts/
       - apps/itsm_core/<app>/scripts/
   - Tokens/URLs are resolved by each app script from env and/or terraform outputs.
+  - To run a full dry-run of this orchestrator, use --dry-run (setting N8N_DRY_RUN alone is not parsed by this script).
 USAGE
 }
 
@@ -169,6 +170,10 @@ ORDERED_APPS=(
   gitlab_backfill_to_sor
   workflow_manager
   cloudwatch_event_notify
+  cir_usecase_list
+  cir_auto_label
+  cir_status_notify
+  cir_issue_close
   gitlab_issue_metrics_sync
   gitlab_issue_rag
   gitlab_mention_notify

@@ -11,6 +11,7 @@ set -euo pipefail
 #   N8N_API_KEY_<REALMKEY> : realm-scoped n8n API key (e.g. N8N_API_KEY_TENANT_B)
 #   N8N_AGENT_REALMS : comma/space-separated realm list (default: terraform output N8N_AGENT_REALMS)
 #   WORKFLOW_DIR (default: apps/itsm_core/cloudwatch_event_notify/workflows)
+#   N8N_REALM_OVERLAY_DIR_BASE : base dir for realm overlay overrides (workflows) (default: vendor/<name_prefix>/apps/itsm_core/cloudwatch_event_notify/realms; fallback: apps/itsm_core/cloudwatch_event_notify/realms)
 #   ACTIVATE (default: false)
 #   DRY_RUN (default: false)
 #   SKIP_API_WHEN_DRY_RUN (default: true)
@@ -278,6 +279,15 @@ N8N_AGENT_REALMS="${N8N_AGENT_REALMS:-}"
 TARGET_REALMS=()
 
 WORKFLOW_DIR="${WORKFLOW_DIR:-${APP_DIR}/workflows}"
+if [[ -z "${N8N_REALM_OVERLAY_DIR_BASE:-}" ]]; then
+  name_prefix="$(tf_output_raw name_prefix 2>/dev/null || true)"
+  if [[ -n "${name_prefix}" && "${name_prefix}" != "null" && "${APP_DIR}" == "${REPO_ROOT}/"* ]]; then
+    app_rel="${APP_DIR#${REPO_ROOT}/}"
+    N8N_REALM_OVERLAY_DIR_BASE="vendor/${name_prefix}/${app_rel}/realms"
+  else
+    N8N_REALM_OVERLAY_DIR_BASE="${APP_DIR}/realms"
+  fi
+fi
 ACTIVATE="${ACTIVATE:-false}"
 DRY_RUN="${DRY_RUN:-false}"
 SKIP_API_WHEN_DRY_RUN="${SKIP_API_WHEN_DRY_RUN:-true}"
@@ -412,8 +422,17 @@ if is_truthy "${DRY_RUN}" && is_truthy "${SKIP_API_WHEN_DRY_RUN}"; then
   echo "[n8n] DRY_RUN: skipping test webhook."
   for realm in "${TARGET_REALMS[@]}"; do
     realm_label="${realm:-default}"
-    echo "[n8n] dry-run realm=${realm_label} dir=${WORKFLOW_DIR}"
-    for file in "${files[@]}"; do
+    files_for_realm=("${files[@]}")
+    overlay_workflow_dir="${N8N_REALM_OVERLAY_DIR_BASE}/${realm_label}/workflows"
+    if [[ -d "${overlay_workflow_dir}" ]]; then
+      overlay_files=("${overlay_workflow_dir}"/*.json)
+      if [[ "${#overlay_files[@]}" -gt 0 ]]; then
+        files_for_realm+=("${overlay_files[@]}")
+      fi
+    fi
+
+    echo "[n8n] dry-run realm=${realm_label} dir=${WORKFLOW_DIR} files=${#files_for_realm[@]}"
+    for file in "${files_for_realm[@]}"; do
       jq -e . "${file}" >/dev/null
       wf_name="$(jq -r '.name // empty' "${file}")"
       echo "[n8n] dry-run: would sync ${wf_name} (${file})"
@@ -440,7 +459,16 @@ for realm in "${TARGET_REALMS[@]}"; do
 
   echo "[n8n] realm=${realm_label} base_url=${N8N_PUBLIC_API_BASE_URL}"
 
-  for file in "${files[@]}"; do
+  files_for_realm=("${files[@]}")
+  overlay_workflow_dir="${N8N_REALM_OVERLAY_DIR_BASE}/${realm_label}/workflows"
+  if [[ -d "${overlay_workflow_dir}" ]]; then
+    overlay_files=("${overlay_workflow_dir}"/*.json)
+    if [[ "${#overlay_files[@]}" -gt 0 ]]; then
+      files_for_realm+=("${overlay_files[@]}")
+    fi
+  fi
+
+  for file in "${files_for_realm[@]}"; do
     jq -e . "${file}" >/dev/null
     wf_name="$(jq -r '.name // empty' "${file}")"
     if [ -z "${wf_name}" ]; then

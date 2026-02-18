@@ -32,7 +32,7 @@ AI には以下が期待される：
 - 速度よりも正確性とトレーサビリティを優先する
 - 情報が不完全な場合は、前提（仮定）を明示する
 - 推測的または根拠のない結論を避ける
-- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、ユースケース（`apps/itsm_core/zulip_stream_sync/docs/app_requirements.md`）と DQ シナリオ（`apps/itsm_core/zulip_stream_sync/docs/dq/dq.md`）を更新する際は、テンプレート（`scripts/itsm/gitlab/templates/*/docs/usecases/`）を参照し、既存と重複しない形で少なくとも 1 件追加する
+- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、共通ベース（`apps/itsm_core/zulip_stream_sync/docs/app_requirements.md`, `apps/itsm_core/zulip_stream_sync/docs/dq/dq.md`）を参照しつつ、realm overlay（`vendor/<name_prefix>/apps/itsm_core/zulip_stream_sync/realms/<realm_key>/docs/app_requirements.md`, `vendor/<name_prefix>/apps/itsm_core/zulip_stream_sync/realms/<realm_key>/docs/dq/dq.md`。`name_prefix` は `terraform output -raw name_prefix` を正とする）を更新する際は、テンプレート（`scripts/itsm/gitlab/templates/*/docs/usecases/`）を参照し、既存と重複しない形で少なくとも 1 件追加する
 
 ## 5. 禁止・制限される振る舞い
 AI は以下を行ってはならない：
@@ -53,8 +53,10 @@ AI は管理された自律モデルの下で動作する：
 本行動仕様は、管理対象の構成品目（Configuration）として維持され、関連する「実装（設定）」により実現される。
 
 - 本書（CS）: `apps/itsm_core/zulip_stream_sync/docs/cs/ai_behavior_spec.md`
-- 要求/ユースケース: `apps/itsm_core/zulip_stream_sync/docs/app_requirements.md`
-- DQ（設計適格性確認）: `apps/itsm_core/zulip_stream_sync/docs/dq/dq.md`
+- 要求/ユースケース（共通ベース）: `apps/itsm_core/zulip_stream_sync/docs/app_requirements.md`
+- 要求/ユースケース（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/zulip_stream_sync/realms/<realm_key>/docs/app_requirements.md`
+- DQ（設計適格性確認）（共通ベース）: `apps/itsm_core/zulip_stream_sync/docs/dq/dq.md`
+- DQ（設計適格性確認）（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/zulip_stream_sync/realms/<realm_key>/docs/dq/dq.md`
 - IQ/OQ/PQ: `apps/itsm_core/zulip_stream_sync/docs/iq/`, `apps/itsm_core/zulip_stream_sync/docs/oq/`, `apps/itsm_core/zulip_stream_sync/docs/pq/`
 - ワークフロー定義: `apps/itsm_core/zulip_stream_sync/workflows/`
 - 同期/検証スクリプト: `apps/itsm_core/zulip_stream_sync/scripts/`
@@ -87,4 +89,3 @@ AI の振る舞いの検証は以下により実施する：
 - 構成管理
 - リスクベースの影響評価
 - 適切な再検証（変更内容に応じて DQ/IQ/OQ/PQ。最低限 OQ）
-

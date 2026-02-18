@@ -44,6 +44,7 @@ CloudWatch からのイベント通知やチャットのイベント（メッセ
 - UC-AIOPS-OFF-013（DQ-OFF-013/medium）: 解決済みの対応内容をナレッジ化（再利用可能なFAQ/手順/注意点）し、GitLab の docs/ 等へ記録できるように誘導する（ITIL4 テンプレ: `14_knowledge_management`）
 - UC-AIOPS-OFF-014（追加/medium）: 承認リンク（クリック）による approve/deny を **Zulip 上の決定**として扱い、証跡（承認履歴）を保存し、Zulip から `/decisions` で時系列サマリを参照できる
 - UC-AIOPS-OFF-015（追加/medium）: AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も **Zulip 上の決定**として扱い（`/decision`）、GitLab へ証跡化し、DB（`aiops_approval_history`）に記録して `/decisions` で参照できる
+- UC-AIOPS-OFF-016（追加/medium）: ユーザー要望（「xxx ができるようになって」）を受領して回答し、GitLab の一般管理プロジェクトの CIR（継続的改善レジスター）＝GitLab イシューに改善機会として `New` で集約する（重複がないように登録）。運用者が `Approved` にした時に、要望を行ったユーザーに対して、チャット上で「以前のご要望「XXX」は承認されたので、これから改善します。」旨のメッセージを送信。）
 
 ## 2.2 DQ ゲート連携（要求）
 

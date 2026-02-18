@@ -112,6 +112,38 @@ Zulip 側の Outgoing Webhook 統合を、各レルム（組織）ごとに作�
 Outgoing Webhook のトークンは `terraform.itsm.tfvars` の `zulip_outgoing_tokens_yaml` を正とし、`terraform apply` により SSM の `N8N_ZULIP_OUTGOING_TOKEN` として n8n に注入する（トークンは Git に入れない）。
 SSM パラメータ名は `terraform output -raw N8N_ZULIP_OUTGOING_TOKEN_PARAM` で確認できる。
 
+### 2.5 改善要求（CIR）受付と通知（半自律/自律拡張）
+
+Zulip 上の改善要求（例: 「xxx ができるようになって」）を受領し、CIR（継続的改善レジスター）＝ GitLab Issue として集約します。
+運用者が承認（`状態/Approved`）/完了（`状態/Closed`）にしたタイミングで、改善要求者へ通知する運用を想定します。
+
+全体フロー（正）:
+- `docs/itsm/cir_continual_improvement_flow.md`
+
+```mermaid
+sequenceDiagram
+  participant U as 改善要求者
+  participant Z as Zulip
+  participant OB as Outgoing Webhook Bot
+  participant AA as AIOps Agent
+  participant GL as GitLab（CIR Issue）
+  participant OP as 運用者
+
+  U->>Z: 「xxx ができるようになって」
+  Z->>OB: Outgoing Webhook
+  OB->>AA: /ingest/zulip
+  AA->>GL: CIR Issue 起票（状態/New）
+  AA-->>Z: 受付返信（承りました…）
+
+  OP->>GL: 承認（状態/Approved）
+  GL-->>AA: （設計）承認イベント
+  AA-->>U: （設計）承認通知
+
+  OP->>GL: 完了（状態/Closed）
+  GL-->>AA: （設計）クローズイベント
+  AA-->>U: （設計）完了通知
+```
+
 ### 3.3 Zulip SSE（注意）
 
 JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ環境変数で渡し、`GET /sse?access_token=<JWT>` または `Authorization: Bearer <JWT>` で接続する。

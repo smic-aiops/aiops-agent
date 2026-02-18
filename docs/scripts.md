@@ -150,7 +150,7 @@
 
 - `scripts/itsm/refresh_all_secure.sh` - `scripts/` 配下の `refresh_*.sh` を順次実行（ログ収集/フィルタ/DRY_RUN）
   - 補足: 各 `refresh_*.sh` が発行/出力する secrets がログに混ざる可能性があります。`LOG_DIR`（既定: `/tmp/aiops-secure-refresh-*`）の取り扱いに注意してください。
-- `scripts/plan_apply_all_tfvars.sh` - 既存 tfvars を検出して `terraform plan/apply` をまとめて実行
+- `scripts/plan_apply_all_tfvars.sh` - 既存 tfvars を検出して `terraform plan/apply` をまとめて実行（apply/refresh-only 後に `vendor/<name_prefix>/` も自動作成）
 - `scripts/apps/deploy_all_workflows.sh` - 次をまとめて実行（`--with-tests` で `run_oq.sh` も実行）
   - `apps/<app>/scripts/deploy*_workflows.sh`
   - `apps/itsm_core/<app>/scripts/deploy*_workflows.sh`

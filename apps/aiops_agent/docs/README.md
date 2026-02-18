@@ -28,6 +28,7 @@ flowchart LR
 - 実装（このリポジトリの参照実装/配置/テストスタブ）: `apps/aiops_agent/docs/aiops_agent_implementation.md`
 - 利用方法（運用/デプロイ/同期/設定）: `apps/aiops_agent/docs/aiops_agent_usage.md`
 - Zulip Bot（要求/仕様/実装）: `apps/aiops_agent/docs/zulip_chat_bot.md`
+- 機能→ワークフローJSON対応表: `apps/aiops_agent/docs/workflow_json_map.md`
 - 適格性確認（DQ/IQ/OQ/PQ）: `apps/aiops_agent/docs/dq/dq.md`, `apps/aiops_agent/docs/iq/iq.md`, `apps/aiops_agent/docs/oq/oq.md`, `apps/aiops_agent/docs/pq/pq.md`
 - OQ 個別（ユースケース別）: `apps/aiops_agent/docs/oq/oq_usecase_10_zulip_primary_hello.md`, `apps/aiops_agent/docs/oq/oq_usecase_25_smalltalk_free_chat.md`（他は `apps/aiops_agent/docs/oq/oq_usecase_*.md`）
 

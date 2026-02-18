@@ -1786,10 +1786,15 @@ ITSM/ポリシー|#1890FF|方針・規程
 ITSM/ポートフォリオ|#096DD9|ポートフォリオ管理
 ITSM/財務|#13C2C2|財務管理
 ITSM/ベンダー|#2F54EB|サプライヤ管理
-状態/受付|#D9D9D9|受付
-状態/分析|#FAAD14|分析中
-状態/承認|#52C41A|承認済み
-状態/完了|#389E0D|完了
+ITSM/継続的改善|#52C41A|改善提案（CIR）
+状態/New|#D9D9D9|CIR: 新規（受付直後）
+状態/Assess|#FAAD14|CIR: 評価（情報収集・整理）
+状態/Approved|#52C41A|CIR: 承認済み（実施決定）
+状態/Implement|#1890FF|CIR: 実施中（設計・実装・検証・展開）
+状態/Review|#722ED1|CIR: 効果確認（レビュー）
+状態/Closed|#389E0D|CIR: クローズ（記録確定）
+状態/On Hold|#8C8C8C|CIR: 保留（前提待ち）
+状態/Rejected|#A8071A|CIR: 却下（現時点で不採択）
 EOF
   )"
 
@@ -1810,23 +1815,24 @@ EOF
   local general_templates
   general_templates="$(
     cat <<'EOF'
-risk_management|リスク管理
-compliance|コンプライアンス
-information_security|情報セキュリティ
-policy_governance|ポリシー
-portfolio|ポートフォリオ
+01|risk_management|リスク管理|general-management/issue_templates/generic.md.tpl
+01|compliance|コンプライアンス|general-management/issue_templates/generic.md.tpl
+01|information_security|情報セキュリティ|general-management/issue_templates/generic.md.tpl
+01|policy_governance|ポリシー|general-management/issue_templates/generic.md.tpl
+01|portfolio|ポートフォリオ|general-management/issue_templates/generic.md.tpl
+04|continual_improvement_register|継続的改善（CIR）|general-management/issue_templates/continual_improvement_register.md.tpl
 EOF
   )"
 
-  local template_name template_title template_content template_path
-  while IFS='|' read -r template_name template_title; do
+  local template_prefix template_name template_title template_rel_path template_content template_path
+  while IFS='|' read -r template_prefix template_name template_title template_rel_path; do
     [[ -z "${template_name}" ]] && continue
     template_content="$(
-      load_and_render_template "general-management/issue_templates/generic.md.tpl" \
+      load_and_render_template "${template_rel_path}" \
         "TITLE" "${template_title}" \
         "SERVICE_MANAGEMENT_PROJECT_PATH" "${operations_project_path}"
     )"
-    template_path="$(prefixed_template_path "01" "${template_name}")"
+    template_path="$(prefixed_template_path "${template_prefix}" "${template_name}")"
     if [[ "${force_update}" == "true" ]]; then
       gitlab_upsert_file "${general_template_project_id}" "${template_branch}" "${template_path}" "${template_content}" "Update ${template_name} issue template"
     else
@@ -1847,19 +1853,27 @@ EOF
     local general_board_name
     general_board_name="${ITSM_GENERAL_BOARD_NAME:-ガバナンス管理}"
     gitlab_ensure_board_with_lists "${general_project_id}" "${general_board_name}" \
-      "状態/受付" \
-      "状態/分析" \
-      "状態/承認" \
-      "状態/完了"
+      "状態/New" \
+      "状態/Assess" \
+      "状態/Approved" \
+      "状態/Implement" \
+      "状態/Review" \
+      "状態/Closed" \
+      "状態/On Hold" \
+      "状態/Rejected"
   fi
 
   local general_board_name
   general_board_name="${ITSM_GENERAL_BOARD_NAME:-ガバナンス管理}"
   gitlab_ensure_board_with_lists "${general_template_project_id}" "${general_board_name}" \
-    "状態/受付" \
-    "状態/分析" \
-    "状態/承認" \
-    "状態/完了"
+    "状態/New" \
+    "状態/Assess" \
+    "状態/Approved" \
+    "状態/Implement" \
+    "状態/Review" \
+    "状態/Closed" \
+    "状態/On Hold" \
+    "状態/Rejected"
 }
 
 

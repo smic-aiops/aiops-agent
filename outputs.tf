@@ -76,8 +76,8 @@ output "gitlab_realm_admin_tokens_json_parameter_name" {
 }
 
 output "name_prefix" {
-  description = "Name prefix used for tagging and resource names"
-  value       = var.name_prefix
+  description = "Effective name prefix used for tagging and resource names (var.name_prefix or environment-platform fallback)"
+  value       = local.name_prefix_effective
 }
 
 output "realms" {

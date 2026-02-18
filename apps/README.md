@@ -190,14 +190,18 @@ ITSM/AI Ops のユースケースにおいて、システムが「誰により�
 
 - 中心プロンプト（System）: `<app_root>/data/default/prompt/system.md`
 - 行動仕様（AIS/CS）: `<app_root>/docs/cs/ai_behavior_spec.md`
-- ユースケース: `<app_root>/docs/app_requirements.md`
-- DQ: `<app_root>/docs/dq/dq.md`
+- ユースケース（共通ベース）: `<app_root>/docs/app_requirements.md`
+- ユースケース（realm overlay）: `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/app_requirements.md`
+- DQ（共通ベース）: `<app_root>/docs/dq/dq.md`
+- DQ（realm overlay）: `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md`
 
 ### 1.3 実行例（入力例）
 実行時は「対象アプリ」「目的」「制約（秘匿・出力様式）」「参照してほしいファイル」を最初に渡します。
 
 ```text
 対象: <app_root>（例: apps/<app> または apps/itsm_core/<app>）
+name_prefix: <name_prefix>（`terraform output -raw name_prefix` を正とする）
+realm_key: <realm_key>（例: smoc / tenant-a。`default` を暗黙採用しない）
 目的: <app> のユースケース/検証（DQ）を最新化して、関連するプロンプト/ポリシー/実装に反映したい
 制約:
 - 秘匿情報は出力しない
@@ -208,8 +212,10 @@ ITSM/AI Ops のユースケースにおいて、システムが「誰により�
 - 変更点ごとに「差分の要約」と「理由」を短く添えてください
 参照:
 - AIS: `<app_root>/docs/cs/ai_behavior_spec.md`
-- 要求/ユースケース: `<app_root>/docs/app_requirements.md`
-- DQ: `<app_root>/docs/dq/dq.md`
+- 要求/ユースケース（共通ベース）: `<app_root>/docs/app_requirements.md`
+- 要求/ユースケース（realm overlay）: `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/app_requirements.md`
+- DQ（共通ベース）: `<app_root>/docs/dq/dq.md`
+- DQ（realm overlay）: `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md`
 ```
 
 ---
@@ -294,7 +300,7 @@ AI には以下が期待される：
 - 速度よりも正確性とトレーサビリティを優先する
 - 情報が不完全な場合は、前提（仮定）を明示する
 - 推測的または根拠のない結論を避ける
-- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、ユースケース（`<app_root>/docs/app_requirements.md`）と DQ シナリオ（`<app_root>/docs/dq/dq.md`）を更新する際は、テンプレート（`scripts/itsm/gitlab/templates/*/docs/usecases/`）を参照し、既存と重複しない形で **少なくとも1件**追加する
+- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、共通ベース（`<app_root>/docs/app_requirements.md`, `<app_root>/docs/dq/dq.md`）を参照しつつ、realm overlay（`vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/app_requirements.md`, `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md`。`name_prefix` は `terraform output -raw name_prefix` を正とする）を更新する際は、テンプレート（`scripts/itsm/gitlab/templates/*/docs/usecases/`）を参照し、既存と重複しない形で **少なくとも1件**追加する
 
 ## 5. 禁止・制限される振る舞い
 AI は以下を行ってはならない：
@@ -375,7 +381,8 @@ AI の振る舞いの検証は以下により実施する：
 - 推測的または根拠のない結論を避け、不確実な点は前提（仮定）を明示する
 - ユーザー向けの応答として「実行コマンド」「期待結果」「中止条件」を提示しない
 - 「GO」や承認待ちを要求しない（ただし AIS で別途定義した、人の最終責任・承認が必要な事項は除く）
-- 実行スコープ固定: 対象 realm はすべて。対象 n8n base url は terraform output を正とする
+- 実行スコープ固定: 入力 `realm_key` の 1 realm のみを対象とする（`default` の暗黙採用はしない）。対象 n8n base url は terraform output を正とする
+- realm overlay（組織別拡張）: Requirements/DQ の更新は `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/` のみへ行う（`<app_root>/docs/` は共通ベースとして read-only とみなす）
 - 実行モード明示: `mode=dry-run|apply` を必須入力にし、`apply` のときのみ外部 HTTP（同期/テスト webhook）を許可する（既定は `apply`）
 - 資格情報健全性ゲート: `apply` の前提として `<app_root>/docs/oq/oq.md` にある OQ が「当日（YYYY-MM-DD）に合格している証跡パス」を必須入力しない（未提示でも実行する）
 - 変更管理ゲート: `docs/change-management.md` に当日の変更記録（実施日/承認者/対象 realm/影響範囲）が追記済みであることを `apply` の前提にしない（未追記でも実行する）
@@ -389,10 +396,10 @@ AI の振る舞いの検証は以下により実施する：
 
 ## Process
 - ユースケース拡張:
-  - `<app_root>/docs/app_requirements.md` を確認し、`scripts/itsm/gitlab/templates/*/docs/usecases/` を参照してユースケースを **1つ以上**追加（既存ユースケースと重複しない）
-  - 追加ユースケースに対応するシナリオを **1つ以上** `<app_root>/docs/dq/dq.md` へ組み込み（既存シナリオと重複しない）
-- 仕様確認: `<app_root>/docs/dq/dq.md` を確認し、DQ改善点を10件以上列挙
-- DQ修正: 指摘を反映して `<app_root>/docs/dq/dq.md` を修正し、修正内容と理由を短く記録
+  - 共通ベース `<app_root>/docs/app_requirements.md` を参照しつつ、realm overlay `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/app_requirements.md` を更新してユースケースを **1つ以上**追加（既存ユースケースと重複しない）
+  - 追加ユースケースに対応するシナリオを **1つ以上** realm overlay `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md` へ組み込み（既存シナリオと重複しない）
+- 仕様確認: 共通ベース + realm overlay を前提にしつつ、`vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md` を確認して DQ 改善点を10件以上列挙
+- DQ修正: 指摘を反映して `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md` を修正し、修正内容と理由を短く記録
 - 影響仕様書修正: 修正後のDQで再点検し、主に `design` / `usage` / `iq` / `oq` / `pq` と関連プロンプト・ポリシーを更新
 - 影響実装修正: 関連コード/データを見直し、必要な修正を行う
 - デプロイ準備: `usage` に従い、デプロイ手順のコマンド候補のみ整理
@@ -410,7 +417,9 @@ AI の振る舞いの検証は以下により実施する：
 
 ## References
 - AIS（CS）: `<app_root>/docs/cs/ai_behavior_spec.md`
-- 要求/ユースケース: `<app_root>/docs/app_requirements.md`
-- DQ: `<app_root>/docs/dq/dq.md`
+- 要求/ユースケース（共通ベース）: `<app_root>/docs/app_requirements.md`
+- 要求/ユースケース（realm overlay）: `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/app_requirements.md`
+- DQ（共通ベース）: `<app_root>/docs/dq/dq.md`
+- DQ（realm overlay）: `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md`
 - ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
 ```

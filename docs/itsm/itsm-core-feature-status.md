@@ -78,6 +78,19 @@
 | Sulu admin（read-only 一覧/検索） | 実装済み | `scripts/itsm/sulu/source_overrides/src/Admin/IstmAdmin.php`, `scripts/itsm/sulu/source_overrides/config/routes_admin.yaml`, `scripts/itsm/sulu/source_overrides/src/Controller/Istm*Controller.php` | 決定一覧（`/itsm/decisions`）および Incident/SRQ/Problem/Change の参照導線。書き込み UI は無し。SoR 接続（`ITSM_SOR_DATABASE_URL`）が必要。静的チェック: `scripts/itsm/sulu/check_sulu_itsm_admin_readonly.sh`。 |
 | UI（サービスデスク画面） | 未実装 | （なし） | Sulu admin は「参照（read-only）」の導線であり、サービスデスク UI は別途。 |
 
+## 8. 継続的改善（CIR）運用支援（SoR 外）
+
+本節は SoR（`itsm.*`）への書き込み有無に関わらず、ITSM 運用として重要な「継続的改善（CIR）」の支援機能を整理します。
+
+| 機能 | 状態 | 根拠（実装） | 補足（不足/注意） |
+|---|---|---|---|
+| Approved CIR（GitLab Issue）一覧 + UC-* 抽出（Webhook） | 実装済み | `apps/itsm_core/cir_usecase_list/workflows/itsm_cir_approved_usecases_list.json` | ドキュメント同期や要件整合の入力に使う（SoR 書き込みはしない）。 |
+| CIR→Docs 同期テンプレ（運用プロンプト） | 実装済み | `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md` | 各アプリの `system.md` 先頭プロセスで利用する想定。 |
+| CIR 運用フロー（半自律/自律拡張） | 実装済み | `docs/itsm/cir_continual_improvement_flow.md` | 承認/クローズ通知は要件であり、経路は Bot/Agent 実装に依存。 |
+| CIR ステータス（`状態/Approved`/`状態/Closed`）変更の起票者通知（Zulip DM） | 実装済み | `apps/itsm_core/cir_status_notify/workflows/gitlab_cir_status_notify.json` | `itsm.audit_event(integrity.event_key)` による冪等（重複通知抑止）。 |
+| system.md 完了後の CIR クローズ（`状態/Closed` 付与 + Issue close + 結果サマリ note） | 実装済み | `apps/itsm_core/cir_issue_close/workflows/itsm_cir_issue_close.json` | note は marker で重複抑止。`状態/Closed` 付与により起票者 DM 通知（前行）をトリガ。 |
+| CIR テンプレ起票時の自動ラベル付与（`ITSM/継続的改善` + `状態/New`） | 実装済み | `apps/itsm_core/cir_auto_label/workflows/gitlab_cir_auto_label.json` | テンプレ marker による対象判定。Project Hook（Issue events）が必要。 |
+
 ## 次に「未実装」を潰す優先候補（最小）
 
 1. **RLS の適用/運用**（RLS を入れるなら `app.*` セッション変数設計とセットで）

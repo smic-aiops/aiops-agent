@@ -41,8 +41,10 @@ AI は以下を行ってはならない：
 ## 5. 参照（構成品目）
 
 - 本書（CS）: `apps/itsm_core/docs/cs/ai_behavior_spec.md`
-- 要求: `apps/itsm_core/docs/app_requirements.md`
-- DQ/IQ/OQ/PQ: `apps/itsm_core/docs/dq/`, `apps/itsm_core/docs/iq/`, `apps/itsm_core/docs/oq/`, `apps/itsm_core/docs/pq/`
+- 要求（共通ベース）: `apps/itsm_core/docs/app_requirements.md`
+- 要求（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/realms/<realm_key>/docs/app_requirements.md`（`name_prefix` は `terraform output -raw name_prefix` を正とする）
+- DQ/IQ/OQ/PQ（共通ベース）: `apps/itsm_core/docs/dq/`, `apps/itsm_core/docs/iq/`, `apps/itsm_core/docs/oq/`, `apps/itsm_core/docs/pq/`
+- DQ（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/realms/<realm_key>/docs/dq/dq.md`
 - スキーマ（正）: `apps/itsm_core/sql/itsm_sor_core.sql`
 - ワークフロー: `apps/itsm_core/sor_webhooks/workflows/` / `apps/itsm_core/<app>/workflows/`
 - 運用スクリプト（正）: `apps/itsm_core/sor_ops/scripts/`

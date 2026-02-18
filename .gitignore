@@ -24,6 +24,14 @@ evidence/
 # IQ test outputs (local only)
 apps/workflow_manager/data/iq_test_*.jsonl
 
+# Realm overlays (org-specific / generated artifacts)
+# - Canonical: vendor/<name_prefix>/apps/<app>/realms/<realm_key>/...
+# - Legacy fallback: apps/<app>/realms/<realm_key>/...
+# - Keep upstream repo clean; manage realm overlays outside tracked files.
+apps/**/realms/**
+!apps/**/realms/_template/
+!apps/**/realms/_template/**
+
 # Local logs
 logs/
 

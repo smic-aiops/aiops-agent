@@ -15,4 +15,3 @@ TOKEN="$(terraform output -raw N8N_WORKFLOWS_TOKEN)"
 curl -sS -H "Authorization: Bearer ${TOKEN}" \
   "${N8N_BASE_URL%/}/webhook/tests/gitlab/service-catalog-sync?dry_run=true" | jq .
 ```
-

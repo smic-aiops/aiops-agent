@@ -12,6 +12,7 @@ set -euo pipefail
 #   WORKFLOW_DIR : set to sync only one workflows/ directory (used by per-subapp wrappers)
 #   ACTIVATE (default: false)
 #   DRY_RUN (default: false)
+#   N8N_DRY_RUN (alias of DRY_RUN)
 #   N8N_CURL_INSECURE (default: false)
 #   SKIP_API_WHEN_DRY_RUN (default: true)
 #
@@ -295,9 +296,16 @@ if [[ -n "${ACTIVATE+x}" ]]; then
   ACTIVATE_WAS_SET=true
 fi
 ACTIVATE="${ACTIVATE:-false}"
-DRY_RUN="${DRY_RUN:-false}"
+DRY_RUN="${DRY_RUN:-${N8N_DRY_RUN:-false}}"
 N8N_CURL_INSECURE="${N8N_CURL_INSECURE:-}"
 SKIP_API_WHEN_DRY_RUN="${SKIP_API_WHEN_DRY_RUN:-true}"
+NAME_PREFIX="${NAME_PREFIX:-}"
+if [[ -z "${NAME_PREFIX}" ]] && command -v terraform >/dev/null 2>&1; then
+  NAME_PREFIX="$(terraform -chdir="${REPO_ROOT}" output -raw name_prefix 2>/dev/null || true)"
+fi
+if [[ "${NAME_PREFIX}" == "null" ]]; then
+  NAME_PREFIX=""
+fi
 N8N_APPLY_ITSM_SOR_SCHEMA="${N8N_APPLY_ITSM_SOR_SCHEMA:-true}"
 N8N_APPLY_ITSM_SOR_RLS="${N8N_APPLY_ITSM_SOR_RLS:-false}"
 N8N_APPLY_ITSM_SOR_RLS_FORCE="${N8N_APPLY_ITSM_SOR_RLS_FORCE:-false}"
@@ -340,11 +348,59 @@ infer_app_from_workflow_dir() {
     printf 'sor_webhooks'
     return 0
   fi
+  if [[ "${d}" == vendor/*/apps/itsm_core/*/realms/*/workflows ]]; then
+    local rest="${d#*/apps/itsm_core/}"
+    printf '%s' "${rest}" | cut -d/ -f1
+    return 0
+  fi
+  if [[ "${d}" == apps/itsm_core/*/realms/*/workflows ]]; then
+    printf '%s' "${d#apps/itsm_core/}" | cut -d/ -f1
+    return 0
+  fi
   if [[ "${d}" == apps/itsm_core/*/workflows ]]; then
     printf '%s' "${d#apps/itsm_core/}" | cut -d/ -f1
     return 0
   fi
   printf ''
+}
+
+discover_overlay_workflow_dirs_for_realm() {
+  local realm="$1"
+  if [[ -z "${realm}" ]]; then
+    return 0
+  fi
+
+  # If a single WORKFLOW_DIR is requested, include its realm overlay if present.
+  if [[ -n "${WORKFLOW_DIR}" && "${WORKFLOW_DIR}" == apps/itsm_core/*/workflows ]]; then
+    local app="${WORKFLOW_DIR#apps/itsm_core/}"
+    app="${app%/workflows}"
+    local overlay="apps/itsm_core/${app}/realms/${realm}/workflows"
+    if [[ -d "${overlay}" ]]; then
+      printf '%s\n' "${overlay}"
+    fi
+    if [[ -n "${NAME_PREFIX}" ]]; then
+      local vendor_overlay="vendor/${NAME_PREFIX}/apps/itsm_core/${app}/realms/${realm}/workflows"
+      if [[ -d "${vendor_overlay}" ]]; then
+        printf '%s\n' "${vendor_overlay}"
+      fi
+    fi
+  else
+    find apps/itsm_core -type d -path "apps/itsm_core/*/realms/${realm}/workflows" 2>/dev/null | LC_ALL=C sort -u
+    if [[ -n "${NAME_PREFIX}" ]]; then
+      find "vendor/${NAME_PREFIX}/apps/itsm_core" -type d -path "vendor/${NAME_PREFIX}/apps/itsm_core/*/realms/${realm}/workflows" 2>/dev/null | LC_ALL=C sort -u
+    fi
+  fi
+
+  local core_overlay="apps/itsm_core/realms/${realm}/workflows"
+  if [[ -d "${core_overlay}" ]]; then
+    printf '%s\n' "${core_overlay}"
+  fi
+  if [[ -n "${NAME_PREFIX}" ]]; then
+    local vendor_core_overlay="vendor/${NAME_PREFIX}/apps/itsm_core/realms/${realm}/workflows"
+    if [[ -d "${vendor_core_overlay}" ]]; then
+      printf '%s\n' "${vendor_core_overlay}"
+    fi
+  fi
 }
 
 script_supports_flag() {
@@ -435,20 +491,31 @@ check_itsm_sor_schema_if_enabled
 
 if is_truthy "${DRY_RUN}" && is_truthy "${SKIP_API_WHEN_DRY_RUN}"; then
   echo "[n8n] DRY_RUN: skipping API sync."
-  for d in "${WORKFLOW_DIRS[@]}"; do
-    app="$(infer_app_from_workflow_dir "${d}")"
-    shopt -s nullglob
-    files=("${d}"/*.json)
-    shopt -u nullglob
-    if [[ "${#files[@]}" -eq 0 ]]; then
-      continue
-    fi
-    echo "[n8n] dry-run: app=${app:-unknown} dir=${d}"
-    for file in "${files[@]}"; do
-      wf_name="$(jq -r '.name // empty' "${file}")"
-      echo "[n8n] dry-run: would sync ${wf_name} (${file})"
+  for realm in "${TARGET_REALMS[@]}"; do
+    realm_label="${realm:-default}"
+    echo "[n8n] dry-run: realm=${realm_label}"
+
+    WORKFLOW_DIRS_FOR_REALM=("${WORKFLOW_DIRS[@]}")
+    while IFS= read -r overlay_dir; do
+      [[ -n "${overlay_dir}" ]] && WORKFLOW_DIRS_FOR_REALM+=("${overlay_dir}")
+    done < <(discover_overlay_workflow_dirs_for_realm "${realm}" || true)
+
+    for d in "${WORKFLOW_DIRS_FOR_REALM[@]}"; do
+      app="$(infer_app_from_workflow_dir "${d}")"
+      shopt -s nullglob
+      files=("${d}"/*.json)
+      shopt -u nullglob
+      if [[ "${#files[@]}" -eq 0 ]]; then
+        continue
+      fi
+      echo "[n8n] dry-run: realm=${realm_label} app=${app:-unknown} dir=${d}"
+      for file in "${files[@]}"; do
+        wf_name="$(jq -r '.name // empty' "${file}")"
+        echo "[n8n] dry-run: would sync ${wf_name} (${file})"
+      done
     done
   done
+
   if is_truthy "${WITH_TESTS}"; then
     echo "[oq] dry-run: would run per-app OQ (smoke tests)"
   fi
@@ -496,7 +563,12 @@ for realm in "${TARGET_REALMS[@]}"; do
     return 1
   }
 
-  for d in "${WORKFLOW_DIRS[@]}"; do
+  WORKFLOW_DIRS_FOR_REALM=("${WORKFLOW_DIRS[@]}")
+  while IFS= read -r overlay_dir; do
+    [[ -n "${overlay_dir}" ]] && WORKFLOW_DIRS_FOR_REALM+=("${overlay_dir}")
+  done < <(discover_overlay_workflow_dirs_for_realm "${realm}" || true)
+
+  for d in "${WORKFLOW_DIRS_FOR_REALM[@]}"; do
     app="$(infer_app_from_workflow_dir "${d}")"
     shopt -s nullglob
     files=("${d}"/*.json)

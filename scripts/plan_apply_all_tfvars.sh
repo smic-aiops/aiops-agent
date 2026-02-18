@@ -47,6 +47,26 @@ is_truthy() {
   esac
 }
 
+ensure_vendor_name_prefix_dir() {
+  local prefix=""
+  if command -v terraform >/dev/null 2>&1; then
+    prefix="$(terraform -chdir="${REPO_ROOT}" output -raw name_prefix 2>/dev/null || true)"
+  fi
+  if [[ "${prefix}" == "null" || -z "${prefix}" ]]; then
+    echo "[info] terraform output name_prefix is empty; skipping vendor/<name_prefix> directory creation."
+    return 0
+  fi
+
+  local target_dir="${REPO_ROOT}/vendor/${prefix}"
+  if [[ -d "${target_dir}" ]]; then
+    echo "[info] vendor dir already exists: ${target_dir}"
+    return 0
+  fi
+
+  echo "[info] Creating vendor dir: ${target_dir}"
+  mkdir -p "${target_dir}/apps"
+}
+
 usage() {
   cat <<'USAGE'
 Usage:
@@ -160,6 +180,9 @@ esac
 if is_truthy "${DRY_RUN}"; then
   echo "[dry-run] Planned terraform commands:"
   printf '  - %s\n' "${tf_cmds[@]}"
+  if [[ "${MODE}" == "apply" || "${MODE}" == "refresh-only" ]]; then
+    echo "[dry-run] Would ensure vendor/<name_prefix> directory exists (resolved from terraform output name_prefix after apply)."
+  fi
   exit 0
 fi
 
@@ -167,3 +190,7 @@ for cmd in "${tf_cmds[@]}"; do
   echo "[info] ${cmd}"
   eval "${cmd}"
 done
+
+if [[ "${MODE}" == "apply" || "${MODE}" == "refresh-only" ]]; then
+  ensure_vendor_name_prefix_dir
+fi

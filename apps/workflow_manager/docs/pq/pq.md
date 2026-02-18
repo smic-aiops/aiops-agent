@@ -9,7 +9,7 @@
 
 - カタログ API: `GET /webhook/catalog/workflows/list`, `GET /webhook/catalog/workflows/get`
 - サービス制御 API: `POST /webhook/sulu/service-control`
-- OQ: `apps/workflow_manager/docs/oq/oq.md`
+- OQ: `apps/workflow_manager/docs/oq/oq.md`（overview）
 
 ## 想定負荷・制約
 
@@ -35,4 +35,3 @@
 
 - list/get の応答（成功時 JSON、失敗時の status_code 等）
 - n8n 実行履歴（件数、実行時間、成功/失敗）
-

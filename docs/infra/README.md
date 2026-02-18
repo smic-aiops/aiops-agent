@@ -163,7 +163,7 @@ pg_db_password               = "xxxxxxxxxxxxxxxxxxxxxxxx"
 サービス（ITSM）側の tfvars は `../itsm/README.md` を参照してください。
 
 ## スクリプト（Terraform / tfvars 運用）
-- `scripts/plan_apply_all_tfvars.sh` - 既定の tfvars 分割構成で `fmt/validate/plan/apply` を順に実行する。
+- `scripts/plan_apply_all_tfvars.sh` - 既定の tfvars 分割構成で `fmt/validate/plan/apply` を順に実行する（apply/refresh-only 後に `vendor/<name_prefix>/` も自動作成）。
 - `scripts/infra/update_env_tfvars_from_outputs.sh` - ネットワークを参照モード（`existing_*_id`）へ移行し、`terraform.env.tfvars` を更新する（内部で `terraform state rm` → `terraform apply -refresh-only` を実行）。
 
 ## 共通ライブラリ（他スクリプトから呼び出し）

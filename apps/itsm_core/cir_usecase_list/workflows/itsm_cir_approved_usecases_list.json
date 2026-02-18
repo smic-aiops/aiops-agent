@@ -1,0 +1,136 @@
+{
+  "name": "itsm-cir-approved-usecases-list",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "itsm/cir/usecases/approved/list",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst body = (request && typeof request === 'object' && request.body && typeof request.body === 'object') ? request.body : request;\nconst env = $env ?? {};\n\nfunction trimSlash(v) {\n  return String(v || '').replace(/\\/+$/, '');\n}\n\nfunction pickEnv(...keys) {\n  for (const k of keys) {\n    const v = env?.[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v);\n  }\n  return '';\n}\n\nfunction pickBody(...keys) {\n  for (const k of keys) {\n    const v = body?.[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v);\n  }\n  return '';\n}\n\nfunction isTruthy(v) {\n  const raw = String(v ?? '').trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(raw);\n}\n\nfunction toInt(v, fallback) {\n  const n = Number.parseInt(String(v ?? ''), 10);\n  return Number.isFinite(n) ? n : fallback;\n}\n\nfunction required(v, name) {\n  if (!String(v ?? '').trim()) {\n    throw new Error(`${name} is required`);\n  }\n  return v;\n}\n\nconst realm = String(\n  pickBody('realm', 'N8N_REALM') ||\n  pickEnv('N8N_REALM') ||\n  pickEnv('N8N_OBSERVER_REALM') ||\n  'default'\n).trim() || 'default';\n\nconst gitlabBaseUrl = trimSlash(\n  pickBody('gitlab_base_url', 'GITLAB_BASE_URL', 'N8N_GITLAB_BASE_URL') ||\n  pickEnv('N8N_GITLAB_BASE_URL', 'GITLAB_BASE_URL', 'GITLAB_URL', 'SERVICE_URL_GITLAB')\n);\n\nconst gitlabApiBaseUrl = trimSlash(\n  pickBody('gitlab_api_base_url', 'GITLAB_API_BASE_URL', 'N8N_GITLAB_API_BASE_URL') ||\n  pickEnv('N8N_GITLAB_API_BASE_URL', 'GITLAB_API_BASE_URL') ||\n  (gitlabBaseUrl ? `${gitlabBaseUrl}/api/v4` : '')\n);\n\nconst gitlabToken = pickEnv('N8N_GITLAB_TOKEN', 'GITLAB_TOKEN', 'GITLAB_ADMIN_TOKEN');\n\nconst groupFullPath = pickBody('gitlab_group_full_path') || pickEnv('N8N_GITLAB_GROUP_FULL_PATH', 'GITLAB_GROUP_FULL_PATH', 'GROUP_FULL_PATH');\nconst defaultProjectPath = groupFullPath ? `${groupFullPath}/general-management` : `${realm}/general-management`;\n\nconst projectRef = (\n  pickBody('gitlab_project_id', 'gitlab_project_path', 'GITLAB_PROJECT_ID', 'GITLAB_PROJECT_PATH') ||\n  pickEnv('N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_ID', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_ID') ||\n  pickEnv('N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH') ||\n  pickBody('N8N_GITLAB_PROJECT_ID', 'N8N_GITLAB_PROJECT_PATH') ||\n  pickEnv('N8N_GITLAB_PROJECT_ID', 'GITLAB_PROJECT_ID', 'N8N_GITLAB_PROJECT_PATH', 'GITLAB_PROJECT_PATH') ||\n  defaultProjectPath\n);\n\nconst cirLabel = String(pickBody('cir_label') || pickEnv('ITSM_CIR_LABEL') || 'ITSM/継続的改善').trim() || 'ITSM/継続的改善';\nconst approvedLabel = String(pickBody('approved_label', 'status_label') || pickEnv('ITSM_CIR_APPROVED_LABEL') || '状態/Approved').trim() || '状態/Approved';\n\nconst issueState = String(pickBody('issue_state') || pickEnv('ITSM_CIR_ISSUE_STATE') || 'opened').trim() || 'opened';\nconst perPage = Math.max(1, Math.min(100, toInt(pickBody('per_page') || pickEnv('ITSM_CIR_PER_PAGE') || 50, 50)));\nconst maxPages = Math.max(1, Math.min(50, toInt(pickBody('max_pages') || pickEnv('ITSM_CIR_MAX_PAGES') || 10, 10)));\nconst dryRun = isTruthy(pickBody('dry_run') || pickEnv('ITSM_CIR_DRY_RUN') || 'false');\n\nrequired(gitlabApiBaseUrl, 'GITLAB_API_BASE_URL');\nrequired(gitlabToken, 'GITLAB_TOKEN');\nrequired(projectRef, 'GITLAB_GENERAL_MANAGEMENT_PROJECT_(ID|PATH)');\n\nreturn [{\n  json: {\n    realm,\n    dry_run: dryRun,\n    gitlab_api_base_url: gitlabApiBaseUrl,\n    gitlab_token: gitlabToken,\n    project_ref: projectRef,\n    filters: {\n      cir_label: cirLabel,\n      approved_label: approvedLabel,\n      labels_and: [cirLabel, approvedLabel],\n      issue_state: issueState\n    },\n    pagination: { per_page: perPage, max_pages: maxPages },\n    received: {\n      gitlab_project_id: body?.gitlab_project_id ?? null,\n      gitlab_project_path: body?.gitlab_project_path ?? null\n    }\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Build Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $json ?? {};\n\nfunction isNumeric(v) {\n  return typeof v === 'number' || (typeof v === 'string' && /^[0-9]+$/.test(v));\n}\n\nfunction encProjectRef(ref) {\n  const r = String(ref ?? '').trim();\n  return isNumeric(r) ? r : encodeURIComponent(r);\n}\n\nfunction safeString(v) {\n  const s = (v === undefined || v === null) ? '' : String(v);\n  return s;\n}\n\nfunction redact(value) {\n  if (!value) return '';\n  return '***';\n}\n\nconst dryRun = Boolean(req.dry_run);\nif (dryRun) {\n  return [{\n    json: {\n      ...req,\n      fetch: {\n        skipped: true,\n        reason: 'dry_run'\n      },\n      issues: []\n    }\n  }];\n}\n\nconst apiBase = safeString(req.gitlab_api_base_url).replace(/\\/+$/, '');\nconst token = safeString(req.gitlab_token);\nconst projectRef = safeString(req.project_ref);\nconst labels = Array.isArray(req?.filters?.labels_and) ? req.filters.labels_and : [];\nconst issueState = safeString(req?.filters?.issue_state || 'opened');\nconst perPage = Number(req?.pagination?.per_page || 50);\nconst maxPages = Number(req?.pagination?.max_pages || 10);\n\nconst encodedProject = encProjectRef(projectRef);\nconst issuesUrl = `${apiBase}/projects/${encodedProject}/issues`;\n\nasync function fetchPage(page) {\n  return await $httpRequest({\n    method: 'GET',\n    url: issuesUrl,\n    qs: {\n      labels: labels.join(','),\n      state: issueState,\n      per_page: perPage,\n      page\n    },\n    headers: {\n      'PRIVATE-TOKEN': token\n    }\n  });\n}\n\nconst all = [];\nlet page = 1;\nwhile (page <= maxPages) {\n  const items = await fetchPage(page);\n  if (!Array.isArray(items) || items.length === 0) break;\n  for (const it of items) all.push(it);\n  if (items.length < perPage) break;\n  page += 1;\n}\n\nreturn [{\n  json: {\n    ...req,\n    gitlab_token: redact(req.gitlab_token),\n    fetch: {\n      skipped: false,\n      pages: page,\n      fetched: all.length,\n      url: issuesUrl\n    },\n    issues: all\n  }\n}];\n"
+      },
+      "id": "3",
+      "name": "Fetch Approved CIR Issues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json ?? {};\nconst issues = Array.isArray(payload.issues) ? payload.issues : [];\n\nfunction uniq(list) {\n  const out = [];\n  const seen = new Set();\n  for (const v of list) {\n    const k = String(v ?? '').trim();\n    if (!k) continue;\n    if (seen.has(k)) continue;\n    seen.add(k);\n    out.push(k);\n  }\n  return out;\n}\n\nfunction extractUsecaseIds(text) {\n  const s = String(text ?? '');\n  const m = s.match(/\\bUC-[A-Z0-9][A-Z0-9-]{2,}\\b/g);\n  return m ? m : [];\n}\n\nfunction extractUsecaseLines(text) {\n  const s = String(text ?? '');\n  const lines = s.split(/\\r?\\n/);\n  const out = [];\n  for (const line of lines) {\n    const trimmed = line.trim();\n    if (!trimmed) continue;\n    if (/^[-*]\\s*UC-[A-Z0-9]/.test(trimmed)) {\n      out.push(trimmed.replace(/^[-*]\\s*/, '- '));\n      continue;\n    }\n  }\n  return out;\n}\n\nconst issueSummaries = issues.map((issue) => {\n  const title = issue?.title ?? '';\n  const description = issue?.description ?? '';\n  const ids = uniq([...extractUsecaseIds(title), ...extractUsecaseIds(description)]);\n  const lines = uniq(extractUsecaseLines(description));\n  const labels = Array.isArray(issue?.labels) ? issue.labels : [];\n  return {\n    id: issue?.id ?? null,\n    iid: issue?.iid ?? null,\n    title,\n    web_url: issue?.web_url ?? issue?.url ?? null,\n    state: issue?.state ?? null,\n    labels,\n    created_at: issue?.created_at ?? null,\n    updated_at: issue?.updated_at ?? null,\n    usecase_ids: ids,\n    usecase_lines: lines\n  };\n});\n\nconst allIds = uniq(issueSummaries.flatMap((i) => i.usecase_ids || []));\nconst allLines = uniq(issueSummaries.flatMap((i) => i.usecase_lines || []));\n\nreturn [{\n  json: {\n    ok: true,\n    realm: payload.realm ?? 'default',\n    project_ref: payload.project_ref ?? null,\n    filters: payload.filters ?? {},\n    pagination: payload.pagination ?? {},\n    fetch: payload.fetch ?? {},\n    issues_count: issueSummaries.length,\n    usecase_ids: allIds,\n    usecase_lines: allLines,\n    issues: issueSummaries\n  }\n}];\n"
+      },
+      "id": "4",
+      "name": "Extract Usecases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "5",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Required env vars (SSoT):\n- GITLAB_API_BASE_URL (or GITLAB_BASE_URL)\n- GITLAB_TOKEN (or N8N_GITLAB_TOKEN)\n- Optional: GITLAB_GROUP_FULL_PATH\n\nDefault target:\n- project_ref: ${GITLAB_GROUP_FULL_PATH}/general-management (fallback: ${N8N_REALM}/general-management)\n- labels: ITSM/継続的改善 AND 状態/Approved\n\nWebhook:\n- POST /webhook/itsm/cir/usecases/approved/list\nBody (optional):\n- gitlab_project_id | gitlab_project_path\n- cir_label (default: ITSM/継続的改善)\n- approved_label (default: 状態/Approved)\n- issue_state (default: opened)\n- dry_run (true/false)\n"
+      },
+      "id": "6",
+      "name": "Sticky Note: env",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        520,
+        20
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Request": {
+      "main": [
+        [
+          {
+            "node": "Fetch Approved CIR Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Approved CIR Issues": {
+      "main": [
+        [
+          {
+            "node": "Extract Usecases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Usecases": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+

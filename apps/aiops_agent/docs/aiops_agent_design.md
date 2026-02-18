@@ -163,3 +163,30 @@ flowchart LR
 
 - 仕様: `apps/aiops_agent/docs/aiops_agent_specification.md`
 - 実装: `apps/aiops_agent/docs/aiops_agent_implementation.md`
+
+## 8. 半自律的な継続的改善（CIR 起点）
+
+本リポジトリでは、改善要求を **CIR（継続的改善レジスター）＝ GitLab Issue（一般管理プロジェクト）**として集約し、
+運用者の承認（`状態/Approved`）後に、**CIR→ユースケース（UC-*）→ requirements/DQ** へ反映して整合を取る運用を想定します。
+
+詳細な運用フロー（受付→承認→同期→実装→検証→クローズ→依頼者通知）は以下を正とします。
+- `docs/itsm/cir_continual_improvement_flow.md`
+
+設計上の位置づけ（AIOps Agent から見た責務境界）:
+
+```mermaid
+flowchart LR
+  Chat["Zulip（改善要求）"] --> Adapter["AIOps Agent（Adapter/Orchestrator）"]
+  Adapter --> CIR["GitLab（CIR Issue）<br/>ITSM/継続的改善 + 状態/*"]
+
+  Operator["運用者（承認/クローズ）"] --> CIR
+  Operator --> SystemMD["system.md 実行（mode=apply）"]
+
+  SystemMD --> List["ITSM Core: cir_usecase_list<br/>Approved CIR → UC-*"]
+  List --> SystemMD
+
+  SystemMD --> Docs["requirements/DQ 更新（最小差分）"]
+  Docs --> Impl["設計・実装・検証（OQ/PQ/影響確認）"]
+  Impl --> CIR
+  CIR --> Notify["依頼者へ通知（承認/完了）"]
+```

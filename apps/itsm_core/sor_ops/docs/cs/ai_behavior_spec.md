@@ -13,8 +13,9 @@
 
 ## 参照（構成品目）
 
-- 要求: `apps/itsm_core/sor_ops/docs/app_requirements.md`
-- DQ/IQ/OQ/PQ: `apps/itsm_core/sor_ops/docs/dq/`, `apps/itsm_core/sor_ops/docs/iq/`, `apps/itsm_core/sor_ops/docs/oq/`, `apps/itsm_core/sor_ops/docs/pq/`
+- 要求（共通ベース）: `apps/itsm_core/sor_ops/docs/app_requirements.md`
+- 要求（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/sor_ops/realms/<realm_key>/docs/app_requirements.md`（`name_prefix` は `terraform output -raw name_prefix` を正とする）
+- DQ/IQ/OQ/PQ（共通ベース）: `apps/itsm_core/sor_ops/docs/dq/`, `apps/itsm_core/sor_ops/docs/iq/`, `apps/itsm_core/sor_ops/docs/oq/`, `apps/itsm_core/sor_ops/docs/pq/`
+- DQ（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/sor_ops/realms/<realm_key>/docs/dq/dq.md`
 - 運用スクリプト（正）: `apps/itsm_core/sor_ops/scripts/`
 - スキーマ（正）: `apps/itsm_core/sql/`
-

@@ -10,6 +10,7 @@
 - `docs/itsm/data-model.md`（統合データモデル：テーブル/参照/ACL の設計）
 - `docs/itsm/data-retention.md`（アーカイブ/保持期間/削除/匿名化（MVP 方針））
 - `docs/itsm/itsm-core-feature-status.md`（ITSM コア（SoR）機能一覧と実装状況）
+- `docs/itsm/cir_continual_improvement_flow.md`（CIR（継続的改善）運用フロー（半自律/自律拡張））
 
 ## 利用者向け（作法）
 

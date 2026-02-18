@@ -6690,6 +6690,41 @@
       "parameters": {
         "jsCode": "const base = $json ?? {}; let content = String(base.content ?? ''); if (content) { content = content.replace('決定履歴（AIOpsAgent 承認）はまだありません。', '決定履歴（AIOpsAgent 承認/自動承認）はまだありません。'); content = content.replace('補足: AIOpsAgent の承認リンク（approve/deny）で確定した内容は、この履歴に追加されます。', '補足: AIOpsAgent の承認リンク（approve/deny）や、自動承認（auto_enqueue）で確定した内容は、この履歴に追加されます。'); content = content.replace('決定履歴（AIOpsAgent 承認、古い→新しい）:', '決定履歴（AIOpsAgent 承認/自動承認、古い→新しい）:'); } return [{ json: { ...base, content } }];"
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto'); const base = $json ?? {}; const normalized = (base.normalized_event && typeof base.normalized_event === 'object') ? base.normalized_event : {}; const replyTarget = (base.reply_target && typeof base.reply_target === 'object') ? base.reply_target : {}; const source = String(normalized.source ?? base.source ?? replyTarget.source ?? 'unknown'); const isDuplicate = Boolean(base.is_duplicate) || String(base.is_duplicate_flag ?? '') === 'true'; const NL = String.fromCharCode(10); const CR = String.fromCharCode(13); function truthy(v) { const raw = String(v ?? '').trim().toLowerCase(); return ['1', 'true', 'yes', 'y', 'on'].includes(raw); } function trimSlash(v) { return String(v ?? '').replace(/\\/+$/, ''); } function pickEnv(...keys) { for (const k of keys) { const v = $env?.[k]; if (v !== undefined && v !== null && String(v).trim() !== '') return String(v); } return ''; } function stripHtml(t) { return String(t ?? '').replace(/<style[\\s\\S]*?>[\\s\\S]*?<\\/style>/gi, ' ').replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/\\s+/g, ' ').trim(); } function stripMention(t) { return String(t ?? '').replace(/^@\\*\\*[^*]+\\*\\*\\s*/, '').replace(/^@\\S+\\s*/, ''); } function firstLine(t) { const s = String(t ?? '').split(CR).join('').split(NL).map((l) => l.trim()).find(Boolean); return s || ''; } function normalizeText(t) { return String(t ?? '').normalize('NFKC').toLowerCase().replace(/\\s+/g, ' ').trim(); } function safeTruncate(s, max) { const str = String(s ?? ''); if (!max || max <= 0) return str; return str.length > max ? `${str.slice(0, Math.max(0, max - 1))}…` : str; } if (source !== 'zulip' || isDuplicate) { return [{ json: { ...base, cir_intake_handled_flag: '', cir_intake: { handled: false, skipped: true, reason: source !== 'zulip' ? 'not_zulip' : 'duplicate_event' } } }]; } let raw = ''; if (typeof normalized.original_text === 'string' && normalized.original_text.trim()) raw = normalized.original_text; if (!raw && typeof normalized.text === 'string') raw = normalized.text; const rawBody = (normalized.raw_body && typeof normalized.raw_body === 'object') ? normalized.raw_body : {}; if (rawBody?.message && typeof rawBody.message === 'object' && typeof rawBody.message.content === 'string' && rawBody.message.content.trim()) raw = rawBody.message.content; const plain = stripMention(stripHtml(raw)); const line = firstLine(plain); const lineNorm = normalizeText(line); const fullNorm = normalizeText(plain); const isCommand = /^\\s*(\\/\\w+|approve\\s|deny\\s|run\\s|request\\s|execute\\s)/i.test(lineNorm); if (isCommand) { return [{ json: { ...base, cir_intake_handled_flag: '', cir_intake: { handled: false, skipped: true, reason: 'command' } } }]; } const polite = /(ください|お願いします|してほしい|したい|お願い)/.test(fullNorm); const hasImproveToken = /(できるようになって|できるようにして|改善|要望|追加して|実装して|対応して|対応できるように)/.test(fullNorm); const isImproveRequest = (polite && hasImproveToken) || /できるようになってください/.test(fullNorm); if (!isImproveRequest) { return [{ json: { ...base, cir_intake_handled_flag: '', cir_intake: { handled: false, skipped: true, reason: 'not_improvement_request' } } }]; } const realm = String(base.iam_context?.realm ?? replyTarget.realm ?? replyTarget.tenant ?? 'default').trim() || 'default'; const actor = (base.actor && typeof base.actor === 'object') ? base.actor : {}; const requester = String(actor.email ?? replyTarget.sender_email ?? actor.name ?? actor.full_name ?? actor.username ?? 'unknown').trim() || 'unknown'; const date = new Date().toISOString().slice(0, 10); const fingerprintBase = (lineNorm || fullNorm || '').replace(/[\\s\\u3000]+/g, ' ').trim().replace(/[\\s\\u3000、。・（）()［］\\[\\]「」『』【】{}<>＜＞…‥]/g, ''); const hash = crypto.createHash('sha256').update(fingerprintBase, 'utf8').digest('hex'); const dedupeKey = `CIR-AIOPS-REQ:${hash}`; const cirLabel = String(pickEnv('ITSM_CIR_LABEL', 'AIOPS_CIR_LABEL') || 'ITSM/継続的改善').trim() || 'ITSM/継続的改善'; const statusNewLabel = String(pickEnv('ITSM_CIR_STATUS_NEW_LABEL', 'AIOPS_CIR_STATUS_NEW_LABEL') || '状態/New').trim() || '状態/New'; const dryRun = truthy(pickEnv('AIOPS_CIR_DRY_RUN', 'ITSM_CIR_DRY_RUN') || 'false'); let gitlabBaseUrl = trimSlash(pickEnv('N8N_GITLAB_BASE_URL', 'GITLAB_BASE_URL', 'GITLAB_URL', 'SERVICE_URL_GITLAB')); let apiBase = trimSlash(pickEnv('N8N_GITLAB_API_BASE_URL', 'GITLAB_API_BASE_URL')); if (!apiBase && gitlabBaseUrl) apiBase = `${gitlabBaseUrl}/api/v4`; apiBase = trimSlash(apiBase); if (apiBase && !/\\/api\\/v4$/.test(apiBase) && !/\\/api\\/v4(\\/|$)/.test(apiBase)) apiBase = trimSlash(`${apiBase}/api/v4`); const token = String(pickEnv('N8N_GITLAB_TOKEN', 'GITLAB_TOKEN', 'GITLAB_ADMIN_TOKEN')).trim(); const groupFullPath = String(pickEnv('N8N_GITLAB_GROUP_FULL_PATH', 'GITLAB_GROUP_FULL_PATH', 'GROUP_FULL_PATH') || '').trim(); const defaultProjectPath = groupFullPath ? `${groupFullPath}/general-management` : `${realm}/general-management`; const projectRef = String(pickEnv('N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_ID', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_ID', 'N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH', 'N8N_GITLAB_PROJECT_ID', 'GITLAB_PROJECT_ID', 'N8N_GITLAB_PROJECT_PATH', 'GITLAB_PROJECT_PATH') || defaultProjectPath).trim(); const webBase = trimSlash(pickEnv('N8N_GITLAB_WEB_BASE_URL', 'GITLAB_WEB_BASE_URL') || (apiBase ? apiBase.replace(/\\/api\\/v4$/, '') : gitlabBaseUrl)); const titlePrefix = String(pickEnv('AIOPS_CIR_TITLE_PREFIX', 'ITSM_CIR_TITLE_PREFIX') || 'CIR: 改善要望 - ').trim() || 'CIR: 改善要望 - '; const title = safeTruncate(`${titlePrefix}${line || plain || '改善要望'}`, 200); const zulipUrl = String(replyTarget.url ?? replyTarget.message_url ?? '').trim(); const description = [ '## 種別', '改善要望', '', '## 状態（SSoT）', '- Status/State: New', `- 推奨ラベル: \\`${cirLabel}\\`, \\`${statusNewLabel}\\``, '', '## 台帳項目（MVP）', '', '| 項目 | 値 |', '| --- | --- |', '| 起票日 | ' + date + ' |', '| 起票者 | ' + requester + ' |', '| 短い件名 | ' + (line || '') + ' |', '| 詳細説明 | ' + (plain || '') + ' |', '| 対象サービス |  |', '| 関与チーム |  |', '| 優先度 | P1/P2/P3/P4 |', '| 期限/タイムライン |  |', '| 担当者/オーナー |  |', '', '## 連携・トレーサビリティ（推奨）', '', '| 項目 | 値 |', '| --- | --- |', '| 起点 | ユーザ要望（Zulip） |', '| 関連レコードリンク | ' + (zulipUrl || '') + ' |', '', '---', '', `dedupe_key: ${dedupeKey}` ].join(NL); const baseAck = '承りました。できるかどうか検討し、別途お知らせします。'; if (!apiBase || !token || !projectRef) { const content = [ baseAck, '（CIR自動起票: GitLab設定未検出のためスキップ）' ].join(NL); return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'skipped_missing_gitlab_config', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase || null, project_ref: projectRef || null }, requester, title } } }]; } const projectEnc = encodeURIComponent(projectRef); const issueUrlFromIid = (iid) => { if (!iid) return ''; if (!webBase) return ''; const projectPart = String(projectRef); return `${webBase}/${projectPart}/-/issues/${String(iid)}`; }; if (dryRun) { const content = [ baseAck, `（CIR自動起票: dry-run、dedupe_key=${dedupeKey}）` ].join(NL); return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'dry_run', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase, project_ref: projectRef }, requester, title } } }]; } let found = null; let searchError = null; try { const params = new URLSearchParams({ state: 'opened', labels: cirLabel, search: dedupeKey, per_page: '20' }); const searchUrl = `${apiBase}/projects/${projectEnc}/issues?${params.toString()}`; const res = await this.helpers.httpRequest({ method: 'GET', url: searchUrl, headers: { 'PRIVATE-TOKEN': token }, json: true }); const issues = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []); if (issues.length > 0) found = issues[0]; } catch (error) { searchError = error?.message ? String(error.message) : String(error); } if (searchError) { const content = [ baseAck, '（CIR自動起票: GitLab検索でエラーのためスキップ）' ].join(NL); return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'skipped_search_error', realm, dedupe_key: dedupeKey, error: searchError, gitlab: { api_base_url: apiBase, project_ref: projectRef }, requester, title } } }]; } if (found) { const iid = found.iid ?? found.internal_id ?? null; const webUrl = String(found.web_url ?? '').trim() || issueUrlFromIid(iid); const noteBody = [ '改善要望（重複）を受領しました。', '', `- at: ${new Date().toISOString()}`, `- requester: ${requester}`, zulipUrl ? `- zulip: ${zulipUrl}` : null, `- dedupe_key: ${dedupeKey}`, '', '---', '', plain ? `request: ${plain}` : '' ].filter((v) => v !== null && String(v).trim() !== '').join(NL); try { if (iid) { const noteUrl = `${apiBase}/projects/${projectEnc}/issues/${encodeURIComponent(String(iid))}/notes`; await this.helpers.httpRequest({ method: 'POST', url: noteUrl, headers: { 'PRIVATE-TOKEN': token }, json: true, body: { body: noteBody } }); } } catch (error) { /* swallow */ } const content = webUrl ? [ `${baseAck}（既存CIRに追記しました）`, `CIR: ${webUrl}` ].join(NL) : `${baseAck}（既存CIRに追記しました）`; return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'append_existing', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase, project_ref: projectRef, issue_iid: iid, issue_url: webUrl || null }, requester, title } } }]; } let created = null; let createError = null; try { const createUrl = `${apiBase}/projects/${projectEnc}/issues`; const payload = { title, description, labels: [cirLabel, statusNewLabel].filter(Boolean).join(',') }; created = await this.helpers.httpRequest({ method: 'POST', url: createUrl, headers: { 'PRIVATE-TOKEN': token }, json: true, body: payload }); } catch (error) { createError = error?.message ? String(error.message) : String(error); } if (createError || !created) { const content = [ baseAck, '（CIR自動起票: GitLab作成でエラーのためスキップ）' ].join(NL); return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'skipped_create_error', realm, dedupe_key: dedupeKey, error: createError || 'create_failed', gitlab: { api_base_url: apiBase, project_ref: projectRef }, requester, title } } }]; } const createdIid = created.iid ?? created.internal_id ?? null; const createdWebUrl = String(created.web_url ?? '').trim() || issueUrlFromIid(createdIid); const content = createdWebUrl ? [ baseAck, `CIR: ${createdWebUrl}` ].join(NL) : baseAck; return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'created', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase, project_ref: projectRef, issue_iid: createdIid, issue_url: createdWebUrl || null }, requester, title } } }];",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "9930",
+      "name": "CIR Intake (Create/Dedupe CIR Issue)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.cir_intake_handled_flag}}",
+              "value2": "true",
+              "operation": "equal"
+            }
+          ]
+        }
+      },
+      "id": "9931",
+      "name": "IF CIR Intake Handled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        200
+      ]
     }
   ],
   "connections": {
@@ -8919,6 +8954,35 @@
     },
     "Debug Log Before: IF Duplicate <- Build IAM & Policy Context": {
       "main": [
+        [
+          {
+            "node": "CIR Intake (Create/Dedupe CIR Issue)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CIR Intake (Create/Dedupe CIR Issue)": {
+      "main": [
+        [
+          {
+            "node": "IF CIR Intake Handled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF CIR Intake Handled": {
+      "main": [
+        [
+          {
+            "node": "Respond Zulip Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
         [
           {
             "node": "Compute Secret Detected Flag",

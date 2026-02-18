@@ -28,8 +28,9 @@ AI は以下を行ってはならない：
 ## 4. 参照（構成品目）
 
 - 本書（CS）: `apps/itsm_core/gitlab_backfill_to_sor/docs/cs/ai_behavior_spec.md`
-- 要求: `apps/itsm_core/gitlab_backfill_to_sor/docs/app_requirements.md`
-- DQ/IQ/OQ/PQ: `apps/itsm_core/gitlab_backfill_to_sor/docs/dq/`, `apps/itsm_core/gitlab_backfill_to_sor/docs/iq/`, `apps/itsm_core/gitlab_backfill_to_sor/docs/oq/`, `apps/itsm_core/gitlab_backfill_to_sor/docs/pq/`
+- 要求（共通ベース）: `apps/itsm_core/gitlab_backfill_to_sor/docs/app_requirements.md`
+- 要求（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/gitlab_backfill_to_sor/realms/<realm_key>/docs/app_requirements.md`（`name_prefix` は `terraform output -raw name_prefix` を正とする）
+- DQ/IQ/OQ/PQ（共通ベース）: `apps/itsm_core/gitlab_backfill_to_sor/docs/dq/`, `apps/itsm_core/gitlab_backfill_to_sor/docs/iq/`, `apps/itsm_core/gitlab_backfill_to_sor/docs/oq/`, `apps/itsm_core/gitlab_backfill_to_sor/docs/pq/`
+- DQ（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/gitlab_backfill_to_sor/realms/<realm_key>/docs/dq/dq.md`
 - ワークフロー定義: `apps/itsm_core/gitlab_backfill_to_sor/workflows/`
 - 同期/検証スクリプト: `apps/itsm_core/gitlab_backfill_to_sor/scripts/`
-

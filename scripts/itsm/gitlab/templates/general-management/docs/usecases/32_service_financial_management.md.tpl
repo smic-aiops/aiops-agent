@@ -23,7 +23,7 @@
 - 予算超過やコスト異常は n8n が Zulip 通知し、必要なら Issue を起票（根拠URL/数値つき）
 
 ## 実施手順（GitLab / n8n / Grafana）
-1. 「タグ方針（誰が/何を/いつまでに）」を一般管理 Issue に起票（例: `ITSM/財務` + `状態/要判断`）  
+1. 「タグ方針（誰が/何を/いつまでに）」を一般管理 Issue に起票（例: `ITSM/財務` + `状態/Assess`）  
 2. 予算（サービス別）としきい値（例: 80%/100%/120%）を決め、承認を残す（必要なら `09_change_decision` とリンク）  
 3. Grafana にアクセス（`{{GRAFANA_BASE_URL}}`）して「サービス別コスト」「予算消化率」「単価（コスト/取引）」「コスト異常」を見える化する  
 4. コスト異常が出たら、Issue を “技術対策” と “運用判断” に分解する  
@@ -111,4 +111,3 @@ grafana:
 ## 参考（Sources）
 - https://www.axelos.com/resource-hub/practice/service-financial-management （参照日: 2026-02-13）
 - https://www.finops.org/introduction/what-is-finops/ （参照日: 2026-02-13）
-

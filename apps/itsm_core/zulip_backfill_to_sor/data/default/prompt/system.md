@@ -16,7 +16,9 @@
 - 「GO」や承認待ちを要求しない（ただし AIS で別途定義した、人の最終責任・承認が必要な事項は除く）
 - 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を常に維持する
 - tfvars を直接読んで秘匿情報を解決しない（`terraform output` / SSM / `scripts/itsm/zulip/resolve_zulip_env.sh` を正とする）
-- 実行スコープ固定: 対象 realm はすべて。対象 SoR DB 接続情報/資格情報は `terraform output` / SSM を正とする
+- 実行スコープ固定: 入力 `realm_key` の 1 realm のみを対象とする（`default` の暗黙採用はしない）。対象 SoR DB 接続情報/資格情報は `terraform output` / SSM を正とする
+- name_prefix 解決: `name_prefix` は `terraform output -raw name_prefix` を正として解決する（未解決なら停止して不足情報を列挙）
+- realm overlay（組織別拡張）: Requirements/DQ の更新は `vendor/<name_prefix>/apps/itsm_core/zulip_backfill_to_sor/realms/<realm_key>/docs/` のみへ行う（`apps/itsm_core/zulip_backfill_to_sor/docs/` は共通ベースとして read-only とみなす）
 - 実行モード明示: `mode=dry-run|dry-run-scan|execute` を必須入力にし、`execute` のときのみ DB への書き込みを許可する（既定は `dry-run`）
 - 資格情報健全性ゲート: `execute` の前提として `apps/itsm_core/zulip_backfill_to_sor/docs/oq/oq.md` にある OQ が「当日（YYYY-MM-DD）に合格している証跡パス」を必須入力にしない（未提示でも実行する）
 - 変更管理ゲート: `docs/change-management.md` に当日の変更記録（実施日/承認者/対象 realm/影響範囲）が追記済みであることを `execute` の前提にしない（未追記でも実行する）
@@ -29,13 +31,24 @@
 
 ## Process
 
+- CIR同期（Approved → Docs）:
+  - `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md` に従い、CIR（一般管理プロジェクトの GitLab Issue）で `状態/Approved` のレコードからユースケース（`UC-*`）を抽出する
+  - 抽出結果のうち当該アプリに関係する `UC-*` を特定し、`vendor/<name_prefix>/apps/itsm_core/zulip_backfill_to_sor/realms/<realm_key>/docs/app_requirements.md` と `vendor/<name_prefix>/apps/itsm_core/zulip_backfill_to_sor/realms/<realm_key>/docs/dq/dq.md` に未記載があれば **最小差分で追記**して整合を取る（共通ベース `apps/itsm_core/zulip_backfill_to_sor/docs/*` は編集しない）
+  - `mode=execute` のときのみ n8n webhook `POST /webhook/itsm/cir/usecases/approved/list` を呼ぶ（`dry_run=false`）。`mode=dry-run|dry-run-scan` は外部 HTTP を呼ばず、追記もしない（不足情報のみ列挙）
+
 - 要求/設計の整合:
-  - `apps/itsm_core/zulip_backfill_to_sor/docs/app_requirements.md` / `apps/itsm_core/zulip_backfill_to_sor/docs/dq/dq.md` を点検し、変更時は根拠と再検証観点を更新する
+  - 共通ベースを参照しつつ、realm overlay `vendor/<name_prefix>/apps/itsm_core/zulip_backfill_to_sor/realms/<realm_key>/docs/app_requirements.md` / `vendor/<name_prefix>/apps/itsm_core/zulip_backfill_to_sor/realms/<realm_key>/docs/dq/dq.md` を点検し、変更時は根拠と再検証観点を更新する
 - 実装修正: `apps/itsm_core/zulip_backfill_to_sor/scripts/backfill_zulip_decisions_to_sor.sh` を修正し、dry-run で崩れないことを確認する
 - OQ 整備: `apps/itsm_core/zulip_backfill_to_sor/docs/oq/oq_*.md` を更新し、`scripts/generate_oq_md.sh --app apps/itsm_core/zulip_backfill_to_sor` を実行して `oq.md` を更新する
 - OQ 実行: `apps/itsm_core/zulip_backfill_to_sor/scripts/run_oq.sh` で証跡を保存する
 - 変更記録: `docs/change-management.md` に変更点・理由・実施日・承認者を記録
 - 作業結果レポート: 変更一覧サマリ・残課題・次回改善案を記載
+- CIRクローズ（完了時）:
+  - 本 run で完了（設計/実装/OQ/影響テスト含む）した CIR Issue を `状態/Closed` に更新して close し、結果サマリを Issue note として残す（同一 marker note の重複は抑止）
+  - `mode=execute` のときのみ n8n webhook `POST /webhook/itsm/cir/issues/close` を呼ぶ（`dry_run=false`）
+  - クローズ対象 Issue は、入力 `cir_close_issues`（推奨）または CIR同期 webhook 応答の `issues` から選定して body に入れる（`iid/web_url/project_ref/usecase_ids`）
+  - `result_summary` / `verification` / `artifacts` / `run_meta` をまとめて送る（秘匿情報は含めない）
+  - `状態/Closed` の付与により `POST /webhook/gitlab/cir/status/notify` が起票者へ DM を送信する（冪等）
 
 ## Output Format
 
@@ -49,9 +62,12 @@
 ## References
 
 - AIS（CS）: `apps/itsm_core/zulip_backfill_to_sor/docs/cs/ai_behavior_spec.md`
-- 要求: `apps/itsm_core/zulip_backfill_to_sor/docs/app_requirements.md`
-- DQ: `apps/itsm_core/zulip_backfill_to_sor/docs/dq/dq.md`
+- 要求（共通ベース）: `apps/itsm_core/zulip_backfill_to_sor/docs/app_requirements.md`
+- 要求（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/zulip_backfill_to_sor/realms/<realm_key>/docs/app_requirements.md`
+- DQ（共通ベース）: `apps/itsm_core/zulip_backfill_to_sor/docs/dq/dq.md`
+- DQ（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/zulip_backfill_to_sor/realms/<realm_key>/docs/dq/dq.md`
 - IQ: `apps/itsm_core/zulip_backfill_to_sor/docs/iq/iq.md`
 - OQ: `apps/itsm_core/zulip_backfill_to_sor/docs/oq/oq.md`
 - 実行スクリプト: `apps/itsm_core/zulip_backfill_to_sor/scripts/backfill_zulip_decisions_to_sor.sh`
 - OQ 実行補助: `apps/itsm_core/zulip_backfill_to_sor/scripts/run_oq.sh`
+- CIR→Docs 同期テンプレ: `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md`

@@ -9,11 +9,11 @@
 
 - 本 README: `apps/workflow_manager/README.md`
 - ワークフロー:
-  - `apps/workflow_manager/workflows/aiops_workflows_list.json`
-  - `apps/workflow_manager/workflows/aiops_workflows_get.json`
-  - `apps/workflow_manager/workflows/service_request/` 配下
+  - `apps/workflow_manager/workflow_catalog/workflows/aiops_workflows_list.json`
+  - `apps/workflow_manager/workflow_catalog/workflows/aiops_workflows_get.json`
+  - `apps/workflow_manager/service_request/workflows/` 配下
 - 同期スクリプト: `apps/workflow_manager/scripts/deploy_workflows.sh`
-- OQ: `apps/workflow_manager/docs/oq/oq.md`
+- OQ: `apps/workflow_manager/docs/oq/oq.md`（overview）
 - CS: `apps/workflow_manager/docs/cs/ai_behavior_spec.md`
 
 ## 設計スコープ
@@ -42,7 +42,7 @@
 ## 出口条件（Exit）
 
 - IQ 合格: `apps/workflow_manager/docs/iq/iq.md`
-- OQ 合格: `apps/workflow_manager/docs/oq/oq.md`（list/get + 代表 service control）
+- OQ 合格: `apps/workflow_manager/docs/oq/oq.md`（overview）
 
 ## 変更管理（再検証トリガ）
 
@@ -55,4 +55,3 @@
 - カタログ API 応答 JSON（list/get）
 - n8n 実行ログ（GitLab/Service Control の成功）
 - 代表サービス制御の応答（`status=ok` 等）
-

@@ -14,4 +14,3 @@ curl -sS -H 'Content-Type: application/json' \
   -d "{\"action\":\"restart\",\"realm\":\"$(terraform output -raw default_realm)\"}" \
   "${N8N_BASE_URL%/}/webhook/sulu/service-control" | jq .
 ```
-
