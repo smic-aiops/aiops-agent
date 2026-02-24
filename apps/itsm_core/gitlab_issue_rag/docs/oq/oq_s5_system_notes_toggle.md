@@ -11,8 +11,7 @@ system notes を含める/含めないを運用方針で切り替え、RAG の�
 - 環境変数:
   - `N8N_GITLAB_ISSUE_RAG_INCLUDE_SYSTEM_NOTES=true|false`
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `N8N_GITLAB_ISSUE_RAG_INCLUDE_SYSTEM_NOTES=false`（既定）で system notes が除外される
 - `N8N_GITLAB_ISSUE_RAG_INCLUDE_SYSTEM_NOTES=true` で system notes も本文に含まれる
 

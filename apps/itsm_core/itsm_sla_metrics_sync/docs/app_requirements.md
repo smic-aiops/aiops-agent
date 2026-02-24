@@ -17,8 +17,7 @@
   - SLA ターゲット（`itsm.sla_target`）や停止区間（`itsm.sla_pause`）の作成/更新 UI
   - SLO 時系列（可用性/レイテンシ等）の保存（Athena/Grafana 側を正とする）
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `metrics.json` が S3 に出力され、JSON として parse できる
 - `sla_events.jsonl` が S3 に出力され、各行 JSON として parse できる
 - `N8N_METRICS_TARGET_DATE` 指定で、同じキー配下へ再現性のある出力ができる

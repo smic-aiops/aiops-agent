@@ -12,8 +12,7 @@
 - 環境変数:
   - `N8N_GITLAB_ISSUE_RAG_FORCE_FULL_SYNC`
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - cron が `0 */2 * * *` である（既定 2 時間ごと）
 - `N8N_GITLAB_ISSUE_RAG_FORCE_FULL_SYNC` が false のとき、同一 issue の `updated_at` が変化していない場合は再処理をスキップする
 - `N8N_GITLAB_ISSUE_RAG_FORCE_FULL_SYNC=true` のとき、キャッシュを無視して再処理できる

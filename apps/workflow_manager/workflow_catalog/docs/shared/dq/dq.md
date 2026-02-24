@@ -50,8 +50,7 @@
 - 認証方式（token 形式、ヘッダ）の変更
 - サービス制御ワークフローの追加・変更（特に副作用のある操作）
 
-## 証跡（最小）
-
+## 証跡（evidence）
 - カタログ API 応答 JSON（list/get）
 - n8n 実行ログ（GitLab/Service Control の成功）
 - 代表サービス制御の応答（`status=ok` 等）

@@ -20,8 +20,7 @@
   - `N8N_GITLAB_ISSUE_RAG_SERVICE_PROJECT_PATH`
   - `N8N_GITLAB_ISSUE_RAG_TECH_PROJECT_PATH`
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - 3 ドメイン（general/service/technical）の project path を指定すると、それぞれの Issue を取得して処理対象にできる
 - 取得した本文が 1 つのソース文書として整形され、先頭にメタ情報（management_domain 等）が含まれる
 - notes は `created_at` 昇順で並び、author と本文が保持される

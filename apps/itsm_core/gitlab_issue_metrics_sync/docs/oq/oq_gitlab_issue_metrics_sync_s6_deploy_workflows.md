@@ -4,8 +4,7 @@
 
 `apps/itsm_core/gitlab_issue_metrics_sync/scripts/deploy_workflows.sh` により、`workflows/` が n8n Public API へ upsert されることを確認します。
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `DRY_RUN=true` の場合、API へ変更を加えず差分確認ができる
 - `DRY_RUN=false` の場合、ワークフローが upsert される
 - 同期後に n8n 上でワークフロー（`GitLab Issue Metrics Sync`）が存在し、有効化/実行できる状態である

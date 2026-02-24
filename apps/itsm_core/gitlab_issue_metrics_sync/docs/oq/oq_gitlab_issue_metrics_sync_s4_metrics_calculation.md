@@ -4,8 +4,7 @@
 
 期待するメトリクスが JSON に含まれ、欠落せずに算出されることを確認します。
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `metrics.json` に以下のキーが存在する
   - `request_count`
   - `first_response_p50_minutes` / `first_response_p95_minutes`

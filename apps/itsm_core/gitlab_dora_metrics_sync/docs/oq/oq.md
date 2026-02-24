@@ -69,8 +69,7 @@ flowchart LR
 
 定期実行で「前日（UTC）」の `dt` が決まり、日次集計が実行されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - Cron 実行時に、`dt` は「実行時刻の UTC 日付に対して前日」の日付になる
 - `N8N_METRICS_TARGET_DATE` が未設定の場合でも、`dt` の決定がタイムゾーンに依存しない
 
@@ -89,8 +88,7 @@ flowchart LR
 
 n8n の手動実行（または `apps/itsm_core/gitlab_dora_metrics_sync/scripts/run_oq.sh`）で集計が実行され、S3 に出力されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - 手動実行でメトリクス集計が走り、S3 に出力される
 - `N8N_METRICS_TARGET_DATE=YYYY-MM-DD` を設定した場合、任意日付の集計ができる
 
@@ -110,8 +108,7 @@ n8n の手動実行（または `apps/itsm_core/gitlab_dora_metrics_sync/scripts
 
 S3 に出力されるキー/形式が期待通りであることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `N8N_S3_BUCKET` / `N8N_S3_PREFIX` に従って、以下のキーへ出力される
   - `.../dora/daily_metrics/dt=<YYYY-MM-DD>/realm=<realm>/metrics.json`
   - `.../dora/events/dt=<YYYY-MM-DD>/realm=<realm>/gitlab_dora_events.jsonl`
@@ -135,8 +132,7 @@ S3 に出力されるキー/形式が期待通りであることを確認しま�
 
 期待するメトリクスが JSON に含まれ、欠落せずに算出されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `metrics.json` に以下のキーが存在する
   - `deployment_frequency`
   - `change_failure_rate`
@@ -161,8 +157,7 @@ S3 に出力されるキー/形式が期待通りであることを確認しま�
 
 デプロイ対象環境（`N8N_GITLAB_ENVIRONMENT`）を切り替えても、集計が成立することを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `N8N_GITLAB_ENVIRONMENT` を設定した場合、`metrics.json` に同名の `environment` が出力される
 
 #### テストケース（TC）
@@ -180,8 +175,7 @@ S3 に出力されるキー/形式が期待通りであることを確認しま�
 
 `apps/itsm_core/gitlab_dora_metrics_sync/scripts/deploy_workflows.sh` により、`workflows/` が n8n Public API へ upsert されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - dry-run で差分が表示できる
 - 同期後に n8n 上に `GitLab DORA Metrics Sync` が反映される
 
@@ -210,8 +204,7 @@ S3 に出力されるキー/形式が期待通りであることを確認しま�
 - Commit → Merge Requests（デプロイSHAから紐付け）
   - `GET /projects/:id/repository/commits/:sha/merge_requests`
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - 上記エンドポイントが API token で参照でき、集計が成立する
 
 

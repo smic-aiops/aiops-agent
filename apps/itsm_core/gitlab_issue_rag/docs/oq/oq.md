@@ -107,8 +107,7 @@ flowchart LR
   - `N8N_GITLAB_ISSUE_RAG_SERVICE_PROJECT_PATH`
   - `N8N_GITLAB_ISSUE_RAG_TECH_PROJECT_PATH`
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - 3 ドメイン（general/service/technical）の project path を指定すると、それぞれの Issue を取得して処理対象にできる
 - 取得した本文が 1 つのソース文書として整形され、先頭にメタ情報（management_domain 等）が含まれる
 - notes は `created_at` 昇順で並び、author と本文が保持される
@@ -153,8 +152,7 @@ flowchart LR
 - embedding を有効化する場合
   - `N8N_EMBEDDING_API_KEY`（または `OPENAI_API_KEY`）
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `N8N_GITLAB_ISSUE_RAG_CHUNK_SIZE` / `N8N_GITLAB_ISSUE_RAG_CHUNK_OVERLAP` でチャンク粒度が調整できる
 - embedding を有効化した場合、`embedding` が non-null で保存される
 - `document_id` が安定（同じ issue/chunk なら同一 ID）で、upsert が効く
@@ -174,7 +172,6 @@ flowchart LR
   - `SELECT document_id, chunk_index, source_url, source_updated_at, embedding IS NOT NULL AS has_embedding FROM itsm_gitlab_issue_documents ORDER BY updated_at DESC LIMIT 10;`
 - n8n 実行ログ（Upsert Issue Chunks の成功）
 
-
 ---
 
 ### OQ: シナリオ3（定期実行 + updated_at 差分同期 + 強制フル同期）（source: `oq_s3_scheduled_diff_sync.md`）
@@ -191,8 +188,7 @@ flowchart LR
 - 環境変数:
   - `N8N_GITLAB_ISSUE_RAG_FORCE_FULL_SYNC`
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - cron が `0 */2 * * *` である（既定 2 時間ごと）
 - `N8N_GITLAB_ISSUE_RAG_FORCE_FULL_SYNC` が false のとき、同一 issue の `updated_at` が変化していない場合は再処理をスキップする
 - `N8N_GITLAB_ISSUE_RAG_FORCE_FULL_SYNC=true` のとき、キャッシュを無視して再処理できる
@@ -227,8 +223,7 @@ embedding API の検証/一時停止のために、embedding を完全スキッ�
   - `N8N_EMBEDDING_SKIP=true`
   - `N8N_GITLAB_ISSUE_RAG_DRY_RUN=true`
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `N8N_EMBEDDING_SKIP=true` の場合、embedding API を呼ばずに `embedding` を null のまま upsert できる
 - `N8N_GITLAB_ISSUE_RAG_DRY_RUN=true` の場合も同様に `embedding` を null のまま upsert できる
 - embedding API の認証情報が未設定でも、skip/dry-run 設定時は失敗しない
@@ -262,8 +257,7 @@ system notes を含める/含めないを運用方針で切り替え、RAG の�
 - 環境変数:
   - `N8N_GITLAB_ISSUE_RAG_INCLUDE_SYSTEM_NOTES=true|false`
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `N8N_GITLAB_ISSUE_RAG_INCLUDE_SYSTEM_NOTES=false`（既定）で system notes が除外される
 - `N8N_GITLAB_ISSUE_RAG_INCLUDE_SYSTEM_NOTES=true` で system notes も本文に含まれる
 
@@ -295,8 +289,7 @@ system notes を含める/含めないを運用方針で切り替え、RAG の�
   - Code node: `Build Upsert Items`
 - DB: `itsm_gitlab_issue_documents.metadata`（jsonb）
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `metadata.management_domain` が `general_management` / `service_management` / `technical_management` のいずれかで保存される
 - `metadata.management_domain_label_ja` が併記される
 - `metadata.project_path` / `metadata.issue_iid` / `metadata.source_url` が保存される
@@ -328,8 +321,7 @@ system notes を含める/含めないを運用方針で切り替え、RAG の�
   - Webhook node: `Webhook Trigger`
   - Postgres node: `Check pgvector`
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `POST /webhook/gitlab/issue/rag/test` が `{"ok":true,"pgvector":true}` を返す
 - pgvector が未導入の環境では `{"ok":false,"pgvector":false,"error":"pgvector_not_installed"}` を返す
 
@@ -361,8 +353,7 @@ GitLab API/DB/embedding API の外部接続が部分的に失敗しても、原�
   - Code node: `Embed Chunks`（embedding エラーの捕捉）
   - Postgres node: `Upsert Issue Chunks`（DB 失敗の可観測性）
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - 不足設定（GitLab base/token/target）時に、原因が分かるエラーとして出力される
 - notes 取得に失敗した場合、失敗が検知できる（ログまたは metadata にエラー情報が残る）
 - embedding 呼び出しが失敗した場合、`embedding_error` が記録される（再実行で復旧可能）

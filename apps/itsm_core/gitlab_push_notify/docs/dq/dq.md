@@ -51,8 +51,7 @@
 - 対象フィルタ（project/path）や通知先制御の変更
 - Secret 検証や fail-fast の挙動変更
 
-## 証跡（最小）
-
+## 証跡（evidence）
 - `/webhook/gitlab/push/notify/test` の応答 JSON
 - GitLab webhook テスト送信ログ（GitLab UI）
 - n8n 実行ログ（受信、整形、Zulip 送信結果）

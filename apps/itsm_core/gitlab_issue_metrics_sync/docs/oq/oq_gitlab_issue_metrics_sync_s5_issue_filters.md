@@ -4,8 +4,7 @@
 
 GitLab Issue の取得・集計対象が、環境変数により意図通り制御できることを確認します。
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `N8N_GITLAB_LABEL_FILTERS`（既定 `チャネル：Zulip`）に従って issues を取得する
 - `N8N_GITLAB_ISSUE_STATE` に従って issues を取得する
 

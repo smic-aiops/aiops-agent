@@ -11,8 +11,7 @@
   - Code node: `Build Upsert Items`
 - DB: `itsm_gitlab_issue_documents.metadata`（jsonb）
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `metadata.management_domain` が `general_management` / `service_management` / `technical_management` のいずれかで保存される
 - `metadata.management_domain_label_ja` が併記される
 - `metadata.project_path` / `metadata.issue_iid` / `metadata.source_url` が保存される

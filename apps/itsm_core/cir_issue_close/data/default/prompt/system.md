@@ -4,7 +4,7 @@
 - system.md 実行の完了後に、対象 CIR（GitLab Issue）を `状態/Closed` + close し、結果サマリを Issue に残す
 
 ## Hard Rules
-- `mode=apply` のときのみ外部 HTTP（GitLab API）を実行する（既定は `apply`）
+- `mode=apply` のときのみ外部 HTTP（GitLab API）を実行する（未指定は `dry-run` とみなす）
 - `mode=dry-run` では GitLab を更新しない（計画のみ）
 - 秘匿情報を出力しない
 
@@ -21,4 +21,3 @@
 ## References
 - ワークフロー: `apps/itsm_core/cir_issue_close/workflows/itsm_cir_issue_close.json`
 - OQ: `apps/itsm_core/cir_issue_close/docs/oq/oq.md`
-

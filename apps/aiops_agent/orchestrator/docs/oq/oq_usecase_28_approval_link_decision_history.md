@@ -26,7 +26,7 @@ AIOpsAgent が提示した承認導線（approve/deny）について、**リン�
 - `aiops_approval_history` に承認履歴が保存され、`comment` に `/decision` 先頭行が残る
 - `/decisions` が **同一トピック（同一 context）** の履歴を時系列で返す
 
-## 合否基準
+## 受け入れ基準
 - **合格**: クリック承認が `/decision` として投稿され、`/decisions` で履歴が参照できる
 - **不合格**: クリック承認が記録されない、別トピックへ投稿される、または履歴参照が成立しない
 

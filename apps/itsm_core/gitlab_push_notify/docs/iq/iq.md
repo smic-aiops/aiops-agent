@@ -57,8 +57,7 @@ DRY_RUN=true apps/itsm_core/gitlab_push_notify/scripts/setup_gitlab_project_webh
 - `/webhook/gitlab/push/notify/test` が実行でき、必須 env の健全性確認ができること
 - GitLab 側 webhook のテスト送信で n8n が起動できること（OQ の `OQ-GPN-002` につながる）
 
-## 成果物（証跡）
-
+## 証跡（evidence）
 - 同期/セットアップの実行ログ
 - `/webhook/gitlab/push/notify/test` の応答 JSON
 - GitLab webhook 設定（URL/Secret）に関する記録

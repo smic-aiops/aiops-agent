@@ -50,8 +50,7 @@
 - 通知先（Zulip）の制御・本文構造の変更
 - Secret 検証や fail-fast の挙動変更
 
-## 証跡（最小）
-
+## 証跡（evidence）
 - GitLab webhook テスト送信ログ（GitLab UI）
 - n8n 実行ログ（受信、抽出結果、Zulip 送信結果）
 - Zulip DM の投稿ログ

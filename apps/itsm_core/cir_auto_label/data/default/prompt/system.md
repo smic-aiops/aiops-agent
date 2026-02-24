@@ -4,7 +4,7 @@
 - CIR Issue（テンプレ起票）に対して `ITSM/継続的改善` と `状態/New` を自動付与し、運用の初期状態を揃える
 
 ## Hard Rules
-- `mode=apply` のときのみ外部 HTTP（GitLab API）を実行する（既定は `apply`）
+- `mode=apply` のときのみ外部 HTTP（GitLab API）を実行する（未指定は `dry-run` とみなす）
 - `mode=dry-run` では GitLab を更新しない（計画のみ）
 - 秘匿情報を出力しない
 
@@ -17,4 +17,3 @@
 ## References
 - ワークフロー: `apps/itsm_core/cir_auto_label/workflows/gitlab_cir_auto_label.json`
 - OQ: `apps/itsm_core/cir_auto_label/docs/oq/oq.md`
-

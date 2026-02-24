@@ -51,8 +51,7 @@ SoR（RDS PostgreSQL `itsm.*`）から SLA 計測（受付/応答/解決/期限/
 
 日次 Cron 実行時に、集計対象日付 `dt` が「前日（UTC）」として解釈されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - Cron 実行の `dt` が、実行日の前日（UTC）になっている
 - `as_of`（集計時点）が `dt` の `23:59:59Z` になっている
 
@@ -71,8 +70,7 @@ SoR（RDS PostgreSQL `itsm.*`）から SLA 計測（受付/応答/解決/期限/
 
 n8n の手動実行（または `apps/itsm_core/itsm_sla_metrics_sync/scripts/run_oq.sh`）で集計が実行され、S3 に出力されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - 手動実行で日次集計が走り、S3 に出力される
 - `N8N_METRICS_TARGET_DATE=YYYY-MM-DD` を n8n 側の環境変数として設定した場合、任意日付の集計ができる
 
@@ -92,8 +90,7 @@ n8n の手動実行（または `apps/itsm_core/itsm_sla_metrics_sync/scripts/ru
 
 S3 に出力されるキー/形式が期待通りであることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `N8N_S3_BUCKET` / `N8N_S3_PREFIX` に従って、以下のキーへ出力される
   - `.../sla/daily_metrics/dt=<YYYY-MM-DD>/realm=<realm>/metrics.json`
   - `.../sla/events/dt=<YYYY-MM-DD>/realm=<realm>/sla_events.jsonl`

@@ -58,8 +58,7 @@ DRY_RUN=true apps/itsm_core/scripts/deploy_all_workflows.sh
 
 - DDL 適用が成功し、依存チェックが通ること
 
-## 成果物（証跡）
-
+## 証跡（evidence）
 - DDL 適用ログ（dry-run / 反映）
 - 依存チェック結果
 - ワークフロー同期ログ（実施した場合）

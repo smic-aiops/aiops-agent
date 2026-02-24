@@ -51,7 +51,6 @@ ACTIVATE=true apps/itsm_core/gitlab_dora_metrics_sync/scripts/deploy_workflows.s
 
 - 同期が成功し、OQ を実行できる（n8n 実行ログが残る）こと
 
-## 成果物（証跡）
-
+## 証跡（evidence）
 - 同期コマンドのログ（日時、実行者、対象環境）
 - OQ Webhook 呼び出しの記録（curl などの実行ログ、n8n 実行ログ）

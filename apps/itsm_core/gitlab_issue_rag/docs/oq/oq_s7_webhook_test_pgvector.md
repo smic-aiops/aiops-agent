@@ -10,8 +10,7 @@
   - Webhook node: `Webhook Trigger`
   - Postgres node: `Check pgvector`
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `POST /webhook/gitlab/issue/rag/test` が `{"ok":true,"pgvector":true}` を返す
 - pgvector が未導入の環境では `{"ok":false,"pgvector":false,"error":"pgvector_not_installed"}` を返す
 

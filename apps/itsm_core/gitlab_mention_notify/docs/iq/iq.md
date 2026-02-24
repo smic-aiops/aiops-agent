@@ -54,8 +54,7 @@ DRY_RUN=true apps/itsm_core/gitlab_mention_notify/scripts/setup_gitlab_group_web
 
 - 同期が成功し、GitLab の webhook テスト送信で n8n が起動できる（OQ の `OQ-GMN-001` につながる）こと
 
-## 成果物（証跡）
-
+## 証跡（evidence）
 - 同期/セットアップの実行ログ
 - GitLab webhook 設定（URL/Secret 有無）のスクリーンショットまたは設定値メモ
 - n8n 実行ログ（Webhook 受信）

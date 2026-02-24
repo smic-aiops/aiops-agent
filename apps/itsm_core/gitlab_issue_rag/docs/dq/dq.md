@@ -55,8 +55,7 @@
 - 取り込み対象プロジェクト/領域の追加・変更
 - DB スキーマ（テーブル/インデックス）の変更
 
-## 証跡（最小）
-
+## 証跡（evidence）
 - `/webhook/gitlab/issue/rag/test` の応答（`pgvector=true`）
 - n8n 実行ログ（GitLab/Embedding API/Postgres の成功）
 - `itsm_gitlab_issue_documents` などのレコード確認（embedding の有無、メタデータ）

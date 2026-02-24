@@ -171,8 +171,7 @@
 - Zulip API 呼び出し失敗は、`status_code=502` とし、可能な範囲で `upstream_status` と `upstream_body` を返す。
 - ただし `upstream_body` は秘匿情報が含まれる可能性があるため、返却内容は「センシティブになり得るフィールドを除外/マスクする」ことを前提とする（実装はワークフローを正とする）。
 
-## ログ/証跡（最小）
-
+## 証跡（evidence）
 ### 記録すべきキー（推奨）
 
 - `realm`, `zulip_base_url`, `action`, `stream_name`, `stream_id`, `status_code`, `skipped`, `reason`, `upstream_status`

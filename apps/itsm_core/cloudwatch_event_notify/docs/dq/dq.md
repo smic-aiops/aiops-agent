@@ -56,8 +56,7 @@
 
 再検証は原則 OQ を実施し、外部 API 呼び出し量や実行頻度が変わる場合は PQ の観点も追加する。
 
-## 証跡（最小）
-
+## 証跡（evidence）
 - IQ/OQ 実行ログ（日時、実行者、対象環境）
 - OQ の応答 JSON（test/notify）と n8n 実行ログ
 - 外部連携の成立証跡（Zulip 投稿、GitLab Issue、Grafana Annotation の確認ログ）

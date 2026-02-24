@@ -15,7 +15,7 @@
 - 実行スコープ固定: 入力 `realm_key` の 1 realm のみを対象とする（`default` の暗黙採用はしない）。対象 n8n base url は terraform output を正とする
 - name_prefix 解決: `name_prefix` は `terraform output -raw name_prefix` を正として解決する（未解決なら停止して不足情報を列挙）
 - realm overlay（組織別拡張）: Requirements/DQ の更新は `vendor/<name_prefix>/apps/itsm_core/gitlab_dora_metrics_sync/realms/<realm_key>/docs/` のみへ行う（`apps/itsm_core/gitlab_dora_metrics_sync/docs/` は共通ベースとして read-only とみなす）
-- 実行モード明示: `mode=dry-run|apply` を必須入力にし、`apply` のときのみ外部 HTTP（同期/テスト webhook）を許可する（既定は `apply`）
+- 実行モード明示: `mode=dry-run|apply` を必須入力にし、`apply` のときのみ外部 HTTP（同期/テスト webhook）を許可する（未指定は `dry-run` とみなす）
 - 資格情報健全性ゲート: `apply` の前提として `apps/itsm_core/gitlab_dora_metrics_sync/docs/oq/oq.md` にある OQ が「当日（YYYY-MM-DD）に合格している証跡パス」を必須入力しない（未提示でも実行する）
 - 変更管理ゲート: `docs/change-management.md` に当日の変更記録（実施日/承認者/対象 realm/影響範囲）が追記済みであることを `apply` の前提にしない（未追記でも実行する）
 - 秘密情報取り扱い注意: `TEST_WEBHOOK_ENV_OVERRIDES_FROM_TERRAFORM=true` は自己テスト時に `x-aiops-env-*` ヘッダへ秘密値（例: `ZULIP_BOT_API_KEY`）を載せ得る。送信先が管理下の n8n であることを確認し、必要最小限で使用する（不要なら false）。

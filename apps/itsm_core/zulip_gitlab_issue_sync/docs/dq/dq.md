@@ -48,8 +48,7 @@
 - Zulip 投稿取得条件（bot 投稿の扱い等）の変更
 - S3 エクスポートのスキーマ/キー変更（任意機能）
 
-## 証跡（最小）
-
+## 証跡（evidence）
 - n8n 実行ログ（Zulip/GitLab API 成功）
 - GitLab Issue/コメントの差分（作成/更新）
 - Zulip の通知投稿ログ

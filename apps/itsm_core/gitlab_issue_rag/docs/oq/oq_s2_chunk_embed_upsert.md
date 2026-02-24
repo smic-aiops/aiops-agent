@@ -20,8 +20,7 @@
 - embedding を有効化する場合
   - `N8N_EMBEDDING_API_KEY`（または `OPENAI_API_KEY`）
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `N8N_GITLAB_ISSUE_RAG_CHUNK_SIZE` / `N8N_GITLAB_ISSUE_RAG_CHUNK_OVERLAP` でチャンク粒度が調整できる
 - embedding を有効化した場合、`embedding` が non-null で保存される
 - `document_id` が安定（同じ issue/chunk なら同一 ID）で、upsert が効く

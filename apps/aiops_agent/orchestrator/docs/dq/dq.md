@@ -72,7 +72,7 @@
 | DQ-OFF-011 | medium | GitLab 管理ドキュメント ルーティング | 一般管理/サービス管理/技術管理の照会 | `rag_mode=gitlab_management_docs` が選択される |
 | DQ-OFF-012 | medium | RAG 候補反映 | Issue 候補入力 | `preview_facts.candidate_source` が一致 |
 | DQ-OFF-013 | medium | ナレッジ化（再利用）誘導 | 障害対応の手順を残したい | `next_action` が安全側（承認/確認）に寄る |
-| DQ-OFF-014 | medium | 改善要望の受付（CIR＝GitLab イシューへの集約） | 「xxx ができるようになって」 | `next_action` が安全側（受領→別途連絡）に寄り、重複排除したうえで改善機会として整理できる |
+| DQ-OFF-014 | medium | 改善要望の受付（CIR＝GitLab Issue への集約） | 「○○ができるようになって」 | `next_action` が安全側（受領→別途連絡）に寄り、重複排除したうえで改善機会として整理できる |
 
 代表シナリオの JSON 定義は `apps/aiops_agent/orchestrator/data/default/dq/scenarios/representative_scenarios.json` を正とし、回帰は `apps/aiops_agent/orchestrator/scripts/run_dq_scenarios.py` で実施する（`N8N_ORCHESTRATOR_BASE_URL`/`N8N_WEBHOOK_BASE_URL` でエンドポイントを指定。互換: `N8N_ORCHESTRATOR_BASE_URL`/`N8N_WEBHOOK_BASE_URL`）。
 
@@ -207,4 +207,4 @@ bash apps/aiops_agent/orchestrator/scripts/run_iq_tests_aiops_agent.sh
 - 2026-01-12: `policy_context.dq` への閾値集約、JSON/PII 指標の明示、再実施トリガと証跡保存コマンドを追加
 - 2026-01-12: 影響評価の前提、合否基準の許容差、入力多様性、再実施条件、証跡チェックリスト、デグレ判定、dry-run を追記（再現性と安全性を強化）
 - 2026-02-01: DQ-OFF-013（ナレッジ化誘導）を追加し、要求（代表ユースケース）と代表シナリオ JSON を整合
-- 2026-02-17: DQ-OFF-014（改善要望の受付/CIR＝GitLab イシューへの集約）を追加し、代表シナリオ JSON を整合
+- 2026-02-17: DQ-OFF-014（改善要望の受付/CIR＝GitLab Issue への集約）を追加し、代表シナリオ JSON を整合

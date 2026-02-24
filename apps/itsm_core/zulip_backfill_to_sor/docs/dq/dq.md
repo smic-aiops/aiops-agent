@@ -39,8 +39,7 @@
 - IQ 合格: `apps/itsm_core/zulip_backfill_to_sor/docs/iq/iq.md` の最低限条件を満たす
 - OQ 合格: `apps/itsm_core/zulip_backfill_to_sor/docs/oq/oq.md` の必須ケースが合格する
 
-## 証跡（最小）
-
+## 証跡（evidence）
 - dry-run 出力（対象 realm/検出ルール）
 - scan/execute のログ（日時、対象、結果）
 

@@ -11,8 +11,7 @@ SoR ops の定期運用（保持/PII redaction）が、n8n ワークフローと
 - 既定では DB への破壊的変更（保持削除/匿名化）が実行されない（n8n 側の `*_EXECUTE` が false である）
 - Cron の既定スケジュールが把握できる（retention: 毎日 03:10 / PII redaction: 毎時 15分）
 
-## 手順（例）
-
+## 手順
 ### 1. ワークフロー同期（dry-run）
 
 ```bash

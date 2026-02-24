@@ -9,7 +9,6 @@ SoR ops の主要スクリプトが `--dry-run` / `--plan-only` で停止し、�
 - 各スクリプトが `exit 0` で終了する
 - DB へ変更を書き込まない（`--dry-run` / `--plan-only` の範囲）
 
-## 手順（例）
-
+## 手順
 `apps/itsm_core/sor_ops/scripts/run_oq.sh` を利用する。
 

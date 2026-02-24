@@ -4,8 +4,7 @@
 
 S3 に出力されるキー/形式が期待通りであることを確認します。
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `N8N_S3_BUCKET` / `N8N_S3_PREFIX` に従って、以下のキーへ出力される
   - `.../sla/daily_metrics/dt=<YYYY-MM-DD>/realm=<realm>/metrics.json`
   - `.../sla/events/dt=<YYYY-MM-DD>/realm=<realm>/sla_events.jsonl`

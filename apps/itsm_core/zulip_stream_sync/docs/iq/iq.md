@@ -51,8 +51,7 @@ ACTIVATE=true TEST_WEBHOOK=true apps/itsm_core/zulip_stream_sync/scripts/deploy_
 
 - `/webhook/zulip/streams/sync/test` が実行でき、必須 env（マッピングを含む）の健全性確認ができること
 
-## 成果物（証跡）
-
+## 証跡（evidence）
 - 同期コマンドのログ
 - `/webhook/zulip/streams/sync/test` の応答 JSON
 - n8n 実行ログ（test 実行履歴）

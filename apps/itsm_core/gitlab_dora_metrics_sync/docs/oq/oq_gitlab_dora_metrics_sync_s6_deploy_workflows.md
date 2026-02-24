@@ -4,8 +4,7 @@
 
 `apps/itsm_core/gitlab_dora_metrics_sync/scripts/deploy_workflows.sh` により、`workflows/` が n8n Public API へ upsert されることを確認します。
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - dry-run で差分が表示できる
 - 同期後に n8n 上に `GitLab DORA Metrics Sync` が反映される
 

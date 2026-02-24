@@ -1,4 +1,4 @@
-# IQ（設置時適格性確認）: AIOps Approval History Backfill to SoR
+# IQ（設置適格性確認）: AIOps Approval History Backfill to SoR
 
 ## 目的
 

@@ -39,8 +39,7 @@
 - IQ 合格: `apps/itsm_core/gitlab_backfill_to_sor/docs/iq/iq.md` の最低限条件を満たす
 - OQ 合格: `apps/itsm_core/gitlab_backfill_to_sor/docs/oq/oq.md` の必須ケースが合格する
 
-## 証跡（最小）
-
+## 証跡（evidence）
 - ワークフロー同期ログ（dry-run 差分 + upsert 完了）
 - テスト投入の応答 JSON / n8n 実行ログ
 

@@ -12,8 +12,7 @@ GitLab API/DB/embedding API の外部接続が部分的に失敗しても、原�
   - Code node: `Embed Chunks`（embedding エラーの捕捉）
   - Postgres node: `Upsert Issue Chunks`（DB 失敗の可観測性）
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - 不足設定（GitLab base/token/target）時に、原因が分かるエラーとして出力される
 - notes 取得に失敗した場合、失敗が検知できる（ログまたは metadata にエラー情報が残る）
 - embedding 呼び出しが失敗した場合、`embedding_error` が記録される（再実行で復旧可能）

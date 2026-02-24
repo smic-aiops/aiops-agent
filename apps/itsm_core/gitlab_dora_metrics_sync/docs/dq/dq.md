@@ -48,8 +48,7 @@
 - S3 出力キー/スキーマ変更
 - GitLab API 参照範囲（Deployments/MRs）やページング・上限値の変更
 
-## 証跡（最小）
-
+## 証跡（evidence）
 - n8n 実行ログ（GitLab/S3 成功）
 - S3 の出力オブジェクト（キー、サイズ、更新時刻）
 - `metrics.json` / `gitlab_dora_events.jsonl` の parse 結果（OQ 証跡）

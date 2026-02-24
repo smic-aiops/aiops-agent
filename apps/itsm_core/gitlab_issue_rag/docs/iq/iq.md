@@ -59,8 +59,7 @@ ACTIVATE=true apps/itsm_core/gitlab_issue_rag/scripts/deploy_workflows.sh
 - `IQ-GIR-WH-001` が合格し、pgvector が有効であることを確認できる
 - 同期が成功し、OQ を実行できる（n8n 実行ログが残る）
 
-## 成果物（証跡）
-
+## 証跡（evidence）
 - 同期コマンドのログ
 - `/webhook/gitlab/issue/rag/test` の応答 JSON
 - n8n 実行ログ（test/sync 実行）

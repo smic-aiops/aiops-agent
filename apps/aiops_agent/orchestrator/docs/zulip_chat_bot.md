@@ -114,7 +114,7 @@ SSM パラメータ名は `terraform output -raw N8N_ZULIP_OUTGOING_TOKEN_PARAM`
 
 ### 2.5 改善要求（CIR）受付と通知（半自律/自律拡張）
 
-Zulip 上の改善要求（例: 「xxx ができるようになって」）を受領し、CIR（継続的改善レジスター）＝ GitLab Issue として集約します。
+Zulip 上の改善要求（例: 「○○ができるようになって」）を受領し、CIR（継続的改善レジスター）＝GitLab Issue として集約します。
 運用者が承認（`状態/Approved`）/完了（`状態/Closed`）にしたタイミングで、改善要求者へ通知する運用を想定します。
 
 全体フロー（正）:
@@ -129,7 +129,7 @@ sequenceDiagram
   participant GL as GitLab（CIR Issue）
   participant OP as 運用者
 
-  U->>Z: 「xxx ができるようになって」
+  U->>Z: 「○○ができるようになって」
   Z->>OB: Outgoing Webhook
   OB->>AA: /ingest/zulip
   AA->>GL: CIR Issue 起票（状態/New）

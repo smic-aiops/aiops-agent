@@ -55,8 +55,7 @@ ACTIVATE=true TEST_WEBHOOK=true apps/itsm_core/cloudwatch_event_notify/scripts/d
 - `IQ-CWN-DEP-001`〜`IQ-CWN-WH-001` がすべて合格すること
 - 失敗がある場合、原因（未同期/URL 誤り/環境変数不足/経路遮断）と是正を記録すること
 
-## 成果物（証跡）
-
+## 証跡（evidence）
 - 同期コマンドの実行ログ（日時、実行者、対象環境、dry-run/本反映）
 - `/webhook/cloudwatch/notify/test` の応答 JSON
 - n8n 実行ログ（テスト Webhook 実行履歴）

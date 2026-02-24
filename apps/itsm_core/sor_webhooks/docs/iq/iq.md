@@ -8,7 +8,6 @@
 
 - 同期（dry-run）: `DRY_RUN=true WITH_TESTS=false WORKFLOW_DIR=apps/itsm_core/sor_webhooks/workflows apps/itsm_core/scripts/deploy_all_workflows.sh`
 
-## 成果物（証跡）
-
+## 証跡（evidence）
 - 同期ログ（dry-run/適用）
 

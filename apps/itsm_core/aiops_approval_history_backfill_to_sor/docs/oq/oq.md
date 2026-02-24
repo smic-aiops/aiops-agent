@@ -48,8 +48,7 @@
 - 状態保持（カーソル）は `itsm.integration_state` を使う設計になっている（`state_key = aiops_approval_history_backfill_to_sor`）
 - Cron の既定スケジュールが把握できる（毎時 35分）
 
-#### 手順（例）
-
+#### 手順
 ##### 1. ワークフロー同期（dry-run）
 
 ```bash

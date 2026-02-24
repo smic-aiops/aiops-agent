@@ -3,7 +3,7 @@
 ## 目的
 GitLab general-management の CIR Issue（テンプレ起票）について、起票直後に **`ITSM/継続的改善` と `状態/New` を自動付与**できることを確認します。
 
-## 手順（最小）
+## 手順
 1. スモーク（dry-run）: `apps/itsm_core/cir_auto_label/scripts/run_oq.sh --dry-run` を実行し、叩くべき webhook が表示されることを確認する
 2. 疎通（apply）: `apps/itsm_core/cir_auto_label/scripts/run_oq.sh` を実行し、`/test` が 200 で返ることを確認する（424 の場合は n8n 側の env を埋める）
 3. GitLab general-management に Issue Hook（Project Hook）を設定する

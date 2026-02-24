@@ -47,8 +47,7 @@ ACTIVATE=true apps/itsm_core/zulip_gitlab_issue_sync/scripts/deploy_workflows.sh
 
 - 同期が成功し、OQ を実行できる状態であること
 
-## 成果物（証跡）
-
+## 証跡（evidence）
 - 同期コマンドのログ
 - n8n 実行ログ（OQ 実行）
 

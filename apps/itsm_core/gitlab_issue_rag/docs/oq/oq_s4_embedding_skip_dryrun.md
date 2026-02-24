@@ -12,8 +12,7 @@ embedding API の検証/一時停止のために、embedding を完全スキッ�
   - `N8N_EMBEDDING_SKIP=true`
   - `N8N_GITLAB_ISSUE_RAG_DRY_RUN=true`
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - `N8N_EMBEDDING_SKIP=true` の場合、embedding API を呼ばずに `embedding` を null のまま upsert できる
 - `N8N_GITLAB_ISSUE_RAG_DRY_RUN=true` の場合も同様に `embedding` を null のまま upsert できる
 - embedding API の認証情報が未設定でも、skip/dry-run 設定時は失敗しない

@@ -4,8 +4,7 @@
 
 n8n の手動実行（または `apps/itsm_core/gitlab_dora_metrics_sync/scripts/run_oq.sh`）で集計が実行され、S3 に出力されることを確認します。
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - 手動実行でメトリクス集計が走り、S3 に出力される
 - `N8N_METRICS_TARGET_DATE=YYYY-MM-DD` を設定した場合、任意日付の集計ができる
 

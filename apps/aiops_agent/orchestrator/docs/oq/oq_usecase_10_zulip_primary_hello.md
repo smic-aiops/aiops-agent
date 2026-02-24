@@ -71,8 +71,7 @@ bash apps/aiops_agent/orchestrator/scripts/run_oq_zulip_primary_hello.sh --execu
 - n8n が受信し、AIOps Agent ボットから返信が届く
 - 返信は `--timeout-sec`（既定 120 秒）以内
 
-## 合否基準
-
+## 受け入れ基準
 - **合格**: 上記期待結果をすべて満たす
 - **不合格**: 送信失敗 / 返信なし / 返信が別レルムに到達
 

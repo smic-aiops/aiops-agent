@@ -127,8 +127,7 @@ Zulip backfill を n8n workflow として **定期実行できる前提**（デ�
 - 状態保持（カーソル）は `itsm.integration_state` を使う設計になっている（`state_key = zulip_backfill_to_sor.decisions`）
 - Cron の既定スケジュールが把握できる（毎時 25分）
 
-#### 手順（例）
-
+#### 手順
 ##### 1. ワークフロー同期（dry-run）
 
 ```bash

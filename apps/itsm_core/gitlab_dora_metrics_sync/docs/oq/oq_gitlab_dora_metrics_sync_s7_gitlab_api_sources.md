@@ -13,7 +13,6 @@
 - Commit → Merge Requests（デプロイSHAから紐付け）
   - `GET /projects/:id/repository/commits/:sha/merge_requests`
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - 上記エンドポイントが API token で参照でき、集計が成立する
 

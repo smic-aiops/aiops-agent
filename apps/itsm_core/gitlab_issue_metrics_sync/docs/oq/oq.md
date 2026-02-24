@@ -84,8 +84,7 @@ flowchart LR
 
 定期実行で「前日（UTC）」の `dt` が決まり、日次集計が実行されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - Cron 実行時に、`dt` は「実行時刻の UTC 日付に対して前日」の日付になる
 - `N8N_METRICS_TARGET_DATE` が未設定の場合でも、`dt` の決定がタイムゾーンに依存しない
 
@@ -104,8 +103,7 @@ flowchart LR
 
 n8n の手動実行（または `apps/itsm_core/gitlab_issue_metrics_sync/scripts/run_oq.sh`）で集計が実行され、S3 に出力されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - 手動実行でメトリクス集計が走り、S3 に出力される
 - `N8N_METRICS_TARGET_DATE=YYYY-MM-DD` を n8n 側の環境変数として設定した場合、任意日付の集計ができる
 
@@ -125,8 +123,7 @@ n8n の手動実行（または `apps/itsm_core/gitlab_issue_metrics_sync/script
 
 S3 に出力されるキー/形式が期待通りであることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `N8N_S3_BUCKET` / `N8N_S3_PREFIX` に従って、以下のキーへ出力される
   - `.../daily_metrics/dt=<YYYY-MM-DD>/realm=<realm>/metrics.json`
   - `.../events/dt=<YYYY-MM-DD>/realm=<realm>/gitlab_issues.jsonl`
@@ -150,8 +147,7 @@ S3 に出力されるキー/形式が期待通りであることを確認しま�
 
 期待するメトリクスが JSON に含まれ、欠落せずに算出されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `metrics.json` に以下のキーが存在する
   - `request_count`
   - `first_response_p50_minutes` / `first_response_p95_minutes`
@@ -177,8 +173,7 @@ S3 に出力されるキー/形式が期待通りであることを確認しま�
 
 GitLab Issue の取得・集計対象が、環境変数により意図通り制御できることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `N8N_GITLAB_LABEL_FILTERS`（既定 `チャネル：Zulip`）に従って issues を取得する
 - `N8N_GITLAB_ISSUE_STATE` に従って issues を取得する
 
@@ -197,8 +192,7 @@ GitLab Issue の取得・集計対象が、環境変数により意図通り制�
 
 `apps/itsm_core/gitlab_issue_metrics_sync/scripts/deploy_workflows.sh` により、`workflows/` が n8n Public API へ upsert されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - `DRY_RUN=true` の場合、API へ変更を加えず差分確認ができる
 - `DRY_RUN=false` の場合、ワークフローが upsert される
 - 同期後に n8n 上でワークフロー（`GitLab Issue Metrics Sync`）が存在し、有効化/実行できる状態である
@@ -219,8 +213,7 @@ GitLab Issue の取得・集計対象が、環境変数により意図通り制�
 
 GitLab API（Issues / Notes / Resource state events）を参照して集計し、メトリクス + events が S3 へ出力されることを確認します。
 
-#### 受け入れ基準（AC）
-
+#### 受け入れ基準
 - GitLab API を参照して集計される
   - Issues
   - Notes（初回応答算出）

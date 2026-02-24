@@ -50,8 +50,7 @@ bash apps/aiops_agent/orchestrator/scripts/run_oq_zulip_primary_hello.sh --execu
   - 先に「後でメッセンジャーでお伝えします。」が返信として返る（bot_type=3 の HTTP レスポンス）
   - 後段で実処理が走り、結果が Bot API（bot_type=1）投稿などで通知される（環境により後段処理は stub の場合がある）
 
-## 合否基準
-
+## 受け入れ基準
 - **合格**:
   - quick_reply が成立する
   - defer で「先に一言」が成立する（Zulip 側に返信が表示される）

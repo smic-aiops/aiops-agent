@@ -113,7 +113,6 @@ flowchart LR
 - 証跡:
   - n8n 実行ログ、Zulip/GitLab の結果
 
-
 ---
 
 ### OQ: Zulip↔GitLab Issue 同期（Zulip GitLab Issue Sync）（source: `oq_zulip_gitlab_issue_sync_sync.md`）

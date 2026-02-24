@@ -18,7 +18,7 @@
 - 実行スコープ固定: 入力 `realm_key` の 1 realm のみを対象とする（`default` の暗黙採用はしない）。対象 n8n base url は terraform output を正とする
 - name_prefix 解決: `name_prefix` は `terraform output -raw name_prefix` を正として解決する（未解決なら停止して不足情報を列挙）
 - realm overlay（組織別拡張）: Requirements/DQ の更新は `vendor/<name_prefix>/apps/itsm_core/gitlab_backfill_to_sor/realms/<realm_key>/docs/` のみへ行う（`apps/itsm_core/gitlab_backfill_to_sor/docs/` は共通ベースとして read-only とみなす）
-- 実行モード明示: `mode=dry-run|apply` を必須入力にし、`apply` のときのみ外部 HTTP（同期/テスト webhook）を許可する（既定は `apply`）
+- 実行モード明示: `mode=dry-run|apply` を必須入力にし、`apply` のときのみ外部 HTTP（同期/テスト webhook）を許可する（未指定は `dry-run` とみなす）
 - 資格情報健全性ゲート: `apply` の前提として `apps/itsm_core/gitlab_backfill_to_sor/docs/oq/oq.md` にある OQ が「当日（YYYY-MM-DD）に合格している証跡パス」を必須入力にしない（未提示でも実行する）
 - 変更管理ゲート: `docs/change-management.md` に当日の変更記録（実施日/承認者/対象 realm/影響範囲）が追記済みであることを `apply` の前提にしない（未追記でも実行する）
 - OQ ドキュメント整備: OQ 実行（外部 HTTP を伴う検証）に入る前に、必ず `scripts/generate_oq_md.sh` を実行して `apps/*/docs/oq/oq.md` の生成領域（`<!-- OQ_SCENARIOS_BEGIN -->`〜`<!-- OQ_SCENARIOS_END -->`）を最新化する（差分が出た場合は反映してから OQ を実行する）

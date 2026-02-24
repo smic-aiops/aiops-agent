@@ -475,8 +475,7 @@ flowchart LR
 1. `/webhook/zulip/streams/sync/test` を strict で実行し、必須 env（マッピングを含む）が不足していないことを確認する。
 2. `/webhook/zulip/streams/sync` へ `realm=<対象realm>` を付与し、`dry_run=true` で `action=create` / `action=archive` を実行する。
 
-#### 期待結果（合否判定）
-
+#### 受け入れ基準
 - 応答に `realm` が含まれ、入力の `realm` と一致すること
 - 応答に `zulip_base_url` が含まれ、対象 realm の想定接続先に一致すること
 - `dry_run=true` の場合、Zulip API への更新を行わずに完走すること（`ok=true`）
@@ -504,8 +503,7 @@ flowchart LR
 1. `dry_run=true` で `action=create` を実行する（入力は最低限: `stream_name`）。
 2. `dry_run=true` で `action=archive` を実行する（入力は最低限: `stream_name` または `stream_id`）。
 
-#### 期待結果（合否判定）
-
+#### 受け入れ基準
 - 応答に `realm` と `zulip_base_url` が必ず含まれること
 - `dry_run=true` では `ok=true` で完走し、外部（Zulip）更新が発生しないこと
 

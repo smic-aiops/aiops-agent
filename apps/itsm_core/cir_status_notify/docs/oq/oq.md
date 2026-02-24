@@ -10,7 +10,7 @@ GitLab Issue（CIR）の **`状態/Approved` / `状態/Closed`** ラベル付与
 - GitLab 側で Issue Hook を `POST /webhook/gitlab/cir/status/notify` に向けて設定済み
 - CIR Issue description に `起票者`（Zulip のメールアドレス）が入っていること
 
-## 手順（最小）
+## 手順
 1. スモーク（dry-run）: `apps/itsm_core/cir_status_notify/scripts/run_oq.sh --dry-run` を実行し、叩くべき webhook が表示されることを確認する
 2. 疎通（apply）: `apps/itsm_core/cir_status_notify/scripts/run_oq.sh` を実行し、`/test` が 200 で返ることを確認する
 3. GitLab general-management に Issue Hook（Project Hook）を設定する
@@ -21,6 +21,6 @@ GitLab Issue（CIR）の **`状態/Approved` / `状態/Closed`** ラベル付与
 6. 同じ payload が再送されても DM が 2 回届かないことを確認（SoR の `integrity.event_key` で抑止）
 7. （任意）運用者がラベル `状態/Closed` を付与し、同様に DM が届くことを確認
 
-## 期待結果
+## 受け入れ基準
 - `状態/Approved` / `状態/Closed` の **追加**を検知したときのみ通知される
 - 同一イベントは 1 回だけ通知される（SoR 冪等）

@@ -4,8 +4,7 @@
 
 GitLab API（Issues / Notes / Resource state events）を参照して集計し、メトリクス + events が S3 へ出力されることを確認します。
 
-## 受け入れ基準（AC）
-
+## 受け入れ基準
 - GitLab API を参照して集計される
   - Issues
   - Notes（初回応答算出）
