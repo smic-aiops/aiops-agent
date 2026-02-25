@@ -87,3 +87,24 @@ grafana:
 ## Done（完了条件）
 - 次の担当者が “同じIssueを読んで” 解決できる
 - 手順書が [docs/](../) に蓄積され、検索・参照できる
+
+## 検索性向上（ベクトル基盤 + API）
+
+検索は「ナレッジの保持（GitLab）」「索引（Qdrant）」「検索API（n8n/Agent）」を分離して実装する。
+
+- ベクトル基盤: Qdrant（`var.enable_n8n_qdrant=true` で ECS に同居）
+- 収集/索引: GitLab EFS mirror を indexer で同期し、Qdrant に投入（`modules/stack/gitlab_efs_indexer.tf`）
+- 検索API: n8n webhook / AIOps Agent knowledge_store から利用（必要に応じて拡張）
+
+対応ユースケース:
+- UC-1404 サービスカタログ管理のナレッジの更新
+- UC-1804 サービスレベル管理のナレッジの更新
+- UC-3103 バッチ検索
+- UC-3104 メタデータ管理
+- UC-3105 コレクション管理
+- UC-3106 ペイロード更新
+- UC-3107 ポイント管理
+- UC-3108 検索API
+- UC-3109 ベクトル基盤
+- UC-3110 レコメンド（検索結果の候補提示として扱う）
+- UC-3111 スクロール取得

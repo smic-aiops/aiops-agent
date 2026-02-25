@@ -415,6 +415,31 @@ ensure_technical_template_project_exists() {
   gitlab_create_project "${template_name}" "${template_path}" "${group_id}" "${project_visibility}" >/dev/null || true
 }
 
+ensure_hr_talent_template_project_exists() {
+  local group_id="$1"
+  local group_full_path="$2"
+  local project_visibility="$3"
+
+  local template_name template_path template_full_path template_project_id
+  template_name="${ITSM_TEMPLATE_HR_TALENT_MANAGEMENT_PROJECT_NAME:-template-hr-talent-management}"
+  template_path="${ITSM_TEMPLATE_HR_TALENT_MANAGEMENT_PROJECT_PATH:-template-hr-talent-management}"
+  template_full_path="${group_full_path}/${template_path}"
+
+  template_project_id="$(gitlab_find_project_id_by_full_path "${template_full_path}" "${template_path}")"
+  if [[ -n "${template_project_id}" ]]; then
+    echo "[gitlab] HR talent template project exists: ${template_full_path}"
+    return
+  fi
+
+  if [[ -n "${DRY_RUN:-}" ]]; then
+    echo "[gitlab] DRY_RUN create HR talent template project: ${template_full_path}"
+    return
+  fi
+
+  echo "[gitlab] Creating HR talent template project: ${template_full_path}"
+  gitlab_create_project "${template_name}" "${template_path}" "${group_id}" "${project_visibility}" >/dev/null || true
+}
+
 require_cmd() {
   local cmd
   for cmd in "$@"; do

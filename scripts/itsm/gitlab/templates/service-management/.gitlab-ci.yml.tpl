@@ -36,3 +36,16 @@ cmdb:zulip_stream_sync:
     - apk add --no-cache bash curl jq yq
   script:
     - bash scripts/cmdb/sync_zulip_streams.sh cmdb
+
+cmdb:practice_review_sync:
+  stage: cmdb_sync
+  image: alpine:3.19
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - changes:
+        - cmdb/**/*.md
+        - scripts/itsm/sync_practice_reviews.sh
+  before_script:
+    - apk add --no-cache bash curl jq yq
+  script:
+    - bash scripts/itsm/sync_practice_reviews.sh cmdb

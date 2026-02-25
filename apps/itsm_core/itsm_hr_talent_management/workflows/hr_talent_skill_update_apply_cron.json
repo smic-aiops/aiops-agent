@@ -1,0 +1,72 @@
+{
+  "name": "hr-talent-skill-update-apply-cron",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "every5Minutes"
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Cron Apply",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowContext = this;\nconst env = $env || {};\n\nfunction required(value, name) {\n  if (value === undefined || value === null || String(value).trim() === '') {\n    throw new Error(`${name} is required`);\n  }\n  return value;\n}\n\nfunction trimSlash(value) {\n  return String(value || '').replace(/\\/+$/, '');\n}\n\nfunction safeString(value) {\n  if (value === undefined || value === null) return '';\n  return String(value).trim();\n}\n\nfunction parseList(value) {\n  if (!value) return [];\n  if (Array.isArray(value)) return value.filter(Boolean);\n  return String(value)\n    .split(',')\n    .map((v) => v.trim())\n    .filter(Boolean);\n}\n\nfunction extractPayload(description) {\n  const text = String(description || '');\n  const m = text.match(/<!--HR_TALENT_SKILL_UPDATE_JSON:([\\s\\S]*?)-->/);\n  if (!m) return null;\n  try {\n    return JSON.parse(m[1]);\n  } catch (error) {\n    return null;\n  }\n}\n\nfunction hasApprovalMarker(text) {\n  const t = String(text || '').trim();\n  if (!t) return false;\n  const lower = t.toLowerCase();\n  if (lower.startsWith('/approve')) return true;\n  if (lower.startsWith('[approve]')) return true;\n  if (lower.startsWith('approve:')) return true;\n  if (lower.startsWith('承認')) return true;\n  return false;\n}\n\nfunction yamlEscape(value) {\n  const raw = value === undefined || value === null ? '' : String(value);\n  const cleaned = raw.replace(/\\r\\n/g, '\\n').replace(/\\r/g, '\\n');\n  const needsQuote = /[:#\\n\\t\\-\\{\\}\\[\\],&\\*\\?\\|<>=!%@`]/.test(cleaned) || cleaned.trim() !== cleaned;\n  const safe = cleaned.replace(/\"/g, '\\\\\"');\n  return needsQuote ? `\"${safe}\"` : safe;\n}\n\nconst realm = safeString(env.N8N_REALM || env.N8N_OBSERVER_REALM || 'default') || 'default';\n\nconst gitlabBaseUrl = trimSlash(env.N8N_GITLAB_BASE_URL || env.GITLAB_BASE_URL || env.GITLAB_URL || env.SERVICE_URL_GITLAB || '');\nconst gitlabApiBase = trimSlash(env.N8N_GITLAB_API_BASE_URL || env.GITLAB_API_BASE_URL || (gitlabBaseUrl ? `${gitlabBaseUrl}/api/v4` : '') || '');\nconst gitlabToken = safeString(env.N8N_GITLAB_TOKEN || env.GITLAB_TOKEN || env.GITLAB_ADMIN_TOKEN || '');\n\nlet projectRef = safeString(env.HR_TALENT_GITLAB_PROJECT_ID || env.HR_TALENT_GITLAB_PROJECT_PATH || env.N8N_GITLAB_PROJECT_ID || env.N8N_GITLAB_PROJECT_PATH || '');\nif (!projectRef) {\n  projectRef = `${realm}/hr-talent-management`;\n}\n\nconst defaultBranch = safeString(env.HR_TALENT_DEFAULT_BRANCH || 'main') || 'main';\nconst approveLabels = parseList(env.HR_TALENT_APPROVE_LABELS || 'status:approved');\n\nrequired(gitlabApiBase, 'GITLAB_API_BASE_URL');\nrequired(gitlabToken, 'GITLAB_TOKEN');\nrequired(projectRef, 'HR_TALENT_GITLAB_PROJECT_ID or HR_TALENT_GITLAB_PROJECT_PATH');\n\nconst projectEncoded = encodeURIComponent(projectRef);\n\nasync function listIssues() {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/issues`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'GET',\n    url,\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    qs: {\n      state: 'opened',\n      labels: 'hr-skill-update,status:pending-approval',\n      per_page: 100,\n      order_by: 'updated_at',\n      sort: 'asc'\n    }\n  });\n}\n\nasync function listNotes(iid) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/issues/${iid}/notes`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'GET',\n    url,\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    qs: {\n      per_page: 100,\n      order_by: 'created_at',\n      sort: 'asc'\n    }\n  });\n}\n\nasync function createBranch(branch) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/repository/branches`;\n  try {\n    return await workflowContext.helpers.httpRequest({\n      method: 'POST',\n      url,\n      json: true,\n      headers: { 'PRIVATE-TOKEN': gitlabToken },\n      qs: { branch, ref: defaultBranch }\n    });\n  } catch (err) {\n    const status = err?.response?.statusCode || err?.statusCode || null;\n    // 400/409: already exists\n    if (status === 400 || status === 409) return null;\n    throw err;\n  }\n}\n\nasync function fileExists(filePath, ref) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/repository/files/${encodeURIComponent(filePath)}`;\n  try {\n    await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url,\n      json: true,\n      headers: { 'PRIVATE-TOKEN': gitlabToken },\n      qs: { ref }\n    });\n    return true;\n  } catch (err) {\n    const status = err?.response?.statusCode || err?.statusCode || null;\n    if (status === 404) return false;\n    return false;\n  }\n}\n\nasync function createCommit(branch, filePath, content, commitMessage) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/repository/commits`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'POST',\n    url,\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    body: {\n      branch,\n      commit_message: commitMessage,\n      actions: [\n        {\n          action: 'create',\n          file_path: filePath,\n          content,\n        }\n      ]\n    }\n  });\n}\n\nasync function createMr(sourceBranch, title, description) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/merge_requests`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'POST',\n    url,\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    body: {\n      source_branch: sourceBranch,\n      target_branch: defaultBranch,\n      title,\n      description,\n      remove_source_branch: true,\n    }\n  });\n}\n\nasync function postNote(iid, note) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/issues/${iid}/notes`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'POST',\n    url,\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    body: { body: note }\n  });\n}\n\nasync function setLabels(iid, labels) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/issues/${iid}`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'PUT',\n    url,\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    body: { labels: labels.join(',') }\n  });\n}\n\nlet issues;\ntry {\n  issues = await listIssues();\n} catch (err) {\n  const status = err?.response?.statusCode || err?.statusCode || err?.httpCode || null;\n  const responseBody = err?.response?.body || err?.response?.data || null;\n  return [{\n    json: {\n      ok: false,\n      status_code: status || 500,\n      error: String(err?.message || err),\n      response_body: responseBody,\n      realm,\n      project_ref: projectRef,\n    }\n  }];\n}\n\nconst applied = [];\nconst skipped = [];\nconst errors = [];\n\nfor (const issue of (Array.isArray(issues) ? issues : [])) {\n  const iid = issue?.iid;\n  if (!iid) continue;\n\n  const labels = Array.isArray(issue.labels) ? issue.labels : [];\n  if (labels.includes('status:applied') || labels.includes('hr-talent:applied')) {\n    skipped.push({ iid, reason: 'already_applied' });\n    continue;\n  }\n\n  let notes;\n  try {\n    notes = await listNotes(iid);\n  } catch (err) {\n    errors.push({ iid, step: 'list_notes', error: String(err?.message || err) });\n    continue;\n  }\n\n  const approvedByLabel = approveLabels.some((l) => labels.includes(l));\n  const approvedByNote = Array.isArray(notes) ? notes.some((n) => !n?.system && hasApprovalMarker(n?.body)) : false;\n\n  if (!approvedByLabel && !approvedByNote) {\n    skipped.push({ iid, reason: 'not_approved' });\n    continue;\n  }\n\n  const payload = extractPayload(issue.description);\n  if (!payload || !payload.person_key || !payload.skill_id || !payload.level) {\n    skipped.push({ iid, reason: 'missing_payload' });\n    continue;\n  }\n\n  const branch = `hr-skill-update-${iid}`;\n  const filePath = `ledger/skill_updates/skill_update_${iid}.yml`;\n\n  try {\n    await createBranch(branch);\n\n    const exists = await fileExists(filePath, branch);\n    if (!exists) {\n      const now = new Date().toISOString();\n      const yaml = [\n        'kind: skill_update',\n        `realm: ${yamlEscape(payload.realm || realm)}`,\n        `requested_at: ${yamlEscape(payload.requested_at || now)}`,\n        `requested_by: ${yamlEscape(payload.requested_by || '')}`,\n        `person_key: ${yamlEscape(payload.person_key)}`,\n        `skill_id: ${yamlEscape(payload.skill_id)}`,\n        `level: ${yamlEscape(payload.level)}`,\n        payload.evidence ? `evidence: ${yamlEscape(payload.evidence)}` : null,\n        payload.notes ? `notes: ${yamlEscape(payload.notes)}` : null,\n        'source:',\n        `  gitlab_issue_iid: ${iid}`,\n        `  gitlab_issue_url: ${yamlEscape(issue.web_url || '')}`,\n      ].filter((v) => v !== null).join('\\n') + '\\n';\n\n      await createCommit(\n        branch,\n        filePath,\n        yaml,\n        `Apply skill update from issue #${iid}`\n      );\n    }\n\n    const mr = await createMr(\n      branch,\n      `Apply skill update: ${payload.person_key} ${payload.skill_id} -> ${payload.level} (#${iid})`,\n      `This MR was generated by n8n (hr-talent-skill-update-apply-cron).\\n\\nSource issue: ${issue.web_url || ''}`\n    );\n\n    const appliedMarker = '<!--HR_TALENT_APPLIED-->';\n    const noteBody = [\n      appliedMarker,\n      'スキル更新が承認されたため、台帳更新のMRを作成しました。',\n      mr?.web_url ? `MR: ${mr.web_url}` : null,\n    ].filter((v) => v !== null).join('\\n');\n\n    await postNote(iid, noteBody);\n\n    const newLabels = Array.from(new Set([\n      ...labels.filter((l) => l !== 'status:pending-approval'),\n      'status:applied',\n      'hr-talent:applied',\n    ]));\n\n    await setLabels(iid, newLabels);\n\n    applied.push({ iid, mr_url: mr?.web_url || null, file_path: filePath });\n  } catch (err) {\n    const status = err?.response?.statusCode || err?.statusCode || err?.httpCode || null;\n    const responseBody = err?.response?.body || err?.response?.data || null;\n    errors.push({\n      iid,\n      step: 'apply',\n      status_code: status || null,\n      error: String(err?.message || err),\n      response_body: responseBody,\n    });\n  }\n}\n\nreturn [{\n  json: {\n    ok: true,\n    status_code: 200,\n    realm,\n    project_ref: projectRef,\n    counts: {\n      scanned: Array.isArray(issues) ? issues.length : 0,\n      applied: applied.length,\n      skipped: skipped.length,\n      errors: errors.length,\n    },\n    applied,\n    skipped,\n    errors,\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Apply Approved Skill Updates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Env (required)\n- N8N_REALM (default: default)\n- GITLAB_API_BASE_URL (or GITLAB_BASE_URL)\n- N8N_GITLAB_TOKEN (or GITLAB_TOKEN)\n- HR_TALENT_GITLAB_PROJECT_ID or HR_TALENT_GITLAB_PROJECT_PATH\n\nEnv (optional)\n- HR_TALENT_DEFAULT_BRANCH (default: main)\n- HR_TALENT_APPROVE_LABELS (default: status:approved)\n\nBehavior\n- Scans issues with labels: hr-skill-update + status:pending-approval\n- Approval: Issue label (status:approved) OR note starting with /approve\n- Writes: creates file ledger/skill_updates/skill_update_<iid>.yml in MR\n",
+        "height": 320,
+        "width": 520,
+        "color": 6
+      },
+      "id": "100",
+      "name": "Sticky Note: env",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Cron Apply": {
+      "main": [
+        [
+          {
+            "node": "Apply Approved Skill Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}
+

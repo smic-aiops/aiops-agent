@@ -76,3 +76,12 @@ grafana:
 - Zulip チャンネル: #gm-change
 - n8n がイベントを受信して分類（重大度/カテゴリ/対象サービス）し、GitLab Issue/コメントとZulip通知を発行
 - Grafana にはイベントに対応するダッシュボードURLを添付し、CMDBの `grafana.usecase_dashboards` と紐付ける
+
+<!-- BEGIN TRACEABILITY_GENERAL_FAMILY -->
+## 対応ユースケース（トレーサビリティ / general）
+- UC-0114 アーキテクチャ管理の意思決定基準の明文化
+- UC-2614 サービス財務管理の意思決定基準の明文化
+- UC-3314 プロジェクト管理の意思決定基準の明文化
+- UC-4914 知識管理の意思決定基準の明文化
+- UC-5214 関係管理の意思決定基準の明文化
+<!-- END TRACEABILITY_GENERAL_FAMILY -->

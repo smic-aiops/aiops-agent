@@ -353,6 +353,31 @@ resource "aws_lb_target_group" "sulu" {
   }
 }
 
+resource "aws_lb_target_group" "horilla" {
+  for_each = var.create_ecs && var.create_horilla ? local.horilla_realm_hosts : {}
+
+  name_prefix = "hor-"
+  port        = 8000
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = local.vpc_id
+
+  health_check {
+    path                = "/"
+    matcher             = "200-399"
+    healthy_threshold   = 2
+    unhealthy_threshold = 5
+    timeout             = 5
+    interval            = 30
+  }
+
+  tags = merge(local.tags, { realm = each.key, Name = local.horilla_target_group_name_by_realm[each.key] })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 resource "aws_lb_target_group" "keycloak" {
   count = var.create_ecs && var.create_keycloak ? 1 : 0
 
@@ -508,6 +533,7 @@ resource "aws_acm_certificate" "alb" {
     "*.${local.n8n_subdomain}.${local.hosted_zone_name_input}",
     "*.${local.qdrant_subdomain}.${local.hosted_zone_name_input}",
     "*.${local.service_subdomain_map["sulu"]}.${local.hosted_zone_name_input}",
+    "*.${local.service_subdomain_map["horilla"]}.${local.hosted_zone_name_input}",
     "*.zulip.${local.hosted_zone_name_input}",
     "sse.zulip.${local.hosted_zone_name_input}",
   ]
@@ -1302,6 +1328,30 @@ resource "aws_lb_listener_rule" "sulu" {
   tags = merge(local.tags, { realm = each.key, Name = "${local.name_prefix}-sulu-${each.key}-https-rule" })
 }
 
+resource "aws_lb_listener_rule" "horilla" {
+  for_each = var.create_ecs && var.create_horilla ? local.horilla_realm_hosts : {}
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = local.horilla_listener_priority_by_realm[each.key]
+
+  action {
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.horilla[each.key].arn
+      }
+    }
+  }
+
+  condition {
+    host_header {
+      values = [each.value]
+    }
+  }
+
+  tags = merge(local.tags, { realm = each.key, Name = "${local.name_prefix}-horilla-${each.key}-https-rule" })
+}
+
 resource "aws_lb_listener_rule" "sulu_http" {
   for_each = var.create_ecs && var.create_sulu ? local.sulu_realm_hosts : {}
 
@@ -1324,6 +1374,30 @@ resource "aws_lb_listener_rule" "sulu_http" {
   }
 
   tags = merge(local.tags, { realm = each.key, Name = "${local.name_prefix}-sulu-${each.key}-http-rule" })
+}
+
+resource "aws_lb_listener_rule" "horilla_http" {
+  for_each = var.create_ecs && var.create_horilla ? local.horilla_realm_hosts : {}
+
+  listener_arn = aws_lb_listener.http[0].arn
+  priority     = local.horilla_listener_priority_by_realm[each.key]
+
+  action {
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.horilla[each.key].arn
+      }
+    }
+  }
+
+  condition {
+    host_header {
+      values = [each.value]
+    }
+  }
+
+  tags = merge(local.tags, { realm = each.key, Name = "${local.name_prefix}-horilla-${each.key}-http-rule" })
 }
 
 resource "aws_lb_listener_rule" "keycloak" {
@@ -1914,6 +1988,21 @@ resource "aws_route53_record" "sulu" {
   }
 }
 
+resource "aws_route53_record" "horilla" {
+  for_each = var.create_ecs && var.create_horilla ? local.horilla_realm_hosts : {}
+
+  zone_id         = local.hosted_zone_id
+  name            = each.value
+  type            = "A"
+  allow_overwrite = true
+
+  alias {
+    name                   = aws_lb.app[0].dns_name
+    zone_id                = aws_lb.app[0].zone_id
+    evaluate_target_health = false
+  }
+}
+
 resource "aws_route53_record" "keycloak" {
   count = var.create_ecs && var.create_keycloak ? 1 : 0
 
@@ -2085,6 +2174,34 @@ resource "aws_ecs_service" "sulu" {
   }
 
   tags = merge(local.tags, { realm = each.key, Name = "${local.name_prefix}-sulu-${each.key}-svc" })
+
+  depends_on = [aws_lb_listener.https]
+}
+
+resource "aws_ecs_service" "horilla" {
+  for_each = var.create_ecs && var.create_horilla ? local.horilla_realm_hosts : {}
+
+  name                              = "${local.name_prefix}-horilla-${each.key}"
+  cluster                           = aws_ecs_cluster.this[0].id
+  task_definition                   = aws_ecs_task_definition.horilla[each.key].arn
+  desired_count                     = var.horilla_desired_count
+  launch_type                       = "FARGATE"
+  health_check_grace_period_seconds = var.horilla_health_check_grace_period_seconds
+  enable_execute_command            = true
+
+  network_configuration {
+    subnets          = [local.service_subnet_id]
+    security_groups  = [aws_security_group.ecs_service[0].id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.horilla[each.key].arn
+    container_name   = "horilla-${each.key}"
+    container_port   = 8000
+  }
+
+  tags = merge(local.tags, { realm = each.key, Name = "${local.name_prefix}-horilla-${each.key}-svc" })
 
   depends_on = [aws_lb_listener.https]
 }

@@ -6,6 +6,7 @@
 - 種別: `app+script`
 - 名称案: `apps/itsm_core/itsm_hr_talent_management`
 - 目的: タレント/スキル管理の運用を ITSM 連携可能な形で実装する
+- 設計メモ: `docs/itsm/usecase_new_component_fitgap_gitlab_horilla_n8n_2026-02-25.md`
 
 ## 必要機能（最小）
 - スキル台帳（個人/ロール/習熟度/更新履歴）

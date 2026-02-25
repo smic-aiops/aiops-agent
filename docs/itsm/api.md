@@ -26,3 +26,20 @@
 - OpenAPI の草案（エンドポイント/スキーマ/認可）
 - 認可モデル（Keycloak / RLS / 例外 ACL）の整理
 - n8n Webhook で提供している入口の棚卸しと移行計画
+
+## 4. 現時点の入口（n8n Webhook）
+
+本リポジトリでは、当面の「外部連携の入口」を n8n Webhook として実装している。
+
+### HR Talent Management（GitLab 証跡 + n8n 自動化）
+
+- スキル更新申請（Issue 作成）
+  - `POST /webhook/hr/talent/skill/update/request`
+- スキル更新 反映（OQ 用）
+  - `POST /webhook/hr/talent/skill/update/apply/oq`
+- スキル更新 テスト（環境依存の健全性確認）
+  - `POST /webhook/hr/talent/skill/update/test`
+- 月次レポート生成（MR 作成）
+  - `POST /webhook/hr/talent/report/monthly/generate/request`
+- 月次レポート テスト（環境依存の健全性確認）
+  - `POST /webhook/hr/talent/report/monthly/generate/test`

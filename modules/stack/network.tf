@@ -14,6 +14,7 @@ locals {
     exastro_web = "ita-web"
     exastro_api = "ita-api"
     sulu        = "sulu"
+    horilla     = "horilla"
     pgadmin     = "pgadmin"
     keycloak    = "keycloak"
     odoo        = "odoo"

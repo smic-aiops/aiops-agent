@@ -536,12 +536,15 @@ dry_run_plan_realm() {
   local template_service_path service_path
   local template_general_path general_path
   local template_tech_path tech_path
+  local template_hr_talent_path hr_talent_path
   template_service_path="${ITSM_TEMPLATE_SERVICE_MANAGEMENT_PROJECT_PATH:-template-service-management}"
   service_path="${ITSM_SERVICE_MANAGEMENT_PROJECT_PATH:-service-management}"
   template_general_path="${ITSM_TEMPLATE_GENERAL_MANAGEMENT_PROJECT_PATH:-template-general-management}"
   general_path="${ITSM_GENERAL_MANAGEMENT_PROJECT_PATH:-general-management}"
   template_tech_path="${ITSM_TEMPLATE_TECHNICAL_MANAGEMENT_PROJECT_PATH:-template-technical-management}"
   tech_path="${ITSM_TECHNICAL_MANAGEMENT_PROJECT_PATH:-technical-management}"
+  template_hr_talent_path="${ITSM_TEMPLATE_HR_TALENT_MANAGEMENT_PROJECT_PATH:-template-hr-talent-management}"
+  hr_talent_path="${ITSM_HR_TALENT_MANAGEMENT_PROJECT_PATH:-hr-talent-management}"
 
   local template_service_full_path="${group_full_path}/${template_service_path}"
   local service_full_path="${group_full_path}/${service_path}"
@@ -549,14 +552,18 @@ dry_run_plan_realm() {
   local general_full_path="${group_full_path}/${general_path}"
   local template_tech_full_path="${group_full_path}/${template_tech_path}"
   local tech_full_path="${group_full_path}/${tech_path}"
+  local template_hr_talent_full_path="${group_full_path}/${template_hr_talent_path}"
+  local hr_talent_full_path="${group_full_path}/${hr_talent_path}"
 
-  local template_service_id service_id template_general_id general_id template_tech_id tech_id
+  local template_service_id service_id template_general_id general_id template_tech_id tech_id template_hr_talent_id hr_talent_id
   template_service_id="$(gitlab_find_project_id_by_full_path "${template_service_full_path}" "${template_service_path}")"
   service_id="$(gitlab_find_project_id_by_full_path "${service_full_path}" "${service_path}")"
   template_general_id="$(gitlab_find_project_id_by_full_path "${template_general_full_path}" "${template_general_path}")"
   general_id="$(gitlab_find_project_id_by_full_path "${general_full_path}" "${general_path}")"
   template_tech_id="$(gitlab_find_project_id_by_full_path "${template_tech_full_path}" "${template_tech_path}")"
   tech_id="$(gitlab_find_project_id_by_full_path "${tech_full_path}" "${tech_path}")"
+  template_hr_talent_id="$(gitlab_find_project_id_by_full_path "${template_hr_talent_full_path}" "${template_hr_talent_path}")"
+  hr_talent_id="$(gitlab_find_project_id_by_full_path "${hr_talent_full_path}" "${hr_talent_path}")"
 
   local skip_if_exists="${ITSM_SKIP_IF_PROJECT_EXISTS:-true}"
 
@@ -567,9 +574,11 @@ dry_run_plan_realm() {
   echo "[gitlab] DRY_RUN - template(service): ${template_service_full_path} (exists=$([[ -n "${template_service_id}" ]] && echo true || echo false))"
   echo "[gitlab] DRY_RUN - template(general): ${template_general_full_path} (exists=$([[ -n "${template_general_id}" ]] && echo true || echo false))"
   echo "[gitlab] DRY_RUN - template(technical): ${template_tech_full_path} (exists=$([[ -n "${template_tech_id}" ]] && echo true || echo false))"
+  echo "[gitlab] DRY_RUN - template(hr-talent): ${template_hr_talent_full_path} (exists=$([[ -n "${template_hr_talent_id}" ]] && echo true || echo false))"
   echo "[gitlab] DRY_RUN - service project: ${service_full_path} (exists=$([[ -n "${service_id}" ]] && echo true || echo false))"
   echo "[gitlab] DRY_RUN - general project: ${general_full_path} (exists=$([[ -n "${general_id}" ]] && echo true || echo false))"
   echo "[gitlab] DRY_RUN - technical project: ${tech_full_path} (exists=$([[ -n "${tech_id}" ]] && echo true || echo false))"
+  echo "[gitlab] DRY_RUN - hr-talent project: ${hr_talent_full_path} (exists=$([[ -n "${hr_talent_id}" ]] && echo true || echo false))"
 
   if [[ "${ITSM_PURGE_EXISTING:-false}" == "true" ]]; then
     if [[ -n "${service_id}" ]]; then
@@ -581,6 +590,9 @@ dry_run_plan_realm() {
     if [[ -n "${tech_id}" ]]; then
       itsm_delete_efs_mirror_clones_for_project "${realm}" "${group_full_path}" "${tech_path}"
     fi
+    if [[ -n "${hr_talent_id}" ]]; then
+      itsm_delete_efs_mirror_clones_for_project "${realm}" "${group_full_path}" "${hr_talent_path}"
+    fi
     if [[ -n "${template_service_id}" ]]; then
       itsm_delete_efs_mirror_clones_for_project "${realm}" "${group_full_path}" "${template_service_path}"
     fi
@@ -589,6 +601,9 @@ dry_run_plan_realm() {
     fi
     if [[ -n "${template_tech_id}" ]]; then
       itsm_delete_efs_mirror_clones_for_project "${realm}" "${group_full_path}" "${template_tech_path}"
+    fi
+    if [[ -n "${template_hr_talent_id}" ]]; then
+      itsm_delete_efs_mirror_clones_for_project "${realm}" "${group_full_path}" "${template_hr_talent_path}"
     fi
   fi
 
@@ -606,6 +621,11 @@ dry_run_plan_realm() {
     echo "[gitlab] DRY_RUN would create template project (technical): ${template_tech_full_path} under group_id=${group_id}"
   else
     echo "[gitlab] DRY_RUN would update template repo/wiki content and ensure labels/boards/branches (technical): ${template_tech_full_path}"
+  fi
+  if [[ -z "${template_hr_talent_id}" ]]; then
+    echo "[gitlab] DRY_RUN would create template project (hr-talent): ${template_hr_talent_full_path} under group_id=${group_id}"
+  else
+    echo "[gitlab] DRY_RUN would update template repo content and ensure labels/boards (hr-talent): ${template_hr_talent_full_path}"
   fi
 
   local service_skip="false"
@@ -657,6 +677,21 @@ dry_run_plan_realm() {
     echo "[gitlab] DRY_RUN would sync repo from template (force_update=${force_update}): ${tech_full_path}"
     echo "[gitlab] DRY_RUN would sync wiki from local templates to: ${tech_full_path}"
     echo "[gitlab] DRY_RUN would ensure labels/boards/branches in: ${tech_full_path}"
+  fi
+
+  local hr_talent_skip="false"
+  if [[ -n "${hr_talent_id}" && "${skip_if_exists}" != "false" && "${force_update}" != "true" ]]; then
+    hr_talent_skip="true"
+  fi
+  if [[ -z "${hr_talent_id}" ]]; then
+    echo "[gitlab] DRY_RUN would fork hr-talent project from template: ${template_hr_talent_full_path} -> ${hr_talent_full_path}"
+    echo "[gitlab] DRY_RUN would sync repo from template after fork: ${hr_talent_full_path}"
+    echo "[gitlab] DRY_RUN would ensure labels/boards in: ${hr_talent_full_path}"
+  elif [[ "${hr_talent_skip}" == "true" ]]; then
+    echo "[gitlab] DRY_RUN would skip hr-talent content bootstrap (project exists): ${hr_talent_full_path}"
+  else
+    echo "[gitlab] DRY_RUN would sync repo from template (force_update=${force_update}): ${hr_talent_full_path}"
+    echo "[gitlab] DRY_RUN would ensure labels/boards in: ${hr_talent_full_path}"
   fi
 }
 
@@ -913,7 +948,7 @@ EOF
   local sla_slo_definition_template
   local mention_mapping_template sla_master_template monitoring_unification_template
   local workflow_catalog_template escalation_matrix_template ola_master_template uc_master_template
-  local cmdb_template runbook_template ci_template report_script grafana_sync_script zulip_stream_sync_script readme_template audit_readme_template
+  local cmdb_template runbook_template ci_template report_script grafana_sync_script zulip_stream_sync_script practice_review_sync_script readme_template audit_readme_template
   local raci_template role_guide_template
   local grafana_url
   grafana_url="${grafana_base_url}"
@@ -1077,6 +1112,18 @@ zulip_stream_sync:
   script:
     - apk add --no-cache bash curl jq yq
     - bash scripts/cmdb/sync_zulip_streams.sh
+
+practice_review_sync:
+  stage: sync
+  image: alpine
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - changes:
+        - cmdb/**/*.md
+        - scripts/itsm/sync_practice_reviews.sh
+  script:
+    - apk add --no-cache bash curl jq yq
+    - bash scripts/itsm/sync_practice_reviews.sh
 EOF
   )"
 
@@ -1104,6 +1151,7 @@ EOF
 
   grafana_sync_script="$(load_template "service-management/scripts/grafana/sync_cmdb_dashboards.sh.tpl")"
   zulip_stream_sync_script="$(load_template "service-management/scripts/cmdb/sync_zulip_streams.sh")"
+  practice_review_sync_script="$(load_template "service-management/scripts/itsm/sync_practice_reviews.sh")"
 
   if [[ "${force_update}" == "true" ]]; then
     gitlab_upsert_file "${template_project_id}" "${branch}" "README.md" "${readme_template}" "Update README"
@@ -1125,20 +1173,26 @@ EOF
     gitlab_upsert_file "${template_project_id}" "${branch}" "docs/monthly_report_template.md" "${report_template}" "Update monthly report template"
     gitlab_upsert_file "${template_project_id}" "${branch}" "docs/mention_user_mapping.md" "${mention_mapping_template}" "Update mention user mapping"
     gitlab_upsert_file "${template_project_id}" "${branch}" ".gitlab-ci.yml" "${ci_template}" "Update CMDB validation pipeline"
-    gitlab_upsert_file "${template_project_id}" "${branch}" "scripts/cmdb/generate_cmdb_report.sh" "${report_script}" "Update CMDB report generator"
-    gitlab_upsert_file "${template_project_id}" "${branch}" "scripts/grafana/sync_cmdb_dashboards.sh" "${grafana_sync_script}" "Update Grafana CMDB sync script"
-    gitlab_upsert_file "${template_project_id}" "${branch}" "scripts/cmdb/sync_zulip_streams.sh" "${zulip_stream_sync_script}" "Update Zulip stream sync script"
-    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/usecases" "true" \
-      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
-      "GENERAL_MANAGEMENT_PROJECT_PATH" "${general_management_path}" \
-      "TECHNICAL_MANAGEMENT_PROJECT_PATH" "${tech_management_path}" \
-      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
-      "GROUP_FULL_PATH" "${group_full_path}" \
-      "GRAFANA_BASE_URL" "${grafana_base_url}"
-    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/dashboards" "true" \
-      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
-      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
-      "GROUP_FULL_PATH" "${group_full_path}" \
+	    gitlab_upsert_file "${template_project_id}" "${branch}" "scripts/cmdb/generate_cmdb_report.sh" "${report_script}" "Update CMDB report generator"
+	    gitlab_upsert_file "${template_project_id}" "${branch}" "scripts/grafana/sync_cmdb_dashboards.sh" "${grafana_sync_script}" "Update Grafana CMDB sync script"
+	    gitlab_upsert_file "${template_project_id}" "${branch}" "scripts/cmdb/sync_zulip_streams.sh" "${zulip_stream_sync_script}" "Update Zulip stream sync script"
+	    gitlab_upsert_file "${template_project_id}" "${branch}" "scripts/itsm/sync_practice_reviews.sh" "${practice_review_sync_script}" "Update practice review sync script"
+	    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/usecases" "true" \
+	      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
+	      "GENERAL_MANAGEMENT_PROJECT_PATH" "${general_management_path}" \
+	      "TECHNICAL_MANAGEMENT_PROJECT_PATH" "${tech_management_path}" \
+	      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
+	      "GROUP_FULL_PATH" "${group_full_path}" \
+	      "GRAFANA_BASE_URL" "${grafana_base_url}"
+	    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/service_management" "true" \
+	      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
+	      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
+	      "GROUP_FULL_PATH" "${group_full_path}" \
+	      "GRAFANA_BASE_URL" "${grafana_base_url}"
+	    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/dashboards" "true" \
+	      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
+	      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
+	      "GROUP_FULL_PATH" "${group_full_path}" \
       "GRAFANA_BASE_URL" "${grafana_base_url}"
     gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/reports" "true" \
       "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
@@ -1165,20 +1219,26 @@ EOF
     gitlab_create_file_if_missing "${template_project_id}" "${branch}" "docs/monthly_report_template.md" "${report_template}" "Add monthly report template"
     gitlab_create_file_if_missing "${template_project_id}" "${branch}" "docs/mention_user_mapping.md" "${mention_mapping_template}" "Add mention user mapping"
     gitlab_create_file_if_missing "${template_project_id}" "${branch}" ".gitlab-ci.yml" "${ci_template}" "Add CMDB validation pipeline"
-    gitlab_create_file_if_missing "${template_project_id}" "${branch}" "scripts/cmdb/generate_cmdb_report.sh" "${report_script}" "Add CMDB report generator"
-    gitlab_create_file_if_missing "${template_project_id}" "${branch}" "scripts/grafana/sync_cmdb_dashboards.sh" "${grafana_sync_script}" "Add Grafana CMDB sync script"
-    gitlab_create_file_if_missing "${template_project_id}" "${branch}" "scripts/cmdb/sync_zulip_streams.sh" "${zulip_stream_sync_script}" "Add Zulip stream sync script"
-    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/usecases" "false" \
-      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
-      "GENERAL_MANAGEMENT_PROJECT_PATH" "${general_management_path}" \
-      "TECHNICAL_MANAGEMENT_PROJECT_PATH" "${tech_management_path}" \
-      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
-      "GROUP_FULL_PATH" "${group_full_path}" \
-      "GRAFANA_BASE_URL" "${grafana_base_url}"
-    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/dashboards" "false" \
-      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
-      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
-      "GROUP_FULL_PATH" "${group_full_path}" \
+	    gitlab_create_file_if_missing "${template_project_id}" "${branch}" "scripts/cmdb/generate_cmdb_report.sh" "${report_script}" "Add CMDB report generator"
+	    gitlab_create_file_if_missing "${template_project_id}" "${branch}" "scripts/grafana/sync_cmdb_dashboards.sh" "${grafana_sync_script}" "Add Grafana CMDB sync script"
+	    gitlab_create_file_if_missing "${template_project_id}" "${branch}" "scripts/cmdb/sync_zulip_streams.sh" "${zulip_stream_sync_script}" "Add Zulip stream sync script"
+	    gitlab_create_file_if_missing "${template_project_id}" "${branch}" "scripts/itsm/sync_practice_reviews.sh" "${practice_review_sync_script}" "Add practice review sync script"
+	    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/usecases" "false" \
+	      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
+	      "GENERAL_MANAGEMENT_PROJECT_PATH" "${general_management_path}" \
+	      "TECHNICAL_MANAGEMENT_PROJECT_PATH" "${tech_management_path}" \
+	      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
+	      "GROUP_FULL_PATH" "${group_full_path}" \
+	      "GRAFANA_BASE_URL" "${grafana_base_url}"
+	    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/service_management" "false" \
+	      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
+	      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
+	      "GROUP_FULL_PATH" "${group_full_path}" \
+	      "GRAFANA_BASE_URL" "${grafana_base_url}"
+	    gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/dashboards" "false" \
+	      "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
+	      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
+	      "GROUP_FULL_PATH" "${group_full_path}" \
       "GRAFANA_BASE_URL" "${grafana_base_url}"
     gitlab_apply_templates_in_dir "${template_project_id}" "${branch}" "service-management" "docs/reports" "false" \
       "SERVICE_MANAGEMENT_PROJECT_PATH" "${template_path}" \
@@ -1746,6 +1806,8 @@ ensure_general_management_project() {
   local tech_management_path tech_full_path
   tech_management_path="${ITSM_TECHNICAL_MANAGEMENT_PROJECT_PATH:-technical-management}"
   tech_full_path="${group_full_path}/${tech_management_path}"
+  local hr_talent_management_path
+  hr_talent_management_path="${ITSM_HR_TALENT_MANAGEMENT_PROJECT_PATH:-hr-talent-management}"
 
   local general_readme
   general_readme="$(load_and_render_template "general-management/README.md.tpl" \
@@ -1758,28 +1820,47 @@ ensure_general_management_project() {
     "GRAFANA_BASE_URL" "${grafana_base_url}" \
   )"
 
+  local general_apply_force
+  general_apply_force="false"
   if [[ "${force_update}" == "true" ]]; then
+    general_apply_force="true"
     gitlab_upsert_file "${general_template_project_id}" "${template_branch}" "README.md" "${general_readme}" "Update README"
-    gitlab_apply_templates_in_dir "${general_template_project_id}" "${template_branch}" "general-management" "docs/usecases" "true" \
-      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
-      "GROUP_FULL_PATH" "${group_full_path}" \
-      "SERVICE_MANAGEMENT_PROJECT_PATH" "${operations_project_path}" \
-      "GENERAL_MANAGEMENT_PROJECT_PATH" "${general_management_path}" \
-      "GRAFANA_BASE_URL" "${grafana_base_url}"
   else
     gitlab_create_file_if_missing "${general_template_project_id}" "${template_branch}" "README.md" "${general_readme}" "Add README"
-    gitlab_apply_templates_in_dir "${general_template_project_id}" "${template_branch}" "general-management" "docs/usecases" "false" \
+  fi
+
+  # Populate the template repo with rendered files (docs + project management artifacts).
+  local general_repo_subdir
+  for general_repo_subdir in \
+    "docs/usecases" \
+    "projects" \
+    "plans" \
+    "raci" \
+    "reports" \
+    "risk" \
+    "portfolio" \
+    "strategy" \
+    "architecture" \
+    "suppliers" \
+    "finance" \
+    "org_change"; do
+    gitlab_apply_templates_in_dir "${general_template_project_id}" "${template_branch}" "general-management" "${general_repo_subdir}" "${general_apply_force}" \
       "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
       "GROUP_FULL_PATH" "${group_full_path}" \
       "SERVICE_MANAGEMENT_PROJECT_PATH" "${operations_project_path}" \
       "GENERAL_MANAGEMENT_PROJECT_PATH" "${general_management_path}" \
+      "HR_TALENT_MANAGEMENT_PROJECT_PATH" "${hr_talent_management_path}" \
       "GRAFANA_BASE_URL" "${grafana_base_url}"
-  fi
+  done
 
   local general_labels
-  general_labels="$(
-    cat <<'EOF'
+	  general_labels="$(
+	    cat <<'EOF'
 ITSM/リスク|#A8071A|リスク管理
+ITSM/戦略|#08979C|戦略管理
+ITSM/アーキテクチャ|#13C2C2|アーキテクチャ管理
+ITSM/組織変更|#2F54EB|組織変更管理
+ITSM/プロジェクト|#1D39C4|プロジェクト管理
 ITSM/コンプライアンス|#722ED1|監査・法令対応
 ITSM/情報セキュリティ|#531DAB|情報セキュリティ管理
 ITSM/ポリシー|#1890FF|方針・規程
@@ -1820,6 +1901,19 @@ EOF
 01|information_security|情報セキュリティ|general-management/issue_templates/generic.md.tpl
 01|policy_governance|ポリシー|general-management/issue_templates/generic.md.tpl
 01|portfolio|ポートフォリオ|general-management/issue_templates/generic.md.tpl
+01|portfolio_item|ポートフォリオ アイテム|general-management/issue_templates/portfolio_item.md.tpl
+01|strategy_okr|戦略（OKR）|general-management/issue_templates/strategy_okr.md.tpl
+01|architecture_decision|アーキテクチャ判断|general-management/issue_templates/architecture_decision.md.tpl
+01|org_change_plan|組織変更計画|general-management/issue_templates/org_change_plan.md.tpl
+01|supplier_review|サプライヤ レビュー|general-management/issue_templates/supplier_review.md.tpl
+01|finance_decision|財務意思決定|general-management/issue_templates/finance_decision.md.tpl
+01|risk_register_update|リスク/例外 台帳更新|general-management/issue_templates/risk_register_update.md.tpl
+02|project_charter|プロジェクト立上げ（チャーター）|general-management/issue_templates/project_charter.md.tpl
+02|project_plan|プロジェクト実行計画|general-management/issue_templates/project_plan.md.tpl
+02|project_milestone|プロジェクト マイルストーン|general-management/issue_templates/project_milestone.md.tpl
+02|project_status_report|プロジェクト 状態報告|general-management/issue_templates/project_status_report.md.tpl
+02|project_raci_update|プロジェクト RACI 更新|general-management/issue_templates/project_raci_update.md.tpl
+02|project_decision|プロジェクト 意思決定|general-management/issue_templates/project_decision.md.tpl
 04|continual_improvement_register|継続的改善（CIR）|general-management/issue_templates/continual_improvement_register.md.tpl
 EOF
   )"
@@ -1874,6 +1968,185 @@ EOF
     "状態/Closed" \
     "状態/On Hold" \
     "状態/Rejected"
+}
+
+ensure_hr_talent_management_project() {
+  local realm="$1"
+  local group_id="$2"
+  local group_full_path="$3"
+  local project_visibility="$4"
+  local force_update="$5"
+  local service_management_project_full_path="$6"
+  local zulip_base_url="${7:-}"
+  local n8n_base_url="${8:-}"
+
+  if [[ "${ITSM_HR_TALENT_MANAGEMENT_PROJECT_ENABLED:-true}" == "false" ]]; then
+    echo "[gitlab] HR talent management project skipped"
+    return
+  fi
+
+  local hr_template_name hr_template_path hr_template_full_path
+  local hr_name hr_path hr_full_path
+  hr_template_name="${ITSM_TEMPLATE_HR_TALENT_MANAGEMENT_PROJECT_NAME:-template-hr-talent-management}"
+  hr_template_path="${ITSM_TEMPLATE_HR_TALENT_MANAGEMENT_PROJECT_PATH:-template-hr-talent-management}"
+  hr_template_full_path="${group_full_path}/${hr_template_path}"
+  hr_name="${ITSM_HR_TALENT_MANAGEMENT_PROJECT_NAME:-hr-talent-management}"
+  hr_path="${ITSM_HR_TALENT_MANAGEMENT_PROJECT_PATH:-hr-talent-management}"
+  hr_full_path="${group_full_path}/${hr_path}"
+
+  local hr_template_project_id
+  hr_template_project_id="$(gitlab_find_project_id_by_full_path "${hr_template_full_path}" "${hr_template_path}")"
+  if [[ -z "${hr_template_project_id}" ]]; then
+    echo "[gitlab] Creating HR talent template project: ${hr_template_full_path}"
+    gitlab_create_project "${hr_template_name}" "${hr_template_path}" "${group_id}" "${project_visibility}"
+    hr_template_project_id="$(gitlab_find_project_id_by_full_path "${hr_template_full_path}" "${hr_template_path}")"
+    require_var "hr talent template project id" "${hr_template_project_id}"
+  else
+    echo "[gitlab] HR talent template project exists: ${hr_template_full_path}"
+  fi
+
+  local hr_project_id
+  hr_project_id="$(gitlab_find_project_id_by_full_path "${hr_full_path}" "${hr_path}")"
+  local hr_forked="false"
+  local hr_skip_content="false"
+  if [[ -z "${hr_project_id}" ]]; then
+    echo "[gitlab] Forking HR talent management project: ${hr_full_path}"
+    gitlab_fork_project "${hr_template_project_id}" "${group_id}" "${hr_name}" "${hr_path}"
+    hr_project_id="$(gitlab_find_project_id_by_full_path "${hr_full_path}" "${hr_path}")"
+    require_var "hr talent project id" "${hr_project_id}"
+    hr_forked="true"
+  else
+    echo "[gitlab] HR talent management project exists: ${hr_full_path}"
+    if [[ "${ITSM_SKIP_IF_PROJECT_EXISTS:-true}" != "false" && "${force_update}" != "true" ]]; then
+      hr_skip_content="true"
+      echo "[gitlab] HR talent content bootstrap skipped (project exists): ${hr_full_path}"
+    fi
+  fi
+
+  local template_branch branch
+  template_branch="$(gitlab_project_default_branch "${hr_template_project_id}")"
+  if [[ -z "${template_branch}" ]]; then
+    template_branch="main"
+  fi
+  branch="$(gitlab_project_default_branch "${hr_project_id}")"
+  if [[ -z "${branch}" ]]; then
+    branch="main"
+  fi
+
+  local readme policy standard
+  readme="$(
+    load_and_render_template "hr-talent-management/README.md.tpl" \
+      "REALM" "${realm}" \
+      "GITLAB_BASE_URL" "${GITLAB_BASE_URL}" \
+      "GROUP_FULL_PATH" "${group_full_path}" \
+      "HR_TALENT_PROJECT_PATH" "${hr_path}"
+  )"
+  policy="$(
+    load_and_render_template "hr-talent-management/docs/policy.md.tpl" \
+      "REALM" "${realm}"
+  )"
+  standard="$(
+    load_and_render_template "hr-talent-management/docs/standard.md.tpl" \
+      "REALM" "${realm}"
+  )"
+
+  if [[ "${force_update}" == "true" ]]; then
+    gitlab_upsert_file "${hr_template_project_id}" "${template_branch}" "README.md" "${readme}" "Update README"
+    gitlab_upsert_file "${hr_template_project_id}" "${template_branch}" "docs/policy.md" "${policy}" "Update policy"
+    gitlab_upsert_file "${hr_template_project_id}" "${template_branch}" "docs/standard.md" "${standard}" "Update standard"
+  else
+    gitlab_create_file_if_missing "${hr_template_project_id}" "${template_branch}" "README.md" "${readme}" "Add README"
+    gitlab_create_file_if_missing "${hr_template_project_id}" "${template_branch}" "docs/policy.md" "${policy}" "Add policy"
+    gitlab_create_file_if_missing "${hr_template_project_id}" "${template_branch}" "docs/standard.md" "${standard}" "Add standard"
+  fi
+
+  gitlab_apply_templates_in_dir "${hr_template_project_id}" "${template_branch}" "hr-talent-management" "catalog" "${force_update}" \
+    "REALM" "${realm}"
+  gitlab_apply_templates_in_dir "${hr_template_project_id}" "${template_branch}" "hr-talent-management" "people" "${force_update}" \
+    "REALM" "${realm}"
+  gitlab_apply_templates_in_dir "${hr_template_project_id}" "${template_branch}" "hr-talent-management" "ledger" "${force_update}" \
+    "REALM" "${realm}"
+  gitlab_apply_templates_in_dir "${hr_template_project_id}" "${template_branch}" "hr-talent-management" "plans" "${force_update}" \
+    "REALM" "${realm}"
+  gitlab_apply_templates_in_dir "${hr_template_project_id}" "${template_branch}" "hr-talent-management" "raci" "${force_update}" \
+    "REALM" "${realm}"
+  gitlab_apply_templates_in_dir "${hr_template_project_id}" "${template_branch}" "hr-talent-management" "reports" "${force_update}" \
+    "REALM" "${realm}"
+
+  local issue_template_specs
+  issue_template_specs="$(
+    cat <<'EOF'
+01|skill_update|スキル更新申請|hr-talent-management/issue_templates/01_skill_update.md.tpl
+02|development_plan|育成計画|hr-talent-management/issue_templates/02_development_plan.md.tpl
+03|raci_update|RACI 更新|hr-talent-management/issue_templates/03_raci_update.md.tpl
+EOF
+  )"
+
+  local template_prefix template_name template_title template_rel_path template_content template_path
+  while IFS='|' read -r template_prefix template_name template_title template_rel_path; do
+    [[ -z "${template_name}" ]] && continue
+    template_content="$(
+      load_and_render_template "${template_rel_path}" \
+        "REALM" "${realm}"
+    )"
+    template_path="$(prefixed_template_path "${template_prefix}" "${template_name}")"
+    if [[ "${force_update}" == "true" ]]; then
+      gitlab_upsert_file "${hr_template_project_id}" "${template_branch}" "${template_path}" "${template_content}" "Update ${template_name} issue template"
+    else
+      gitlab_create_file_if_missing "${hr_template_project_id}" "${template_branch}" "${template_path}" "${template_content}" "Add ${template_name} issue template"
+    fi
+  done <<<"${issue_template_specs}"
+
+  local labels
+  labels="$(
+    cat <<'EOF'
+hr-talent|#1890FF|人材・タレント管理
+hr-skill-update|#722ED1|スキル更新
+status:pending-approval|#FAAD14|承認待ち
+status:approved|#52C41A|承認済み
+status:applied|#389E0D|反映済み
+EOF
+  )"
+
+  local label_name label_color label_desc
+  while IFS='|' read -r label_name label_color label_desc; do
+    [[ -z "${label_name}" ]] && continue
+    gitlab_ensure_label "${hr_template_project_id}" "${label_name}" "${label_color}" "${label_desc}" "${force_update}"
+    if [[ "${hr_skip_content}" != "true" ]]; then
+      gitlab_ensure_label "${hr_project_id}" "${label_name}" "${label_color}" "${label_desc}" "${force_update}"
+    fi
+  done <<<"${labels}"
+
+  local board_name
+  board_name="${ITSM_HR_TALENT_BOARD_NAME:-HR Skill Updates}"
+  gitlab_ensure_board_with_lists "${hr_template_project_id}" "${board_name}" \
+    "status:pending-approval" \
+    "status:approved" \
+    "status:applied"
+  if [[ "${hr_skip_content}" != "true" ]]; then
+    gitlab_ensure_board_with_lists "${hr_project_id}" "${board_name}" \
+      "status:pending-approval" \
+      "status:approved" \
+      "status:applied"
+  fi
+
+  if [[ "${hr_skip_content}" != "true" ]] && [[ "${hr_forked}" == "true" || "${force_update}" == "true" ]]; then
+    gitlab_sync_repo_from_template \
+      "${hr_template_full_path}" "${hr_template_project_id}" "${template_branch}" \
+      "${hr_full_path}" "${hr_project_id}" "${branch}"
+  fi
+
+  if [[ "${hr_skip_content}" != "true" ]]; then
+    if [[ -n "${zulip_base_url}" && "${zulip_base_url}" != "null" ]]; then
+      echo "[gitlab] HR talent: zulip url=${zulip_base_url}"
+    fi
+    if [[ -n "${n8n_base_url}" && "${n8n_base_url}" != "null" ]]; then
+      echo "[gitlab] HR talent: n8n url=${n8n_base_url}"
+    fi
+    if [[ -n "${service_management_project_full_path}" ]]; then
+      echo "[gitlab] HR talent: service-management project=${service_management_project_full_path}"
+    fi
+  fi
 }
 
 
@@ -2154,6 +2427,7 @@ bootstrap_main() {
       ensure_service_template_project_exists "${group_id}" "${full_path}" "${visibility}"
       ensure_general_template_project_exists "${group_id}" "${full_path}" "${visibility}"
       ensure_technical_template_project_exists "${group_id}" "${full_path}" "${visibility}"
+      ensure_hr_talent_template_project_exists "${group_id}" "${full_path}" "${visibility}"
       sync_service_management_wiki_templates "${realm}" "${full_path}"
       sync_general_management_wiki_templates "${realm}" "${full_path}"
       sync_technical_management_wiki_templates "${realm}" "${full_path}"
@@ -2179,6 +2453,10 @@ bootstrap_main() {
     if [[ "${ITSM_FILES_ONLY:-false}" != "true" ]]; then
       ensure_general_bootstrap "${realm}" "${group_id}" "${full_path}" "${visibility}" "${grafana_url}" "${keycloak_admin_console_url}" "${zulip_url}" "${n8n_url}"
       ensure_technical_bootstrap "${realm}" "${group_id}" "${full_path}" "${visibility}" "${grafana_url}" "${keycloak_admin_console_url}" "${zulip_url}" "${n8n_url}"
+      local itsm_path itsm_full_path
+      itsm_path="${ITSM_SERVICE_MANAGEMENT_PROJECT_PATH:-service-management}"
+      itsm_full_path="${full_path}/${itsm_path}"
+      ensure_hr_talent_management_project "${realm}" "${group_id}" "${full_path}" "${visibility}" "$(effective_force_update_for_realm "${realm}")" "${itsm_full_path}" "${zulip_url}" "${n8n_url}"
     fi
   done
 }

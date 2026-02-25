@@ -37,6 +37,7 @@ AI ノードの出力（LLM の構造化 JSON）から **判断結果を一行�
 1. n8n のデバッグログ送信を有効化する
    - `N8N_DEBUG_LOG=true`
    - `N8N_OBSERVER_URL` と `N8N_OBSERVER_TOKEN` を設定
+   - （ドライランで事前確認）`DRY_RUN=true bash scripts/itsm/sulu/test_observer_ingest.sh`
 2. n8n で AI ノード（OpenAI ノード）を通る実行を 1 回発生させる
    - 例：Zulip などから AIOps Agent に短文を送信し、`aiops-orchestrator` が実行されるようにする
 3. Sulu 管理画面で `Monitoring > AI Nodes` を開く

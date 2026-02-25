@@ -91,8 +91,12 @@ main() {
     total=$((total + 1))
     log "component=${component} script=${script}"
 
+    # Avoid `set -u` issues when no passthrough args were provided.
+    local -a args=()
+    args+=("${pass_args[@]:-}")
+
     if ${DRY_RUN}; then
-      if ! DRY_RUN=true N8N_DRY_RUN=true bash "${script}" "${pass_args[@]}"; then
+      if ! DRY_RUN=true N8N_DRY_RUN=true bash "${script}" "${args[@]}"; then
         warn "failed: component=${component}"
         failed=$((failed + 1))
         failed_components+=("${component}")
@@ -101,7 +105,7 @@ main() {
         fi
       fi
     else
-      if ! bash "${script}" "${pass_args[@]}"; then
+      if ! bash "${script}" "${args[@]}"; then
         warn "failed: component=${component}"
         failed=$((failed + 1))
         failed_components+=("${component}")
@@ -127,4 +131,3 @@ main() {
 }
 
 main "$@"
-

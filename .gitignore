@@ -15,6 +15,7 @@ tfplan_unpack/
 images/
 modules/stack/templates/*.zip
 docker/sulu/source/
+docker/horilla/source/
 
 # OQ / test evidence (local only)
 evidence/
@@ -34,6 +35,7 @@ apps/**/realms/**
 
 # Local logs
 logs/
+.tmp/
 
 # CLI history / OS cruft
 .DS_Store

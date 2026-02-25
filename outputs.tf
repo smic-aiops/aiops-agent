@@ -184,6 +184,12 @@ output "ecr_repo_keycloak" {
   sensitive   = true
 }
 
+output "ecr_repo_horilla" {
+  description = "ECR repository name for Horilla"
+  value       = var.ecr_repo_horilla
+  sensitive   = true
+}
+
 output "ecr_repo_exastro_it_automation_web_server" {
   description = "ECR repository name for Exastro IT Automation web server"
   value       = var.ecr_repo_exastro_it_automation_web_server
@@ -263,6 +269,7 @@ output "ecr_repositories" {
     zulip       = "${local.ecr_namespace_effective}/${var.ecr_repo_zulip}"
     sulu        = "${local.ecr_namespace_effective}/${var.ecr_repo_sulu}"
     sulu_nginx  = "${local.ecr_namespace_effective}/${var.ecr_repo_sulu_nginx}"
+    horilla     = "${local.ecr_namespace_effective}/${var.ecr_repo_horilla}"
     gitlab      = "${local.ecr_namespace_effective}/${var.ecr_repo_gitlab}"
     grafana     = "${local.ecr_namespace_effective}/${var.ecr_repo_grafana}"
     odoo        = "${local.ecr_namespace_effective}/${var.ecr_repo_odoo}"
@@ -515,6 +522,12 @@ output "sulu_image_tag" {
 output "keycloak_image_tag" {
   description = "Keycloak image tag"
   value       = var.keycloak_image_tag
+  sensitive   = true
+}
+
+output "horilla_image_tag" {
+  description = "Horilla image tag"
+  value       = var.horilla_image_tag
   sensitive   = true
 }
 

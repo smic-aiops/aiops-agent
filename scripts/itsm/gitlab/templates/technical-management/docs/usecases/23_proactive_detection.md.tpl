@@ -98,3 +98,18 @@ grafana:
 ## Done（完了条件）
 - アラートから Issue が起票され、Grafana への導線がある
 - 対策がMR/CIの履歴として残り、運用判断がリンクされている
+
+## 監査/リアルタイム連携
+
+- 監査イベント: 重要操作（承認、反映、同期）を SoR/ログへ残し、必要ならダッシュボードで追えるようにする（運用 + ETL）
+- リアルタイム連携: CloudWatch / webhook を入口にし、n8n で即時に Zulip/GitLab へ反映する
+
+対応ユースケース:
+- UC-4505 監査イベント
+- UC-4825 リアルタイム連携
+
+<!-- BEGIN TRACEABILITY_GENERAL_FAMILY -->
+## 対応ユースケース（トレーサビリティ / general）
+- UC-1101 GitLab Push イベントを受信し、必要情報を整形して Zulip に通知する
+- UC-4505 監査イベント
+<!-- END TRACEABILITY_GENERAL_FAMILY -->

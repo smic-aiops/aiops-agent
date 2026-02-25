@@ -646,6 +646,7 @@ EOF
     exastro_web = "ita-web"
     exastro_api = "ita-api"
     sulu        = "sulu"
+    horilla     = "horilla"
     pgadmin     = "pgadmin"
     keycloak    = "keycloak"
     odoo        = "odoo"
@@ -1067,10 +1068,22 @@ variable "ecr_repo_keycloak" {
   default     = "keycloak"
 }
 
+variable "ecr_repo_horilla" {
+  description = "ECR repository name for Horilla"
+  type        = string
+  default     = "horilla"
+}
+
 variable "keycloak_image_tag" {
   description = "Keycloak image tag to use for pulls/builds"
   type        = string
   default     = "26.4.7"
+}
+
+variable "horilla_image_tag" {
+  description = "Horilla image tag to use for pulls/builds"
+  type        = string
+  default     = "1.5.0"
 }
 
 variable "keycloak_smtp_username" {
@@ -1648,6 +1661,12 @@ variable "create_sulu" {
   default     = true
 }
 
+variable "create_horilla" {
+  description = "Whether to create Horilla service resources"
+  type        = bool
+  default     = false
+}
+
 variable "create_sulu_efs" {
   description = "Whether to create an EFS for sulu (tfvars-only flag)"
   type        = bool
@@ -1670,6 +1689,48 @@ variable "sulu_desired_count" {
   description = "Default desired count for sulu ECS service"
   type        = number
   default     = 1
+}
+
+variable "horilla_desired_count" {
+  description = "Default desired count for Horilla ECS service (per realm)"
+  type        = number
+  default     = 1
+}
+
+variable "horilla_health_check_grace_period_seconds" {
+  description = "Grace period for Horilla ECS service load balancer health checks (seconds)"
+  type        = number
+  default     = 120
+}
+
+variable "horilla_task_cpu" {
+  description = "Override CPU units for Horilla task definition (null to use ecs_task_cpu)"
+  type        = number
+  default     = null
+}
+
+variable "horilla_task_memory" {
+  description = "Override memory (MB) for Horilla task definition (null to use ecs_task_memory)"
+  type        = number
+  default     = null
+}
+
+variable "horilla_db_name_prefix" {
+  description = "PostgreSQL database name prefix for Horilla (per realm databases are created as <prefix>_<realm>)"
+  type        = string
+  default     = "horilla"
+}
+
+variable "horilla_environment" {
+  description = "Additional environment variables injected into Horilla containers"
+  type        = map(string)
+  default     = {}
+}
+
+variable "horilla_ssm_params" {
+  description = "SSM parameter names (or ARNs) injected into Horilla containers (merged with default DB params)"
+  type        = map(string)
+  default     = {}
 }
 
 variable "sulu_health_check_grace_period_seconds" {

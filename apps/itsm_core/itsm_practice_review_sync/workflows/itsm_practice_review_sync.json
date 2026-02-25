@@ -1,0 +1,77 @@
+{
+  "name": "itsm-practice-review-sync",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "itsm/practice/review/sync",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Practice Review Sync)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = (request && typeof request === 'object' && request.headers && typeof request.headers === 'object') ? request.headers : {};\nconst body = (request && typeof request === 'object' && request.body && typeof request.body === 'object') ? request.body : request;\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n}\n\nfunction getHeader(name) {\n  const lower = name.toLowerCase();\n  if (headers[lower] !== undefined) return headers[lower];\n  if (headers[name] !== undefined) return headers[name];\n  const key = Object.keys(headers).find((k) => k.toLowerCase() === lower);\n  return key ? headers[key] : undefined;\n}\n\nfunction trimSlash(value) {\n  return String(value || '').replace(/\\/+$/, '');\n}\n\nfunction error(status, message, extra = {}) {\n  return [{\n    json: {\n      ok: false,\n      status_code: status,\n      error: message,\n      ...extra\n    }\n  }];\n}\n\nfunction asArray(value) {\n  if (Array.isArray(value)) return value;\n  if (value === undefined || value === null) return [];\n  if (typeof value === 'string') {\n    return value.split(',').map((v) => v.trim()).filter(Boolean);\n  }\n  return [];\n}\n\nfunction yyyymmUtcNow() {\n  const d = new Date();\n  const y = d.getUTCFullYear();\n  const m = String(d.getUTCMonth() + 1).padStart(2, '0');\n  return `${y}-${m}`;\n}\n\nconst realm = String(body.realm || body.tenant || $env.N8N_REALM || 'default').trim() || 'default';\nconst period = String(body.period || yyyymmUtcNow()).trim() || yyyymmUtcNow();\nconst practiceKeys = asArray(body.practice_keys || body.practiceKeys);\nconst services = Array.isArray(body.services) ? body.services : [];\n\nconst dryRun = isTruthy(body.dry_run) || isTruthy(body.dryRun) || isTruthy($env.ITSM_PRACTICE_REVIEW_DRY_RUN) || isTruthy($env.DRY_RUN);\n\nconst expectedToken = String($env.ITSM_PRACTICE_REVIEW_WEBHOOK_TOKEN || '').trim();\nif (expectedToken) {\n  const got = String(getHeader('x-webhook-token') || '').trim();\n  if (got !== expectedToken) {\n    return error(401, 'invalid webhook token');\n  }\n}\n\nconst practiceCatalog = {\n  service_design: {\n    title: 'サービス設計レビュー',\n    doc: 'docs/service_management/11_service_design.md'\n  },\n  service_continuity: {\n    title: 'サービス継続レビュー',\n    doc: 'docs/service_management/10_service_continuity_management.md'\n  },\n  service_configuration: {\n    title: 'サービス構成レビュー',\n    doc: 'docs/service_management/07_service_configuration_management.md'\n  },\n  service_validation_testing: {\n    title: '妥当性確認/テストレビュー',\n    doc: 'docs/service_management/12_service_validation_and_testing.md'\n  },\n  change_enablement: {\n    title: '変更レビュー',\n    doc: 'docs/service_management/06_change_enablement.md'\n  },\n  service_financial: {\n    title: 'サービス財務レビュー',\n    doc: 'docs/service_management/14_service_financial_management.md'\n  }\n};\n\nconst selectedPracticeKeys = practiceKeys.length ? practiceKeys : Object.keys(practiceCatalog);\nconst invalidKeys = selectedPracticeKeys.filter((k) => !practiceCatalog[k]);\nif (invalidKeys.length) {\n  return error(400, 'invalid practice_keys', { invalid_keys: invalidKeys, allowed: Object.keys(practiceCatalog) });\n}\n\nfunction required(value, name) {\n  if (value === undefined || value === null || String(value).trim() === '') {\n    throw new Error(`${name} is required`);\n  }\n  return value;\n}\n\nconst gitlabApiBase = trimSlash(\n  body.gitlab_api_base_url ||\n  body.GITLAB_API_BASE_URL ||\n  $env.GITLAB_API_BASE_URL ||\n  $env.N8N_GITLAB_API_BASE_URL ||\n  ''\n);\n\nconst gitlabToken = String(\n  $env.GITLAB_TOKEN ||\n  $env.N8N_GITLAB_TOKEN ||\n  $env.GITLAB_ADMIN_TOKEN ||\n  ''\n);\n\nconst projectRef = String(\n  body.gitlab_project_path ||\n  body.GITLAB_PROJECT_PATH ||\n  $env.GITLAB_PROJECT_PATH ||\n  $env.N8N_GITLAB_PROJECT_PATH ||\n  ''\n).trim() || `${realm}/service-management`;\n\nlet gitlabBaseUrl = trimSlash(body.gitlab_base_url || body.GITLAB_BASE_URL || $env.GITLAB_BASE_URL || '');\nif (!gitlabBaseUrl && gitlabApiBase) {\n  gitlabBaseUrl = gitlabApiBase.replace(/\\/api\\/v4\\/?$/, '');\n}\n\nif (!dryRun) {\n  try {\n    required(gitlabApiBase, 'GITLAB_API_BASE_URL');\n    required(gitlabToken, 'GITLAB_TOKEN');\n    required(projectRef, 'GITLAB_PROJECT_PATH');\n  } catch (e) {\n    return error(424, String(e.message || e));\n  }\n}\n\nconst httpRequest = this.helpers.httpRequest;\nconst projectEncoded = encodeURIComponent(projectRef);\n\nasync function listOpenIssuesBySearch(search) {\n  if (dryRun) return [];\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/issues`;\n  const issues = await httpRequest({\n    method: 'GET',\n    url,\n    qs: { state: 'opened', search: String(search || ''), per_page: 50 },\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken }\n  });\n  return Array.isArray(issues) ? issues : [];\n}\n\nasync function createIssue(title, description, labels) {\n  if (dryRun) {\n    return { ok: true, dry_run: true, title, labels, issue_url: null };\n  }\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/issues`;\n  const payload = {\n    title,\n    description,\n    labels: labels.join(',')\n  };\n  const created = await httpRequest({\n    method: 'POST',\n    url,\n    json: true,\n    body: payload,\n    headers: { 'PRIVATE-TOKEN': gitlabToken, 'Content-Type': 'application/json' }\n  });\n  return { ok: true, dry_run: false, title, labels, issue_url: created?.web_url || null, issue_iid: created?.iid || null };\n}\n\nfunction buildLinks(svc, practice) {\n  const orgId = String(svc.org_id || svc.orgId || '').trim();\n  const serviceId = String(svc.service_id || svc.serviceId || '').trim();\n  const links = {};\n  if (gitlabBaseUrl && orgId && serviceId) {\n    links.cmdb = `${gitlabBaseUrl}/${projectRef}/-/blob/main/cmdb/${encodeURIComponent(orgId)}/${encodeURIComponent(serviceId)}.md`;\n  }\n  if (gitlabBaseUrl && practice?.doc) {\n    links.practice_doc = `${gitlabBaseUrl}/${projectRef}/-/blob/main/${practice.doc}`;\n  }\n  if (gitlabBaseUrl) {\n    links.usecase_guide = `${gitlabBaseUrl}/${projectRef}/-/blob/main/docs/usecases/usecase_guide.md`;\n  }\n  return links;\n}\n\nfunction buildDescription(svc, practice) {\n  const cmdbId = String(svc.cmdb_id || svc.cmdbId || '').trim();\n  const orgId = String(svc.org_id || svc.orgId || '').trim();\n  const serviceId = String(svc.service_id || svc.serviceId || '').trim();\n  const serviceName = String(svc.service_name || svc.serviceName || '').trim();\n  const links = buildLinks(svc, practice);\n\n  const lines = [];\n  lines.push(`## 対象`);\n  lines.push(`- 期間: ${period}`);\n  if (serviceName) lines.push(`- サービス名: ${serviceName}`);\n  if (serviceId) lines.push(`- サービスID: ${serviceId}`);\n  if (orgId) lines.push(`- 組織ID: ${orgId}`);\n  if (cmdbId) lines.push(`- CMDB ID: ${cmdbId}`);\n\n  lines.push('');\n  lines.push('## 参照');\n  if (links.cmdb) lines.push(`- CMDB: ${links.cmdb}`);\n  if (links.practice_doc) lines.push(`- プラクティス: ${links.practice_doc}`);\n  if (links.usecase_guide) lines.push(`- ユースケース集: ${links.usecase_guide}`);\n\n  lines.push('');\n  lines.push('## チェックリスト');\n  lines.push('- [ ] 直近の変更・障害・課題を確認');\n  lines.push('- [ ] 監視/ダッシュボードの導線を確認');\n  lines.push('- [ ] SLA/OLA/契約・合意情報の更新有無を確認');\n  lines.push('- [ ] 必要な改善を Issue として分解しリンク');\n\n  return lines.join('\\n');\n}\n\nfunction buildLabels(practiceKey, svc) {\n  const labels = [];\n  labels.push('ITSM');\n  labels.push('practice-review');\n  labels.push(`practice:${practiceKey}`);\n  labels.push(`period:${period}`);\n\n  const serviceId = String(svc.service_id || svc.serviceId || '').trim();\n  if (serviceId) labels.push(`service:${serviceId}`);\n\n  const cmdbId = String(svc.cmdb_id || svc.cmdbId || '').trim();\n  if (cmdbId) labels.push(`cmdb:${cmdbId}`);\n\n  return labels;\n}\n\nconst results = [];\nlet planned = 0;\nlet created = 0;\nlet skipped = 0;\nlet failed = 0;\n\nfor (const svc of services) {\n  const serviceName = String(svc?.service_name || svc?.serviceName || '').trim();\n  const serviceId = String(svc?.service_id || svc?.serviceId || '').trim();\n  const orgId = String(svc?.org_id || svc?.orgId || '').trim();\n  const cmdbId = String(svc?.cmdb_id || svc?.cmdbId || '').trim();\n\n  if (!orgId || !serviceId || !serviceName) {\n    results.push({ ok: false, reason: 'missing service keys', service: { org_id: orgId, service_id: serviceId, service_name: serviceName, cmdb_id: cmdbId } });\n    failed += 1;\n    continue;\n  }\n\n  for (const practiceKey of selectedPracticeKeys) {\n    const practice = practiceCatalog[practiceKey];\n    const title = `[${period}] ${practice.title}: ${serviceName} (${serviceId})`;\n    planned += 1;\n\n    try {\n      const existing = await listOpenIssuesBySearch(title);\n      const exact = existing.find((i) => String(i?.title || '') === title);\n      if (exact) {\n        skipped += 1;\n        results.push({ ok: true, skipped: true, title, existing_issue_url: exact.web_url || null });\n        continue;\n      }\n\n      const desc = buildDescription(svc, practice);\n      const labels = buildLabels(practiceKey, svc);\n      const createdResult = await createIssue(title, desc, labels);\n      created += 1;\n      results.push(createdResult);\n    } catch (e) {\n      failed += 1;\n      results.push({ ok: false, title, error: String(e?.message || e) });\n    }\n  }\n}\n\nconst statusCode = failed > 0 ? 207 : 200;\n\nreturn [{\n  json: {\n    ok: failed === 0,\n    status_code: statusCode,\n    realm,\n    project: projectRef,\n    period,\n    practice_keys: selectedPracticeKeys,\n    dry_run: dryRun,\n    summary: { planned, created, skipped, failed },\n    results\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Upsert Review Issues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        860,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Practice Review Sync)": {
+      "main": [
+        [
+          {
+            "node": "Upsert Review Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Review Issues": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

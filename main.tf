@@ -125,6 +125,7 @@ module "stack" {
   create_zulip                                         = var.create_zulip
   create_pgadmin                                       = var.create_pgadmin
   create_sulu                                          = var.create_sulu
+  create_horilla                                       = var.create_horilla
   create_sulu_efs                                      = var.create_sulu_efs
   create_keycloak                                      = var.create_keycloak
   default_realm                                        = var.default_realm
@@ -180,7 +181,9 @@ module "stack" {
   zulip_bot_tokens_param                               = var.zulip_bot_tokens_param
   zulip_desired_count                                  = var.zulip_desired_count
   sulu_desired_count                                   = var.sulu_desired_count
+  horilla_desired_count                                = var.horilla_desired_count
   sulu_health_check_grace_period_seconds               = var.sulu_health_check_grace_period_seconds
+  horilla_health_check_grace_period_seconds            = var.horilla_health_check_grace_period_seconds
   enable_sulu_autostop                                 = var.enable_sulu_autostop
   enable_pgadmin_autostop                              = var.enable_pgadmin_autostop
   pgadmin_email                                        = var.pgadmin_email
@@ -264,6 +267,7 @@ module "stack" {
   ecr_repo_grafana                                     = var.ecr_repo_grafana
   ecr_repo_pgadmin                                     = var.ecr_repo_pgadmin
   ecr_repo_keycloak                                    = var.ecr_repo_keycloak
+  ecr_repo_horilla                                     = var.ecr_repo_horilla
   ecr_repo_exastro_it_automation_web_server            = var.ecr_repo_exastro_it_automation_web_server
   ecr_repo_exastro_it_automation_api_admin             = var.ecr_repo_exastro_it_automation_api_admin
   ecr_repo_odoo                                        = var.ecr_repo_odoo
@@ -278,7 +282,13 @@ module "stack" {
   gitlab_omnibus_image_tag                             = var.gitlab_omnibus_image_tag
   gitlab_runner_image_tag                              = local.gitlab_runner_image_tag_effective
   keycloak_image_tag                                   = var.keycloak_image_tag
+  horilla_image_tag                                    = var.horilla_image_tag
   pgadmin_image_tag                                    = var.pgadmin_image_tag
+  horilla_task_cpu                                     = var.horilla_task_cpu
+  horilla_task_memory                                  = var.horilla_task_memory
+  horilla_db_name_prefix                               = var.horilla_db_name_prefix
+  horilla_environment                                  = var.horilla_environment
+  horilla_ssm_params                                   = var.horilla_ssm_params
   enable_gitlab_keycloak                               = var.enable_gitlab_keycloak
   enable_grafana_keycloak                              = var.enable_grafana_keycloak
   enable_pgadmin_keycloak                              = var.enable_pgadmin_keycloak

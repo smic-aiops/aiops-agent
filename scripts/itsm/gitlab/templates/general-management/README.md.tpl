@@ -18,6 +18,21 @@
 ## ユースケース集
 - [`docs/usecases/usecase_guide.md`](docs/usecases/usecase_guide.md)
 
+## プロジェクト管理（台帳）
+- `projects/`（台帳/ロードマップ）
+- `plans/`（実行計画）
+- `raci/`（責務定義）
+- `reports/`（定期報告）
+
+## 一般管理 台帳（運用データ）
+- `risk/`（リスク/例外）
+- `portfolio/`（投資対象の一覧）
+- `strategy/`（OKR/ターゲット）
+- `architecture/`（原則/決定）
+- `suppliers/`（サプライヤ/契約）
+- `finance/`（コスト/意思決定）
+- `org_change/`（組織変更の計画/定着）
+
 ## 継続的改善（CIR）運用（要点）
 - CIR（継続的改善レジスター）＝ GitLab Issue（CIR レコード）
 - ステータスはラベル（`状態/New` → `状態/Assess` → `状態/Approved` → `状態/Implement` → `状態/Review` → `状態/Closed`、例外: `状態/On Hold` / `状態/Rejected`）

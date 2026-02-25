@@ -186,6 +186,7 @@ output "service_urls" {
     gitlab      = var.create_ecs && var.create_gitlab ? "https://${local.gitlab_host}" : null
     grafana     = var.create_ecs && var.create_gitlab && var.create_grafana && local.grafana_primary_host != null ? "https://${local.grafana_primary_host}" : null
     sulu        = var.create_ecs && var.create_sulu && local.sulu_primary_host != null ? "https://${local.sulu_primary_host}" : null
+    horilla     = var.create_ecs && var.create_horilla && local.horilla_primary_host != null ? "https://${local.horilla_primary_host}" : null
     control_ui  = "https://${local.control_site_domain}"
     alb_dns     = try(aws_lb.app[0].dns_name, null)
     control_cf  = try(aws_cloudfront_distribution.control_site[0].domain_name, null)
@@ -770,4 +771,9 @@ output "ses_smtp_starttls_port" {
 output "ses_smtp_ssl_port" {
   description = "SES SMTP implicit TLS port (465)"
   value       = 465
+}
+
+output "horilla_image_tag" {
+  description = "Horilla image tag to use for pulls/builds"
+  value       = var.horilla_image_tag
 }

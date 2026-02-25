@@ -99,10 +99,11 @@ apply_itsm_sor_schema_if_enabled() {
   if ! is_truthy "${N8N_APPLY_ITSM_SOR_SCHEMA}"; then
     return
   fi
-  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh")
   if is_truthy "${DRY_RUN}"; then
-    cmd+=(--dry-run)
+    echo "[itsm] dry-run: skip SoR core schema apply"
+    return
   fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh")
   echo "[itsm] apply SoR core schema"
   "${cmd[@]}"
 }
@@ -111,10 +112,11 @@ apply_itsm_sor_rls_if_enabled() {
   if ! is_truthy "${N8N_APPLY_ITSM_SOR_RLS}"; then
     return
   fi
-  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sor_ops/sql/itsm_sor_rls.sql")
   if is_truthy "${DRY_RUN}"; then
-    cmd+=(--dry-run)
+    echo "[itsm] dry-run: skip SoR RLS policy schema apply"
+    return
   fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sor_ops/sql/itsm_sor_rls.sql")
   echo "[itsm] apply SoR RLS policy schema"
   "${cmd[@]}"
 }
@@ -123,10 +125,11 @@ apply_itsm_sor_rls_force_if_enabled() {
   if ! is_truthy "${N8N_APPLY_ITSM_SOR_RLS_FORCE}"; then
     return
   fi
-  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sor_ops/sql/itsm_sor_rls_force.sql")
   if is_truthy "${DRY_RUN}"; then
-    cmd+=(--dry-run)
+    echo "[itsm] dry-run: skip SoR RLS FORCE schema apply"
+    return
   fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh" --schema "${REPO_ROOT}/apps/itsm_core/sor_ops/sql/itsm_sor_rls_force.sql")
   echo "[itsm] apply SoR RLS FORCE schema"
   "${cmd[@]}"
 }
@@ -135,10 +138,11 @@ check_itsm_sor_schema_if_enabled() {
   if ! is_truthy "${N8N_CHECK_ITSM_SOR_SCHEMA}"; then
     return
   fi
-  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/check_itsm_sor_schema.sh")
   if is_truthy "${DRY_RUN}"; then
-    cmd+=(--dry-run)
+    echo "[itsm] dry-run: skip SoR core schema dependency check"
+    return
   fi
+  local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/check_itsm_sor_schema.sh")
   echo "[itsm] check SoR core schema dependency"
   "${cmd[@]}"
 }
@@ -147,15 +151,15 @@ configure_itsm_sor_rls_context_if_enabled() {
   if ! is_truthy "${N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT}"; then
     return
   fi
+  if is_truthy "${DRY_RUN}"; then
+    echo "[itsm] dry-run: skip SoR RLS context defaults configure"
+    return
+  fi
   local realm_key
   realm_key="$(resolve_default_sor_realm_key)"
   local principal_id="${N8N_ITSM_SOR_PRINCIPAL_ID:-automation}"
   local cmd=(bash "${REPO_ROOT}/apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh" --realm-key "${realm_key}" --principal-id "${principal_id}")
-  if is_truthy "${DRY_RUN}"; then
-    cmd+=(--dry-run)
-  else
-    cmd+=(--execute)
-  fi
+  cmd+=(--execute)
   echo "[itsm] configure SoR RLS context defaults"
   "${cmd[@]}"
 }

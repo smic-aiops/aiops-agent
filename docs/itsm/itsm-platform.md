@@ -19,6 +19,7 @@
   - クラウド側ログ分析基盤：**CloudWatch → * → Athena → Grafana（＋CloudWatch datasource）**  
   - クラウド側ログ通知基盤：**CloudWatch → *（Webhook）→ n8n**
   - 監査/参照ポータル：**Sulu**（SoR の read-only 参照UI。決定一覧/Incident/SRQ/Problem/Change の閲覧導線）
+  - 人事/組織（HRMS）：**Horilla**（realm ごとに URL/DB を分離してデプロイし、ITSM 基盤とは API 連携対象として扱う）
 - 監視・オブザーバビリティはクラウド側ログ分析/通知基盤を前提とし、GitLab/Zulip/n8n は「記録・起票・通知・自動処理」を担当
 - テスト自動化・実行基盤は各プロジェクトが自由に選択（例：GitLab CI）。本方針では特定ツールを規定しない
 - 似た機能を持つツールは採用・非採用の根拠を明示し、利用しない機能を明確化する
@@ -45,6 +46,7 @@
 | Exastro ITA API | exastro/exastro-it-automation-api-admin:2.7.0 | `exastro_it_automation_api_admin_image_tag` のデフォルト値 |
 | Grafana | 12.3.1 | `grafana_image_tag` のデフォルト値 |
 | Sulu | 3.0.3 | `sulu_image_tag` のデフォルト値（ITSM SoR の監査/参照向け read-only ポータル） |
+| Horilla | 1.5.0 | `horilla_image_tag` のデフォルト値（HRMS。ECS へ realm 単位でデプロイ） |
 
 ## apps/ 配下のアプリ一覧（別表）
 
@@ -187,6 +189,7 @@ apps 配下のディレクトリアプリを一覧化します。詳細は各ア
 | Exastro ITA API | 構成取得/実行の API 経路（n8n/GitLab 連携先） | 人手運用の主経路（UI 代替としての常用） | 手動運用は Web、システム連携は API と経路分離するため |
 | Grafana | 監視参照/可視化（ダッシュボード、Annotation、CloudWatch/Athena 参照） | Alertmanager data source、Alert provisioning（rule/contact point/policy の file/API 管理）を標準運用にしない | 一次通知経路を CloudWatch/SNS → n8n に統一するため（Grafana webhook は任意の補助経路） |
 | Sulu | ITSM SoR の監査/参照ポータル（read-only 一覧/検索） | サービスデスクの受付/更新 UI、SoR 更新機能 | Sulu は監査参照に限定し、更新操作は GitLab/n8n 系に集約するため |
+| Horilla | Horilla は HR の台帳として採用するが、SSO 統合や ITSM/CMDB の中心にはしない。必要な部分だけ連携して使う | Keycloak OIDC（SSO）連携、ITSM（Incident/Change 等）の正本管理、CMDB の正本管理 | Horilla は HR 領域に限定する。認証統合（OIDC）は当面構成に含めず、ITSM の正本は GitLab/SoR を維持するため |
 
 ## 現時点の矛盾/要修正箇所
 

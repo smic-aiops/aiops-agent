@@ -23,6 +23,9 @@ Issue と CMDB を中心に、運用フローを標準化し、可視化と監�
 ## ユースケース集
 - [`docs/usecases/usecase_guide.md`](docs/usecases/usecase_guide.md)
 
+## サービス管理プラクティス（ガイド）
+- [`docs/service_management/README.md`](docs/service_management/README.md)
+
 ## ダッシュボード（状態参照）
 - [`docs/dashboards/README.md`](docs/dashboards/README.md)
 
@@ -31,14 +34,22 @@ Issue と CMDB を中心に、運用フローを標準化し、可視化と監�
 - 月次（サービス管理）: [`docs/reports/monthly_service_report_template.md`](docs/reports/monthly_service_report_template.md)
 
 ## スコープ（サービス管理プラクティス）
+- サービスカタログ管理
+- サービス設計
 - インシデント管理
 - サービス要求管理
 - 問題管理
-- 変更管理
+- 変更イネーブルメント（変更管理）
+- リリース管理
 - ナレッジ管理
 - 継続的改善
 - サービスレベル管理
 - 監視とイベント管理
+- サービス構成管理
+- 可用性管理
+- キャパシティ/パフォーマンス管理
+- サービス継続管理
+- サービス妥当性確認およびテスト
 
 ## プラクティスをサービスバリューシステムで捉える（カテゴリ別）
 **プラクティスを「カテゴリ別」に整理してサービスバリューシステムの中で捉える**と、
@@ -127,6 +138,8 @@ flowchart TD
    - 厳格モード: `scripts/cmdb/validate_cmdb.sh --strict` で Grafana/AWS のどちらか + SLAリンクを必須にする
      - 例: 監視導線が未整備のサービスを CI でブロックしたい場合に使用
    - 切替例: `--no-aws`（Grafanaのみ）、`--no-grafana`（AWSのみ）
+   - （任意）プラクティスレビュー起票: `scripts/itsm/sync_practice_reviews.sh` が CMDB を入力に n8n へ投げ、サービス設計/継続/構成/妥当性確認/変更のレビュー Issue を作成
+     - 必要な CI/CD 変数: `N8N_WEBHOOK_BASE_URL`（任意: `N8N_WEBHOOK_TOKEN`）
 5. レポート運用
    - [`docs/monthly_report_template.md`](docs/monthly_report_template.md) を月次レポートに転用
    - `scripts/cmdb/generate_cmdb_report.sh` で CMDB レポートを生成
