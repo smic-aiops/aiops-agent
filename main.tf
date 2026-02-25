@@ -33,7 +33,7 @@ locals {
   gitlab_runner_image_tag_effective = coalesce(
     trimspace(var.gitlab_runner_image_tag != null ? var.gitlab_runner_image_tag : "") != "" ? trimspace(var.gitlab_runner_image_tag) : null,
     local.gitlab_omnibus_semver != "" ? "alpine-v${local.gitlab_omnibus_semver}" : null,
-    "alpine-v17.11.7"
+    "alpine-v17.11.4"
   )
   default_tags = merge(
     {

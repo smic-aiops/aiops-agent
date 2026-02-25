@@ -1886,9 +1886,9 @@ variable "gitlab_omnibus_image_tag" {
 }
 
 variable "gitlab_runner_image_tag" {
-  description = "GitLab Runner image tag to pull/build (upstream tag, e.g. alpine-v17.11.7)"
+  description = "GitLab Runner image tag to pull/build (upstream tag, e.g. alpine-v17.11.4)"
   type        = string
-  default     = "alpine-v17.11.7"
+  default     = "alpine-v17.11.4"
 }
 
 variable "sulu_image_tag" {

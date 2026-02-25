@@ -43,7 +43,7 @@
 
 | ソース名 | 主目的 | 方式/エンドポイント例 | 認証（例） | 伝達内容（サマリ） |
 |---|---|---|---|---|
-| `zulip` | 返信投稿 / 文脈取得 | Zulip API（`POST /api/v1/messages`、必要に応じて `GET /api/v1/messages` 等） | Bot のメール+APIキー | 初動返信、承認依頼、結果通知、評価依頼、（短文時）同一 stream/topic の直近メッセージ取得 |
+| `zulip` | 返信投稿 / 文脈取得 / 添付共有 | Zulip API（`POST /api/v1/messages`、`POST /api/v1/user_uploads`、必要に応じて `GET /api/v1/messages` 等） | Bot のメール+APIキー | 初動返信、承認依頼、結果通知、評価依頼、（短文時）同一 stream/topic の直近メッセージ取得、証跡ファイル共有 |
 | `slack` | 返信投稿 / UI 表現 | Slack Web API（例: `chat.postMessage`、必要に応じて Interactive/Events API） | Bot token | 初動返信、承認依頼（ボタン/リンク/コマンド）、結果通知、評価依頼 |
 | `mattermost` | 返信投稿 | Mattermost REST API（例: `POST /posts`） | Bot token | 初動返信、承認依頼（テキスト/リンク）、結果通知、評価依頼 |
 | `teams` | 返信投稿 / UI 表現 | Bot Framework（例: `POST /v3/conversations/.../activities`） | アプリ資格情報（JWT/Token） | 初動返信、承認依頼（カード/ボタン/リンク）、結果通知、評価依頼 |

@@ -432,6 +432,18 @@
   - `GRAFANA_DRY_RUN`（`true` で API を叩かずに実行内容のみ表示）
   - `GRAFANA_DASHBOARD_OVERWRITE`（デフォルト: `true`）
 
+### `scripts/itsm/gitlab/provision_grafana_itsm_event_inbox.sh`
+
+- 目的: realm ごとに Grafana の `ITSM Event Inbox` ダッシュボード/パネルを作成し、`terraform.itsm.tfvars` の `monitoring_yaml` へ `dashboard_uid` / `panel_id` を反映します。
+- 主な用途:
+  - n8n（CloudWatch Event Notify）から Grafana Annotation を紐付ける固定先の提供
+  - GitLab bootstrap テンプレートの監視参照リンク（canonical URL）生成
+- 反映:
+  - `monitoring_yaml`（tfvars）→ `terraform apply -refresh-only` 実行
+- 補足:
+  - 本スクリプトは **Alertmanager datasource** や **Grafana Alerting の rule/contact point/policy** はプロビジョニングしません。
+  - Data source provisioning（Athena/CloudWatch）は Terraform の `grafana-fs-init`（`modules/stack/ecs_tasks.tf`）で実施します。
+
 ## Sulu（管理者ユーザー）
 
 ### `scripts/itsm/sulu/refresh_sulu_admin_user.sh`

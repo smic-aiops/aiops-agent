@@ -57,6 +57,18 @@ Zulip の stream 会話で本文が短文（既定: 100文字未満）の場合�
   - `N8N_ZULIP_BOT_TOKEN` または `ZULIP_BOT_TOKEN`（Bot API キー）
   - `N8N_ZULIP_BOT_EMAIL` / `N8N_ZULIP_BOT_TOKEN`（単一運用のフォールバック）
 
+### 2.2.1 添付ファイル送信（Upload file API）
+
+- 添付付き通知は `POST /api/v1/user_uploads` でファイルを先に登録し、返却 `uri` を `POST /api/v1/messages` の本文へ埋め込んで送信する。
+- ワークフロー上の標準手順:
+  1. Code ノードで binary プロパティ（添付本体）を生成
+  2. HTTP Request ノードで `POST /api/v1/user_uploads`（multipart/form-data）
+  3. HTTP Request ノードで `POST /api/v1/messages`（添付 `uri` 付き本文）
+- 適用ワークフロー:
+  - `apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json`
+  - `apps/aiops_agent/adapter/workflows/aiops_adapter_approval.json`
+  - `apps/aiops_agent/orchestrator/workflows/aiops_oq_runner.json`
+
 ### 2.3 返信（Outgoing Webhook の HTTP レスポンス / bot_type=3）
 
 Zulip の Outgoing Webhook（bot_type=3）は、受信側が Webhook の **HTTP レスポンス**として JSON を返すことで、同じ会話に返信を投稿できます。

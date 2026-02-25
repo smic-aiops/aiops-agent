@@ -224,6 +224,7 @@ n8n_admin_password = "<set-by-operator>"
 - `N8N_APPROVAL_BASE_URL` は Terraform がレルムの n8n URL から自動生成し、SSM に書き込んで n8n へ注入します（tfvars に手書き不要）。
 - `N8N_APPROVAL_HMAC_SECRET_NAME` も Terraform がレルムごとに生成して SSM に書き込み、n8n に注入します。
 - `aiops_agent_environment`（例: `OPENAI_CREDENTIAL_ID` など）は、原則 `terraform.apps.tfvars` 側で管理します（`docs/apps/README.md` を参照）。
+- `EXECUTIONS_MODE` / `EXECUTIONS_TIMEOUT` の標準値と変更手順は `docs/apps/README.md` の「n8n 実行設定（`EXECUTIONS_MODE` / `EXECUTIONS_TIMEOUT`）」を参照してください。
 - `terraform output` は state ベースです。output 名を変更した場合は `terraform apply --refresh-only --auto-approve ...` を 1 回実行してから参照してください。
 
 ### 2) （必要に応じて）イメージを準備して ECR へ push
@@ -459,6 +460,71 @@ terraform output -json qdrant_realm_urls
 terraform output -json service_urls | jq -r '.qdrant'
 ```
 
+#### スナップショット運用（作成/一覧/取得/削除）
+
+Qdrant のスナップショット API を使って、コレクション単位でバックアップを取得できます。
+`QDRANT_API_KEY` を設定している環境では、API key ヘッダを付与してください。
+
+```bash
+# 1) 対象 realm と URL を決定
+REALM="general_management"
+QDRANT_URL="$(terraform output -json qdrant_realm_urls | jq -r --arg realm "$REALM" '.[$realm] // empty')"
+
+# 2) 対象コレクションを指定（既定の indexer alias 名）
+COLLECTION="gitlab_efs_general_management"
+
+# 3) 認証ヘッダ（未設定ならヘッダなし）
+AUTH_HEADER=()
+if [ -n "${QDRANT_API_KEY:-}" ]; then
+  AUTH_HEADER=(-H "api-key: ${QDRANT_API_KEY}")
+fi
+
+# 4) 既存スナップショット一覧
+curl -fsS "${AUTH_HEADER[@]}" \
+  "${QDRANT_URL%/}/collections/${COLLECTION}/snapshots" | jq .
+
+# 5) スナップショット作成（result.name を控える）
+SNAPSHOT_NAME="$(
+  curl -fsS -X POST "${AUTH_HEADER[@]}" \
+    "${QDRANT_URL%/}/collections/${COLLECTION}/snapshots" \
+  | jq -r '.result.name'
+)"
+echo "snapshot=${SNAPSHOT_NAME}"
+
+# 6) スナップショット取得（ローカル保存）
+curl -fSL "${AUTH_HEADER[@]}" \
+  "${QDRANT_URL%/}/collections/${COLLECTION}/snapshots/${SNAPSHOT_NAME}" \
+  -o "/tmp/${REALM}-${COLLECTION}-${SNAPSHOT_NAME}"
+
+# 7) 不要になったスナップショットを削除
+curl -fsS -X DELETE "${AUTH_HEADER[@]}" \
+  "${QDRANT_URL%/}/collections/${COLLECTION}/snapshots/${SNAPSHOT_NAME}" | jq .
+```
+
+運用メモ:
+- 定期取得する場合は `cron` や GitLab CI で上記 4)〜6) を実行し、成果物を S3 などへ退避してください。
+- 本構成では Qdrant データ自体が EFS に永続化されますが、障害復旧手順として API スナップショットの外部退避を併用する運用を推奨します。
+
+#### Qdrant API運用マトリクス（誰が呼ぶか / どのワークフローか）
+
+前提ルール:
+- Qdrant は検索用の派生データとして扱い、正は GitLab/DB とする。
+- 更新系 API は `indexer（ECS/Step Functions）` が実行し、n8n は検索系 API の利用を基本とする。
+- Qdrant へのアクセスは原則 n8n 経由（レルム別 `QDRANT_URL`）とする。
+
+| API（CSV 対応） | 主呼出主体 | 実行基盤 / ワークフロー | 主用途 | 運用ルール |
+| --- | --- | --- | --- | --- |
+| `POST /collections/{alias}/points/scroll`（CSV: 874） | n8n（検索系ワークフロー） | `apps/aiops_agent/orchestrator/workflows/aiops_orchestrator.json` を基準に、HTTP Request ノードで Qdrant を呼び出し | 条件付きページング取得（追跡調査・候補拡張） | `management_domain` フィルタを必須化し、結果には GitLab 参照 URL を保持する。 |
+| `POST /collections/{alias}/points/search/batch`（CSV: 1116） | n8n（検索系ワークフロー） | 同上（`aiops-orchestrator` 系） | 複数クエリの一括検索 | 単発検索をまとめる場合のみ利用し、更新系 API は呼ばない。 |
+| `POST /collections/{alias}/points/recommend`（CSV: 1129） | n8n（検索系ワークフロー） | 同上（`aiops-orchestrator` 系） | 正例/負例ベースの推薦検索 | 入力例は同一レルム・同一管理ドメインに限定する。 |
+| `POST /collections/{alias}/points/count`（CSV: 1130） | n8n（検索系ワークフロー） | 同上（`aiops-orchestrator` 系） | 条件付き件数確認（検索前の見積/閾値判定） | 監視・レポート用途では read-only で利用し、結果は運用判定にのみ使う。 |
+| `PUT /collections/{name}` / `POST /collections/aliases` / `GET /collections`（CSV: 1124） | indexer（ECS/Step Functions） | `modules/stack/gitlab_efs_indexer.tf` の `gitlab-indexer` タスク | コレクション生成・alias 切替・メタ情報管理 | `QDRANT_COLLECTION_ALIAS_MAP_JSON` に基づきドメイン別コレクションを運用する。 |
+| `POST /collections/{name}/points?wait=true`（CSV: 1121） | indexer（ECS/Step Functions） | 同上（`gitlab-indexer` タスク） | payload 付き upsert（実質的な set/overwrite） | 通常は再インデックス + alias 切替で整合性を維持し、n8n から更新系 API は呼ばない。 |
+
+補足:
+- indexer は `scripts/itsm/gitlab/start_gitlab_efs_indexer.sh` で起動し、Qdrant 側は build コレクション作成 → upsert → alias 切替で更新する。
+- 検索系ワークフローの現行実装は `points/search` が中心で、上記 API は同一経路（n8n → Qdrant）で運用可能な拡張 API として扱う。
+
 ### GitLab プロジェクトの EFS mirror（レルム別 / Step Functions ループ）
 GitLab の特定プロジェクト（一般管理/サービス管理/テクニカル管理）を、Qdrant から参照可能な EFS（`/${n8n_filesystem_path}/qdrant/${realm}/...`）へ **レルム別に mirror**（bare repo / mirror 形式）できます。mirror は Step Functions の常駐ループ（ECS タスク）で定期実行します。
 
@@ -650,6 +716,43 @@ GRAFANA_DRY_RUN="true" \
   bash scripts/itsm/grafana/sync_usecase_dashboards.sh
 ```
 
+### Grafana 機能の採用方針（Alertmanager / Alert provisioning / Data source provisioning）
+
+本システムでは、Grafana 機能を以下の方針で運用します。
+
+- `Data source provisioning` は **採用**（標準運用）
+  - 実装: Terraform の ECS 初期化コンテナ `grafana-fs-init` が、realm ごとに
+    - `Athena` datasource（`athena.yaml`）
+    - `CloudWatch` datasource（`cloudwatch.yaml`）
+    を `GF_PATHS_PROVISIONING` 配下へ自動生成します（`modules/stack/ecs_tasks.tf`）。
+  - 目的: 監視参照の初期セットアップをコード化し、realm ごとの差異を抑制する。
+  - 確認例:
+
+```bash
+GRAFANA_URL="$(terraform output -json grafana_realm_urls | jq -r '.general_management')"
+GRAFANA_TOKEN="$(terraform output -json grafana_api_tokens_by_realm | jq -r '.general_management // .default')"
+
+curl -fsS -H "Authorization: Bearer ${GRAFANA_TOKEN}" \
+  "${GRAFANA_URL%/}/api/datasources/name/Athena" | jq -r '.name,.type'
+curl -fsS -H "Authorization: Bearer ${GRAFANA_TOKEN}" \
+  "${GRAFANA_URL%/}/api/datasources/name/CloudWatch" | jq -r '.name,.type'
+```
+
+- `Alertmanager data source` は **現行標準運用では不採用**
+  - 理由: 現行の一次通知経路は CloudWatch/SNS → n8n を正としており、Alertmanager を別経路で重畳しない。
+  - 将来、Prometheus/Alertmanager 系を正式導入する場合に再評価する。
+
+- `Alert provisioning (file/API)` は **現行標準運用では不採用**
+  - 理由: 現行は CloudWatch 側アラームを起点に運用しており、Grafana 側 Alert rule/Contact point/Policy の IaC 化は標準スコープ外。
+  - 将来、Grafana Alerting を一次経路として採用する場合は、運用責務（通知先、重複抑止、優先度正規化）を定義した上で導入する。
+
+参照（Grafana 公式）:
+- Data source provisioning: <https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources>
+- Data source HTTP API: <https://grafana.com/docs/grafana/latest/developers/http_api/data_source/>
+- Alerting file provisioning: <https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/>
+- Alerting Provisioning HTTP API: <https://grafana.com/docs/grafana/latest/developers/http_api/alerting_provisioning/>
+- Alertmanager data source: <https://grafana.com/docs/grafana/latest/datasources/alertmanager/>
+
 ### GitLabメンション通知（n8n）
 GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@username` を抽出し、Zulip DM へ通知する連携です。
 
@@ -802,6 +905,25 @@ Zulip の stream 会話で本文が短文（既定: 100文字未満）の場合�
   - `N8N_ZULIP_BOT_EMAIL`（推奨: テナントマップ）
   - `N8N_ZULIP_BOT_TOKEN` または `ZULIP_BOT_TOKEN`（Bot API キー）
   - `N8N_ZULIP_BOT_EMAIL` / `N8N_ZULIP_BOT_TOKEN`（単一運用のフォールバック）
+
+##### 添付ファイル送信（Upload file API）
+
+`Zulip Upload file API` は、以下の順序でワークフローに組み込みます（通知本文 + 添付リンク）。
+
+1. n8n の Code ノードで添付対象（例: OQ 結果 JSON / 実行ログ）を binary プロパティへ格納する。
+2. HTTP Request ノードで `POST /api/v1/user_uploads` を呼び、multipart/form-data の `file` としてアップロードする（認証は Bot の Basic 認証）。
+3. レスポンスの `uri` を受け取り、`POST /api/v1/messages` の本文へ `https://<realm>.zulip...<uri>` を埋め込んで送信する。
+
+ワークフロー根拠（適用先）:
+
+- `apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json`
+- `apps/aiops_agent/adapter/workflows/aiops_adapter_approval.json`
+- `apps/aiops_agent/orchestrator/workflows/aiops_oq_runner.json`
+
+運用ルール:
+
+- 添付は「証跡（レポート/ログ/差分）」の送信時のみ使い、通常通知は `POST /messages` を基本とする。
+- 添付の正本は GitLab/S3 等に保持し、Zulip 側は共有導線（参照リンク）として扱う。
 
 #### 返信（Outgoing Webhook の HTTP レスポンス / bot_type=3）
 

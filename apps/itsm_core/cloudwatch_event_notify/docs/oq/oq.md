@@ -16,7 +16,7 @@ flowchart LR
 
   WF --> Zulip[Zulip API（通知）]
   WF --> GitLab[GitLab API（Issue 作成）]
-  WF --> Grafana[Grafana API（Annotation 作成）]
+  WF -. optional .-> Grafana[Grafana API（Annotation 作成）]
 ```
 
 <!-- OQ_SCENARIOS_BEGIN -->
@@ -42,7 +42,7 @@ CloudWatch/SNS 通知の受信から、Zulip/GitLab/Grafana への外部通知�
 - CloudWatch/SNS → n8n Webhook: `POST /webhook/cloudwatch/notify`
 - n8n → Zulip API: ストリーム通知
 - n8n → GitLab API: Issue 作成
-- n8n → Grafana API: Annotation 作成
+- n8n → Grafana API: Annotation 作成（任意）
 
 #### 前提
 

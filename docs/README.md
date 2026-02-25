@@ -51,6 +51,7 @@ flowchart TB
     Zulip[Zulip]
     GitLab[GitLab]
     Grafana[Grafana]
+    Sulu[Sulu（監査/参照ポータル）]
     RDS[(RDS: PostgreSQL)]
     EFS[(EFS)]
     Qdrant[Qdrant（Vector DB）]
@@ -83,10 +84,10 @@ flowchart TB
   ECS --> Zulip
   ECS --> GitLab
   ECS --> Grafana
+  ECS --> Sulu
   ECS --> Qdrant
 
   %% 依存関係（最小）
-  Keycloak -->|OIDC| N8N
   Keycloak -->|OIDC| ExastroWeb
   Keycloak -->|OIDC| ExastroAPI
   Keycloak -->|OIDC| Zulip
@@ -110,12 +111,16 @@ flowchart TB
   N8N -->|API| GitLab
   N8N -->|API| Zulip
   N8N -->|API| Grafana
-  Grafana -->|Alert Webhook| N8N
+  Grafana -. optional .->|Webhook（補助経路）| N8N
   EB -->|Event| N8N
-  CW -->|Alarm/Event| N8N
+  CW -->|Alarm/Event| EB
+  CW -->|Alarm| SNSRelay[SNS / Lambda 中継]
+  SNSRelay -->|Webhook| N8N
   CW -->|Archive| S3Logs
   S3Logs --> Athena
 ```
+
+注: n8n は Keycloak OIDC 連携ではなく、ローカル認証（n8n ユーザー管理）で運用します。
 
 ---
 

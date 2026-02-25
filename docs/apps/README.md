@@ -105,6 +105,62 @@ aiops_agent_environment = {
 注意:
 - `OPENAI_MODEL_API_KEY` は秘密情報のため、**絶対に Git にコミットしないでください**。
 
+## n8n 実行設定（`EXECUTIONS_MODE` / `EXECUTIONS_TIMEOUT`）
+
+`EXECUTIONS_MODE` と `EXECUTIONS_TIMEOUT` は、`terraform.apps.tfvars` の `aiops_agent_environment`（realm ごとの n8n 環境変数）で管理します。
+Terraform では `default` を各 realm の基底値とし、realm 個別設定で上書きします。
+
+標準値（本リポジトリの運用標準）:
+- `EXECUTIONS_MODE="regular"`（n8n メイン実行）
+- `EXECUTIONS_TIMEOUT="-1"`（n8n のデフォルト相当: タイムアウト無効）
+
+参考（n8n 公式）:
+- Environment variables: <https://docs.n8n.io/hosting/configuration/environment-variables/executions/>
+
+補足:
+- `EXECUTIONS_MODE="queue"` は n8n worker 構成（worker プロセス/Redis/運用設計）が前提です。現行の本リポジトリ標準構成は `regular` とします。
+
+設定例（`terraform.apps.tfvars`）:
+
+```hcl
+aiops_agent_environment = {
+  default = {
+    EXECUTIONS_MODE    = "regular"
+    EXECUTIONS_TIMEOUT = "-1"
+  }
+
+  tenant-a = {
+    # realm 個別の上書き例（1時間で打ち切り）
+    EXECUTIONS_TIMEOUT = "3600"
+  }
+}
+```
+
+変更手順:
+1. `terraform.apps.tfvars` の `aiops_agent_environment` に `EXECUTIONS_MODE` / `EXECUTIONS_TIMEOUT` を追加・更新。
+2. Terraform を反映。
+3. n8n サービスを再デプロイ。
+4. ECS タスク定義の環境変数を確認（反映検証）。
+
+```bash
+# 2) Terraform 反映
+terraform apply -var-file=terraform.env.tfvars -var-file=terraform.itsm.tfvars -var-file=terraform.apps.tfvars --auto-approve
+
+# 3) n8n 再デプロイ
+bash scripts/itsm/n8n/redeploy_n8n.sh
+
+# 4) 反映確認（ECS TaskDefinition）
+CLUSTER_NAME="$(terraform output -raw ecs_cluster_name)"
+SERVICE_NAME="$(terraform output -raw n8n_service_name)"
+TASK_DEF_ARN="$(aws ecs describe-services --cluster "${CLUSTER_NAME}" --services "${SERVICE_NAME}" --query 'services[0].taskDefinition' --output text)"
+
+aws ecs describe-task-definition --task-definition "${TASK_DEF_ARN}" | \
+  jq -r '.taskDefinition.containerDefinitions[]
+    | select(.name | startswith("n8n-"))
+    | .name as $n
+    | {container: $n, env: [.environment[] | select(.name=="EXECUTIONS_MODE" or .name=="EXECUTIONS_TIMEOUT")] }'
+```
+
 ## まとめてデプロイするスクリプト
 
 - `scripts/apps/deploy_all_workflows.sh`
@@ -185,6 +241,58 @@ bash scripts/apps/deploy_all_workflows.sh --activate
   - `bash scripts/itsm/n8n/redeploy_n8n.sh`
 - `terraform output` が古い/空の場合は、先に `terraform apply -refresh-only -var-file=...` で出力を更新してください（var-file の順序は `docs/infra/README.md` を参照）。
 - 本スクリプトは「ワークフロー同期のオーケストレーション」です。サービス再起動（ECS force new deployment）やイメージ更新は扱いません。
+- `n8n API Playground` の具体手順は、次の「n8n API Playground（運用手順）」を参照してください。
+
+## n8n API Playground（運用手順）
+
+`n8n API Playground` は、本リポジトリでは **n8n Public API の疎通確認/参照確認を実運用前に行う手順**として扱います。
+本番系はまず読み取り系 API で確認し、変更系は `deploy_workflows.sh --dry-run` で差分確認してから適用します。
+
+### 1) API キーの準備
+
+```bash
+# 事前確認（書き込みなし）
+bash scripts/itsm/n8n/refresh_n8n_api_key.sh --dry-run
+
+# 必要なら発行/更新
+bash scripts/itsm/n8n/refresh_n8n_api_key.sh
+```
+
+### 2) 対象 realm の URL / API key を取り出す
+
+```bash
+REALM="$(terraform output -json N8N_AGENT_REALMS | jq -r '.[0]')"
+N8N_BASE_URL="$(terraform output -json n8n_realm_urls | jq -r --arg realm "${REALM}" '.[$realm]')"
+N8N_API_KEY="$(terraform output -json n8n_api_keys_by_realm | jq -r --arg realm "${REALM}" '.[$realm]')"
+
+echo "REALM=${REALM}"
+echo "N8N_BASE_URL=${N8N_BASE_URL}"
+```
+
+### 3) 読み取り系 API で疎通確認（推奨）
+
+```bash
+# ワークフロー一覧の取得
+curl -fsS \
+  -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+  "${N8N_BASE_URL%/}/api/v1/workflows?limit=3" | jq .
+
+# 直近実行の確認
+curl -fsS \
+  -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+  "${N8N_BASE_URL%/}/api/v1/executions?limit=3" | jq .
+```
+
+### 4) 変更系は dry-run 優先で確認
+
+```bash
+# 変更系の前に、ワークフロー同期の dry-run で計画を確認
+bash scripts/apps/deploy_all_workflows.sh --dry-run --only aiops_agent
+```
+
+注意:
+- `N8N_API_KEY` は秘匿情報です。シェル履歴やログへの出力を避けてください。
+- API Playground は原則レルム単位で実施し、対象レルムを明示して確認してください。
 
 ## アプリ設定（例）
 

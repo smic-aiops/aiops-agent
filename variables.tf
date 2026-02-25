@@ -1937,9 +1937,9 @@ variable "gitlab_omnibus_image_tag" {
 }
 
 variable "gitlab_runner_image_tag" {
-  description = "GitLab Runner image tag to pull/build (upstream tag, e.g. alpine-v17.11.7). Defaults to the GitLab omnibus version (alpine-v<gitlab_omnibus_semver>) when unset."
+  description = "GitLab Runner image tag to pull/build (upstream tag, e.g. alpine-v17.11.4). Defaults to the GitLab omnibus version (alpine-v<gitlab_omnibus_semver>) when unset."
   type        = string
-  default     = null
+  default     = "alpine-v17.11.4"
 }
 
 variable "gitlab_runner_url" {

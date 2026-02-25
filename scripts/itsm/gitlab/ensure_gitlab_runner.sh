@@ -206,16 +206,15 @@ create_runner_via_user_api() {
     --argjson locked "${locked_json}" \
     --arg group_id "${group_id}" \
     --arg project_id "${project_id}" '
-    . as $in
-    | {
+    {
         runner_type: $runner_type,
         description: $desc
       }
-    + ( (tags|type) == "array" and (tags|length) > 0 ? {tag_list: tags} : {} )
-    + ( run_untagged == null ? {} : {run_untagged: run_untagged} )
-    + ( locked == null ? {} : {locked: locked} )
-    + ( ($runner_type == "group_type" and ($group_id|length) > 0) ? {group_id: ($group_id|tonumber)} : {} )
-    + ( ($runner_type == "project_type" and ($project_id|length) > 0) ? {project_id: ($project_id|tonumber)} : {} )
+    + (if (($tags | type) == "array") and (($tags | length) > 0) then {tag_list: $tags} else {} end)
+    + (if $run_untagged == null then {} else {run_untagged: $run_untagged} end)
+    + (if $locked == null then {} else {locked: $locked} end)
+    + (if ($runner_type == "group_type") and (($group_id | length) > 0) then {group_id: ($group_id | tonumber)} else {} end)
+    + (if ($runner_type == "project_type") and (($project_id | length) > 0) then {project_id: ($project_id | tonumber)} else {} end)
   ')"
 
   gitlab_request_checked "POST" "/user/runners" "${payload}"
@@ -244,9 +243,9 @@ create_runner_via_legacy_register_api() {
       token: $token,
       description: $desc
     }
-    + ( ($tags|length) > 0 ? {tag_list: $tags} : {} )
-    + ( run_untagged == null ? {} : {run_untagged: run_untagged} )
-    + ( locked == null ? {} : {locked: locked} )
+    + (if ($tags | length) > 0 then {tag_list: $tags} else {} end)
+    + (if $run_untagged == null then {} else {run_untagged: $run_untagged} end)
+    + (if $locked == null then {} else {locked: $locked} end)
   ')"
 
   gitlab_request_checked "POST" "/runners" "${payload}"
@@ -273,9 +272,9 @@ update_runner_attrs() {
     {
       description: $desc
     }
-    + ( (tags|type) == "array" and (tags|length) > 0 ? {tag_list: tags} : {} )
-    + ( run_untagged == null ? {} : {run_untagged: run_untagged} )
-    + ( locked == null ? {} : {locked: locked} )
+    + (if (($tags | type) == "array") and (($tags | length) > 0) then {tag_list: $tags} else {} end)
+    + (if $run_untagged == null then {} else {run_untagged: $run_untagged} end)
+    + (if $locked == null then {} else {locked: $locked} end)
   ')"
 
   gitlab_request_checked "PUT" "/runners/${runner_id}" "${payload}"

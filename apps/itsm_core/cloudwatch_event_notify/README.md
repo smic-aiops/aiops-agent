@@ -57,7 +57,7 @@ flowchart LR
 
   WF --> Zulip[Zulip API（通知）]
   WF --> GitLab[GitLab API（Issue 作成）]
-  WF --> Grafana[Grafana API（Annotation 作成）]
+  WF -. optional .-> Grafana[Grafana API（Annotation 作成）]
 ```
 
 ### 接続通信表（CloudWatch Event Notify ⇄ ソース）
