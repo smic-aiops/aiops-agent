@@ -63,5 +63,5 @@
 - 要求/ユースケース（realm overlay）: `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/app_requirements.md`
 - DQ（共通ベース）: `apps/aiops_agent/orchestrator/docs/dq/dq.md`
 - DQ（realm overlay）: `vendor/<name_prefix>/apps/aiops_agent/realms/<realm_key>/docs/dq/dq.md`
-- ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
+- ユースケーステンプレート: `apps/itsm_core/bootstrap/data/templates/*/docs/usecases/`
 - CIR→Docs 同期テンプレ: `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md`

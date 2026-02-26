@@ -63,5 +63,5 @@
 - 要求/ユースケース（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/zulip_stream_sync/realms/<realm_key>/docs/app_requirements.md`
 - DQ（共通ベース）: `apps/itsm_core/zulip_stream_sync/docs/dq/dq.md`
 - DQ（realm overlay）: `vendor/<name_prefix>/apps/itsm_core/zulip_stream_sync/realms/<realm_key>/docs/dq/dq.md`
-- ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
+- ユースケーステンプレート: `apps/itsm_core/bootstrap/data/templates/*/docs/usecases/`
 - CIR→Docs 同期テンプレ: `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md`

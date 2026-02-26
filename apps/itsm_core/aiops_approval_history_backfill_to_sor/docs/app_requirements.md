@@ -14,13 +14,13 @@
 
 ## 3. 代表ユースケース
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
 
-- 07 コンプライアンス（承認/監査の証跡）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/07_compliance.md.tpl`
-- 09 変更判断（承認/決定の記録）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/09_change_decision.md.tpl`
-- 22 自動化（バックフィル運用）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 27 データ基盤（SoR への履歴集約）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
-- 31 SoR（System of Record）運用: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
+- 07 コンプライアンス（承認/監査の証跡）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/07_compliance.md.tpl`
+- 09 変更判断（承認/決定の記録）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/09_change_decision.md.tpl`
+- 22 自動化（バックフィル運用）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 27 データ基盤（SoR への履歴集約）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- 31 SoR（System of Record）運用: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
 
 以下の UC-AHB-* は「本サブアプリ固有の運用シナリオ（実装観点）」であり、ユースケース本文の正は上記テンプレートです。
 

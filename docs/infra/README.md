@@ -181,7 +181,7 @@ pg_db_password               = "xxxxxxxxxxxxxxxxxxxxxxxx"
 - CI 側で掃除を明示（例は後述）
 
 ITSM ブートストラップ連携:
-- `scripts/itsm/gitlab/itsm_bootstrap_realms.sh` は、新規作成/フォークされたプロジェクトに対して **shared runners を自動で有効化**します（既定: 有効）。
+- `apps/itsm_core/bootstrap/scripts/itsm_bootstrap_realms.sh` は、新規作成/フォークされたプロジェクトに対して **shared runners を自動で有効化**します（既定: 有効）。
   - 無効化する場合: `GITLAB_PROJECT_ENABLE_SHARED_RUNNERS_ON_CREATE=false`
 
 導入手順（概要）:

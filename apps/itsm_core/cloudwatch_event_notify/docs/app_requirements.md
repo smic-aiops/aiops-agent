@@ -14,12 +14,12 @@ AWS の監視イベント（CloudWatch Alarm / SNS 通知など）を受け取�
 
 本セクションは `apps/itsm_core/cloudwatch_event_notify/docs/dq/dq.md` の設計スコープ/主要リスクを、運用上のユースケースへ落とし込んだものです。
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
 
-- 12 インシデント管理: `scripts/itsm/gitlab/templates/service-management/docs/usecases/12_incident_management.md.tpl`
-- 23 予兆検知（プロアクティブ検知）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/23_proactive_detection.md.tpl`
-- 22 自動化（通知ワークフロー）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 24 セキュリティ（Webhook/外部連携の制御）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/24_security.md.tpl`
+- 12 インシデント管理: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/12_incident_management.md.tpl`
+- 23 予兆検知（プロアクティブ検知）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/23_proactive_detection.md.tpl`
+- 22 自動化（通知ワークフロー）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 24 セキュリティ（Webhook/外部連携の制御）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/24_security.md.tpl`
 
 以下の UC-CW-* は「本サブアプリ固有の運用シナリオ（実装観点）」であり、ユースケース本文の正は上記テンプレートです。
 

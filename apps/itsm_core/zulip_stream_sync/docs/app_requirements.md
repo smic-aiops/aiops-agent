@@ -14,12 +14,12 @@ Zulip のストリーム運用を入力元（CMDB 等）に集約し、作成/�
 
 本セクションは `apps/itsm_core/zulip_stream_sync/docs/dq/dq.md` の設計スコープ/主要リスクを、運用上のユースケースへ落とし込んだものです。
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
 
-- 16 サービス立上げ（運用チャネルの準備）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/16_service_onboarding.md.tpl`
-- 22 自動化（作成/アーカイブの自動化）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 26 標準化（ストリーム運用の標準化）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/26_standardization.md.tpl`
-- 30 開発者体験（運用の摩擦を減らす）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
+- 16 サービス立上げ（運用チャネルの準備）: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/16_service_onboarding.md.tpl`
+- 22 自動化（作成/アーカイブの自動化）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 26 標準化（ストリーム運用の標準化）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/26_standardization.md.tpl`
+- 30 開発者体験（運用の摩擦を減らす）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
 
 以下の UC-ZS-* は「本サブアプリ固有の運用シナリオ（実装観点）」であり、ユースケース本文の正は上記テンプレートです。
 

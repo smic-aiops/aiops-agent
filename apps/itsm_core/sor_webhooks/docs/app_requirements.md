@@ -8,15 +8,15 @@
 
 ## 関連ユースケース（SSoT）
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本サブアプリ（SoR Webhooks）は以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/` を正とし、本サブアプリ（SoR Webhooks）は以下のユースケースを主に支援します。
 
-- 07 コンプライアンス（監査イベントの証跡）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/07_compliance.md.tpl`
-- 09 変更判断（承認結果/コメントの記録）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/09_change_decision.md.tpl`
-- 15 変更とリリース（承認フローの運用）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
-- 22 自動化（Webhook による投入/スモークテスト）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 24 セキュリティ（Webhook 認可/トークン）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/24_security.md.tpl`
-- 27 データ基盤（SoR への投入）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
-- 31 SoR（System of Record）運用: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
+- 07 コンプライアンス（監査イベントの証跡）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/07_compliance.md.tpl`
+- 09 変更判断（承認結果/コメントの記録）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/09_change_decision.md.tpl`
+- 15 変更とリリース（承認フローの運用）: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
+- 22 自動化（Webhook による投入/スモークテスト）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 24 セキュリティ（Webhook 認可/トークン）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/24_security.md.tpl`
+- 27 データ基盤（SoR への投入）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- 31 SoR（System of Record）運用: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
 
 ## スコープ
 

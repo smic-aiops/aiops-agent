@@ -170,7 +170,7 @@ flowchart LR
 運用者の承認（`状態/Approved`）後に、**CIR→ユースケース（UC-*）→ requirements/DQ** へ反映して整合を取る運用を想定します。
 
 詳細な運用フロー（受付→承認→同期→実装→検証→クローズ→依頼者通知）は以下を正とします。
-- `docs/itsm/cir_continual_improvement_flow.md`
+- `apps/itsm_core/bootstrap/docs/cir_continual_improvement_flow.md`
 
 設計上の位置づけ（AIOps Agent から見た責務境界）:
 

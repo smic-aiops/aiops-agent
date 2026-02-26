@@ -33,7 +33,7 @@ def normalize(s: str | None) -> str:
 
 def iter_design_files(repo_root: Path) -> list[Path]:
     paths: list[Path] = []
-    paths.extend(repo_root.glob("scripts/itsm/gitlab/templates/**/docs/usecases/*.md.tpl"))
+    paths.extend(repo_root.glob("apps/itsm_core/bootstrap/data/templates/**/docs/usecases/*.md.tpl"))
     paths.extend(repo_root.glob("apps/**/docs/**/*.md"))
     return [p for p in paths if p.is_file()]
 
@@ -135,7 +135,7 @@ def main() -> int:
     summary_lines.append(f"- 入力: `{(features_csv.relative_to(repo_root)).as_posix()}`")
     summary_lines.append("")
     summary_lines.append("## 判定基準")
-    summary_lines.append("- 設計済み: `scripts/itsm/gitlab/templates/**/docs/usecases/*.md.tpl` または `apps/**/docs/**/*.md` に `UC-XXXX` が出現")
+    summary_lines.append("- 設計済み: `apps/itsm_core/bootstrap/data/templates/**/docs/usecases/*.md.tpl` または `apps/**/docs/**/*.md` に `UC-XXXX` が出現")
     summary_lines.append(f"- 実装状況: `itsm_oss_features.csv` の `{STATUS_COL}`（`⭕️/🔺/❌`）")
     summary_lines.append("")
     summary_lines.append("## 件数")

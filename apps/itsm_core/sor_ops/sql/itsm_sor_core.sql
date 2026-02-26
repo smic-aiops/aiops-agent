@@ -3,8 +3,8 @@
 -- ITSM Core (SoR) minimal schema (PostgreSQL)
 --
 -- Reference docs:
---   - docs/itsm/data-model.md
---   - docs/itsm/data-retention.md
+--   - apps/itsm_core/bootstrap/docs/data-model.md
+--   - apps/itsm_core/bootstrap/docs/data-retention.md
 --
 -- Design goals (MVP):
 --   - Tenant isolation key: realm_id (itsm.realm)

@@ -14,12 +14,12 @@ Push により「何が起きたか」を関係者が迅速に共有できる状
 
 本セクションは `apps/itsm_core/gitlab_push_notify/docs/dq/dq.md` の設計スコープ/主要リスクを、運用上のユースケースへ落とし込んだものです。
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
 
-- 15 変更とリリース（変更の共有/通知）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
-- 21 DevOps（開発と運用の連携）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/21_devops.md.tpl`
-- 22 自動化（Push通知の自動化）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 30 開発者体験（初動短縮/共有）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
+- 15 変更とリリース（変更の共有/通知）: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
+- 21 DevOps（開発と運用の連携）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/21_devops.md.tpl`
+- 22 自動化（Push通知の自動化）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 30 開発者体験（初動短縮/共有）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
 
 以下の UC-PUSH-* は「本サブアプリ固有の運用シナリオ（実装観点）」であり、ユースケース本文の正は上記テンプレートです。
 

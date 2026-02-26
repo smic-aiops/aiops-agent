@@ -19,9 +19,9 @@ if [[ -z "${REPO_ROOT:-}" ]]; then
   REPO_ROOT="$(cd "${LIB_DIR}/../.." && pwd)"
 fi
 
-# Templates live under scripts/itsm/gitlab/templates
+# Templates live under apps/itsm_core/bootstrap/data/templates
 if [[ -z "${TEMPLATES_DIR:-}" ]]; then
-  TEMPLATES_DIR="${REPO_ROOT}/scripts/itsm/gitlab/templates"
+  TEMPLATES_DIR="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates"
 fi
 
 if [[ -z "${TFVARS_PATH_DEFAULT:-}" ]]; then
@@ -92,14 +92,14 @@ sync_service_management_wiki_templates() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_SERVICE_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_SERVICE_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_SERVICE_SOURCE_DIRS:-${default_source_dirs}}"
@@ -137,14 +137,14 @@ sync_service_management_wiki_templates_to_project() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root default_source_dirs source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_SERVICE_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_SERVICE_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_SERVICE_SOURCE_DIRS:-${default_source_dirs}}"
@@ -178,14 +178,14 @@ sync_general_management_wiki_templates() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_GENERAL_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/general-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_GENERAL_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/general-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_GENERAL_SOURCE_DIRS:-${default_source_dirs}}"
@@ -223,14 +223,14 @@ sync_general_management_wiki_templates_to_project() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root default_source_dirs source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_GENERAL_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/general-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_GENERAL_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/general-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_GENERAL_SOURCE_DIRS:-${default_source_dirs}}"
@@ -264,14 +264,14 @@ sync_technical_management_wiki_templates() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_TECH_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/technical-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_TECH_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/technical-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_TECH_SOURCE_DIRS:-${default_source_dirs}}"
@@ -309,14 +309,14 @@ sync_technical_management_wiki_templates_to_project() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root default_source_dirs source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_TECH_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/technical-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_TECH_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/technical-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_TECH_SOURCE_DIRS:-${default_source_dirs}}"

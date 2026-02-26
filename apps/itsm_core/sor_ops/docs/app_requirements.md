@@ -9,17 +9,17 @@
 
 ## 関連ユースケース（SSoT）
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本サブアプリ（SoR Ops）は以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/` を正とし、本サブアプリ（SoR Ops）は以下のユースケースを主に支援します。
 
-- 03 リスク管理: `scripts/itsm/gitlab/templates/general-management/docs/usecases/03_risk_management.md.tpl`
-- 07 コンプライアンス（監査/保持/削除/匿名化）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/07_compliance.md.tpl`
-- 15 変更とリリース（スキーマ/運用手順の変更適用）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
-- 19 廃止・移行（保持/削除/匿名化の運用）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/19_retirement_and_migration.md.tpl`
-- 22 自動化（運用スクリプト）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 24 セキュリティ（RLS/最小権限）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/24_security.md.tpl`
-- 26 標準化（DDL/RLS 運用標準化）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/26_standardization.md.tpl`
-- 27 データ基盤（SoR）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
-- 31 SoR（System of Record）運用: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
+- 03 リスク管理: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/03_risk_management.md.tpl`
+- 07 コンプライアンス（監査/保持/削除/匿名化）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/07_compliance.md.tpl`
+- 15 変更とリリース（スキーマ/運用手順の変更適用）: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
+- 19 廃止・移行（保持/削除/匿名化の運用）: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/19_retirement_and_migration.md.tpl`
+- 22 自動化（運用スクリプト）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 24 セキュリティ（RLS/最小権限）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/24_security.md.tpl`
+- 26 標準化（DDL/RLS 運用標準化）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/26_standardization.md.tpl`
+- 27 データ基盤（SoR）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- 31 SoR（System of Record）運用: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
 
 ## スコープ
 

@@ -79,7 +79,7 @@ flowchart LR
 - `apps/itsm_core/gitlab_push_notify/sql/`: 予約（必要に応じて補助 SQL を配置）
 
 ### セットアップ手順（最短）
-0. レルム用の GitLab グループ/プロジェクトを準備: `scripts/itsm/gitlab/itsm_bootstrap_realms.sh`
+0. レルム用の GitLab グループ/プロジェクトを準備: `apps/itsm_core/bootstrap/scripts/itsm_bootstrap_realms.sh`
 1. ワークフローを n8n に同期: `apps/itsm_core/gitlab_push_notify/scripts/deploy_workflows.sh`
 2. GitLab のプロジェクト webhook を登録（自動化）: `apps/itsm_core/gitlab_push_notify/scripts/setup_gitlab_project_webhook.sh`
 3. GitLab 側 webhook の送信先 URL が `.../webhook/gitlab/push/notify` になっていることを確認

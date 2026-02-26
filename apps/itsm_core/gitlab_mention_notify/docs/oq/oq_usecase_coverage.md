@@ -2,7 +2,7 @@
 
 ## 目的
 
-`apps/itsm_core/gitlab_mention_notify/docs/app_requirements.md` に列挙したユースケース（SSoT: `scripts/itsm/gitlab/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
+`apps/itsm_core/gitlab_mention_notify/docs/app_requirements.md` に列挙したユースケース（SSoT: `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
 
 ## 対象
 
@@ -13,7 +13,7 @@
 
 ### 12_incident_management（12. インシデント管理）
 
-- SSoT: `scripts/itsm/gitlab/templates/service-management/docs/usecases/12_incident_management.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/12_incident_management.md.tpl`
 - 実施:
   - `oq_gitlab_mention_issue_event.md`
   - `oq_gitlab_mention_note_event.md`
@@ -24,7 +24,7 @@
 
 ### 14_knowledge_management（14. ナレッジ管理）
 
-- SSoT: `scripts/itsm/gitlab/templates/service-management/docs/usecases/14_knowledge_management.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/14_knowledge_management.md.tpl`
 - 実施:
   - `oq_gitlab_mention_wiki_event.md`
   - `oq_gitlab_mention_push_markdown_fetch.md`
@@ -35,7 +35,7 @@
 
 ### 21_devops（21. DevOps（開発と運用の連携））
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/21_devops.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/21_devops.md.tpl`
 - 実施:
   - `oq_gitlab_mention_push_markdown_fetch.md`
   - `oq_gitlab_mention_deploy_and_webhook_setup.md`
@@ -46,7 +46,7 @@
 
 ### 22_automation（22. 自動化）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
 - 実施:
   - `oq_gitlab_mention_deploy_and_webhook_setup.md`
   - `oq_gitlab_mention_dry_run_and_run_oq.md`
@@ -57,7 +57,7 @@
 
 ### 30_developer_experience（30. 開発者体験（Developer Experience））
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
 - 実施:
   - `oq_gitlab_mention_mapping_and_unmapped.md`
   - `oq_gitlab_mention_false_positive_filter.md`

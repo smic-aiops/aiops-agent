@@ -42,12 +42,12 @@ discover_ci_apk_packages() {
       if [[ -f "${REPO_ROOT}/.gitlab-ci.yml" ]]; then
         cat "${REPO_ROOT}/.gitlab-ci.yml"
       fi
-      if [[ -d "${REPO_ROOT}/scripts/itsm/gitlab/templates" ]]; then
+      if [[ -d "${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates" ]]; then
         local f
         while IFS= read -r -d '' f; do
           cat "${f}"
           printf '\n'
-        done < <(find "${REPO_ROOT}/scripts/itsm/gitlab/templates" -maxdepth 4 -type f -name ".gitlab-ci.yml*.tpl" -print0 2>/dev/null || true)
+        done < <(find "${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates" -maxdepth 4 -type f -name ".gitlab-ci.yml*.tpl" -print0 2>/dev/null || true)
       fi
     } 2>/dev/null
   )"

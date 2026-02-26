@@ -1,22 +1,22 @@
 # ITSM ユースケース拡張（GitLab テンプレート）
 
 ## 目的
-`scripts/itsm/gitlab/templates/*/docs/usecases/` にある ITSM プラクティスグループ（ITIL4: General / Service / Technical）のユースケース集を読み込み、
+`apps/itsm_core/bootstrap/data/templates/*/docs/usecases/` にある ITSM プラクティスグループ（ITIL4: General / Service / Technical）のユースケース集を読み込み、
 現状に未記載で、かつ **バリューストリームとして評価が高い ITSM ユースケース**を各カテゴリ（3カテゴリ）につき 1 件ずつ特定して追加する。
 
 ## 入力（必読）
 - 既存ユースケース（テンプレート）:
-  - `scripts/itsm/gitlab/templates/general-management/docs/usecases/`
-  - `scripts/itsm/gitlab/templates/service-management/docs/usecases/`
-  - `scripts/itsm/gitlab/templates/technical-management/docs/usecases/`
+  - `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/`
+  - `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/`
+  - `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/`
 - 各ディレクトリの `usecase_guide.md.tpl`（既存の番号体系と目次の更新規約があるため）
 
 ## 成果物（変更対象）
 各カテゴリにつき 1 件、合計 3 件のユースケースを追加する。
 
-- General management practices: `scripts/itsm/gitlab/templates/general-management/docs/usecases/` に 1 ファイル追加
-- Service management practices: `scripts/itsm/gitlab/templates/service-management/docs/usecases/` に 1 ファイル追加
-- Technical management practices: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/` に 1 ファイル追加
+- General management practices: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/` に 1 ファイル追加
+- Service management practices: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/` に 1 ファイル追加
+- Technical management practices: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/` に 1 ファイル追加
 
 加えて、各カテゴリの `usecase_guide.md.tpl` の目次へ追加し、リンクを通す。
 

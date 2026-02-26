@@ -86,7 +86,7 @@ curl -sS -H 'Content-Type: application/json' \
 
 #### 目的
 
-`apps/itsm_core/sor_webhooks/docs/app_requirements.md` に列挙したユースケース（SSoT: `scripts/itsm/gitlab/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
+`apps/itsm_core/sor_webhooks/docs/app_requirements.md` に列挙したユースケース（SSoT: `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
 
 #### 対象
 
@@ -101,7 +101,7 @@ curl -sS -H 'Content-Type: application/json' \
 
 ##### 07_compliance（7. コンプライアンス）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/07_compliance.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/07_compliance.md.tpl`
 - 実施:
   - `oq_sor_audit_event_smoke_test.md`
 - 受け入れ基準:
@@ -111,7 +111,7 @@ curl -sS -H 'Content-Type: application/json' \
 
 ##### 09_change_decision（9. 変更判断）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/09_change_decision.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/09_change_decision.md.tpl`
 - 実施:
   - `oq_sor_aiops_write_test.md`（互換 Webhook 経路）
 - 受け入れ基準:
@@ -121,7 +121,7 @@ curl -sS -H 'Content-Type: application/json' \
 
 ##### 15_change_and_release（15. 変更管理（Change Enablement）とリリース）
 
-- SSoT: `scripts/itsm/gitlab/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
 - 実施:
   - `oq_workflow_sync_deploy.md`
 - 受け入れ基準:
@@ -131,7 +131,7 @@ curl -sS -H 'Content-Type: application/json' \
 
 ##### 22_automation（22. 自動化）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
 - 実施:
   - `oq_workflow_sync_deploy.md`
   - `apps/itsm_core/sor_webhooks/scripts/run_oq.sh`
@@ -142,7 +142,7 @@ curl -sS -H 'Content-Type: application/json' \
 
 ##### 24_security（24. セキュリティ）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/24_security.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/24_security.md.tpl`
 - シナリオ（OQ-SORWH-UC24-01）:
   - `oq_sor_audit_event_smoke_test.md` / `oq_sor_aiops_write_test.md` 実施時に、必要に応じて Bearer トークンを付与できること（`ITSM_SOR_WEBHOOK_TOKEN`）を確認する
   - 不正トークン時に拒否されること（経路上の遮断を含む）を確認する（任意）
@@ -153,7 +153,7 @@ curl -sS -H 'Content-Type: application/json' \
 
 ##### 27_data_platform（27. データ基盤）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
 - 実施:
   - `oq_sor_audit_event_smoke_test.md`
 - 受け入れ基準:
@@ -163,7 +163,7 @@ curl -sS -H 'Content-Type: application/json' \
 
 ##### 31_system_of_record（31. SoR（System of Record）運用）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
 - 実施:
   - `oq_workflow_sync_deploy.md`（同期の維持）
   - `oq_sor_audit_event_smoke_test.md`（最小投入）

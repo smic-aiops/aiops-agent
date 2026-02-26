@@ -36,7 +36,7 @@ ITSM x AI Ops x AI Agent を組み合わせた運用のアイデアと手順を�
 - 本リポジトリは **ChatGPT 5.2** で作成されています。
 - 本リポジトリの拡張を含む動作検証も **ChatGPT 5.2** で実施されています。
 - **ChatGPT 5.2** では自律的拡張（自律的に作業を進める振る舞い）が機能しますが、**ChatGPT 5.2 Codex** では自律拡張プロンプト類は想定動作になりません（作業確認のために中断が多いため）。このため **自律的機能拡張の実施には実質的に人手が必要**になります。
-- 自律拡張を行う場合は、まず ChatGPT に `ai/prompts/itsm/itsm_usecase_enrichment.md` の実行を指示し、ユースケース追加（`scripts/itsm/gitlab/templates/*/docs/usecases/` と各 `usecase_guide.md.tpl` の更新）まで実施します。その後 `apps/*/data/default/prompt/system.md` などの「実行指示（system prompt）」を与えることで、以降は原則としてモデルが自律的に拡張を進める前提です。
+- 自律拡張を行う場合は、まず ChatGPT に `ai/prompts/itsm/itsm_usecase_enrichment.md` の実行を指示し、ユースケース追加（`apps/itsm_core/bootstrap/data/templates/*/docs/usecases/` と各 `usecase_guide.md.tpl` の更新）まで実施します。その後 `apps/*/data/default/prompt/system.md` などの「実行指示（system prompt）」を与えることで、以降は原則としてモデルが自律的に拡張を進める前提です。
 
 <p align="center">
   <img src="docs/assets/orchestrator-adapter.jpg" alt="オーケストラレータとアダプター" width="1000" />
@@ -155,7 +155,7 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 
 - **アクセス制御**: 認証（Keycloak）や権限設計を前提に、誰が何を実行できるかを分離する
 - **証跡（audit trail / evidence）**: OQ/PQ 実行結果を `evidence/` に保存し、判断の根拠と紐付ける
-- **SoR（System of Record）**: 共有 RDS(PostgreSQL) の `itsm.*`（例: `itsm.audit_event` / `itsm.approval`）に、承認・決定・主要レコードの構造化データを集約し、AIOpsAgent が「誰が・いつ・何を・どう決めたか」を照会できるようにする（詳細: `docs/itsm/data-model.md`, `docs/itsm/README.md`）
+- **SoR（System of Record）**: 共有 RDS(PostgreSQL) の `itsm.*`（例: `itsm.audit_event` / `itsm.approval`）に、承認・決定・主要レコードの構造化データを集約し、AIOpsAgent が「誰が・いつ・何を・どう決めたか」を照会できるようにする（詳細: `apps/itsm_core/bootstrap/docs/data-model.md`, `docs/itsm/README.md`）
 - **変更管理**: 設定・ワークフロー・プロンプト変更を `docs/change-management.md` の手順で記録し、追跡可能にする
 
 ## 6. AI ガバナンス（NIST AI RMF を意識した整理）
@@ -180,8 +180,8 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 - 環境構築ガイド: `docs/setup-guide.md`
 - 環境の利用手順と SSO の流れ: `docs/usage-guide.md`
 - ITSM セットアップ: `docs/itsm/README.md`
-- ITSM コア（SoR）機能一覧（実装状況）: `docs/itsm/itsm-core-feature-status.md`
-- CIR（継続的改善）運用フロー（半自律/自律拡張）: `docs/itsm/cir_continual_improvement_flow.md`
+- ITSM コア（SoR）機能一覧（実装状況）: `apps/itsm_core/bootstrap/docs/itsm-core-feature-status.md`
+- CIR（継続的改善）運用フロー（半自律/自律拡張）: `apps/itsm_core/bootstrap/docs/cir_continual_improvement_flow.md`
 
 ## 10. ディレクトリ構成（クイック参照）
 

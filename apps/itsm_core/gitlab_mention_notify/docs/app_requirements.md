@@ -14,13 +14,13 @@ GitLab 上の議論（Issue/コメント/Push/Wiki 等）で発生する `@menti
 
 本セクションは `apps/itsm_core/gitlab_mention_notify/docs/dq/dq.md` の設計スコープ/主要リスクを、運用上のユースケースへ落とし込んだものです。
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
 
-- 12 インシデント管理（初動/見落とし防止）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/12_incident_management.md.tpl`
-- 14 ナレッジ管理（議論/決定の到達性）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/14_knowledge_management.md.tpl`
-- 21 DevOps（開発と運用の連携）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/21_devops.md.tpl`
-- 22 自動化（通知の自動化）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 30 開発者体験（通知でボトルネックを減らす）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
+- 12 インシデント管理（初動/見落とし防止）: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/12_incident_management.md.tpl`
+- 14 ナレッジ管理（議論/決定の到達性）: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/14_knowledge_management.md.tpl`
+- 21 DevOps（開発と運用の連携）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/21_devops.md.tpl`
+- 22 自動化（通知の自動化）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 30 開発者体験（通知でボトルネックを減らす）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
 
 以下の UC-MEN-* は「本サブアプリ固有の運用シナリオ（実装観点）」であり、ユースケース本文の正は上記テンプレートです。
 

@@ -2,7 +2,7 @@
 
 ## 目的
 
-`apps/itsm_core/cloudwatch_event_notify/docs/app_requirements.md` に列挙したユースケース（SSoT: `scripts/itsm/gitlab/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
+`apps/itsm_core/cloudwatch_event_notify/docs/app_requirements.md` に列挙したユースケース（SSoT: `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
 
 ## 対象
 
@@ -13,7 +13,7 @@
 
 ### 12_incident_management（12. インシデント管理）
 
-- SSoT: `scripts/itsm/gitlab/templates/service-management/docs/usecases/12_incident_management.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/12_incident_management.md.tpl`
 - シナリオ（OQ-CWN-UC12-01）:
   - `oq_cloudwatch_event_notify.md` の OQ ケース（OQ-CWN-001〜007）を実施する
 - 受け入れ基準:
@@ -23,7 +23,7 @@
 
 ### 23_proactive_detection（23. 予兆検知（プロアクティブ検知））
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/23_proactive_detection.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/23_proactive_detection.md.tpl`
 - シナリオ（OQ-CWN-UC23-01）:
   - `oq_cloudwatch_event_notify.md` の OQ-CWN-006/007（外部連携 + 部分失敗の可視化）を実施する
 - 受け入れ基準:
@@ -33,7 +33,7 @@
 
 ### 22_automation（22. 自動化）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
 - シナリオ（OQ-CWN-UC22-01）:
   - `oq_cloudwatch_event_notify.md` の手順に従い、ワークフロー同期（dry-run→apply）とテスト Webhook を実施する
 - 受け入れ基準:
@@ -43,7 +43,7 @@
 
 ### 24_security（24. セキュリティ）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/24_security.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/24_security.md.tpl`
 - シナリオ（OQ-CWN-UC24-01）:
   - `oq_cloudwatch_event_notify.md` の OQ-CWN-004（Webhook token/secret 不一致）を実施する
 - 受け入れ基準:

@@ -261,7 +261,7 @@ else
   emit_text_kv "gitlab_realm_admin_tokens_yaml" "missing/unknown"
 fi
 echo "実行ログ:"
-emit_action_line "ensure_realm_groups" "GitLab groups + realm admins" "scripts/itsm/gitlab/ensure_realm_groups.sh"
+emit_action_line "ensure_realm_groups" "GitLab groups + realm admins" "apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh"
 echo
 
 emit_text_header "フェーズ: サービスリクエスト セットアップ"

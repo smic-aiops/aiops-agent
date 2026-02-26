@@ -233,7 +233,7 @@ GitLab API（Issues / Notes / Resource state events）を参照して集計し�
 
 #### 目的
 
-`apps/itsm_core/gitlab_issue_metrics_sync/docs/app_requirements.md` に列挙したユースケース（SSoT: `scripts/itsm/gitlab/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
+`apps/itsm_core/gitlab_issue_metrics_sync/docs/app_requirements.md` に列挙したユースケース（SSoT: `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
 
 #### 対象
 
@@ -245,7 +245,7 @@ GitLab API（Issues / Notes / Resource state events）を参照して集計し�
 
 ##### 04_continual_improvement（4. 継続的改善）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/04_continual_improvement.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/04_continual_improvement.md.tpl`
 - 実施:
   - `oq_gitlab_issue_metrics_sync_s1_daily_cron_prev_day_utc.md`
   - `oq_gitlab_issue_metrics_sync_s4_metrics_calculation.md`
@@ -256,7 +256,7 @@ GitLab API（Issues / Notes / Resource state events）を参照して集計し�
 
 ##### 08_data_driven_decision_making（8. データ意思決定）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/08_data_driven_decision_making.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/08_data_driven_decision_making.md.tpl`
 - 実施:
   - `oq_gitlab_issue_metrics_sync_s3_s3_output_keys.md`
   - `oq_gitlab_issue_metrics_sync_s4_metrics_calculation.md`
@@ -267,7 +267,7 @@ GitLab API（Issues / Notes / Resource state events）を参照して集計し�
 
 ##### 10_kpi_correction（10. KPI是正）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/10_kpi_correction.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/10_kpi_correction.md.tpl`
 - 実施:
   - `oq_gitlab_issue_metrics_sync_s4_metrics_calculation.md`
   - `oq_gitlab_issue_metrics_sync_s5_issue_filters.md`
@@ -278,7 +278,7 @@ GitLab API（Issues / Notes / Resource state events）を参照して集計し�
 
 ##### 20_value_reporting（20. 価値報告（Value Reporting））
 
-- SSoT: `scripts/itsm/gitlab/templates/service-management/docs/usecases/20_value_reporting.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/20_value_reporting.md.tpl`
 - 実施:
   - `oq_gitlab_issue_metrics_sync_s3_s3_output_keys.md`
 - 受け入れ基準:
@@ -288,7 +288,7 @@ GitLab API（Issues / Notes / Resource state events）を参照して集計し�
 
 ##### 22_automation（22. 自動化）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
 - 実施:
   - `oq_gitlab_issue_metrics_sync_s6_deploy_workflows.md`
   - `oq_gitlab_issue_metrics_sync_s1_daily_cron_prev_day_utc.md`
@@ -299,7 +299,7 @@ GitLab API（Issues / Notes / Resource state events）を参照して集計し�
 
 ##### 27_data_platform（27. データ基盤）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
 - 実施:
   - `oq_gitlab_issue_metrics_sync_s3_s3_output_keys.md`
   - `oq_gitlab_issue_metrics_sync_s7_gitlab_api_sources.md`

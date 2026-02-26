@@ -110,7 +110,7 @@ flowchart LR
 `apps/itsm_core/gitlab_mention_notify/scripts/setup_gitlab_group_webhook.sh` は Terraform の出力を参照して、複数レルムの group webhook を作成/更新する。
 
 ### マッピングの正（SSoT）
-GitLab の「サービス管理」プロジェクト内 `docs/mention_user_mapping.md` を正とする（テンプレート: `scripts/itsm/gitlab/templates/service-management/docs/mention_user_mapping.md.tpl`）。
+GitLab の「サービス管理」プロジェクト内 `docs/mention_user_mapping.md` を正とする（テンプレート: `apps/itsm_core/bootstrap/data/templates/service-management/docs/mention_user_mapping.md.tpl`）。
 
 ---
 

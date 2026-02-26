@@ -41,21 +41,24 @@ flowchart TB
     ControlSite[(S3: Control Site)]
   end
 
-  subgraph VPC[VPC 内（ECS + データストア）]
+  subgraph VPC[VPC 内（ALB + ECS + データストア）]
     ALB[ALB]
     ECS[ECS Cluster]
     Keycloak[Keycloak（OIDC）]
-    N8N[n8n（Workflows）]
+    N8N[n8n（Workflows / realm別）]
     ExastroWeb[Exastro ITA Web]
     ExastroAPI[Exastro ITA API]
     Zulip[Zulip]
-    GitLab[GitLab]
-    Grafana[Grafana]
+    subgraph GitLabService[GitLab サービス（GitLab + Grafana）]
+      GitLab[GitLab（Service Mgmt / CMDB / Issue）]
+      Grafana[Grafana（Dashboards / Annotations）]
+    end
     Sulu[Sulu（監査/参照ポータル）]
-    RDS[(RDS: PostgreSQL)]
+    RDS[(RDS: PostgreSQL（SoR: itsm.*）)]
     EFS[(EFS)]
-    Qdrant[Qdrant（Vector DB）]
+    Qdrant[Qdrant（n8n タスク内サイドカー / realm別）]
     Indexer[GitLab EFS Indexer（ECS Task）]
+    GitLabRunner[GitLab Runner（ECS/Fargate shell executor）]
     SSM[SSM / Secrets Manager]
   end
 
@@ -86,6 +89,8 @@ flowchart TB
   ECS --> Grafana
   ECS --> Sulu
   ECS --> Qdrant
+  ECS --> Indexer
+  ECS --> GitLabRunner
 
   %% 依存関係（最小）
   Keycloak -->|OIDC| ExastroWeb
@@ -93,6 +98,7 @@ flowchart TB
   Keycloak -->|OIDC| Zulip
   Keycloak -->|OIDC| GitLab
   N8N --> RDS
+  Sulu -->|read-only| RDS
   GitLab -->|mirror| EFS
   Qdrant -->|EFS 永続化| EFS
   Indexer -->|read| EFS
@@ -102,6 +108,7 @@ flowchart TB
   N8N -->|Embeddings| EmbeddingAPI
   Grafana -->|Datasource| CW
   Grafana -->|Query| Athena
+  GitLabRunner -->|register / run jobs| GitLab
   ECS -->|env/keys| SSM
   ECS --> CW
 

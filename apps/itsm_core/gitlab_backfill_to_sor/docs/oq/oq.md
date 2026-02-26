@@ -85,7 +85,7 @@ apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh
 
 #### 目的
 
-`apps/itsm_core/gitlab_backfill_to_sor/docs/app_requirements.md` に列挙したユースケース（SSoT: `scripts/itsm/gitlab/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
+`apps/itsm_core/gitlab_backfill_to_sor/docs/app_requirements.md` に列挙したユースケース（SSoT: `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
 
 #### 対象
 
@@ -98,7 +98,7 @@ apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh
 
 ##### 07_compliance（7. コンプライアンス）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/07_compliance.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/07_compliance.md.tpl`
 - シナリオ（OQ-GBF-UC07-01）:
   - `oq_gitlab_backfill_smoke_test.md` を実施し、決定/監査に関わる記録が SoR に投入できることを確認する
 - 受け入れ基準:
@@ -108,7 +108,7 @@ apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh
 
 ##### 09_change_decision（9. 変更判断）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/09_change_decision.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/09_change_decision.md.tpl`
 - シナリオ（OQ-GBF-UC09-01）:
   - `POST /webhook/gitlab/decision/backfill/sor/test` の成立を確認する（`oq_gitlab_backfill_smoke_test.md`）
 - 受け入れ基準:
@@ -118,7 +118,7 @@ apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh
 
 ##### 12_incident_management（12. インシデント管理）
 
-- SSoT: `scripts/itsm/gitlab/templates/service-management/docs/usecases/12_incident_management.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/12_incident_management.md.tpl`
 - シナリオ（OQ-GBF-UC12-01）:
   - `POST /webhook/gitlab/issue/backfill/sor/test` の成立を確認する（`oq_gitlab_backfill_smoke_test.md`）
 - 受け入れ基準:
@@ -128,7 +128,7 @@ apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh
 
 ##### 22_automation（22. 自動化）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
 - シナリオ（OQ-GBF-UC22-01）:
   - ワークフロー同期（`apps/itsm_core/gitlab_backfill_to_sor/scripts/deploy_workflows.sh`）の dry-run→apply を実施する
   - `apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh` でスモークテストを投入する
@@ -139,7 +139,7 @@ apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh
 
 ##### 27_data_platform（27. データ基盤）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
 - シナリオ（OQ-GBF-UC27-01）:
   - SoR（`itsm.*`）へ backfill 結果が投入できることをスモークテストで確認する
 - 受け入れ基準:
@@ -149,7 +149,7 @@ apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh
 
 ##### 31_system_of_record（31. SoR（System of Record）運用）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
 - シナリオ（OQ-GBF-UC31-01）:
   - 前提（SoR DDL 適用）を満たした環境で、テスト投入経路（/test）を維持できることを確認する
 - 受け入れ基準:

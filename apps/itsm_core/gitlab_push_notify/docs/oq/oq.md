@@ -370,7 +370,7 @@ flowchart LR
 
 #### 目的
 
-`apps/itsm_core/gitlab_push_notify/docs/app_requirements.md` に列挙したユースケース（SSoT: `scripts/itsm/gitlab/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
+`apps/itsm_core/gitlab_push_notify/docs/app_requirements.md` に列挙したユースケース（SSoT: `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
 
 #### 対象
 
@@ -381,7 +381,7 @@ flowchart LR
 
 ##### 15_change_and_release（15. 変更管理（Change Enablement）とリリース）
 
-- SSoT: `scripts/itsm/gitlab/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/15_change_and_release.md.tpl`
 - 実施:
   - `oq_gitlab_push_notify_ops_deploy_and_webhook_setup.md`
   - `oq_gitlab_push_notify_zulip_notify.md`
@@ -392,7 +392,7 @@ flowchart LR
 
 ##### 21_devops（21. DevOps（開発と運用の連携））
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/21_devops.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/21_devops.md.tpl`
 - 実施:
   - `oq_gitlab_push_notify_event_filter.md`
   - `oq_gitlab_push_notify_project_filter.md`
@@ -403,7 +403,7 @@ flowchart LR
 
 ##### 22_automation（22. 自動化）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
 - 実施:
   - `oq_gitlab_push_notify_ops_deploy_and_webhook_setup.md`
   - `oq_gitlab_push_notify_test_webhook_env_check.md`
@@ -414,7 +414,7 @@ flowchart LR
 
 ##### 30_developer_experience（30. 開発者体験（Developer Experience））
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
 - 実施:
   - `oq_gitlab_push_notify_message_size_limit.md`
   - `oq_gitlab_push_notify_dry_run.md`

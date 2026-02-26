@@ -14,14 +14,14 @@ GitLab Issue を運用データとして収集・集計し、日次等のメト�
 
 本セクションは `apps/itsm_core/gitlab_issue_metrics_sync/docs/dq/dq.md` の設計スコープ/主要リスクを、運用上のユースケースへ落とし込んだものです。
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
 
-- 04 継続的改善（メトリクスで改善を回す）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/04_continual_improvement.md.tpl`
-- 08 データ意思決定（意思決定の根拠としての集計）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/08_data_driven_decision_making.md.tpl`
-- 10 KPI是正（KPIの補正/傾向把握）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/10_kpi_correction.md.tpl`
-- 20 価値報告（価値/状態の可視化）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/20_value_reporting.md.tpl`
-- 22 自動化（定期集計/出力）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 27 データ基盤（S3/Athena/Grafana等への連携土台）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- 04 継続的改善（メトリクスで改善を回す）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/04_continual_improvement.md.tpl`
+- 08 データ意思決定（意思決定の根拠としての集計）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/08_data_driven_decision_making.md.tpl`
+- 10 KPI是正（KPIの補正/傾向把握）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/10_kpi_correction.md.tpl`
+- 20 価値報告（価値/状態の可視化）: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/20_value_reporting.md.tpl`
+- 22 自動化（定期集計/出力）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 27 データ基盤（S3/Athena/Grafana等への連携土台）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
 
 以下の UC-MET-* は「本サブアプリ固有の運用シナリオ（実装観点）」であり、ユースケース本文の正は上記テンプレートです。
 

@@ -1,4 +1,4 @@
-# ITSM スクリプト仕様（scripts/）
+# ITSM スクリプト仕様（scripts/ と apps/itsm_core/bootstrap/scripts/）
 
 このドキュメントは、`docs/itsm/README.md` から **スクリプトの仕様（目的/入出力/環境変数/副作用/前提）**を分離したものです。  
 手順上のコマンド実行例は `docs/itsm/README.md` に残しています。
@@ -7,6 +7,7 @@
 
 - 多くのスクリプトは **Terraform outputs**（`terraform output`）から `AWS_PROFILE` / クラスタ名 / サービス名 / URL / ECR 等を自動解決します。
 - そのため、実行前に Terraform の state が参照できること（`terraform output` が取得できること）が前提です。
+- GitLab の ITSM Bootstrap（テンプレ投入/realm 初期化/一部の Grafana 補助）は、`apps/itsm_core/bootstrap/scripts/` を **正（SSoT）** として集約しています（従来 `scripts/itsm/gitlab/*` に存在したもの）。
 - tfvars を更新するタイプのスクリプトは、更新後に `terraform apply -refresh-only` を実行して **tfvars/state の整合**を取り、SSM/環境変数へ反映しやすくします（スクリプト個別の仕様に従います）。
 - `DRY_RUN=true`（または同等のフラグ）に対応するスクリプトは、API 反映や書き込みをせず「何をするか」だけを表示します（未対応スクリプトもあります）。
 - **キー受け渡し（refresh 系の基本）**:
@@ -88,23 +89,23 @@
 
 ### GitLab
 
-- `scripts/itsm/gitlab/refresh_gitlab_admin_token.sh` - GitLab 管理者トークン（PAT）を再発行し `terraform.itsm.tfvars` を更新
+- `apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh` - GitLab 管理者トークン（PAT）を再発行し `terraform.itsm.tfvars` を更新
 - `scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh` - Webhook secret を更新し `terraform.itsm.tfvars` を更新
-- `scripts/itsm/gitlab/itsm_bootstrap_realms.sh` - レルム用の GitLab グループ/初期プロジェクト（テンプレ）を作成/更新（`--files-only` で Markdown/CMDB など特定ファイルのみ更新可）
-- `scripts/itsm/gitlab/ensure_realm_groups.sh` - レルム単位のグループ/トークンを作成し tfvars を更新
+- `apps/itsm_core/bootstrap/scripts/itsm_bootstrap_realms.sh` - レルム用の GitLab グループ/初期プロジェクト（テンプレ）を作成/更新（`--files-only` で Markdown/CMDB など特定ファイルのみ更新可）
+- `apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh` - レルム単位のグループ/トークンを作成し tfvars を更新
 - `scripts/itsm/gitlab/pull_gitlab_runner_image.sh` - GitLab Runner の upstream イメージを pull し `./images/` へ tar としてキャッシュ（CIで必要な `apk` パッケージ候補も表示）
 - `scripts/itsm/gitlab/build_and_push_gitlab_runner.sh` - GitLab Runner イメージを ECR に push（`./docker/gitlab-runner` が存在する場合はカスタム Runner をビルドして CI ツールを焼き込む）
   - `GITLAB_RUNNER_CI_APK_PACKAGES` で焼き込む `apk add` を上書き可能（例: `bash curl jq yq ripgrep`）
 - `scripts/itsm/gitlab/ensure_gitlab_runner.sh` - GitLab Runner を GitLab API で作成/更新し、Runner token を SSM へ保存（tags/run_untagged/locked も設定）
-- `scripts/itsm/gitlab/refresh_realm_group_tokens_with_bot_cleanup.sh` - レルム単位のグループトークンを更新し `terraform.itsm.tfvars` を更新（旧トークン削除時に group bot を `delete`/`block`）
-- `scripts/itsm/gitlab/provision_grafana_itsm_event_inbox.sh` - ITSM 用の Grafana Inbox（通知先/フォルダ等）をプロビジョニング
+- `apps/itsm_core/bootstrap/scripts/refresh_realm_group_tokens_with_bot_cleanup.sh` - レルム単位のグループトークンを更新し `terraform.itsm.tfvars` を更新（旧トークン削除時に group bot を `delete`/`block`）
+- `apps/itsm_core/bootstrap/scripts/provision_grafana_itsm_event_inbox.sh` - ITSM 用の Grafana Inbox（通知先/フォルダ等）をプロビジョニング
 - `scripts/itsm/gitlab/show_gitlab_root_password.sh` - GitLab root パスワードを表示
 - `scripts/itsm/gitlab/reset_web_ide_oauth_application.sh` - Web IDE 用 OAuth アプリ設定を再作成
 - `scripts/itsm/gitlab/delete_group_projects.sh` - 指定グループ配下のプロジェクトを削除（メンテ用）
 - `scripts/itsm/gitlab/check_gitlab_efs_rag_pipeline.sh` - GitLab EFS RAG の同期/パイプライン状況を確認（トラブルシュート用）
-- `scripts/itsm/gitlab/templates/service-management/scripts/cmdb/validate_cmdb.sh` - CMDB サンプルの検証用スクリプト（テンプレ内）
-- `scripts/itsm/gitlab/templates/service-management/scripts/cmdb/sync_zulip_streams.sh` - CMDB に基づく Zulip ストリーム同期（n8n Webhook 呼び出し、テンプレ内）
-- `scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh` - docs テンプレートを GitLab Wiki に同期（テンプレ内）
+- `apps/itsm_core/bootstrap/data/templates/service-management/scripts/cmdb/validate_cmdb.sh` - CMDB サンプルの検証用スクリプト（テンプレ内）
+- `apps/itsm_core/bootstrap/data/templates/service-management/scripts/cmdb/sync_zulip_streams.sh` - CMDB に基づく Zulip ストリーム同期（n8n Webhook 呼び出し、テンプレ内）
+- `apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh` - docs テンプレートを GitLab Wiki に同期（テンプレ内）
 - `scripts/itsm/gitlab/start_gitlab_efs_mirror.sh` / `scripts/itsm/gitlab/stop_gitlab_efs_mirror.sh` - GitLab プロジェクトの EFS mirror（Step Functions ループ）起動/停止
 - `scripts/itsm/gitlab/start_gitlab_efs_indexer.sh` / `scripts/itsm/gitlab/stop_gitlab_efs_indexer.sh` - GitLab EFS indexer（Step Functions ループ）起動/停止
 
@@ -125,7 +126,7 @@
 ### Grafana
 
 - `scripts/itsm/grafana/show_grafana_admin_credentials.sh` - Grafana 管理者の初期認証情報を表示
-- `scripts/itsm/grafana/sync_usecase_dashboards.sh` - ユースケース用ダッシュボードを同期
+- `apps/itsm_core/bootstrap/scripts/sync_usecase_dashboards.sh` - ユースケース用ダッシュボードを同期
 - `scripts/itsm/grafana/refresh_grafana_api_tokens.sh` - realm ごとの Grafana API token を作成/更新し tfvars を更新
 
 ### n8n
@@ -300,7 +301,7 @@
 
 ## GitLab（トークン/レルム連携）
 
-### `scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
+### `apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh`
 
 - 目的: GitLab コンテナ内の `gitlab-rails` で管理者 PAT を発行し、`terraform.itsm.tfvars` の `gitlab_admin_token` を更新します。
 - 前提:
@@ -326,7 +327,7 @@
 - 事前準備:
   - `aws sso login --profile "$(terraform output -raw aws_profile)"`
   - GitLab が稼働していて `terraform output -raw gitlab_api_base_url` が取得できること（または `GITLAB_API_BASE_URL` を直指定）
-  - GitLab 管理者トークンが SSM にあること（基本: `scripts/itsm/gitlab/refresh_gitlab_admin_token.sh` → `terraform apply -refresh-only`）
+  - GitLab 管理者トークンが SSM にあること（基本: `apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh` → `terraform apply -refresh-only`）
 - 入出力（キー受け渡し）:
   - 入力（既定）: SSM `gitlab_admin_token_parameter_name`（Terraform output）→ `GITLAB_TOKEN`
   - 出力: SSM `gitlab_runner_token_parameter_name`（Terraform output。既定では `/${name_prefix}/gitlab/runner/token`）
@@ -341,7 +342,7 @@
   - Terraform 変数 `gitlab_runner_token` をセットすると Terraform が同じ SSM パラメータを管理・上書きする可能性があります。
   - 原則として `gitlab_runner_token` は **未設定（null）**にして、token は本スクリプトで SSM に投入する運用を推奨します。
 
-### `scripts/itsm/gitlab/refresh_realm_group_tokens_with_bot_cleanup.sh`
+### `apps/itsm_core/bootstrap/scripts/refresh_realm_group_tokens_with_bot_cleanup.sh`
 
 - 目的: レルム単位の GitLab グループアクセストークンを再発行し、`terraform.itsm.tfvars` の `gitlab_realm_admin_tokens_yaml` を更新します（旧トークン削除時に group bot を `delete|block`）。
 - キー受け渡し:
@@ -355,7 +356,7 @@
   - `gitlab_webhook_secrets_yaml`（tfvars, YAML）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/n8n/gitlab/webhook_secret/<realm>`
   - 主な利用: n8n に `GITLAB_WEBHOOK_SECRET` として注入（GitLab Webhook の `x-gitlab-token` 検証）
 
-### `scripts/itsm/gitlab/ensure_realm_groups.sh`
+### `apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh`
 
 - 目的: GitLab グループアクセストークンをレルム単位で発行し、`terraform.itsm.tfvars` に反映します（Terraform apply 時に該当 n8n へ注入し、GitLab API 接続に使用）。
 - 出力:
@@ -400,7 +401,7 @@
 ### `scripts/itsm/grafana/build_and_push_grafana.sh`
 
 - ECR へ `:latest` を push します。ECR が存在しない場合は自動作成します。
-- `docker/grafana` と `Dockerfile` がある場合は build、ない場合は `local/grafana:latest` を ECR にリタグして push します。
+- `GRAFANA_CONTEXT`（既定: `./docker/grafana`）と `Dockerfile` がある場合は build、ない場合は `local/grafana:latest` を ECR にリタグして push します。現状このリポジトリには `docker/grafana` が無いため、通常はリタグ経路になります。
 - `GRAFANA_IMAGE_TAG` / `GRAFANA_BASE_IMAGE` でベースイメージを指定できます。
 - `IMAGE_ARCH` で build プラットフォームを指定できます。
 
@@ -420,7 +421,7 @@
   - `grafana_api_tokens_by_realm`（tfvars, HCL map）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/grafana/api_token/<realm>`
   - 主な利用: n8n に `GRAFANA_API_KEY` として注入（Annotation 等の Grafana API 呼び出し）
 
-### `scripts/itsm/grafana/sync_usecase_dashboards.sh`
+### `apps/itsm_core/bootstrap/scripts/sync_usecase_dashboards.sh`
 
 - 事前条件:
   - `terraform apply` 済みで `terraform output` が取得できること
@@ -432,7 +433,7 @@
   - `GRAFANA_DRY_RUN`（`true` で API を叩かずに実行内容のみ表示）
   - `GRAFANA_DASHBOARD_OVERWRITE`（デフォルト: `true`）
 
-### `scripts/itsm/gitlab/provision_grafana_itsm_event_inbox.sh`
+### `apps/itsm_core/bootstrap/scripts/provision_grafana_itsm_event_inbox.sh`
 
 - 目的: realm ごとに Grafana の `ITSM Event Inbox` ダッシュボード/パネルを作成し、`terraform.itsm.tfvars` の `monitoring_yaml` へ `dashboard_uid` / `panel_id` を反映します。
 - 主な用途:
@@ -463,11 +464,11 @@
 - `zulip_admin_api_keys_yaml`: `bash scripts/itsm/zulip/refresh_zulip_admin_api_keys.sh`
 - `zulip_mess_bot_tokens_yaml` / `zulip_mess_bot_emails_yaml` / `zulip_api_mess_base_urls_yaml`: `bash scripts/itsm/n8n/refresh_zulip_mess_bot.sh`
 - `zulip_outgoing_tokens_yaml` / `zulip_outgoing_bot_emails_yaml`: `bash scripts/itsm/n8n/refresh_zulip_bot.sh`
-- `gitlab_admin_token`: `bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
-- `gitlab_realm_admin_tokens_yaml`: `bash scripts/itsm/gitlab/refresh_realm_group_tokens_with_bot_cleanup.sh`（変数名は `GITLAB_REALM_TOKENS_VAR_NAME` で変更可。既定では旧トークン削除時に group bot を `delete` するため、自己管理 GitLab の管理者権限が必要）
+- `gitlab_admin_token`: `bash apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh`
+- `gitlab_realm_admin_tokens_yaml`: `bash apps/itsm_core/bootstrap/scripts/refresh_realm_group_tokens_with_bot_cleanup.sh`（変数名は `GITLAB_REALM_TOKENS_VAR_NAME` で変更可。既定では旧トークン削除時に group bot を `delete` するため、自己管理 GitLab の管理者権限が必要）
 - `gitlab_webhook_secrets_yaml`: `bash scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh`（変数名は `GITLAB_WEBHOOK_SECRETS_VAR_NAME` で変更可）
 - `grafana_api_tokens_by_realm`: `bash scripts/itsm/grafana/refresh_grafana_api_tokens.sh`
-- `monitoring_yaml`: `bash scripts/itsm/gitlab/provision_grafana_itsm_event_inbox.sh`
+- `monitoring_yaml`: `bash apps/itsm_core/bootstrap/scripts/provision_grafana_itsm_event_inbox.sh`
 - `sulu_admin_password`: `bash scripts/itsm/sulu/refresh_sulu_admin_user.sh`
 
 ## SSM を直接更新するスクリプト（一覧）

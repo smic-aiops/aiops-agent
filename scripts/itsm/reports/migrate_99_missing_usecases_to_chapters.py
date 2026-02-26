@@ -327,15 +327,15 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true")
     ap.add_argument(
         "--service-99",
-        default="scripts/itsm/gitlab/templates/service-management/docs/usecases/99_missing_usecases.md.tpl",
+        default="apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/99_missing_usecases.md.tpl",
     )
     ap.add_argument(
         "--technical-99",
-        default="scripts/itsm/gitlab/templates/technical-management/docs/usecases/99_missing_usecases.md.tpl",
+        default="apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/99_missing_usecases.md.tpl",
     )
     ap.add_argument(
         "--general-99",
-        default="scripts/itsm/gitlab/templates/general-management/docs/usecases/99_missing_usecases.md.tpl",
+        default="apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/99_missing_usecases.md.tpl",
     )
     args = ap.parse_args()
 
@@ -401,8 +401,8 @@ def main() -> int:
         )
         return 2
 
-    service_dir = repo_root / "scripts/itsm/gitlab/templates/service-management/docs/usecases"
-    technical_dir = repo_root / "scripts/itsm/gitlab/templates/technical-management/docs/usecases"
+    service_dir = repo_root / "apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases"
+    technical_dir = repo_root / "apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases"
 
     dest_map: dict[Path, list[Usecase]] = defaultdict(list)
     for u in usecases:

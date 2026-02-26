@@ -225,10 +225,10 @@ bash scripts/apps/deploy_all_workflows.sh --activate
 
 - 各アプリの同期処理は **n8n へのアクセス**と、**必要な認証情報（例: n8n API key）**が前提です。
 - `--with-tests`（OQ 実行）を使う場合や、ITSM/AIOps Agent の初回セットアップ直後は、事前に ITSM ブートストラップ（GitLab 側のレルム用グループ/初期プロジェクト反映）を済ませてください:
-  - `bash scripts/itsm/gitlab/ensure_realm_groups.sh`
-  - `bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh`
+  - `bash apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh`
+  - `bash apps/itsm_core/bootstrap/scripts/itsm_bootstrap_realms.sh`
 - `--with-tests`（OQ 実行）で GitLab 連携の OQ/ワークフローを通す場合、事前に GitLab のトークン/secret を `refresh_*.sh` で揃えてください（未実施だと `GITLAB_*` 不足で失敗しやすい）:
-  - `bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
+  - `bash apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh`
   - `bash scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh`
 - GitLab CI を自己ホスト Runner（ECS/Fargate shell executor）で動かす場合は、Runner 作成/更新と token の SSM 保存を先に実施してください:
   - `bash scripts/itsm/gitlab/ensure_gitlab_runner.sh --rotate-token`

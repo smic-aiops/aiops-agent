@@ -2,15 +2,8 @@
 
 本ファイルは `../setup-guide.md` から **itsm 関連**の内容を抜き出して整理したものです。
 
-## 関連プロンプト（変更管理対象）
-- `ai/prompts/itsm/itsm_usecase_enrichment.md`（ITSM ユースケース集の拡張）
-
-## 比較資料
-- `docs/itsm/features_comparison.md`（市販ITSM との機能対照表・未提供時の実装案）
-- `docs/itsm/data-model.md`（統合データモデル：テーブル/参照/ACL の設計）
-- `docs/itsm/data-retention.md`（アーカイブ/保持期間/削除/匿名化（MVP 方針））
-- `docs/itsm/itsm-core-feature-status.md`（ITSM コア（SoR）機能一覧と実装状況）
-- `docs/itsm/cir_continual_improvement_flow.md`（CIR（継続的改善）運用フロー（半自律/自律拡張））
+## ITSM Bootstrap / ITSM Core / Usecase（入口）
+- 詳細は `apps/itsm_core/README.md` を参照（SoR、GitLab ITSM bootstrap、ユースケース関連、関連プロンプト/比較資料）。
 
 ## 利用者向け（作法）
 
@@ -32,135 +25,8 @@
 7. サービスの各種 Key/トークンを生成・反映し、必要なら再デプロイ。
 7. `terraform output` で URL 等を確認し、動作確認。
 
-### ITSM コア（SoR: System of Record）について
-
-本リポジトリでは、共有 RDS(PostgreSQL) 上に **ITSM コア（SoR）用の正規化スキーマ**（`itsm.*`）を用意し、以下を集約できる設計です。
-
-- **承認（approve/deny/auto）**: `itsm.approval` / `itsm.audit_event`
-- **決定メッセージ本文（Zulip/GitLab）**: `itsm.audit_event(action='decision.recorded')`
-- 主要エンティティ（最小核）: `itsm.incident` / `itsm.service_request` / `itsm.problem` / `itsm.change_request` / `itsm.configuration_item` など（参照整合性は FK で担保）
-
-適用/バックフィル（推奨）:
-- スキーマ適用: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh`
-- 既存の承認履歴バックフィル（一次/手動）: `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/backfill_itsm_sor_from_aiops_approval_history.sh`
-  - 継続運用（差分・定期）: `apps/itsm_core/aiops_approval_history_backfill_to_sor/workflows/itsm_aiops_approval_history_backfill_job.json`（Cron 既定: 毎時 35分。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`）
-  - スモーク: `apps/itsm_core/aiops_approval_history_backfill_to_sor/workflows/itsm_aiops_approval_history_backfill_test.json`（Webhook: `POST /webhook/itsm/sor/aiops/approval_history/backfill/test`）
-- GitLab Issue 全件 → SoR レコード backfill（n8n）: `apps/itsm_core/gitlab_backfill_to_sor/workflows/gitlab_issue_backfill_to_sor.json`（Webhook: `POST /webhook/gitlab/issue/backfill/sor`）
-  - 起動スクリプト: `apps/itsm_core/gitlab_backfill_to_sor/scripts/backfill_gitlab_issues_to_sor.sh`
-- GitLab の過去決定（Issue 本文/Note）バックフィル（n8n）: `apps/itsm_core/gitlab_backfill_to_sor/workflows/gitlab_decision_backfill_to_sor.json`
-  - LLM 判定のみで「取り漏れ最小化」を優先し、`decision.recorded` に加えて `decision.candidate_detected` / `decision.classification_failed` を SoR に残して後からレビュー可能にする（Webhook: `POST /webhook/gitlab/decision/backfill/sor`）
-- Zulip の過去決定メッセージバックフィル（一次/手動, GitLab を経由しない）: `apps/itsm_core/zulip_backfill_to_sor/scripts/backfill_zulip_decisions_to_sor.sh`（`--dry-run-scan` で走査のみ、`--execute` で投入。DM は既定除外で必要なら `--include-private`。決定マーカーは `--decision-prefixes`（または `ZULIP_DECISION_PREFIXES`）で上書き可能）
-  - 継続運用（差分・定期）: `apps/itsm_core/zulip_backfill_to_sor/workflows/itsm_zulip_backfill_decisions_job.json`（Cron 既定: 毎時 25分。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`）
-  - スモーク: `apps/itsm_core/zulip_backfill_to_sor/workflows/itsm_zulip_backfill_decisions_test.json`（Webhook: `POST /webhook/itsm/sor/zulip/backfill/decisions/test`）
-  - 状態保持: SoR の `itsm.integration_state` に処理済み範囲（カーソル）を保存し、未処理分のみを小分けに実行
-  - 注: 定期運用の保持/匿名化（retention/PII redaction）も `apps/itsm_core/sor_ops/workflows/` で Cron 実行できる（既定: retention 毎日 03:10 / PII redaction 毎時 15分。Cron の時刻は n8n のタイムゾーン設定に依存し、ECS 既定は `GENERIC_TIMEZONE=Asia/Tokyo`）
-
-RLS（Row Level Security）導入（段階適用推奨）:
-- RLS ポリシー適用: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sor_ops/sql/itsm_sor_rls.sql`
-- （n8n が DB 直叩きの場合はほぼ必須）RLS コンテキスト（app.*）の既定値投入: `apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh`
-- （強化/任意）RLS の FORCE（テーブル所有者バイパスを禁止）: `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh --schema apps/itsm_core/sor_ops/sql/itsm_sor_rls_force.sql`
-- `apps/itsm_core/scripts/deploy_all_workflows.sh`（ITSM Core 配下を一括。必要なら `scripts/apps/deploy_all_workflows.sh` で全アプリ一括）から有効化する場合は、環境変数 `N8N_APPLY_ITSM_SOR_RLS=true`（必要なら `N8N_APPLY_ITSM_SOR_RLS_FORCE=true`）を使用
-  - 依存関係チェック（推奨）: `N8N_CHECK_ITSM_SOR_SCHEMA=true`（デフォルト有効）
-  - RLS コンテキスト既定値（任意）: `N8N_CONFIGURE_ITSM_SOR_RLS_CONTEXT=true`（`ALTER ROLE ... SET app.*` を投入）
-  - 注意: RLS を有効化すると、`itsm.*` へのアクセスは `app.realm_key`（または `app.realm_id`）が必須になります（未設定は fail close / エラー）。
-  - n8n の SQL では、各 SQL 文の先頭で `itsm.set_rls_context(...)` を呼ぶ形（statement 内で `app.*` をセット）を推奨します（複数 statement の場合は各 statement で呼ぶ）。
-
-監査イベントの改ざん耐性（推奨）:
-- DB 側: `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` で `itsm.audit_event` を append-only + ハッシュチェーン化（INSERT 時に `integrity.prev_hash/hash` を自動付与）
-- 外部アンカー（WORM）: Terraform で `itsm_audit_event_anchor_enabled=true` を有効化し、`apps/itsm_core/sor_ops/scripts/anchor_itsm_audit_event_hash.sh` を定期実行してチェーン先頭を S3 Object Lock に固定
-- 監査チェック: `itsm.audit_event_verify_hash_chain(realm_id)` で `ok=false` が無いことを確認
-
-### Sulu admin での参照（決定一覧の検索/フィルタ）
-
-Sulu admin には、SoR（`itsm.*`）を read-only で参照するためのメニュー/ページがあります。
-
-- メニュー: `ITSM > 決定一覧`（ほかに Incident / SRQ / Problem / Change の一覧もあります）
-- URL 例: `https://<realm>.sulu.smic-aiops.jp/admin/#/itsm/decisions`
-- 前提: Sulu は通常 DB（`sulu_db_name`）とは別に、SoR 用 DB 接続 `ITSM_SOR_DATABASE_URL` が必要です（Terraform が SSM SecureString `/${name_prefix}/itsm_sor/database_url` を作成して Sulu へ注入します）。
-- RLS を有効化している場合、Sulu 側は各 API リクエストで `app.realm_key` / `app.principal_id` を設定して参照します（未設定だと参照できません）。
-
-最小の実行例:
-
-```bash
-aws sso login --profile "$(terraform output -raw aws_profile)"
-
-# （必須）ネットワークを参照モード（existing_*_id）へ移行して `terraform.env.tfvars` を安定化
-# - 内部で terraform state rm → terraform apply -refresh-only を行うため、まずは DRY_RUN で確認する
-DRY_RUN=true bash scripts/infra/update_env_tfvars_from_outputs.sh
-bash scripts/infra/update_env_tfvars_from_outputs.sh
-
-# （任意）イメージ更新が必要な場合のみ
-bash scripts/itsm/run_all_pull.sh
-bash scripts/itsm/run_all_build.sh
-
-# Keycloak 初期設定
-bash scripts/itsm/keycloak/show_keycloak_admin_credentials.sh
-bash scripts/itsm/keycloak/refresh_keycloak_realm.sh
-
-# Zulip（新しい組織/realm を作る場合: 作成リンクを生成）
-bash scripts/itsm/zulip/generate_realm_creation_link_for_zulip.sh
-
-# Zulip 初期セットアップ（必須）
-# - Zulip 系ワークフロー/OQ は `ZULIP_*` が揃っていないと失敗するため、
-#   n8n ワークフロー同期（特に `--with-tests`）の前に必ず収束させる。
-bash scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh
-bash scripts/itsm/n8n/refresh_zulip_bot.sh
-
-# （必要な場合は必須）ワークフロー同期/OQ 前に揃える refresh（例）
-# - n8n API key（同期スクリプトが必要とする）
-bash scripts/itsm/n8n/refresh_n8n_api_key.sh
-# - GitLab 管理者トークン / Webhook secret（GitLab 連携ワークフロー/OQ が必要とする）
-bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh
-bash scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh
-# - GitLab Runner（ECS/Fargate shell executor）を使う場合: Runner を作成/更新し token を SSM へ保存
-#   ※ 初回は token を確実に取得するため `--rotate-token` 推奨
-bash scripts/itsm/gitlab/ensure_gitlab_runner.sh --rotate-token
-# - Grafana API token（Grafana API を使うワークフロー/スクリプトがある場合）
-bash scripts/itsm/grafana/refresh_grafana_api_tokens.sh
-# - Sulu 管理者ユーザー（Sulu を運用する場合）
-bash scripts/itsm/sulu/refresh_sulu_admin_user.sh
-
-# tfvars 更新を AWS（SSM 等）に反映し、n8n が新しい設定を読むように再デプロイして収束
-terraform apply \
-  -var-file=terraform.env.tfvars \
-  -var-file=terraform.itsm.tfvars \
-  -var-file=terraform.apps.tfvars \
-  --auto-approve
-bash scripts/itsm/n8n/redeploy_n8n.sh
-
-bash scripts/itsm/update_terraform_itsm_tfvars_auth_flags.sh
-
-# GitLab（レルム用のグループ/初期プロジェクト作成）
-bash scripts/itsm/gitlab/ensure_realm_groups.sh
-bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh
-
-# 変更箇所だけを GitLab へ反映したい場合（labels/boards/wiki 等は触らない）
-# - テンプレートPJ + service-management PJ の「特定ファイル」だけを upsert する
-# - 例: workflow_catalog / CMDB サンプル / runbook など
-bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh --files-only
-
-# 反映（plan/apply をまとめて実行）
-bash scripts/plan_apply_all_tfvars.sh
-
-
-# n8n ワークフロー同期（ベースライン）
-bash scripts/apps/deploy_all_workflows.sh
-
-# サービス再起動（必要に応じて）
-bash scripts/itsm/run_all_redeploy.sh
-
-# セットアップ状況サマリ
-bash scripts/report_setup_status.sh
-
-# GitLab プロジェクト同期（GitLab -> EFS）
-bash scripts/itsm/gitlab/start_gitlab_efs_mirror.sh
-
-# 同期/インデックス状況チェック（GitLab -> EFS -> Qdrant）
-bash scripts/itsm/gitlab/check_gitlab_efs_rag_pipeline.sh
-
-# URL 確認
-terraform output -json service_urls
-```
+### ITSM Core / Bootstrap / Usecase（詳細）
+- SoR の適用/バックフィル、RLS、監査アンカー、Sulu admin の参照、GitLab ITSM bootstrap、ユースケース関連は `apps/itsm_core/README.md` を参照。
 
 ## 改善ステージ（任意）
 
@@ -171,9 +37,7 @@ terraform output -json service_urls
 bash scripts/itsm/refresh_all_secure.sh
 
 # apps の同期後に OQ も実行（回帰テスト + 証跡）
-# - `--with-tests` を使う場合は、事前に GitLab 側の ITSM ブートストラップ
-#   （`scripts/itsm/gitlab/ensure_realm_groups.sh` / `scripts/itsm/gitlab/itsm_bootstrap_realms.sh`）
-#   が済んでいることを確認してください。
+# 注: `--with-tests` 実行前に GitLab ITSM bootstrap が必要（詳細は `apps/itsm_core/README.md`）。
 bash scripts/apps/deploy_all_workflows.sh --with-tests
 ```
 
@@ -381,18 +245,27 @@ DRY_RUN=true scripts/itsm/n8n/ensure_n8n_owner.sh
 scripts/itsm/n8n/ensure_n8n_owner.sh
 ```
 
+### ITSM Bootstrap（GitLab）の正（SSoT）
+GitLab 側の ITSM テンプレ/運用資材（Issue template / Wiki template / Docs など）の **正（SSoT）** は `apps/itsm_core/bootstrap/` に集約しています。
+
+- 入口（テンプレ投入）: `apps/itsm_core/bootstrap/scripts/itsm_bootstrap_realms.sh`
+- realm 前提整備: `apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh`
+- テンプレ（SSoT）: `apps/itsm_core/bootstrap/data/templates/`
+- 手順: `apps/itsm_core/bootstrap/docs/usage/README.md`
+- 静的検証（推奨）: `apps/itsm_core/bootstrap/scripts/run_oq.sh --dry-run`
+
 ### GitLab 管理者トークンの更新
 GitLab コンテナ内の `gitlab-rails` で管理者 PAT を発行し、`terraform.itsm.tfvars` の `gitlab_admin_token` を更新します。
 
 - 仕様: [`docs/scripts.md`](../scripts.md)
 
 ```bash
-scripts/itsm/gitlab/refresh_gitlab_admin_token.sh
+bash apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh
 ```
 
 例:
-- `TOKEN_LIFETIME_DAYS=180 scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
-- `TOKEN_EXPIRES_AT=2026-12-31 scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
+- `TOKEN_LIFETIME_DAYS=180 bash apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh`
+- `TOKEN_EXPIRES_AT=2026-12-31 bash apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh`
 
 ### GitLab Runner の作成/更新（ECS/Fargate shell executor）
 GitLab API で GitLab Runner を作成/更新し、Runner の属性（`tags` / `run_untagged` / `locked`）を設定したうえで、Runner authentication token を **SSM SecureString** に保存します。
@@ -416,7 +289,7 @@ GitLab グループアクセストークンをレルム単位で発行し、`ter
 - 仕様: [`docs/scripts.md`](../scripts.md)
 
 ```bash
-scripts/itsm/gitlab/ensure_realm_groups.sh
+bash apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh
 ```
 
 反映確認（sensitive のため取り扱い注意）:
@@ -681,40 +554,7 @@ bash scripts/itsm/grafana/show_grafana_admin_credentials.sh
 ```
 
 ### Grafana のユースケース用ダッシュボード同期
-Grafana の realm ごとに ITSM ユースケース向けのフォルダ/ダッシュボードを作成・同期します。Terraform の `output` を参照して Grafana の管理者認証情報と対象 URL を自動解決します。
-
-- スクリプト: `scripts/itsm/grafana/sync_usecase_dashboards.sh`
-- 仕様/変数: [`docs/scripts.md`](../scripts.md)
-
-基本の使い方（全 realm を対象に同期）:
-
-```bash
-aws sso login --profile "$(terraform output -raw aws_profile)"
-bash scripts/itsm/grafana/sync_usecase_dashboards.sh
-```
-
-特定 realm のみ対象にする例:
-
-```bash
-GRAFANA_TARGET_REALM="prod" \
-  bash scripts/itsm/grafana/sync_usecase_dashboards.sh
-```
-
-Terraform output を使わずに直接指定する例（Grafana URL と管理者認証を直指定）:
-
-```bash
-GRAFANA_ADMIN_URL="https://grafana.example.com" \
-GRAFANA_ADMIN_USER="admin" \
-GRAFANA_ADMIN_PASSWORD="***" \
-  bash scripts/itsm/grafana/sync_usecase_dashboards.sh
-```
-
-API を叩かずに実行内容だけ確認する例:
-
-```bash
-GRAFANA_DRY_RUN="true" \
-  bash scripts/itsm/grafana/sync_usecase_dashboards.sh
-```
+ユースケース関連の同期は `apps/itsm_core/bootstrap/scripts/sync_usecase_dashboards.sh` を利用します。実行例/引数/DRY_RUN は `apps/itsm_core/README.md` と `apps/itsm_core/bootstrap/docs/usage/README.md` を参照してください。
 
 ### Grafana 機能の採用方針（Alertmanager / Alert provisioning / Data source provisioning）
 
@@ -762,7 +602,7 @@ GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@usern
   - デプロイスクリプト: `../../apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh`
 
 #### 事前準備
-- 対応表（例外のみ・テンプレ）: `mention_user_mapping.md`
+- 対応表（例外のみ・テンプレ）: `apps/itsm_core/bootstrap/docs/mention_user_mapping.md`
   - 実運用では GitLab の「サービス管理」プロジェクト内 `docs/mention_user_mapping.md` を正とします。
   - 本 README にも同内容を「GitLabメンション→ユーザー対応表」として統合しています（編集の正は上記ファイル）。
 - GitLab の Webhook Secret を決めておく（`GITLAB_WEBHOOK_SECRET`）。
@@ -814,7 +654,7 @@ GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@usern
 GitLab の `@username` を Keycloak/Zulip のユーザーに突合するための例外対応表です。原則はメールアドレス一致や username 一致で解決し、対応表は「例外のみ」最小限にします。
 
 > 注: 実運用では、この対応表は GitLab の「サービス管理」プロジェクト内 `docs/mention_user_mapping.md` として管理する想定です。  
-> 本リポジトリの `docs/mention_user_mapping.md` はフォーマットの説明/テンプレート用途です（秘密情報は書かない）。
+> 本リポジトリではテンプレート（フォーマットの説明/テンプレ用途）は `apps/itsm_core/bootstrap/docs/mention_user_mapping.md` に集約しています（秘密情報は書かない）。
 
 ### 運用ルール
 

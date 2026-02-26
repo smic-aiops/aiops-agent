@@ -310,7 +310,7 @@ AI には以下が期待される：
 - 速度よりも正確性とトレーサビリティを優先する
 - 情報が不完全な場合は、前提（仮定）を明示する
 - 推測的または根拠のない結論を避ける
-- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、共通ベース（`<app_root>/docs/app_requirements.md`, `<app_root>/docs/dq/dq.md`）を参照しつつ、realm overlay（`vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/app_requirements.md`, `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md`。`name_prefix` は `terraform output -raw name_prefix` を正とする）を更新する際は、テンプレート（`scripts/itsm/gitlab/templates/*/docs/usecases/`）を参照し、既存と重複しない形で **少なくとも1件**追加する
+- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、共通ベース（`<app_root>/docs/app_requirements.md`, `<app_root>/docs/dq/dq.md`）を参照しつつ、realm overlay（`vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/app_requirements.md`, `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md`。`name_prefix` は `terraform output -raw name_prefix` を正とする）を更新する際は、テンプレート（`apps/itsm_core/bootstrap/data/templates/*/docs/usecases/`）を参照し、既存と重複しない形で **少なくとも1件**追加する
 
 ## 5. 禁止・制限される振る舞い
 AI は以下を行ってはならない：
@@ -335,7 +335,7 @@ AI は管理された自律モデルの下で動作する：
   - 管理対象プロンプト/ポリシー: `<app_root>/data/default/{prompt,policy}/`（例）
   - ワークフロー定義: `<app_root>/workflows/`（例）
   - 運用 Runbook: `<app_root>/docs/runbook/`（例）
-  - ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
+  - ユースケーステンプレート: `apps/itsm_core/bootstrap/data/templates/*/docs/usecases/`
 
 これらは変更管理下の構成品目（CI）として管理される。
 
@@ -431,5 +431,5 @@ AI の振る舞いの検証は以下により実施する：
 - 要求/ユースケース（realm overlay）: `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/app_requirements.md`
 - DQ（共通ベース）: `<app_root>/docs/dq/dq.md`
 - DQ（realm overlay）: `vendor/<name_prefix>/<app_root>/realms/<realm_key>/docs/dq/dq.md`
-- ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
+- ユースケーステンプレート: `apps/itsm_core/bootstrap/data/templates/*/docs/usecases/`
 ```

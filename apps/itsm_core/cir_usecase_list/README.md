@@ -30,7 +30,7 @@
 - CIR（GitLab Issue）を **承認済み（`状態/Approved`）** にしたものを一覧し、ユースケース定義（`UC-*`）を抽出して、後続のドキュメント更新や同期処理の入力にする。
 
 上位の運用フロー（CIR→Docs→実装→クローズ）は以下を正とする:
-- `docs/itsm/cir_continual_improvement_flow.md`
+- `apps/itsm_core/bootstrap/docs/cir_continual_improvement_flow.md`
 
 **Webhook**
 - 一覧取得: `POST /webhook/itsm/cir/usecases/approved/list`

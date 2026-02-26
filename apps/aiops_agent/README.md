@@ -47,6 +47,10 @@ ITSM/AI Ops のユースケースにおいて、チャット/イベント入力�
   - プロンプト本文: `apps/aiops_agent/orchestrator/data/default/prompt/`
   - 注入の正: `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh`（`prompt_map` / `policy_map`）
 
+### AIOps エージェント アーキテクチャ（正の情報源）
+- 本環境は `apps/aiops_agent/orchestrator/docs/aiops_agent_design.md` を正として構築します。Adapter/Orchestrator/ジョブ実行エンジン（ワークフロー API + n8n Queue Mode）間の `jobs.Preview` / `jobs.enqueue`、ContextStore（`aiops_*` テーブル）の TTL（7日程度）、承認トークン・RAG ルーター・Callback の流れなどはすべてこの設計に従います。
+- n8n 側のワークフロー（`apps/aiops_agent/*/workflows/aiops_*`）や OpenAI/PLaMo ノードの設定、ContextStore 参照、ApprovalStore への書き込みもこの設計に沿って調整してください。インフラの設定・フラグを変更する際は、必ずこちらの記載と整合性を確認したうえでパラメータを渡してください。
+
 ### 構成図（Mermaid / 現行実装）
 
 ```mermaid
@@ -238,5 +242,5 @@ Intended Use に適合することを、最小の検証で示す。
 改善要求を CIR（GitLab 一般管理 Issue）として集約し、運用者承認後に「CIR→ユースケース→requirements/DQ」へ反映して整合を取った上で、
 設計・実装・OQ/PQ（影響確認）を進めてクローズする運用フローを定義します。
 
-- 全体フロー（正）: `docs/itsm/cir_continual_improvement_flow.md`
+- 全体フロー（正）: `apps/itsm_core/bootstrap/docs/cir_continual_improvement_flow.md`
 - Approved CIR → UC-* 抽出（n8n）: `apps/itsm_core/cir_usecase_list/README.md`

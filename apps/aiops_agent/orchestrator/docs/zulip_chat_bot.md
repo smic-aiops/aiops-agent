@@ -130,7 +130,7 @@ Zulip 上の改善要求（例: 「○○ができるようになって」）を
 運用者が承認（`状態/Approved`）/完了（`状態/Closed`）にしたタイミングで、改善要求者へ通知する運用を想定します。
 
 全体フロー（正）:
-- `docs/itsm/cir_continual_improvement_flow.md`
+- `apps/itsm_core/bootstrap/docs/cir_continual_improvement_flow.md`
 
 ```mermaid
 sequenceDiagram

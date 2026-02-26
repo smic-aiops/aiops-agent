@@ -14,11 +14,11 @@ GitLab Deployments / Merge Requests を運用データとして収集・集計�
 
 本セクションは DQ/設計シナリオのスコープ/主要リスクを、運用上のユースケースへ落とし込んだものです。
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/technical-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
 
-- 21 DevOps（開発と運用の連携）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/21_devops.md.tpl`
-- 22 自動化（定期集計/出力）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 27 データ基盤（S3/Athena/Grafana等への連携土台）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- 21 DevOps（開発と運用の連携）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/21_devops.md.tpl`
+- 22 自動化（定期集計/出力）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 27 データ基盤（S3/Athena/Grafana等への連携土台）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
 
 以下の UC-DORA-* は「本サブアプリ固有の運用シナリオ（実装観点）」であり、ユースケース本文の正は上記テンプレートです。
 

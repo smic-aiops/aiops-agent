@@ -13,14 +13,14 @@ GitLab の過去データ（Issue / Note / Decision 等）を走査し、ITSM So
 
 ## 3. 代表ユースケース
 
-ユースケース本文（SSoT）は `scripts/itsm/gitlab/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
+ユースケース本文（SSoT）は `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/` を正とし、本サブアプリは以下のユースケースを主に支援します。
 
-- 07 コンプライアンス（監査/証跡の集約）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/07_compliance.md.tpl`
-- 09 変更判断（決定の記録）: `scripts/itsm/gitlab/templates/general-management/docs/usecases/09_change_decision.md.tpl`
-- 12 インシデント管理（インシデント/変更の SoR 集約）: `scripts/itsm/gitlab/templates/service-management/docs/usecases/12_incident_management.md.tpl`
-- 22 自動化（バックフィル運用）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
-- 27 データ基盤（SoR）: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
-- 31 SoR（System of Record）運用: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
+- 07 コンプライアンス（監査/証跡の集約）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/07_compliance.md.tpl`
+- 09 変更判断（決定の記録）: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/09_change_decision.md.tpl`
+- 12 インシデント管理（インシデント/変更の SoR 集約）: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/12_incident_management.md.tpl`
+- 22 自動化（バックフィル運用）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- 27 データ基盤（SoR）: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- 31 SoR（System of Record）運用: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
 
 以下の UC-GBF-* は「本サブアプリ固有の運用シナリオ（実装観点）」であり、ユースケース本文の正は上記テンプレートです。
 

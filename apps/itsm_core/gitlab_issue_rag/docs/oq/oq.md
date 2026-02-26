@@ -379,7 +379,7 @@ GitLab API/DB/embedding API の外部接続が部分的に失敗しても、原�
 
 #### 目的
 
-`apps/itsm_core/gitlab_issue_rag/docs/app_requirements.md` に列挙したユースケース（SSoT: `scripts/itsm/gitlab/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
+`apps/itsm_core/gitlab_issue_rag/docs/app_requirements.md` に列挙したユースケース（SSoT: `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
 
 #### 対象
 
@@ -390,7 +390,7 @@ GitLab API/DB/embedding API の外部接続が部分的に失敗しても、原�
 
 ##### 14_knowledge_management（14. ナレッジ管理）
 
-- SSoT: `scripts/itsm/gitlab/templates/service-management/docs/usecases/14_knowledge_management.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/14_knowledge_management.md.tpl`
 - 実施:
   - `oq_s1_fetch_format.md`
   - `oq_s2_chunk_embed_upsert.md`
@@ -402,7 +402,7 @@ GitLab API/DB/embedding API の外部接続が部分的に失敗しても、原�
 
 ##### 22_automation（22. 自動化）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
 - 実施:
   - `oq_s3_scheduled_diff_sync.md`
 - 受け入れ基準:
@@ -412,7 +412,7 @@ GitLab API/DB/embedding API の外部接続が部分的に失敗しても、原�
 
 ##### 27_data_platform（27. データ基盤）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
 - 実施:
   - `oq_s2_chunk_embed_upsert.md`
   - `oq_s7_webhook_test_pgvector.md`
@@ -423,7 +423,7 @@ GitLab API/DB/embedding API の外部接続が部分的に失敗しても、原�
 
 ##### 28_poc（28. PoC（技術検証））
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/28_poc.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/28_poc.md.tpl`
 - 実施:
   - `oq_s4_embedding_skip_dryrun.md`
 - 受け入れ基準:
@@ -433,7 +433,7 @@ GitLab API/DB/embedding API の外部接続が部分的に失敗しても、原�
 
 ##### 30_developer_experience（30. 開発者体験（Developer Experience））
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/30_developer_experience.md.tpl`
 - 実施:
   - `oq_s8_observability_and_retry.md`
   - `oq_s6_metadata_domain_routing.md`

@@ -92,7 +92,7 @@ curl -sS -X POST \\
 
 #### 目的
 
-`apps/itsm_core/aiops_approval_history_backfill_to_sor/docs/app_requirements.md` に列挙したユースケース（SSoT: `scripts/itsm/gitlab/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
+`apps/itsm_core/aiops_approval_history_backfill_to_sor/docs/app_requirements.md` に列挙したユースケース（SSoT: `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
 
 #### 対象
 
@@ -107,7 +107,7 @@ curl -sS -X POST \\
 
 ##### 07_compliance（7. コンプライアンス）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/07_compliance.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/07_compliance.md.tpl`
 - シナリオ（OQ-AHB-UC07-01）:
   - `oq_aiops_approval_history_backfill_plan.md`（dry-run の証跡）を実施する
   - `oq_aiops_approval_history_backfill_n8n_smoke.md` を実施し、定期実行（差分バックフィル）が n8n で運用可能であることを確認する
@@ -121,7 +121,7 @@ curl -sS -X POST \\
 
 ##### 09_change_decision（9. 変更判断）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/09_change_decision.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/09_change_decision.md.tpl`
 - シナリオ（OQ-AHB-UC09-01）:
   - execute（小さな対象期間）で「承認の決定」を SoR にバックフィルできることを確認する
   - 再実行しても冪等（重複投入しない）であることを確認する
@@ -132,7 +132,7 @@ curl -sS -X POST \\
 
 ##### 22_automation（22. 自動化）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
 - シナリオ（OQ-AHB-UC22-01）:
   - `apps/itsm_core/aiops_approval_history_backfill_to_sor/scripts/run_oq.sh` を用い、dry-run の証跡を保存する
   - `--since` 指定で段階実行できることを確認する（運用自動化の前提）
@@ -144,7 +144,7 @@ curl -sS -X POST \\
 
 ##### 27_data_platform（27. データ基盤）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
 - シナリオ（OQ-AHB-UC27-01）:
   - SoR（`itsm.*`）へバックフィル結果が格納され、後続の参照/集計に使える状態であることを確認する
 - 受け入れ基準:
@@ -154,7 +154,7 @@ curl -sS -X POST \\
 
 ##### 31_system_of_record（31. SoR（System of Record）運用）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
 - シナリオ（OQ-AHB-UC31-01）:
   - 前提（SoR DDL 適用済み）を確認し、dry-run→execute（小さな対象）で SoR への集約が成立することを確認する
 - 受け入れ基準:

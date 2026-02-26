@@ -34,7 +34,7 @@ Zulip の過去メッセージ走査（dry-run→scan→execute）が成立す�
 
 #### 目的
 
-`apps/itsm_core/zulip_backfill_to_sor/docs/app_requirements.md` に列挙したユースケース（SSoT: `scripts/itsm/gitlab/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
+`apps/itsm_core/zulip_backfill_to_sor/docs/app_requirements.md` に列挙したユースケース（SSoT: `apps/itsm_core/bootstrap/data/templates/*-management/docs/usecases/`）について、**OQ としての実施シナリオが存在する**ことを保証する。
 
 #### 対象
 
@@ -49,7 +49,7 @@ Zulip の過去メッセージ走査（dry-run→scan→execute）が成立す�
 
 ##### 07_compliance（7. コンプライアンス）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/07_compliance.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/07_compliance.md.tpl`
 - シナリオ（OQ-ZHB-UC07-01）:
   - `oq_zulip_backfill_plan.md`（dry-run）で対象範囲/検出ルールと秘匿非出力を確認する
   - `oq_zulip_backfill_n8n_smoke.md` を実施し、定期実行（差分バックフィル）が n8n で運用可能であることを確認する
@@ -61,7 +61,7 @@ Zulip の過去メッセージ走査（dry-run→scan→execute）が成立す�
 
 ##### 09_change_decision（9. 変更判断）
 
-- SSoT: `scripts/itsm/gitlab/templates/general-management/docs/usecases/09_change_decision.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/09_change_decision.md.tpl`
 - シナリオ（OQ-ZHB-UC09-01）:
   - 決定マーカー（例: `/decision`）の検出→投入が成立することを確認する（dry-run→scan→execute）
   - 冪等キーにより再実行で重複しないことを確認する（任意）
@@ -72,7 +72,7 @@ Zulip の過去メッセージ走査（dry-run→scan→execute）が成立す�
 
 ##### 14_knowledge_management（14. ナレッジ管理）
 
-- SSoT: `scripts/itsm/gitlab/templates/service-management/docs/usecases/14_knowledge_management.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/14_knowledge_management.md.tpl`
 - シナリオ（OQ-ZHB-UC14-01）:
   - Zulip の決定ログが SoR に集約され、後続の参照（検索/監査）に使える状態であることを確認する
 - 受け入れ基準:
@@ -82,7 +82,7 @@ Zulip の過去メッセージ走査（dry-run→scan→execute）が成立す�
 
 ##### 22_automation（22. 自動化）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/22_automation.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/22_automation.md.tpl`
 - シナリオ（OQ-ZHB-UC22-01）:
   - `apps/itsm_core/zulip_backfill_to_sor/scripts/run_oq.sh` を用いて、dry-run の証跡を保存する
   - scan/execute の手順が再現可能であることを確認する
@@ -94,7 +94,7 @@ Zulip の過去メッセージ走査（dry-run→scan→execute）が成立す�
 
 ##### 27_data_platform（27. データ基盤）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/27_data_platform.md.tpl`
 - シナリオ（OQ-ZHB-UC27-01）:
   - SoR（`itsm.*`）へバックフィル結果が格納されることを確認する
 - 受け入れ基準:
@@ -104,7 +104,7 @@ Zulip の過去メッセージ走査（dry-run→scan→execute）が成立す�
 
 ##### 31_system_of_record（31. SoR（System of Record）運用）
 
-- SSoT: `scripts/itsm/gitlab/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
+- SSoT: `apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/31_system_of_record.md.tpl`
 - シナリオ（OQ-ZHB-UC31-01）:
   - dry-run→（任意）scan/execute で SoR 集約が成立し、再実行可能であることを確認する
 - 受け入れ基準:

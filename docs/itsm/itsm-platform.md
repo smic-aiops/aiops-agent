@@ -28,7 +28,7 @@
 - カレンダー機能の使い分け：サービス変更・リリース・アウトージ予定は GitLab サービス管理（Issue/ボード/マイルストーン）に登録し、必要に応じて n8n で外部カレンダーへ同期する（専用ERP/グループウェアは本構成には含めない）
 
 関連ドキュメント:
-- [GitLab更新イベントの@メンション通知（Zulip DM）](../../apps/itsm_core/gitlab_mention_notify/README.md)
+- GitLab更新イベントの@メンション通知（Zulip DM）: `apps/itsm_core/gitlab_mention_notify/README.md`
 
 ## OSS 一覧（バージョン）
 
@@ -72,10 +72,10 @@ apps 配下のディレクトリアプリを一覧化します。詳細は各ア
 
 | スクリプト | 概要 | 参照 |
 | --- | --- | --- |
-| `itsm_bootstrap_realms.sh` | ITSM Bootstrap（GitLab のプロジェクト/テンプレート/ラベル/ボード等の初期構成） | `scripts/itsm/gitlab/itsm_bootstrap_realms.sh` |
-| `ensure_realm_groups.sh` | GitLab レルム/グループ構成の前提整備 | `scripts/itsm/gitlab/ensure_realm_groups.sh` |
-| `sync_usecase_dashboards.sh` | Grafana の ITSM ユースケースダッシュボード同期 | `scripts/itsm/grafana/sync_usecase_dashboards.sh` |
-| `provision_grafana_itsm_event_inbox.sh` | Grafana `ITSM Event Inbox` の作成と監視参照導線の整備 | `scripts/itsm/gitlab/provision_grafana_itsm_event_inbox.sh` |
+| `itsm_bootstrap_realms.sh` | ITSM Bootstrap（GitLab のプロジェクト/テンプレート/ラベル/ボード等の初期構成） | `apps/itsm_core/bootstrap/scripts/itsm_bootstrap_realms.sh` |
+| `ensure_realm_groups.sh` | GitLab レルム/グループ構成の前提整備 | `apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh` |
+| `sync_usecase_dashboards.sh` | Grafana の ITSM ユースケースダッシュボード同期 | `apps/itsm_core/bootstrap/scripts/sync_usecase_dashboards.sh` |
+| `provision_grafana_itsm_event_inbox.sh` | Grafana `ITSM Event Inbox` の作成と監視参照導線の整備 | `apps/itsm_core/bootstrap/scripts/provision_grafana_itsm_event_inbox.sh` |
 
 ## ユースケース定義の正本
 
@@ -125,7 +125,7 @@ apps 配下のディレクトリアプリを一覧化します。詳細は各ア
 - 開発タスク/不具合：技術管理プロジェクトの GitLab Issue/Epic/MR を開発側の作業チケットとして使用。運用系はサービス管理、開発系は技術管理で分離し、必要に応じて相互リンクする。
 - 自動起票：クラウド側ログ通知基盤（CloudWatch→*（Webhook）→n8n）からのイベントは n8n で受け、GitLab Issue 起票と Zulip 通知を標準化する。
 - チャネル分担：状態管理/承認/証跡は GitLab、コミュニケーションは Zulip に集約し、n8n が両者の連携を担う。
-- 役割/RACI：役割別の使い方と責任分界（RACI）はサービス管理テンプレートを正とする（`scripts/itsm/gitlab/templates/service-management/docs/role_guide.md.tpl` と `scripts/itsm/gitlab/templates/service-management/docs/raci.md.tpl`）。
+- 役割/RACI：役割別の使い方と責任分界（RACI）はサービス管理テンプレートを正とする（`apps/itsm_core/bootstrap/data/templates/service-management/docs/role_guide.md.tpl` と `apps/itsm_core/bootstrap/data/templates/service-management/docs/raci.md.tpl`）。
 
 ## 顧客向けポータルからの問い合わせフロー
 

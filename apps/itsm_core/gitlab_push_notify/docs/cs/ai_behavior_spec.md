@@ -32,7 +32,7 @@ AI には以下が期待される：
 - 速度よりも正確性とトレーサビリティを優先する
 - 情報が不完全な場合は、前提（仮定）を明示する
 - 推測的または根拠のない結論を避ける
-- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、共通ベース（`apps/itsm_core/gitlab_push_notify/docs/app_requirements.md`, `apps/itsm_core/gitlab_push_notify/docs/dq/dq.md`）を参照しつつ、realm overlay（`vendor/<name_prefix>/apps/itsm_core/gitlab_push_notify/realms/<realm_key>/docs/app_requirements.md`, `vendor/<name_prefix>/apps/itsm_core/gitlab_push_notify/realms/<realm_key>/docs/dq/dq.md`。`name_prefix` は `terraform output -raw name_prefix` を正とする）を更新する際は、テンプレート（`scripts/itsm/gitlab/templates/*/docs/usecases/`）を参照し、既存と重複しない形で少なくとも 1 件追加する
+- 仕様/要求/ユースケース/検証（DQ/OQ/PQ）の整合性を維持するため、共通ベース（`apps/itsm_core/gitlab_push_notify/docs/app_requirements.md`, `apps/itsm_core/gitlab_push_notify/docs/dq/dq.md`）を参照しつつ、realm overlay（`vendor/<name_prefix>/apps/itsm_core/gitlab_push_notify/realms/<realm_key>/docs/app_requirements.md`, `vendor/<name_prefix>/apps/itsm_core/gitlab_push_notify/realms/<realm_key>/docs/dq/dq.md`。`name_prefix` は `terraform output -raw name_prefix` を正とする）を更新する際は、テンプレート（`apps/itsm_core/bootstrap/data/templates/*/docs/usecases/`）を参照し、既存と重複しない形で少なくとも 1 件追加する
 
 ## 5. 禁止・制限される振る舞い
 AI は以下を行ってはならない：
@@ -60,7 +60,7 @@ AI は管理された自律モデルの下で動作する：
 - IQ/OQ/PQ: `apps/itsm_core/gitlab_push_notify/docs/iq/`, `apps/itsm_core/gitlab_push_notify/docs/oq/`, `apps/itsm_core/gitlab_push_notify/docs/pq/`
 - ワークフロー定義: `apps/itsm_core/gitlab_push_notify/workflows/`
 - 同期/検証スクリプト: `apps/itsm_core/gitlab_push_notify/scripts/`
-- ユースケーステンプレート: `scripts/itsm/gitlab/templates/*/docs/usecases/`
+- ユースケーステンプレート: `apps/itsm_core/bootstrap/data/templates/*/docs/usecases/`
 
 これらは変更管理下の構成品目（CI）として管理される。
 

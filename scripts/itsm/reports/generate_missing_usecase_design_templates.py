@@ -152,15 +152,15 @@ def main() -> int:
     )
     ap.add_argument(
         "--out-general",
-        default="scripts/itsm/gitlab/templates/general-management/docs/usecases/99_missing_usecases.md.tpl",
+        default="apps/itsm_core/bootstrap/data/templates/general-management/docs/usecases/99_missing_usecases.md.tpl",
     )
     ap.add_argument(
         "--out-service",
-        default="scripts/itsm/gitlab/templates/service-management/docs/usecases/99_missing_usecases.md.tpl",
+        default="apps/itsm_core/bootstrap/data/templates/service-management/docs/usecases/99_missing_usecases.md.tpl",
     )
     ap.add_argument(
         "--out-technical",
-        default="scripts/itsm/gitlab/templates/technical-management/docs/usecases/99_missing_usecases.md.tpl",
+        default="apps/itsm_core/bootstrap/data/templates/technical-management/docs/usecases/99_missing_usecases.md.tpl",
     )
     args = ap.parse_args()
 
