@@ -79,6 +79,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "${WORKFLOW_DIR:-}" ]]; then
+  # Normalize absolute paths (wrappers often set WORKFLOW_DIR to an absolute path).
+  if [[ "${WORKFLOW_DIR}" == "${REPO_ROOT}/"* ]]; then
+    WORKFLOW_DIR="${WORKFLOW_DIR#${REPO_ROOT}/}"
+  fi
+fi
+
 resolve_default_sor_realm_key() {
   if [[ -n "${N8N_ITSM_SOR_REALM_KEY:-}" ]]; then
     printf '%s' "${N8N_ITSM_SOR_REALM_KEY}"

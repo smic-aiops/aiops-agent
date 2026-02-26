@@ -63,3 +63,6 @@
 ### 承認ルール（MVP）
 - Issue にコメントで `/approve` を投稿、またはラベル `status:approved` を付与
 - n8n は `ledger/skill_updates/skill_update_<iid>.yml` を作る MR を作成し、Issue に MR URL をコメントする
+
+### 通知（任意）
+- `HR_TALENT_ZULIP_STREAM` が設定されている場合、申請/反映/レポート作成時に Zulip へ通知する

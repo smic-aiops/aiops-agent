@@ -42,7 +42,8 @@ n8n の環境変数として投入すること（tfvars 平文は避け、SSM �
 共通（GitLab）:
 - `N8N_GITLAB_API_BASE_URL`（または `GITLAB_API_BASE_URL`）
 - `N8N_GITLAB_TOKEN`（または `GITLAB_TOKEN`）
-- `HR_TALENT_GITLAB_PROJECT_PATH`（省略時: `<realm>/hr-talent-management`）
+- `HR_TALENT_GITLAB_PROJECT_PATH`（推奨。省略時: `<realm>/hr-talent-management`）
+  - エイリアス: `HR_TALENT_PROJECT_PATH` / `HR_TALENT_MANAGEMENT_PROJECT_PATH`（値が `hr-talent-management` のように `/` を含まない場合は `<realm>/` を補完）
 - `HR_TALENT_DEFAULT_BRANCH`（省略時: `main`）
 
 任意（Horilla 同期をする場合）:
