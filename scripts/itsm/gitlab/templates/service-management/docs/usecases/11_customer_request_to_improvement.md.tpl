@@ -284,3 +284,47 @@ grafana:
 ## 対応ユースケース（トレーサビリティ / general）
 - UC-1909 サービス妥当性確認およびテストの受付/登録
 <!-- END TRACEABILITY_GENERAL_FAMILY -->
+
+<!-- BEGIN AUTO_MIGRATED_FROM_99_MISSING_USECASES -->
+## 対応ユースケース（トレーサビリティ / 移設: 99_missing_usecases）
+
+- 元は `99_missing_usecases.md.tpl` に集約していた未設計ユースケースを、既存の詳細テンプレ（章）へ移設した一覧です。
+- 「プラクティス」は `docs/itsm/itsm_oss_features.csv` をソースとし、コンポーネント/操作はそれに基づく設計上の割当です（未実装は命名規約で明示）。
+
+### サービスデスク（11）
+#### プラクティス: zulip_gitlab_issue_sync; n8n; Zulip; GitLab / アプリ: Topic-Issue sync; State sync; Decision marker（6）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - n8n workflow: `apps/itsm_core/zulip_gitlab_issue_sync/workflows/zulip_gitlab_issue_sync.json`（Topic↔Issue同期）
+  - n8n workflow: `apps/itsm_core/zulip_gitlab_issue_sync/workflows/gitlab_decision_notify.json`（決定通知）
+  - Issueテンプレ: `issue_templates/06_customer_request.md`（要求受付→分析→改善へ接続）
+  - （新規）n8n workflow 命名規約: `itsm_サービスデスク_uc1530_*`（各UCのCron/Webhookを作成）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-1530 | UC-ZG-03 | Issue 状態（クローズ/再オープン等）を同期し、Zulip 側へ結果を通知する（Issue→会話の反映を含む） | ⭕️ |
+| UC-1531 | UC-ZG-01 | Zulip の特定 stream/topic を起点に GitLab Issue を作成し、結果を Zulip に通知する | ⭕️ |
+| UC-1532 | UC-ZG-06 | Zulip または GitLab Issue 上の「最終決定」を決定マーカーで識別し、Zulip へ通知しつつ GitLab Issue に証跡（決定ログ）を残す（最終決定: Zulip/GitLab、証跡の正: GitLab） | ⭕️ |
+| UC-1533 | UC-ZG-02 | 同一 topic の継続会話を GitLab Issue/コメントへ追記し、履歴を同期する（会話→Issue） | ⭕️ |
+| UC-1534 | UC-ZG-04 | 誤同期を抑制する（stream 名/ID 制約、マッピング/ルール、アンカー/差分同期で漏れ・重複を抑える） | ⭕️ |
+| UC-1535 | UC-ZG-05 | （任意）イベント/メトリクスを S3 へエクスポートし、日次振り返り等に利用できる形にする | ⭕️ |
+
+#### プラクティス: gitlab_mention_notify; n8n; GitLab; Zulip / アプリ: Webhook parsing; Mention extraction; User mapping（5）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - n8n workflow: `apps/itsm_core/gitlab_mention_notify/workflows/gitlab_mention_notify.json`（mention→Zulip通知）
+  - Issueテンプレ: `issue_templates/06_customer_request.md`（要求受付→分析→改善へ接続）
+  - （新規）n8n workflow 命名規約: `itsm_サービスデスク_uc1525_*`（各UCのCron/Webhookを作成）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-1525 | UC-MEN-01 | GitLab Webhook を受信し、本文から `@mention` を抽出して Zulip（DM 等）へ通知する | ⭕️ |
+| UC-1526 | UC-MEN-02 | Webhook Secret を検証し、不正送信を拒否する（未設定時は fail-fast で停止する） | ⭕️ |
+| UC-1527 | UC-MEN-03 | dry-run で通知先と本文を確認し、誤検知/過通知のリスクを事前に抑制する | ⭕️ |
+| UC-1528 | UC-MEN-04 | 除外語/ユーザーマッピング/上限などのルールで過通知を抑制する | ⭕️ |
+| UC-1529 | UC-MEN-05 | （任意）GitLab API を参照して補足情報を付与し、運用者の判断材料を増やす | ⭕️ |
+
+
+<!-- END AUTO_MIGRATED_FROM_99_MISSING_USECASES -->

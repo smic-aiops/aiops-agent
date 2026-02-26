@@ -108,3 +108,52 @@ grafana:
 - UC-3109 ベクトル基盤
 - UC-3110 レコメンド（検索結果の候補提示として扱う）
 - UC-3111 スクロール取得
+
+<!-- BEGIN AUTO_MIGRATED_FROM_99_MISSING_USECASES -->
+## 対応ユースケース（トレーサビリティ / 移設: 99_missing_usecases）
+
+- 元は `99_missing_usecases.md.tpl` に集約していた未設計ユースケースを、既存の詳細テンプレ（章）へ移設した一覧です。
+- 「プラクティス」は `docs/itsm/itsm_oss_features.csv` をソースとし、コンポーネント/操作はそれに基づく設計上の割当です（未実装は命名規約で明示）。
+
+### ナレッジ管理（検索性向上）（8）
+#### プラクティス: gitlab_issue_rag; n8n; GitLab; Qdrant / アプリ: Issue ingest; Embedding; Upsert; Similarity search（6）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - n8n workflow: `apps/itsm_core/gitlab_issue_rag/workflows/gitlab_issue_rag_sync.json`（Issue→Embedding→Qdrant）
+  - indexer: `modules/stack/gitlab_efs_indexer.tf` / `scripts/itsm/gitlab/start_gitlab_efs_indexer.sh`（GitLab→EFS→Qdrant）
+  - （新規）n8n workflow 命名規約: `itsm_ナレッジ管理（検索性向上）_uc3112_*`（各UCのCron/Webhookを作成）
+  - Qdrant: ベクタDB（`scripts/itsm/qdrant/*` / `modules/stack/ecs_tasks.tf`）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-3112 | UC-RAG-02 | GitLab Issue/notes を取得し、チャンク化して pgvector へ upsert する（通常同期） | ⭕️ |
+| UC-3113 | UC-RAG-01 | `/test` で pgvector の疎通を確認する（DB 依存の早期検知） | ⭕️ |
+| UC-3114 | UC-RAG-05 | embedding を skip/dry-run して、検証・運用の安全性とコストを制御する | ⭕️ |
+| UC-3115 | UC-RAG-06 | 取り込み対象プロジェクト/領域を変更した場合、誤取り込みを防ぐため OQ 観点で再検証する | ⭕️ |
+| UC-3116 | UC-RAG-03 | 差分同期（例: `updated_at`）で更新分のみを取り込み、同期時間と負荷を抑える | ⭕️ |
+| UC-3117 | UC-RAG-04 | 強制フル同期へ切り替え、欠落・不整合を回復できる | ⭕️ |
+
+#### プラクティス: GitLab; Qdrant; indexer(ECS/Step Functions) / アプリ: Git mirror; Vector embeddings; Points Upsert（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Qdrant: ベクタDB（`scripts/itsm/qdrant/*` / `modules/stack/ecs_tasks.tf`）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-3101 | UC-GL-881 | Qdrant-インデックス更新 | ⭕️ |
+
+#### プラクティス: GitLab; n8n; Qdrant / アプリ: Similarity search; Query API; References（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - （新規）n8n workflow 命名規約: `itsm_ナレッジ管理（検索性向上）_uc3102_*`（各UCのCron/Webhookを作成）
+  - Qdrant: ベクタDB（`scripts/itsm/qdrant/*` / `modules/stack/ecs_tasks.tf`）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-3102 | UC-GL-882 | ナレッジ管理（検索性向上）: 類似事例・Runbook提案 | ⭕️ |
+
+
+<!-- END AUTO_MIGRATED_FROM_99_MISSING_USECASES -->

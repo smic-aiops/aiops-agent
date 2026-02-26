@@ -195,3 +195,95 @@ grafana:
 - UC-5110 継続的改善の変更影響の分析
 - UC-5210 関係管理の変更影響の分析
 <!-- END TRACEABILITY_GENERAL_FAMILY -->
+
+<!-- BEGIN AUTO_MIGRATED_FROM_99_MISSING_USECASES -->
+## 対応ユースケース（トレーサビリティ / 移設: 99_missing_usecases）
+
+- 元は `99_missing_usecases.md.tpl` に集約していた未設計ユースケースを、既存の詳細テンプレ（章）へ移設した一覧です。
+- 「プラクティス」は `docs/itsm/itsm_oss_features.csv` をソースとし、コンポーネント/操作はそれに基づく設計上の割当です（未実装は命名規約で明示）。
+
+### サービスデスク; 変更管理（1）
+#### プラクティス: GitLab / アプリ: Issue boards（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Issueテンプレ: `issue_templates/04_change.md`（承認/影響/ロールバック）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-1701 | UC-GL-460 | ボード運用 | ⭕️ |
+
+
+### サービス構成管理; 変更管理（1）
+#### プラクティス: GitLab / アプリ: Labels（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Issueテンプレ: `issue_templates/04_change.md`（承認/影響/ロールバック）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-2101 | UC-GL-461 | ラベル運用 | ⭕️ |
+
+
+### サービス要求管理; 変更管理（1）
+#### プラクティス: n8n / アプリ: Workflows; Nodes（1）
+- コンポーネント/操作:
+  - Issueテンプレ: `issue_templates/04_change.md`（承認/影響/ロールバック）
+  - （新規）n8n workflow 命名規約: `itsm_サービス要求管理_変更管理_uc2401_*`（各UCのCron/Webhookを作成）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-2401 | UC-N8N-05 | 業務自動化 | ⭕️ |
+
+
+### リリース管理（1）
+#### プラクティス: GitLab / アプリ: Releases（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Issueテンプレ: `issue_templates/04_change.md`（承認/影響/ロールバック）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-3601 | UC-GL-462 | リリース管理 | ⭕️ |
+
+
+### 変更管理（2）
+#### プラクティス: Exastro ITA Web / Exastro ITA API / アプリ: Conductor schedule（1）
+- コンポーネント/操作:
+  - Issueテンプレ: `issue_templates/04_change.md`（承認/影響/ロールバック）
+  - Exastro: `scripts/itsm/exastro/redeploy_exastro.sh`（ECS再デプロイ）/ Conductor・Parameter Sheet を利用
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-4101 | UC-EXA-02 | スケジュール実行 | ⭕️ |
+
+#### プラクティス: GitLab; n8n; Zulip; Exastro ITA API / アプリ: Issues; Workflows; Messaging API; Conductor API（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Issueテンプレ: `issue_templates/04_change.md`（承認/影響/ロールバック）
+  - （新規）n8n workflow 命名規約: `itsm_変更管理_uc4102_*`（各UCのCron/Webhookを作成）
+  - Exastro: `scripts/itsm/exastro/redeploy_exastro.sh`（ECS再デプロイ）/ Conductor・Parameter Sheet を利用
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-4102 | UC-GL-878 | 承認結果通知 | ⭕️ |
+
+
+### 変更管理; プロジェクト管理（1）
+#### プラクティス: GitLab / アプリ: Scoped labels（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Issueテンプレ: `issue_templates/04_change.md`（承認/影響/ロールバック）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-4201 | UC-GL-438 | スコープラベル | 🔺 |
+
+
+<!-- END AUTO_MIGRATED_FROM_99_MISSING_USECASES -->

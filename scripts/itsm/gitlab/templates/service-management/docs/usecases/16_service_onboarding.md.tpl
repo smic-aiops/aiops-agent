@@ -173,3 +173,150 @@ flowchart TD
 - Grafana にはイベントに対応するダッシュボードURLを添付し、CMDBの `grafana.usecase_dashboards` と紐付ける
 ## Done（完了条件）
 - CMDB と監視導線が揃い、初期運用Issueが起票されている
+
+<!-- BEGIN AUTO_MIGRATED_FROM_99_MISSING_USECASES -->
+## 対応ユースケース（トレーサビリティ / 移設: 99_missing_usecases）
+
+- 元は `99_missing_usecases.md.tpl` に集約していた未設計ユースケースを、既存の詳細テンプレ（章）へ移設した一覧です。
+- 「プラクティス」は `docs/itsm/itsm_oss_features.csv` をソースとし、コンポーネント/操作はそれに基づく設計上の割当です（未実装は命名規約で明示）。
+
+### IT資産管理（21）
+#### プラクティス: GitLab; n8n / アプリ: CMDB/Issues; Sync workflows（21）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - n8n workflow: `apps/itsm_core/itsm_practice_review_sync/workflows/itsm_practice_review_sync.json`（プラクティスレビューIssue同期）
+  - Issueテンプレ: `issue_templates/02_service_request.md`（CMDB/カタログ/構成の更新要求）
+  - （新規）n8n workflow 命名規約: `itsm_IT資産管理_uc0001_*`（各UCのCron/Webhookを作成）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-0001 | UC-GL-270 | IT資産管理のSLA/目標管理 | 🔺 |
+| UC-0002 | UC-GL-271 | IT資産管理のエスカレーション/連携 | 🔺 |
+| UC-0003 | UC-GL-272 | IT資産管理のデータ品質の維持 | 🔺 |
+| UC-0004 | UC-GL-273 | IT資産管理のナレッジの更新 | 🔺 |
+| UC-0005 | UC-GL-274 | IT資産管理のレポート/振り返り | 🔺 |
+| UC-0006 | UC-GL-275 | IT資産管理のレポートの標準化 | 🔺 |
+| UC-0007 | UC-GL-276 | IT資産管理の依存関係の整理 | 🔺 |
+| UC-0008 | UC-GL-277 | IT資産管理の分類/優先度付け | 🔺 |
+| UC-0009 | UC-GL-278 | IT資産管理の受付/登録 | 🔺 |
+| UC-0010 | UC-GL-279 | IT資産管理の品質保証/監査 | 🔺 |
+| UC-0011 | UC-GL-280 | IT資産管理の実行/処理 | 🔺 |
+| UC-0012 | UC-GL-281 | IT資産管理の承認/レビュー | 🔺 |
+| UC-0013 | UC-GL-282 | IT資産管理の改善施策の実施 | 🔺 |
+| UC-0014 | UC-GL-283 | IT資産管理の方針/標準定義 | 🔺 |
+| UC-0015 | UC-GL-284 | IT資産管理の標準テンプレートの整備 | 🔺 |
+| UC-0016 | UC-GL-285 | IT資産管理の継続的改善 | 🔺 |
+| UC-0017 | UC-GL-286 | IT資産管理の自動化/効率化 | 🔺 |
+| UC-0018 | UC-GL-287 | IT資産管理の調査/分析 | 🔺 |
+| UC-0019 | UC-GL-288 | IT資産管理の通知/コミュニケーション | 🔺 |
+| UC-0020 | UC-GL-289 | IT資産管理の運用手順の整備 | 🔺 |
+| UC-0021 | UC-GL-290 | IT資産管理の関係者合意の形成 | 🔺 |
+
+
+### サービスカタログ管理（3）
+#### プラクティス: workflow_manager; GitLab / アプリ: Catalog API; Markdown（3）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Workflow Manager: `apps/workflow_manager/service_request/workflows/gitlab_service_catalog_sync.json`（カタログ同期）
+  - Issueテンプレ: `issue_templates/02_service_request.md`（CMDB/カタログ/構成の更新要求）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-1419 | UC-WM-19 | サービスカタログ管理の通知/コミュニケーション | ⭕️ |
+| UC-1420 | UC-WM-20 | サービスカタログ管理の運用手順の整備 | ⭕️ |
+| UC-1421 | UC-WM-21 | サービスカタログ管理の関係者合意の形成 | ⭕️ |
+
+
+### サービス構成管理（23）
+#### プラクティス: GitLab; Exastro ITA Web / Exastro ITA API; n8n / アプリ: CMDB (Git repo); Parameter sheets; Sync workflows（21）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - n8n workflow: `apps/itsm_core/itsm_practice_review_sync/workflows/itsm_practice_review_sync.json`（プラクティスレビューIssue同期）
+  - Issueテンプレ: `issue_templates/02_service_request.md`（CMDB/カタログ/構成の更新要求）
+  - （新規）n8n workflow 命名規約: `itsm_サービス構成管理_uc2003_*`（各UCのCron/Webhookを作成）
+  - Exastro: `scripts/itsm/exastro/redeploy_exastro.sh`（ECS再デプロイ）/ Conductor・Parameter Sheet を利用
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-2003 | UC-GL-375 | サービス構成管理のSLA/目標管理 | ⭕️ |
+| UC-2004 | UC-GL-376 | サービス構成管理のエスカレーション/連携 | ⭕️ |
+| UC-2005 | UC-GL-377 | サービス構成管理のデータ品質の維持 | ⭕️ |
+| UC-2006 | UC-GL-378 | サービス構成管理のナレッジの更新 | ⭕️ |
+| UC-2007 | UC-GL-379 | サービス構成管理のレポート/振り返り | ⭕️ |
+| UC-2008 | UC-GL-380 | サービス構成管理のレポートの標準化 | ⭕️ |
+| UC-2009 | UC-GL-381 | サービス構成管理の依存関係の整理 | ⭕️ |
+| UC-2010 | UC-GL-382 | サービス構成管理の分類/優先度付け | ⭕️ |
+| UC-2011 | UC-GL-383 | サービス構成管理の受付/登録 | ⭕️ |
+| UC-2012 | UC-GL-384 | サービス構成管理の品質保証/監査 | ⭕️ |
+| UC-2013 | UC-GL-385 | サービス構成管理の実行/処理 | ⭕️ |
+| UC-2014 | UC-GL-386 | サービス構成管理の承認/レビュー | ⭕️ |
+| UC-2015 | UC-GL-387 | サービス構成管理の改善施策の実施 | ⭕️ |
+| UC-2016 | UC-GL-388 | サービス構成管理の方針/標準定義 | ⭕️ |
+| UC-2017 | UC-GL-389 | サービス構成管理の標準テンプレートの整備 | ⭕️ |
+| UC-2018 | UC-GL-390 | サービス構成管理の継続的改善 | ⭕️ |
+| UC-2019 | UC-GL-391 | サービス構成管理の自動化/効率化 | ⭕️ |
+| UC-2020 | UC-GL-392 | サービス構成管理の調査/分析 | ⭕️ |
+| UC-2021 | UC-GL-393 | サービス構成管理の通知/コミュニケーション | ⭕️ |
+| UC-2022 | UC-GL-394 | サービス構成管理の運用手順の整備 | ⭕️ |
+| UC-2023 | UC-GL-395 | サービス構成管理の関係者合意の形成 | ⭕️ |
+
+#### プラクティス: Exastro ITA API; n8n; GitLab; Zulip / アプリ: Parameter sheets; Sync workflows; Merge requests; Messaging API（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - n8n workflow: `apps/itsm_core/itsm_practice_review_sync/workflows/itsm_practice_review_sync.json`（プラクティスレビューIssue同期）
+  - Issueテンプレ: `issue_templates/02_service_request.md`（CMDB/カタログ/構成の更新要求）
+  - （新規）n8n workflow 命名規約: `itsm_サービス構成管理_uc2001_*`（各UCのCron/Webhookを作成）
+  - Exastro: `scripts/itsm/exastro/redeploy_exastro.sh`（ECS再デプロイ）/ Conductor・Parameter Sheet を利用
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-2001 | UC-EXA-23 | CMDB同期（定期） | ⭕️ |
+
+#### プラクティス: Exastro ITA Web / Exastro ITA API / アプリ: Parameter Sheet（1）
+- コンポーネント/操作:
+  - Issueテンプレ: `issue_templates/02_service_request.md`（CMDB/カタログ/構成の更新要求）
+  - Exastro: `scripts/itsm/exastro/redeploy_exastro.sh`（ECS再デプロイ）/ Conductor・Parameter Sheet を利用
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-2002 | UC-EXA-03 | パラメータ管理 | ⭕️ |
+
+
+### サービス設計（21）
+#### プラクティス: GitLab / アプリ: Markdown; Issues; Merge requests（21）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Issueテンプレ: `issue_templates/02_service_request.md`（CMDB/カタログ/構成の更新要求）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-2501 | UC-GL-417 | サービス設計のSLA/目標管理 | 🔺 |
+| UC-2502 | UC-GL-418 | サービス設計のエスカレーション/連携 | 🔺 |
+| UC-2503 | UC-GL-419 | サービス設計のデータ品質の維持 | 🔺 |
+| UC-2504 | UC-GL-420 | サービス設計のナレッジの更新 | 🔺 |
+| UC-2505 | UC-GL-421 | サービス設計のレポート/振り返り | 🔺 |
+| UC-2506 | UC-GL-422 | サービス設計のレポートの標準化 | 🔺 |
+| UC-2507 | UC-GL-423 | サービス設計の依存関係の整理 | 🔺 |
+| UC-2508 | UC-GL-424 | サービス設計の分類/優先度付け | 🔺 |
+| UC-2509 | UC-GL-425 | サービス設計の受付/登録 | 🔺 |
+| UC-2510 | UC-GL-426 | サービス設計の品質保証/監査 | 🔺 |
+| UC-2511 | UC-GL-427 | サービス設計の実行/処理 | 🔺 |
+| UC-2512 | UC-GL-428 | サービス設計の承認/レビュー | 🔺 |
+| UC-2513 | UC-GL-429 | サービス設計の改善施策の実施 | 🔺 |
+| UC-2514 | UC-GL-430 | サービス設計の方針/標準定義 | 🔺 |
+| UC-2515 | UC-GL-431 | サービス設計の標準テンプレートの整備 | 🔺 |
+| UC-2516 | UC-GL-432 | サービス設計の継続的改善 | 🔺 |
+| UC-2517 | UC-GL-433 | サービス設計の自動化/効率化 | 🔺 |
+| UC-2518 | UC-GL-434 | サービス設計の調査/分析 | 🔺 |
+| UC-2519 | UC-GL-435 | サービス設計の通知/コミュニケーション | 🔺 |
+| UC-2520 | UC-GL-436 | サービス設計の運用手順の整備 | 🔺 |
+| UC-2521 | UC-GL-437 | サービス設計の関係者合意の形成 | 🔺 |
+
+
+<!-- END AUTO_MIGRATED_FROM_99_MISSING_USECASES -->

@@ -149,3 +149,28 @@ grafana:
 - UC-1920 サービス妥当性確認およびテストの運用手順の整備
 - UC-1921 サービス妥当性確認およびテストの関係者合意の形成
 <!-- END TRACEABILITY_GENERAL_FAMILY -->
+
+<!-- BEGIN AUTO_MIGRATED_FROM_99_MISSING_USECASES -->
+## 対応ユースケース（トレーサビリティ / 移設: 99_missing_usecases）
+
+- 元は `99_missing_usecases.md.tpl` に集約していた未設計ユースケースを、既存の詳細テンプレ（章）へ移設した一覧です。
+- 「プラクティス」は `docs/itsm/itsm_oss_features.csv` をソースとし、コンポーネント/操作はそれに基づく設計上の割当です（未実装は命名規約で明示）。
+
+### サービスレベル管理（3）
+#### プラクティス: GitLab; Grafana; n8n; gitlab_issue_metrics_sync / アプリ: Issue metrics; Dashboards; Reports sync（3）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - n8n workflow: `apps/itsm_core/gitlab_issue_metrics_sync/workflows/gitlab_issue_metrics_sync.json`（Issueメトリクス集計）
+  - Issueテンプレ: `issue_templates/05_sla_slo_definition.md`（SLA/SLO定義→合意→レビュー）
+  - （新規）n8n workflow 命名規約: `itsm_サービスレベル管理_uc1819_*`（各UCのCron/Webhookを作成）
+  - Grafana: ダッシュボード/アラート/アノテーション（CMDBの `grafana.usecase_dashboards` で紐付け）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-1819 | UC-GL-351 | サービスレベル管理の通知/コミュニケーション | ⭕️ |
+| UC-1820 | UC-GL-352 | サービスレベル管理の運用手順の整備 | ⭕️ |
+| UC-1821 | UC-GL-353 | サービスレベル管理の関係者合意の形成 | ⭕️ |
+
+
+<!-- END AUTO_MIGRATED_FROM_99_MISSING_USECASES -->

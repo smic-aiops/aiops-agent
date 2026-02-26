@@ -110,3 +110,47 @@ grafana:
 - https://developer.hashicorp.com/terraform/tutorials/state/resource-drift （参照日: 2026-02-13）
 - https://developer.hashicorp.com/terraform/cli/commands/plan （参照日: 2026-02-13）
 
+<!-- BEGIN AUTO_MIGRATED_FROM_99_MISSING_USECASES -->
+## 対応ユースケース（トレーサビリティ / 移設: 99_missing_usecases）
+
+- 元は `99_missing_usecases.md.tpl` に集約していた未設計ユースケースを、既存の詳細テンプレ（章）へ移設した一覧です。
+- 「プラクティス」は `docs/itsm/itsm_oss_features.csv` をソースとし、コンポーネント/操作はそれに基づく設計上の割当です（未実装は命名規約で明示）。
+
+### インフラストラクチャおよびプラットフォーム管理（4）
+#### プラクティス: Exastro ITA Web / Exastro ITA API; GitLab; Keycloak / アプリ: Parameter sheets; Conductor; SSO（2）
+- コンポーネント/操作:
+  - GitLab: `{{TECHNICAL_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Exastro: `scripts/itsm/exastro/redeploy_exastro.sh`（ECS再デプロイ）/ Conductor・Parameter Sheet を利用
+  - Keycloak: OIDC/SSO（ロールで閲覧/操作権限を制御）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-0403 | UC-EXA-05 | インフラ/プラットフォーム管理のIaCの標準テンプレ管理 | 🔺 |
+| UC-0405 | UC-EXA-08 | インフラ/プラットフォーム管理の構成ドリフト検知 | 🔺 |
+
+#### プラクティス: Exastro ITA API; n8n; GitLab; Zulip / アプリ: CMDB sync; Diff detection; Webhooks; Messaging API（1）
+- コンポーネント/操作:
+  - GitLab: `{{TECHNICAL_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - （新規）n8n workflow 命名規約: `itsm_インフラストラクチャおよびプラットフォーム管理_uc0401_*`（各UCのCron/Webhookを作成）
+  - Exastro: `scripts/itsm/exastro/redeploy_exastro.sh`（ECS再デプロイ）/ Conductor・Parameter Sheet を利用
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-0401 | UC-EXA-25 | ドリフト検出 | 🔺 |
+
+#### プラクティス: Exastro ITA Web / Exastro ITA API; GitLab; Grafana; Keycloak / アプリ: Parameter sheets; Conductor; Dashboards/Annotations/Webhook (optional); SSO（1）
+- コンポーネント/操作:
+  - GitLab: `{{TECHNICAL_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Exastro: `scripts/itsm/exastro/redeploy_exastro.sh`（ECS再デプロイ）/ Conductor・Parameter Sheet を利用
+  - Grafana: ダッシュボード/アラート/アノテーション（CMDBの `grafana.usecase_dashboards` で紐付け）
+  - Keycloak: OIDC/SSO（ロールで閲覧/操作権限を制御）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-0402 | UC-EXA-07 | インフラ/プラットフォーム管理の構成ドリフトの監視 | 🔺 |
+
+
+<!-- END AUTO_MIGRATED_FROM_99_MISSING_USECASES -->

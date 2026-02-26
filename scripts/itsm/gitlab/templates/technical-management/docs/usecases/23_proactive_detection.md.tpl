@@ -113,3 +113,24 @@ grafana:
 - UC-1101 GitLab Push イベントを受信し、必要情報を整形して Zulip に通知する
 - UC-4505 監査イベント
 <!-- END TRACEABILITY_GENERAL_FAMILY -->
+
+<!-- BEGIN AUTO_MIGRATED_FROM_99_MISSING_USECASES -->
+## 対応ユースケース（トレーサビリティ / 移設: 99_missing_usecases）
+
+- 元は `99_missing_usecases.md.tpl` に集約していた未設計ユースケースを、既存の詳細テンプレ（章）へ移設した一覧です。
+- 「プラクティス」は `docs/itsm/itsm_oss_features.csv` をソースとし、コンポーネント/操作はそれに基づく設計上の割当です（未実装は命名規約で明示）。
+
+### オブザーバビリティ（1）
+#### プラクティス: Grafana; n8n; cloudwatch_event_notify / アプリ: Dashboards; Annotations; Webhook (optional)（1）
+- コンポーネント/操作:
+  - n8n workflow: `apps/itsm_core/cloudwatch_event_notify/workflows/cloudwatch_event_notify.json`（CloudWatch→分類→通知）
+  - （新規）n8n workflow 命名規約: `itsm_オブザーバビリティ_uc0601_*`（各UCのCron/Webhookを作成）
+  - Grafana: ダッシュボード/アラート/アノテーション（CMDBの `grafana.usecase_dashboards` で紐付け）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-0601 | UC-GF-100 | Grafana参照/注釈連携 | 🔺 |
+
+
+<!-- END AUTO_MIGRATED_FROM_99_MISSING_USECASES -->

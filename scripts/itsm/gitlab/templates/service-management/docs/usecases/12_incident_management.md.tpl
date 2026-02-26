@@ -194,3 +194,108 @@ AIOps/対話ガードレール（安全側に倒す）:
 - UC-0237 AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も **Zulip 上の決定**として扱い（`/decision`）、GitLab へ証跡化し、DB（`aiops_approval_history`）に記録して `/decisions` で参照できる
 - UC-0238 ユーザー要望を改善機会として CIR（継続的改善レジスター）に集約し、承認時に依頼者へ通知する
 - UC-0239 承認リンク（クリック）による approve/deny を **Zulip 上の決定**として扱い、証跡（承認履歴）を保存し、Zulip から `/decisions` で時系列サマリを参照できる
+
+<!-- BEGIN AUTO_MIGRATED_FROM_99_MISSING_USECASES -->
+## 対応ユースケース（トレーサビリティ / 移設: 99_missing_usecases）
+
+- 元は `99_missing_usecases.md.tpl` に集約していた未設計ユースケースを、既存の詳細テンプレ（章）へ移設した一覧です。
+- 「プラクティス」は `docs/itsm/itsm_oss_features.csv` をソースとし、コンポーネント/操作はそれに基づく設計上の割当です（未実装は命名規約で明示）。
+
+### インシデント管理; 問題管理（1）
+#### プラクティス: GitLab / アプリ: Issues（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - Issueテンプレ: `issue_templates/01_incident.md`（障害/イベント→インシデント化）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-0301 | UC-GL-526 | 課題管理 | ⭕️ |
+
+
+### 監視およびイベント管理（31）
+#### プラクティス: Grafana; n8n; cloudwatch_event_notify / アプリ: Dashboards; Annotations; Webhook (optional)（21）
+- コンポーネント/操作:
+  - n8n workflow: `apps/itsm_core/cloudwatch_event_notify/workflows/cloudwatch_event_notify.json`（CloudWatch→分類→通知）
+  - Issueテンプレ: `issue_templates/01_incident.md`（障害/イベント→インシデント化）
+  - （新規）n8n workflow 命名規約: `itsm_監視およびイベント管理_uc4804_*`（各UCのCron/Webhookを作成）
+  - Grafana: ダッシュボード/アラート/アノテーション（CMDBの `grafana.usecase_dashboards` で紐付け）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-4804 | UC-GF-076 | 監視およびイベント管理のSLA/目標管理 | 🔺 |
+| UC-4805 | UC-GF-077 | 監視およびイベント管理のエスカレーション/連携 | 🔺 |
+| UC-4806 | UC-GF-078 | 監視およびイベント管理のデータ品質の維持 | 🔺 |
+| UC-4807 | UC-GF-079 | 監視およびイベント管理のナレッジの更新 | 🔺 |
+| UC-4808 | UC-GF-080 | 監視およびイベント管理のレポート/振り返り | 🔺 |
+| UC-4809 | UC-GF-081 | 監視およびイベント管理のレポートの標準化 | 🔺 |
+| UC-4810 | UC-GF-082 | 監視およびイベント管理の依存関係の整理 | 🔺 |
+| UC-4811 | UC-GF-083 | 監視およびイベント管理の分類/優先度付け | 🔺 |
+| UC-4812 | UC-GF-084 | 監視およびイベント管理の受付/登録 | 🔺 |
+| UC-4813 | UC-GF-085 | 監視およびイベント管理の品質保証/監査 | 🔺 |
+| UC-4814 | UC-GF-086 | 監視およびイベント管理の実行/処理 | 🔺 |
+| UC-4815 | UC-GF-087 | 監視およびイベント管理の承認/レビュー | 🔺 |
+| UC-4816 | UC-GF-088 | 監視およびイベント管理の改善施策の実施 | 🔺 |
+| UC-4817 | UC-GF-089 | 監視およびイベント管理の方針/標準定義 | 🔺 |
+| UC-4818 | UC-GF-090 | 監視およびイベント管理の標準テンプレートの整備 | 🔺 |
+| UC-4819 | UC-GF-091 | 監視およびイベント管理の継続的改善 | 🔺 |
+| UC-4820 | UC-GF-092 | 監視およびイベント管理の自動化/効率化 | 🔺 |
+| UC-4821 | UC-GF-093 | 監視およびイベント管理の調査/分析 | 🔺 |
+| UC-4822 | UC-GF-094 | 監視およびイベント管理の通知/コミュニケーション | 🔺 |
+| UC-4823 | UC-GF-095 | 監視およびイベント管理の運用手順の整備 | 🔺 |
+| UC-4824 | UC-GF-096 | 監視およびイベント管理の関係者合意の形成 | 🔺 |
+
+#### プラクティス: cloudwatch_event_notify; n8n; Zulip; GitLab; Grafana / アプリ: Webhook ingest; Event routing; Multi-channel notification（5）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - n8n workflow: `apps/itsm_core/cloudwatch_event_notify/workflows/cloudwatch_event_notify.json`（CloudWatch→分類→通知）
+  - Issueテンプレ: `issue_templates/01_incident.md`（障害/イベント→インシデント化）
+  - （新規）n8n workflow 命名規約: `itsm_監視およびイベント管理_uc4827_*`（各UCのCron/Webhookを作成）
+  - Grafana: ダッシュボード/アラート/アノテーション（CMDBの `grafana.usecase_dashboards` で紐付け）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-4827 | UC-CW-01 | CloudWatch/SNS 通知を受信し、整形して Zulip へ通知する（必要情報を抽出し、運用者が判断できる要約を投稿） | 🔺 |
+| UC-4828 | UC-CW-03 | Webhook トークン検証で不正送信を拒否する（`N8N_CLOUDWATCH_WEBHOOK_SECRET` 適用時） | 🔺 |
+| UC-4829 | UC-CW-02 | dry-run で外部送信せず、整形結果のみを確認する（誤通知リスクを抑止して検証する） | 🔺 |
+| UC-4830 | UC-CW-04 | 複数チャネルの部分失敗を可視化し、全体として完走する（例: Zulip 成功 + GitLab 失敗を `results[]`/`status_code=207` で表現） | 🔺 |
+| UC-4831 | UC-CW-05 | 送信先（Zulip/GitLab/Grafana）を段階的に有効化し、影響範囲を制御する | 🔺 |
+
+#### プラクティス: Grafana / アプリ: Dashboards; Annotations; Webhook (optional)（3）
+- コンポーネント/操作:
+  - Issueテンプレ: `issue_templates/01_incident.md`（障害/イベント→インシデント化）
+  - Grafana: ダッシュボード/アラート/アノテーション（CMDBの `grafana.usecase_dashboards` で紐付け）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-4801 | UC-GF-025 | アラートルール管理 | 🔺 |
+| UC-4802 | UC-GF-026 | アラート定義 | 🔺 |
+| UC-4803 | UC-GF-027 | アラート履歴 | 🔺 |
+
+#### プラクティス: cloudwatch_event_notify; n8n; GitLab; Zulip / アプリ: Webhooks; Issues API; Messaging API; Deduplication（1）
+- コンポーネント/操作:
+  - GitLab: `{{SERVICE_MANAGEMENT_PROJECT_PATH}}` で Issue 起票→ラベル/ボードで状態管理→（必要時）MR で変更レビュー/承認
+  - n8n workflow: `apps/itsm_core/cloudwatch_event_notify/workflows/cloudwatch_event_notify.json`（CloudWatch→分類→通知）
+  - Issueテンプレ: `issue_templates/01_incident.md`（障害/イベント→インシデント化）
+  - （新規）n8n workflow 命名規約: `itsm_監視およびイベント管理_uc4826_*`（各UCのCron/Webhookを作成）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-4826 | UC-CW-01 | アラート自動起票 | 🔺 |
+
+#### プラクティス: n8n / アプリ: n8n Trigger（1）
+- コンポーネント/操作:
+  - Issueテンプレ: `issue_templates/01_incident.md`（障害/イベント→インシデント化）
+  - （新規）n8n workflow 命名規約: `itsm_監視およびイベント管理_uc4832_*`（各UCのCron/Webhookを作成）
+- 対象ユースケース:
+
+| UC-ID | 機能ID | ユースケース | 実装状況 |
+|---|---|---|---|
+| UC-4832 | UC-N8N-09 | インスタンスイベント連携 | 🔺 |
+
+
+<!-- END AUTO_MIGRATED_FROM_99_MISSING_USECASES -->
