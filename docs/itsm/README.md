@@ -262,6 +262,8 @@ GitLab 側の ITSM テンプレ/運用資材（Issue template / Wiki template / 
 - テンプレ（SSoT）: `apps/itsm_core/bootstrap/data/templates/`
 - 手順: `apps/itsm_core/bootstrap/docs/usage/README.md`
 - 静的検証（推奨）: `apps/itsm_core/bootstrap/scripts/run_oq.sh --dry-run`
+- GitLab 管理 API スモーク（dry-run）: `apps/itsm_core/bootstrap/scripts/run_oq.sh --with-gitlab-smoke --dry-run`
+- GitLab 管理 API スモーク（実行）: `apps/itsm_core/bootstrap/scripts/run_oq.sh --execute-gitlab-smoke`
 
 ### GitLab 管理者トークンの更新
 GitLab コンテナ内の `gitlab-rails` で管理者 PAT を発行し、`terraform.itsm.tfvars` の `gitlab_admin_token` を更新します。

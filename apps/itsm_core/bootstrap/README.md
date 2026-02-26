@@ -92,6 +92,8 @@ Intended Use に適合することを、最小の検証で示す。
 
 **実行**
 - `apps/itsm_core/bootstrap/scripts/run_oq.sh --dry-run`
+- `apps/itsm_core/bootstrap/scripts/run_oq.sh --with-gitlab-smoke --dry-run`（GitLab 管理 API 呼び出し計画を確認）
+- `apps/itsm_core/bootstrap/scripts/run_oq.sh --execute-gitlab-smoke`（GitLab 管理 API を実行）
 
 ---
 
