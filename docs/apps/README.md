@@ -107,7 +107,10 @@ aiops_agent_environment = {
 
 ## n8n 実行設定（`EXECUTIONS_MODE` / `EXECUTIONS_TIMEOUT`）
 
-`EXECUTIONS_MODE` と `EXECUTIONS_TIMEOUT` は、`terraform.apps.tfvars` の `aiops_agent_environment`（realm ごとの n8n 環境変数）で管理します。
+`EXECUTIONS_MODE` と `EXECUTIONS_TIMEOUT` は、Terraform 変数 `n8n_executions_mode` / `n8n_executions_timeout` で管理します。
+これらは n8n ECS タスク環境変数 `EXECUTIONS_MODE` / `EXECUTIONS_TIMEOUT` に注入されます。
+
+必要に応じて `aiops_agent_environment`（realm ごとの n8n 環境変数）でも上書きできます。
 Terraform では `default` を各 realm の基底値とし、realm 個別設定で上書きします。
 
 標準値（本リポジトリの運用標準）:
@@ -123,12 +126,10 @@ Terraform では `default` を各 realm の基底値とし、realm 個別設定�
 設定例（`terraform.apps.tfvars`）:
 
 ```hcl
-aiops_agent_environment = {
-  default = {
-    EXECUTIONS_MODE    = "regular"
-    EXECUTIONS_TIMEOUT = "-1"
-  }
+n8n_executions_mode    = "regular"
+n8n_executions_timeout = -1
 
+aiops_agent_environment = {
   tenant-a = {
     # realm 個別の上書き例（1時間で打ち切り）
     EXECUTIONS_TIMEOUT = "3600"
@@ -137,7 +138,9 @@ aiops_agent_environment = {
 ```
 
 変更手順:
-1. `terraform.apps.tfvars` の `aiops_agent_environment` に `EXECUTIONS_MODE` / `EXECUTIONS_TIMEOUT` を追加・更新。
+1. `terraform.apps.tfvars` の `n8n_executions_mode` / `n8n_executions_timeout` を更新（必要なら realm 個別の `aiops_agent_environment` で上書き）。
+   - 補助: `bash scripts/itsm/n8n/update_n8n_execution_settings.sh --mode regular --timeout -1 --dry-run`
+   - 適用: `bash scripts/itsm/n8n/update_n8n_execution_settings.sh --mode regular --timeout -1`
 2. Terraform を反映。
 3. n8n サービスを再デプロイ。
 4. ECS タスク定義の環境変数を確認（反映検証）。

@@ -42,9 +42,30 @@ CloudWatch からのイベント通知やチャットのイベント（メッセ
 - UC-AIOPS-OFF-011（DQ-OFF-011/medium）: GitLab Wiki 等のナレッジ検索を想定し、RAG 参照の意思決定（preview facts）を行う
 - UC-AIOPS-OFF-012（DQ-OFF-012/medium）: RAG から得た候補（candidate）をプレビューに反映し、次アクションの根拠を整える
 - UC-AIOPS-OFF-013（DQ-OFF-013/medium）: 解決済みの対応内容をナレッジ化（再利用可能なFAQ/手順/注意点）し、GitLab の docs/ 等へ記録できるように誘導する（ITIL4 テンプレ: `14_knowledge_management`）
-- UC-AIOPS-OFF-014（追加/medium）: 承認リンク（クリック）による approve/deny を **Zulip 上の決定**として扱い、証跡（承認履歴）を保存し、Zulip から `/decisions` で時系列サマリを参照できる
-- UC-AIOPS-OFF-015（追加/medium）: AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も **Zulip 上の決定**として扱い（`/decision`）、GitLab へ証跡化し、DB（`aiops_approval_history`）に記録して `/decisions` で参照できる
-- UC-AIOPS-OFF-016（追加/medium）: ユーザー要望（例: 「○○ができるようになって」）を受領して回答し、GitLab の一般管理プロジェクトの CIR（継続的改善レジスター）＝GitLab Issue に改善機会として `New` で集約する（重複がないように登録）。運用者が `Approved` にした時に、要望を行ったユーザーに対して、チャット上で「以前のご要望（要約）は承認されたので、これから改善します。」旨のメッセージを送信する。
+- UC-AIOPS-OFF-014（DQ-OFF-015/medium）: 承認リンク（クリック）による approve/deny を **Zulip 上の決定**として扱い、証跡（承認履歴）を保存し、Zulip から `/decisions` で時系列サマリを参照できる
+- UC-AIOPS-OFF-015（DQ-OFF-016/medium）: AIOpsAgent が `auto_enqueue`（自動承認/自動実行）した場合も **Zulip 上の決定**として扱い（`/decision`）、GitLab へ証跡化し、DB（`aiops_approval_history`）に記録して `/decisions` で参照できる
+- UC-AIOPS-OFF-016（DQ-OFF-014/medium）: ユーザー要望（例: 「○○ができるようになって」）を受領して回答し、GitLab の一般管理プロジェクトの CIR（継続的改善レジスター）＝GitLab Issue に改善機会として `New` で集約する（重複がないように登録）。運用者が `Approved` にした時に、要望を行ったユーザーに対して、チャット上で「以前のご要望（要約）は承認されたので、これから改善します。」旨のメッセージを送信する。
+
+### ユースケース別 OQ ドキュメント
+
+| ユースケース機能ID | DQ シナリオ | OQ ドキュメント |
+| --- | --- | --- |
+| UC-AIOPS-OFF-001 | DQ-OFF-001 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_01_chat_request_normal.md` |
+| UC-AIOPS-OFF-002 | DQ-OFF-002 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_02_monitoring_auto_reaction.md` |
+| UC-AIOPS-OFF-003 | DQ-OFF-003 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_03_feedback.md` |
+| UC-AIOPS-OFF-004 | DQ-OFF-004 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_04_enrichment.md` |
+| UC-AIOPS-OFF-005 | DQ-OFF-005 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_05_trace_id_propagation.md` |
+| UC-AIOPS-OFF-006 | DQ-OFF-006 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_06_llm_provider_switch.md` |
+| UC-AIOPS-OFF-007 | DQ-OFF-007 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_07_security_auth.md` |
+| UC-AIOPS-OFF-008 | DQ-OFF-008 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_08_policy_context_guardrails.md` |
+| UC-AIOPS-OFF-009 | DQ-OFF-009 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_09_queue_mode_worker.md` |
+| UC-AIOPS-OFF-010 | DQ-OFF-010 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_10_zulip_primary_hello.md` |
+| UC-AIOPS-OFF-011 | DQ-OFF-011 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_11_intent_clarification.md` |
+| UC-AIOPS-OFF-012 | DQ-OFF-012 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_12_zulip_topic_context.md` |
+| UC-AIOPS-OFF-013 | DQ-OFF-013 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_13_zulip_conversation_continuity.md` |
+| UC-AIOPS-OFF-014 | DQ-OFF-015 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_28_approval_link_decision_history.md` |
+| UC-AIOPS-OFF-015 | DQ-OFF-016 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_29_auto_approval_as_decision.md` |
+| UC-AIOPS-OFF-016 | DQ-OFF-014 | `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_30_cir_request_intake_and_notify.md` |
 
 ## 2.2 DQ ゲート連携（要求）
 

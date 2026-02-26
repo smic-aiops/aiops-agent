@@ -736,6 +736,16 @@ output "N8N_ACTIVATE" {
   value       = var.aiops_n8n_activate
 }
 
+output "n8n_executions_mode" {
+  description = "n8n executions mode injected to ECS task env (EXECUTIONS_MODE)"
+  value       = var.n8n_executions_mode
+}
+
+output "n8n_executions_timeout" {
+  description = "n8n execution timeout injected to ECS task env (EXECUTIONS_TIMEOUT)"
+  value       = var.n8n_executions_timeout
+}
+
 output "aiops_n8n_agent_realms" {
   description = "Realm list used to decide where to install AIOps Agent in n8n."
   value       = var.aiops_n8n_agent_realms

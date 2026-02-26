@@ -28,7 +28,7 @@
 
 ## Process
 - CIR同期（Approved → Docs）:
-  - `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md` に従い、CIR（一般管理プロジェクトの GitLab Issue）で `状態/Approved` のレコードからユースケース（`UC-*`）を抽出する
+  - `apps/itsm_core/cir_usecase_list/docs/cs/cir_usecase_docs_sync_prompt.md` に従い、CIR（一般管理プロジェクトの GitLab Issue）で `状態/Approved` のレコードからユースケース機能ID（`UC-*`）を抽出する
   - 抽出結果のうち当該アプリに関係する `UC-*` を特定し、`vendor/<name_prefix>/apps/itsm_core/gitlab_dora_metrics_sync/realms/<realm_key>/docs/app_requirements.md` と `vendor/<name_prefix>/apps/itsm_core/gitlab_dora_metrics_sync/realms/<realm_key>/docs/dq/dq.md` に未記載があれば **最小差分で追記**して整合を取る（共通ベース `apps/itsm_core/gitlab_dora_metrics_sync/docs/*` は編集しない）
   - `mode=apply` のときのみ n8n webhook `POST /webhook/itsm/cir/usecases/approved/list` を呼ぶ（`dry_run=false`）。`mode=dry-run` は外部 HTTP を呼ばず、追記もしない（不足情報のみ列挙）
 - ユースケース拡張（必要な場合）:

@@ -248,6 +248,8 @@ locals {
       N8N_METRICS                           = "true"
       N8N_DEFAULT_LOCALE                    = "ja"
       N8N_PUBLIC_API_DISABLED               = "false"
+      EXECUTIONS_MODE                       = var.n8n_executions_mode
+      EXECUTIONS_TIMEOUT                    = tostring(var.n8n_executions_timeout)
       N8N_ADMIN_EMAIL                       = local.n8n_admin_email_value
       # Enable decision/approval recognition by LLM for Zulip<->GitLab sync workflows by default.
       # (Workflows still require DECISION_LLM_API_* values to actually call the model.)

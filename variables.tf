@@ -277,6 +277,26 @@ variable "n8n_db_ping_interval_seconds" {
   default     = 2
 }
 
+variable "n8n_executions_mode" {
+  description = "n8n executions mode (EXECUTIONS_MODE). Supported: regular, queue."
+  type        = string
+  default     = "regular"
+  validation {
+    condition     = contains(["regular", "queue"], var.n8n_executions_mode)
+    error_message = "n8n_executions_mode must be one of: regular, queue."
+  }
+}
+
+variable "n8n_executions_timeout" {
+  description = "n8n workflow execution timeout seconds (EXECUTIONS_TIMEOUT). Use -1 to disable."
+  type        = number
+  default     = -1
+  validation {
+    condition     = var.n8n_executions_timeout >= -1
+    error_message = "n8n_executions_timeout must be -1 or greater."
+  }
+}
+
 variable "pg_db_password" {
   description = "Master password for the PostgreSQL instance"
   type        = string

@@ -9,7 +9,7 @@
 
 ## 1. 目的と適用範囲
 
-本プロンプトは、CIR（一般管理プロジェクトの GitLab Issue）で `状態/Approved` のレコードを一覧し、そこから抽出されたユースケース（`UC-*`）をもとに、対象アプリのドキュメント（Requirements/DQ）を **不足があれば追記**して整合性を維持する。
+本プロンプトは、CIR（一般管理プロジェクトの GitLab Issue）で `状態/Approved` のレコードを一覧し、そこから抽出されたユースケース機能ID（`UC-*`）をもとに、対象アプリのドキュメント（Requirements/DQ）を **不足があれば追記**して整合性を維持する。
 
 適用対象（realm overlay へ追記する。共通 docs は編集しない）:
 - `vendor/<name_prefix>/apps/<app>/realms/<realm_key>/docs/app_requirements.md`

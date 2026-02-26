@@ -21,7 +21,7 @@
   - realm 単位の ITSM SoR（最小核）の提供
   - 監査イベント（append-only）の投入と冪等性（event_key 等）
   - バックフィル（GitLab Issue/決定など）を SoR に投入する仕組み
-  - CIR（一般管理/継続的改善）で `状態/Approved` の Issue を一覧し、ユースケース（`UC-*`）を抽出して返す仕組み
+  - CIR（一般管理/継続的改善）で `状態/Approved` の Issue を一覧し、ユースケース機能ID（`UC-*`）を抽出して返す仕組み
   - CIR テンプレ起票の直後に、`ITSM/継続的改善` と `状態/New` を自動付与する仕組み（Issue Hook → n8n）
   - system.md 実行の完了後に、対象 CIR Issue を `状態/Closed` に更新して close し、結果サマリを Issue note として残す仕組み（重複 note 抑止を含む）
   - 保持/削除/匿名化といった運用機能（最低限）

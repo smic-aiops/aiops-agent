@@ -44,7 +44,7 @@ GitLab 側の ITSM 用プロジェクト/テンプレート/運用資材を、�
 **内容**
 - Intended Use（意図した使用）
   - GitLab のレルム用グループ/プロジェクトを整備し、テンプレ（Docs/Wiki/Issue template 等）を投入/同期する。
-  - ITSM のユースケース（UC-*）定義テンプレを SSoT として維持し、参照箇所の一貫性を担保する。
+  - ITSM のユースケース機能ID（UC-*）定義テンプレを SSoT として維持し、参照箇所の一貫性を担保する。
   - （任意）Grafana のユースケース向けダッシュボード雛形を realm ごとに同期し、運用導線を整備する。
 - 高レベル構成
   - Operator →（Terraform output/環境変数解決）→ Bootstrap scripts → GitLab API（＋任意で Grafana API）

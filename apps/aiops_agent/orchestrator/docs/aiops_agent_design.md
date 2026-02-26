@@ -167,7 +167,7 @@ flowchart LR
 ## 8. 半自律的な継続的改善（CIR 起点）
 
 本リポジトリでは、改善要求を **CIR（継続的改善レジスター）＝ GitLab Issue（一般管理プロジェクト）**として集約し、
-運用者の承認（`状態/Approved`）後に、**CIR→ユースケース（UC-*）→ requirements/DQ** へ反映して整合を取る運用を想定します。
+運用者の承認（`状態/Approved`）後に、**CIR→ユースケース機能ID（UC-*）→ requirements/DQ** へ反映して整合を取る運用を想定します。
 
 詳細な運用フロー（受付→承認→同期→実装→検証→クローズ→依頼者通知）は以下を正とします。
 - `apps/itsm_core/bootstrap/docs/cir_continual_improvement_flow.md`

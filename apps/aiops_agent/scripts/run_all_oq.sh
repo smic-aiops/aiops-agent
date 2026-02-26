@@ -54,16 +54,14 @@ contains_component() {
   return 1
 }
 
-append_dry_run_arg_if_missing() {
-  local -a in_args=("$@")
+pass_args_has_dry_run() {
   local a
-  for a in "${in_args[@]}"; do
+  for a in "${pass_args[@]:+"${pass_args[@]}"}"; do
     if [[ "${a}" == "--dry-run" ]]; then
-      printf '%s\0' "${in_args[@]}"
       return 0
     fi
   done
-  printf '%s\0' "${in_args[@]}" "--dry-run"
+  return 1
 }
 
 is_orchestrator_alias_script() {
@@ -92,11 +90,9 @@ main() {
   done
 
   if ${DRY_RUN}; then
-    local -a updated=()
-    while IFS= read -r -d '' part; do
-      updated+=("${part}")
-    done < <(append_dry_run_arg_if_missing "${pass_args[@]}")
-    pass_args=("${updated[@]}")
+    if ! pass_args_has_dry_run; then
+      pass_args+=(--dry-run)
+    fi
   fi
 
   local scripts
@@ -163,4 +159,3 @@ main() {
 }
 
 main "$@"
-

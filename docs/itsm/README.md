@@ -5,6 +5,15 @@
 ## ITSM Bootstrap / ITSM Core / Usecase（入口）
 - 詳細は `apps/itsm_core/README.md` を参照（SoR、GitLab ITSM bootstrap、ユースケース関連、関連プロンプト/比較資料）。
 
+## ユースケース実装のテスタビリティ確認
+- 設計: `docs/itsm/designs/usecase_testability_gate.md`
+- 静的検証（ドライラン）:
+  - `python3 scripts/itsm/reports/check_usecase_testability.py --dry-run`
+- 静的検証（レポート生成）:
+  - `python3 scripts/itsm/reports/check_usecase_testability.py`
+- OQ導線の一括確認（ドライラン）:
+  - `apps/run_all_oq.sh --dry-run`
+
 ## 利用者向け（作法）
 
 - 環境の使い方（ITSM 利用者向け）: `docs/usage-guide.md`

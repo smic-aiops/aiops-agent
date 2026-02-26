@@ -108,6 +108,8 @@ module "stack" {
   n8n_db_postgresdb_connection_timeout                 = var.n8n_db_postgresdb_connection_timeout
   n8n_db_postgresdb_idle_connection_timeout            = var.n8n_db_postgresdb_idle_connection_timeout
   n8n_db_ping_interval_seconds                         = var.n8n_db_ping_interval_seconds
+  n8n_executions_mode                                  = var.n8n_executions_mode
+  n8n_executions_timeout                               = var.n8n_executions_timeout
   aiops_agent_environment                              = var.aiops_agent_environment
   aiops_s3_bucket_names                                = var.aiops_s3_bucket_names
   aiops_s3_bucket_parameter_name_prefix                = var.aiops_s3_bucket_parameter_name_prefix

@@ -36,7 +36,7 @@ ITSM の SoR（System of Record）を PostgreSQL（共有 RDS）上の `itsm.*` 
 - UC-ITSM-03: GitLab Issue を SoR レコード（incident/srq/problem/change）へ upsert できる（テスト投入含む）
 - UC-ITSM-04: GitLab の過去決定（Issue/Note）を SoR へ投入できる（テスト投入含む）
 - UC-ITSM-05: 保持/削除/匿名化を dry-run→実行で安全に運用できる
-- UC-ITSM-06: CIR（一般管理/継続的改善）で `状態/Approved` の Issue を一覧し、ユースケース（`UC-*`）を抽出して返せる
+- UC-ITSM-06: CIR（一般管理/継続的改善）で `状態/Approved` の Issue を一覧し、ユースケース機能ID（`UC-*`）を抽出して返せる
 - UC-ITSM-07: system.md 実行の完了後に、対象 CIR Issue を `状態/Closed` に更新して close し、結果サマリ（検証結果/証跡）を Issue note として残せる（起票者通知のトリガ）
 - UC-ITSM-08: CIR テンプレ起票の直後に、`ITSM/継続的改善` と `状態/New` を自動付与できる（Issue Hook → n8n）
 

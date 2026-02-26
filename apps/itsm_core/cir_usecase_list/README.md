@@ -9,7 +9,7 @@
 `apps/README.md` の共通フォーマットに従い、リスクベース（CSA）で最小限の成果物として本 README と検証証跡を維持する。
 
 **内容**
-- 一般管理プロジェクトの CIR（継続的改善レジスター）＝ GitLab Issue から、`状態/Approved` のレコードを抽出し、本文からユースケース（`UC-*`）を抽出して返す。
+- 一般管理プロジェクトの CIR（継続的改善レジスター）＝ GitLab Issue から、`状態/Approved` のレコードを抽出し、本文からユースケース機能ID（`UC-*`）を抽出して返す。
 - 秘密情報（GitLab token）は tfvars に平文で置かず、SSM/Secrets Manager → n8n 環境変数注入を前提とする。
 
 ---
