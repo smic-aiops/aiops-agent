@@ -212,60 +212,23 @@ if [ -z "${DB_HOST}" ] || [ -z "${DB_PORT}" ] || [ -z "${DB_NAME}" ] || [ -z "${
   exit 1
 fi
 
-psql_cmd=()
-if [[ "${LOCAL_PSQL}" == "true" ]]; then
-  require_cmd psql
-  psql_cmd=(psql)
-else
-  if [[ "${ECS_EXEC}" == "true" ]]; then
-    require_cmd aws
-    ECS_CLUSTER="${ECS_CLUSTER:-}"
-    ECS_SERVICE="${ECS_SERVICE:-${NAME_PREFIX}-n8n}"
-    ECS_CONTAINER="${ECS_CONTAINER:-n8n}"
-    ECS_TASK="${ECS_TASK:-}"
-
-    if [[ -z "${ECS_CLUSTER}" ]] && command -v terraform >/dev/null 2>&1; then
-      ECS_CLUSTER="$(terraform -chdir="${REPO_ROOT}" output -raw ecs_cluster_name 2>/dev/null || true)"
-    fi
-    if [ "${ECS_CLUSTER}" = "null" ]; then
-      ECS_CLUSTER=""
-    fi
-    if [[ -z "${ECS_CLUSTER}" ]]; then
-      echo "ERROR: ECS cluster name is missing. Set --ecs-cluster or provide terraform output ecs_cluster_name." >&2
-      exit 1
-    fi
-
-    if [[ -z "${ECS_TASK}" ]]; then
-      ECS_TASK="$(AWS_REGION="${AWS_REGION}" AWS_PROFILE="${AWS_PROFILE}" aws ecs list-tasks --cluster "${ECS_CLUSTER}" --service-name "${ECS_SERVICE}" --desired-status RUNNING --query 'taskArns[0]' --output text 2>/dev/null || true)"
-    fi
-    if [[ -z "${ECS_TASK}" || "${ECS_TASK}" == "None" || "${ECS_TASK}" == "null" ]]; then
-      echo "ERROR: Could not resolve a running ECS task ARN for service ${ECS_SERVICE}." >&2
-      exit 1
-    fi
-
-    psql_cmd=(AWS_REGION="${AWS_REGION}" AWS_PROFILE="${AWS_PROFILE}" aws ecs execute-command --cluster "${ECS_CLUSTER}" --task "${ECS_TASK}" --container "${ECS_CONTAINER}" --interactive --command)
-  else
-    require_cmd psql
-    psql_cmd=(psql)
-  fi
-fi
-
 where_since=""
 if [[ -n "${SINCE_ISO}" ]]; then
   where_since="AND created_at >= '${SINCE_ISO}'::timestamptz"
 fi
 
-sql="$(cat <<SQL
+sql=''
+read -r -d '' sql <<'SQL' || true
 \\set ON_ERROR_STOP on
 WITH src AS (
   SELECT *
   FROM public.aiops_approval_history
   WHERE 1=1
-    ${where_since}
+    __WHERE_SINCE__
 ),
 mapped AS (
   SELECT
-    itsm.get_realm_id('${REALM_KEY}') AS realm_id,
+    itsm.get_realm_id('__REALM_KEY__') AS realm_id,
     approval_history_id AS approval_history_id,
     created_at AS occurred_at,
     COALESCE(approval_id, approval_history_id) AS approval_uuid,
@@ -339,13 +302,52 @@ SELECT
 FROM mapped m
 ON CONFLICT DO NOTHING;
 SQL
-)"
+sql="${sql//__REALM_KEY__/${REALM_KEY}}"
+sql="${sql//__WHERE_SINCE__/${where_since}}"
 
 if [[ "${DRY_RUN}" == "true" ]]; then
   echo "[dry-run] would execute SQL against ${DB_HOST}:${DB_PORT}/${DB_NAME} (realm_key=${REALM_KEY})"
   echo "${sql}" | sed -n '1,120p'
   echo "..."
   exit 0
+fi
+
+psql_cmd=()
+if [[ "${LOCAL_PSQL}" == "true" ]]; then
+  require_cmd psql
+  psql_cmd=(psql)
+else
+  if [[ "${ECS_EXEC}" == "true" ]]; then
+    require_cmd aws
+    ECS_CLUSTER="${ECS_CLUSTER:-}"
+    ECS_SERVICE="${ECS_SERVICE:-${NAME_PREFIX}-n8n}"
+    ECS_CONTAINER="${ECS_CONTAINER:-n8n}"
+    ECS_TASK="${ECS_TASK:-}"
+
+    if [[ -z "${ECS_CLUSTER}" ]] && command -v terraform >/dev/null 2>&1; then
+      ECS_CLUSTER="$(terraform -chdir="${REPO_ROOT}" output -raw ecs_cluster_name 2>/dev/null || true)"
+    fi
+    if [ "${ECS_CLUSTER}" = "null" ]; then
+      ECS_CLUSTER=""
+    fi
+    if [[ -z "${ECS_CLUSTER}" ]]; then
+      echo "ERROR: ECS cluster name is missing. Set --ecs-cluster or provide terraform output ecs_cluster_name." >&2
+      exit 1
+    fi
+
+    if [[ -z "${ECS_TASK}" ]]; then
+      ECS_TASK="$(AWS_REGION="${AWS_REGION}" AWS_PROFILE="${AWS_PROFILE}" aws ecs list-tasks --cluster "${ECS_CLUSTER}" --service-name "${ECS_SERVICE}" --desired-status RUNNING --query 'taskArns[0]' --output text 2>/dev/null || true)"
+    fi
+    if [[ -z "${ECS_TASK}" || "${ECS_TASK}" == "None" || "${ECS_TASK}" == "null" ]]; then
+      echo "ERROR: Could not resolve a running ECS task ARN for service ${ECS_SERVICE}." >&2
+      exit 1
+    fi
+
+    psql_cmd=(AWS_REGION="${AWS_REGION}" AWS_PROFILE="${AWS_PROFILE}" aws ecs execute-command --cluster "${ECS_CLUSTER}" --task "${ECS_TASK}" --container "${ECS_CONTAINER}" --interactive --command)
+  else
+    require_cmd psql
+    psql_cmd=(psql)
+  fi
 fi
 
 export PGPASSWORD="${DB_PASSWORD}"

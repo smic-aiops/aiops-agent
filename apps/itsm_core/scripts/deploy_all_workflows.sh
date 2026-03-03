@@ -431,6 +431,8 @@ script_supports_flag() {
 run_oq_for_app() {
   local app="$1"
   local realm="$2"
+  local n8n_base_url="${3:-}"
+  local n8n_api_key="${4:-}"
 
   local oq="${REPO_ROOT}/apps/itsm_core/${app}/scripts/run_oq.sh"
   if [[ ! -x "${oq}" ]]; then
@@ -449,7 +451,17 @@ run_oq_for_app() {
   elif script_supports_flag "${oq}" "--realm"; then
     args+=(--realm "${realm}")
   fi
-  if ! bash "${oq}" "${args[@]:+"${args[@]}"}"; then
+  if [[ -n "${n8n_base_url}" ]]; then
+    if script_supports_flag "${oq}" "--n8n-base-url"; then
+      args+=(--n8n-base-url "${n8n_base_url}")
+    elif script_supports_flag "${oq}" "--n8n-url"; then
+      args+=(--n8n-url "${n8n_base_url}")
+    fi
+  fi
+  if is_truthy "${OQ_DRY_RUN:-false}" && script_supports_flag "${oq}" "--dry-run"; then
+    args+=(--dry-run)
+  fi
+  if ! N8N_BASE_URL="${n8n_base_url}" N8N_API_KEY="${n8n_api_key}" bash "${oq}" "${args[@]:+"${args[@]}"}"; then
     echo "[oq] failed: app=${app} realm=${realm}" >&2
     return 1
   fi
@@ -615,7 +627,7 @@ for realm in "${TARGET_REALMS[@]}"; do
     done
 
     if is_truthy "${WITH_TESTS}" && [[ -n "${app}" ]]; then
-      if ! run_oq_for_app "${app}" "${realm_label}"; then
+      if ! run_oq_for_app "${app}" "${realm_label}" "${realm_public_api_base_url}" "${realm_n8n_api_key}"; then
         failures=$((failures + 1))
         failed_parts+=("${app} (oq)")
       else
@@ -630,7 +642,7 @@ for realm in "${TARGET_REALMS[@]}"; do
       if is_in_list "${extra_app}" ${oq_ran_apps[@]:+"${oq_ran_apps[@]}"}; then
         continue
       fi
-      if ! run_oq_for_app "${extra_app}" "${realm_label}"; then
+      if ! run_oq_for_app "${extra_app}" "${realm_label}" "${realm_public_api_base_url}" "${realm_n8n_api_key}"; then
         failures=$((failures + 1))
         failed_parts+=("${extra_app} (oq)")
       else

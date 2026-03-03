@@ -68,7 +68,7 @@ fi
 REALM="${REALM:-default}"
 
 if [[ -z "${N8N_BASE_URL}" ]] && ! ${DRY_RUN}; then
-  N8N_BASE_URL="$(terraform_output_json n8n_realm_urls | python3 -c 'import json,sys; realm=sys.argv[1]; data=json.load(sys.stdin); print(data.get(realm, \"\"))' \"${REALM}\")"
+  N8N_BASE_URL="$(terraform_output_json n8n_realm_urls | python3 -c 'import json,sys; realm=sys.argv[1]; data=json.load(sys.stdin); print(data.get(realm, ""))' "${REALM}")"
 fi
 
 if [[ -z "${N8N_BASE_URL}" ]] && ! ${DRY_RUN}; then
@@ -127,4 +127,3 @@ if ${DRY_RUN}; then
 fi
 
 api_call "cir-auto-label-test" "${N8N_BASE_URL%/}/webhook/gitlab/cir/auto_label/test" '{"strict": false}'
-
