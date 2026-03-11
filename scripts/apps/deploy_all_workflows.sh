@@ -13,14 +13,17 @@ Usage:
 Options:
   -n, --dry-run          Print planned actions only (no API writes).
   --activate             Activate workflows after sync (best-effort via env).
-  --with-tests           Also run apps/*/scripts/run_oq.sh when available.
+  --with-tests           Also run per-app scripts/run_oq.sh when available.
   --only a,b,c           Deploy only the given comma-separated app names.
   --list                 Print detected apps and exit.
   -h, --help             Show this help.
 
 Notes:
-  - This orchestrates per-app workflow sync scripts under apps/*/scripts/.
+  - This orchestrates per-app workflow sync scripts under:
+      - apps/<app>/scripts/
+      - apps/itsm_core/<app>/scripts/
   - Tokens/URLs are resolved by each app script from env and/or terraform outputs.
+  - To run a full dry-run of this orchestrator, use --dry-run (setting N8N_DRY_RUN alone is not parsed by this script).
 USAGE
 }
 
@@ -80,7 +83,12 @@ app_selected() {
 
 resolve_deploy_script() {
   local app="$1"
-  local scripts_dir="${REPO_ROOT}/apps/${app}/scripts"
+  local scripts_dir
+  scripts_dir="$(resolve_scripts_dir_for_app "${app}")"
+  if [[ -z "${scripts_dir}" ]]; then
+    printf ''
+    return 0
+  fi
   local primary="${scripts_dir}/deploy_workflows.sh"
   if [[ -x "${primary}" ]]; then
     printf '%s' "${primary}"
@@ -96,13 +104,45 @@ resolve_deploy_script() {
   printf ''
 }
 
+resolve_scripts_dir_for_app() {
+  local app="$1"
+  local direct="${REPO_ROOT}/apps/${app}/scripts"
+  if [[ -d "${direct}" ]]; then
+    printf '%s' "${direct}"
+    return 0
+  fi
+
+  local integration="${REPO_ROOT}/apps/itsm_core/${app}/scripts"
+  if [[ -d "${integration}" ]]; then
+    printf '%s' "${integration}"
+    return 0
+  fi
+
+  printf ''
+}
+
+resolve_oq_script() {
+  local app="$1"
+  local scripts_dir
+  scripts_dir="$(resolve_scripts_dir_for_app "${app}")"
+  if [[ -z "${scripts_dir}" ]]; then
+    printf ''
+    return 0
+  fi
+  local oq="${scripts_dir}/run_oq.sh"
+  if [[ -x "${oq}" ]]; then
+    printf '%s' "${oq}"
+    return 0
+  fi
+  printf ''
+}
+
 detect_apps() {
   local d
-  for d in "${REPO_ROOT}/apps/"*; do
+  for d in "${REPO_ROOT}/apps/"* "${REPO_ROOT}/apps/itsm_core/"*; do
     [[ -d "${d}" ]] || continue
     local app
     app="$(basename "${d}")"
-    [[ -d "${d}/scripts" ]] || continue
     if [[ -n "$(resolve_deploy_script "${app}")" ]]; then
       printf '%s\n' "${app}"
     fi
@@ -115,7 +155,7 @@ while IFS= read -r line; do
 done < <(detect_apps | sort)
 
 if [[ "${#DETECTED_APPS[@]}" -eq 0 ]]; then
-  echo "No deploy scripts found under apps/*/scripts/" >&2
+  echo "No deploy scripts found" >&2
   exit 1
 fi
 
@@ -125,9 +165,15 @@ if is_truthy "${LIST_ONLY}"; then
 fi
 
 ORDERED_APPS=(
+  itsm_core
   aiops_agent
+  gitlab_backfill_to_sor
   workflow_manager
   cloudwatch_event_notify
+  cir_usecase_list
+  cir_auto_label
+  cir_status_notify
+  cir_issue_close
   gitlab_issue_metrics_sync
   gitlab_issue_rag
   gitlab_mention_notify
@@ -179,6 +225,25 @@ if [[ "${#FINAL_APPS[@]}" -eq 0 ]]; then
   exit 1
 fi
 
+# Avoid deploying ITSM Core sub-apps twice:
+# - apps/itsm_core/scripts/deploy_all_workflows.sh now deploys apps/itsm_core/**/workflows by default.
+# - When --only is NOT specified and itsm_core is selected, skip apps under apps/itsm_core/*.
+if [[ "${#ONLY_APPS[@]}" -eq 0 ]] && is_in_list "itsm_core" ${FINAL_APPS[@]:+"${FINAL_APPS[@]}"}; then
+  pruned=()
+  for app in "${FINAL_APPS[@]}"; do
+    if [[ "${app}" == "itsm_core" ]]; then
+      pruned+=("${app}")
+      continue
+    fi
+    scripts_dir="$(resolve_scripts_dir_for_app "${app}")"
+    if [[ "${scripts_dir}" == "${REPO_ROOT}/apps/itsm_core/"* ]]; then
+      continue
+    fi
+    pruned+=("${app}")
+  done
+  FINAL_APPS=("${pruned[@]}")
+fi
+
 if is_truthy "${DRY_RUN}"; then
   export N8N_DRY_RUN="true"
   export DRY_RUN="true"
@@ -208,7 +273,14 @@ run_app_deploy() {
   fi
 
   echo "==> ${app}: deploy"
-  if ! "${deploy_script}"; then
+  if [[ "${app}" == "itsm_core" ]]; then
+    if ! WITH_TESTS=false "${deploy_script}"; then
+      echo "!! ${app}: deploy failed" >&2
+      failures=$((failures + 1))
+      failed_apps+=("${app} (deploy)")
+      return 1
+    fi
+  elif ! "${deploy_script}"; then
     echo "!! ${app}: deploy failed" >&2
     failures=$((failures + 1))
     failed_apps+=("${app} (deploy)")
@@ -220,8 +292,9 @@ run_app_deploy() {
 
 run_app_oq() {
   local app="$1"
-  local oq="${REPO_ROOT}/apps/${app}/scripts/run_oq.sh"
-  if [[ ! -x "${oq}" ]]; then
+  local oq
+  oq="$(resolve_oq_script "${app}")"
+  if [[ -z "${oq}" ]]; then
     return 0
   fi
 

@@ -1,0 +1,78 @@
+{
+  "name": "itsm-practice-review-sync-test",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "itsm/practice/review/sync/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Test)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = (request && typeof request === 'object' && request.headers && typeof request.headers === 'object') ? request.headers : {};\nconst body = (request && typeof request === 'object' && request.body && typeof request.body === 'object') ? request.body : request;\n\nfunction getHeader(name) {\n  const lower = name.toLowerCase();\n  if (headers[lower] !== undefined) return headers[lower];\n  if (headers[name] !== undefined) return headers[name];\n  const key = Object.keys(headers).find((k) => k.toLowerCase() === lower);\n  return key ? headers[key] : undefined;\n}\n\nconst expectedToken = String($env.ITSM_PRACTICE_REVIEW_WEBHOOK_TOKEN || '').trim();\nif (expectedToken) {\n  const got = String(getHeader('x-webhook-token') || '').trim();\n  if (got !== expectedToken) {\n    return [{ json: { ok: false, status_code: 401, error: 'invalid webhook token' } }];\n  }\n}\n\nreturn [{\n  json: {\n    ok: true,\n    status_code: 200,\n    message: 'itsm practice review sync test ok',\n    hint: {\n      webhook: 'POST /webhook/itsm/practice/review/sync',\n      required_env_when_not_dry_run: ['GITLAB_API_BASE_URL', 'GITLAB_TOKEN'],\n      optional_env: ['GITLAB_PROJECT_PATH', 'GITLAB_BASE_URL', 'ITSM_PRACTICE_REVIEW_WEBHOOK_TOKEN']\n    },\n    sample_payload: {\n      realm: 'default',\n      period: '2026-02',\n      practice_keys: ['service_design'],\n      services: [\n        {\n          cmdb_id: 'ORG-SERVICE-001',\n          org_id: 'default',\n          service_id: 'sulu',\n          service_name: 'Sulu'\n        }\n      ],\n      dry_run: true\n    }\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Return OK",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        820,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Test)": {
+      "main": [
+        [
+          {
+            "node": "Return OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return OK": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}
+

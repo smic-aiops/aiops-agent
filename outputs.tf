@@ -76,8 +76,8 @@ output "gitlab_realm_admin_tokens_json_parameter_name" {
 }
 
 output "name_prefix" {
-  description = "Name prefix used for tagging and resource names"
-  value       = var.name_prefix
+  description = "Effective name prefix used for tagging and resource names (var.name_prefix or environment-platform fallback)"
+  value       = local.name_prefix_effective
 }
 
 output "realms" {
@@ -184,6 +184,12 @@ output "ecr_repo_keycloak" {
   sensitive   = true
 }
 
+output "ecr_repo_horilla" {
+  description = "ECR repository name for Horilla"
+  value       = var.ecr_repo_horilla
+  sensitive   = true
+}
+
 output "ecr_repo_exastro_it_automation_web_server" {
   description = "ECR repository name for Exastro IT Automation web server"
   value       = var.ecr_repo_exastro_it_automation_web_server
@@ -263,6 +269,7 @@ output "ecr_repositories" {
     zulip       = "${local.ecr_namespace_effective}/${var.ecr_repo_zulip}"
     sulu        = "${local.ecr_namespace_effective}/${var.ecr_repo_sulu}"
     sulu_nginx  = "${local.ecr_namespace_effective}/${var.ecr_repo_sulu_nginx}"
+    horilla     = "${local.ecr_namespace_effective}/${var.ecr_repo_horilla}"
     gitlab      = "${local.ecr_namespace_effective}/${var.ecr_repo_gitlab}"
     grafana     = "${local.ecr_namespace_effective}/${var.ecr_repo_grafana}"
     odoo        = "${local.ecr_namespace_effective}/${var.ecr_repo_odoo}"
@@ -518,6 +525,12 @@ output "keycloak_image_tag" {
   sensitive   = true
 }
 
+output "horilla_image_tag" {
+  description = "Horilla image tag"
+  value       = var.horilla_image_tag
+  sensitive   = true
+}
+
 output "odoo_image_tag" {
   description = "Odoo image tag"
   value       = var.odoo_image_tag
@@ -620,6 +633,21 @@ output "gitlab_api_base_url" {
   sensitive   = true
 }
 
+output "gitlab_runner_tags" {
+  description = "GitLab Runner tags (for scripts/itsm/gitlab/ensure_gitlab_runner.sh)"
+  value       = var.gitlab_runner_tags
+}
+
+output "gitlab_runner_run_untagged" {
+  description = "Whether the GitLab Runner can pick untagged jobs (for scripts)"
+  value       = var.gitlab_runner_run_untagged
+}
+
+output "gitlab_runner_locked" {
+  description = "Whether the GitLab Runner is locked (GitLab-side attribute; for scripts)"
+  value       = var.gitlab_runner_locked
+}
+
 output "grafana_athena_output_bucket" {
   description = "S3 bucket used for Grafana Athena query results"
   value       = module.stack.grafana_athena_output_bucket
@@ -706,6 +734,16 @@ output "aiops_n8n_activate" {
 output "N8N_ACTIVATE" {
   description = "Default value for N8N_ACTIVATE used by deploy_workflows.sh"
   value       = var.aiops_n8n_activate
+}
+
+output "n8n_executions_mode" {
+  description = "n8n executions mode injected to ECS task env (EXECUTIONS_MODE)"
+  value       = var.n8n_executions_mode
+}
+
+output "n8n_executions_timeout" {
+  description = "n8n execution timeout injected to ECS task env (EXECUTIONS_TIMEOUT)"
+  value       = var.n8n_executions_timeout
 }
 
 output "aiops_n8n_agent_realms" {
@@ -1106,6 +1144,30 @@ output "itsm_force_update_included_realms" {
 output "itsm_monitoring_context" {
   description = "Non-secret monitoring context derived from monitoring_yaml (realm => config)."
   value       = module.stack.itsm_monitoring_context
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_bucket_name" {
+  description = "S3 bucket name for anchoring ITSM audit_event hash-chain heads (WORM)."
+  value       = module.stack.itsm_audit_event_anchor_bucket_name
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_enabled" {
+  description = "Whether S3 Object Lock is enabled for the ITSM audit_event anchor bucket."
+  value       = module.stack.itsm_audit_event_anchor_object_lock_enabled
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_mode" {
+  description = "Default S3 Object Lock mode for ITSM audit_event anchor objects."
+  value       = module.stack.itsm_audit_event_anchor_object_lock_mode
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_retention_days" {
+  description = "Default S3 Object Lock retention days for ITSM audit_event anchor objects."
+  value       = module.stack.itsm_audit_event_anchor_object_lock_retention_days
   sensitive   = false
 }
 

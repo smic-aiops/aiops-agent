@@ -1,0 +1,350 @@
+{
+  "name": "ITSM SLA Metrics Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 2,
+              "minute": 20
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Cron Metrics",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "path": "itsm/sla/metrics/sync/oq",
+        "httpMethod": "POST",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "7",
+      "name": "Webhook (OQ)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst env = $env || {};\nconst inputJson = (() => {\n  try {\n    const first = $input.first();\n    return first && first.json ? first.json : {};\n  } catch (error) {\n    return {};\n  }\n})();\n\nconst requestBody = (inputJson && typeof inputJson.body === 'object' && inputJson.body !== null) ? inputJson.body : inputJson;\n\nfunction toDateKey(dateObj) {\n  const year = dateObj.getUTCFullYear();\n  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');\n  const day = String(dateObj.getUTCDate()).padStart(2, '0');\n  return `${year}-${month}-${day}`;\n}\n\nfunction dateRangeUtc(dt) {\n  const [y, m, d] = String(dt).split('-').map((v) => Number(v));\n  const start = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));\n  const end = new Date(Date.UTC(y, m - 1, d, 23, 59, 59));\n  return { start, end };\n}\n\nconst realm = String(env.N8N_REALM || 'default').trim() || 'default';\n\nconst targetDate = String(\n  requestBody.N8N_METRICS_TARGET_DATE ||\n  requestBody.target_date ||\n  env.N8N_METRICS_TARGET_DATE ||\n  ''\n).trim();\n\nlet dt = '';\nif (targetDate) {\n  dt = targetDate;\n} else {\n  const now = new Date();\n  const utcMidnightToday = new Date(Date.UTC(\n    now.getUTCFullYear(),\n    now.getUTCMonth(),\n    now.getUTCDate(),\n    0,\n    0,\n    0\n  ));\n  const utcMidnightYesterday = new Date(utcMidnightToday.getTime() - 24 * 60 * 60 * 1000);\n  dt = toDateKey(utcMidnightYesterday);\n}\n\nconst { start, end } = dateRangeUtc(dt);\n\nreturn [\n  {\n    json: {\n      realm,\n      dt,\n      start_utc: start.toISOString(),\n      end_utc: end.toISOString(),\n      as_of: end.toISOString()\n    }\n  }\n];\n"
+      },
+      "id": "2",
+      "name": "Compute Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT itsm.set_rls_context(\n    NULLIF('{{ String($json.realm || \"\").replace(/'/g, \"''\") }}','')\n  ) AS realm_id\n),\nparams AS (\n  SELECT\n    '{{ String($json.realm || \"\").replace(/'/g, \"''\") }}'::text AS realm_key,\n    '{{ String($json.dt || \"\").replace(/'/g, \"''\") }}'::text AS dt,\n    '{{ String($json.start_utc || \"\").replace(/'/g, \"''\") }}'::timestamptz AS start_utc,\n    '{{ String($json.end_utc || \"\").replace(/'/g, \"''\") }}'::timestamptz AS end_utc,\n    '{{ String($json.as_of || \"\").replace(/'/g, \"''\") }}'::timestamptz AS as_of\n),\nm AS (\n  SELECT *\n  FROM itsm.sla_metrics_at((SELECT as_of FROM params))\n),\noverall AS (\n  SELECT\n    COUNT(*) FILTER (WHERE m.started_at BETWEEN p.start_utc AND p.end_utc) AS receipt_count,\n    COUNT(*) FILTER (WHERE m.first_response_at BETWEEN p.start_utc AND p.end_utc) AS responded_count,\n    COUNT(*) FILTER (WHERE COALESCE(m.closed_at, m.resolved_at) BETWEEN p.start_utc AND p.end_utc) AS resolved_count,\n\n    COUNT(*) FILTER (\n      WHERE m.first_response_at BETWEEN p.start_utc AND p.end_utc\n        AND m.response_target_minutes IS NOT NULL\n    ) AS response_sla_total_count,\n    COUNT(*) FILTER (\n      WHERE m.first_response_at BETWEEN p.start_utc AND p.end_utc\n        AND m.response_target_minutes IS NOT NULL\n        AND m.response_breached = true\n    ) AS response_sla_breached_count,\n\n    COUNT(*) FILTER (\n      WHERE COALESCE(m.closed_at, m.resolved_at) BETWEEN p.start_utc AND p.end_utc\n        AND m.resolution_target_minutes IS NOT NULL\n    ) AS resolution_sla_total_count,\n    COUNT(*) FILTER (\n      WHERE COALESCE(m.closed_at, m.resolved_at) BETWEEN p.start_utc AND p.end_utc\n        AND m.resolution_target_minutes IS NOT NULL\n        AND m.resolution_breached = true\n    ) AS resolution_sla_breached_count\n  FROM m\n  CROSS JOIN params p\n),\nby_type AS (\n  SELECT\n    resource_type,\n    jsonb_build_object(\n      'receipt_count', COUNT(*) FILTER (WHERE m.started_at BETWEEN p.start_utc AND p.end_utc),\n      'responded_count', COUNT(*) FILTER (WHERE m.first_response_at BETWEEN p.start_utc AND p.end_utc),\n      'resolved_count', COUNT(*) FILTER (WHERE COALESCE(m.closed_at, m.resolved_at) BETWEEN p.start_utc AND p.end_utc),\n\n      'response_sla_total_count', COUNT(*) FILTER (\n        WHERE m.first_response_at BETWEEN p.start_utc AND p.end_utc\n          AND m.response_target_minutes IS NOT NULL\n      ),\n      'response_sla_breached_count', COUNT(*) FILTER (\n        WHERE m.first_response_at BETWEEN p.start_utc AND p.end_utc\n          AND m.response_target_minutes IS NOT NULL\n          AND m.response_breached = true\n      ),\n\n      'resolution_sla_total_count', COUNT(*) FILTER (\n        WHERE COALESCE(m.closed_at, m.resolved_at) BETWEEN p.start_utc AND p.end_utc\n          AND m.resolution_target_minutes IS NOT NULL\n      ),\n      'resolution_sla_breached_count', COUNT(*) FILTER (\n        WHERE COALESCE(m.closed_at, m.resolved_at) BETWEEN p.start_utc AND p.end_utc\n          AND m.resolution_target_minutes IS NOT NULL\n          AND m.resolution_breached = true\n      )\n    ) AS metrics\n  FROM m\n  CROSS JOIN params p\n  GROUP BY resource_type\n),\nby_type_json AS (\n  SELECT COALESCE(jsonb_object_agg(resource_type, metrics), '{}'::jsonb) AS by_resource_type\n  FROM by_type\n)\nSELECT\n  p.dt,\n  p.realm_key AS realm,\n  p.as_of,\n  jsonb_build_object(\n    'schema_version', 1,\n    'realm', p.realm_key,\n    'dt', p.dt,\n    'as_of', p.as_of,\n\n    'receipt_count', o.receipt_count,\n    'responded_count', o.responded_count,\n    'resolved_count', o.resolved_count,\n\n    'response_p50_minutes', (\n      SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY m2.response_minutes)\n      FROM m m2\n      WHERE m2.first_response_at BETWEEN p.start_utc AND p.end_utc\n        AND m2.response_minutes IS NOT NULL\n    ),\n    'response_p95_minutes', (\n      SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY m2.response_minutes)\n      FROM m m2\n      WHERE m2.first_response_at BETWEEN p.start_utc AND p.end_utc\n        AND m2.response_minutes IS NOT NULL\n    ),\n\n    'resolution_p50_minutes', (\n      SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY m2.resolution_minutes)\n      FROM m m2\n      WHERE COALESCE(m2.closed_at, m2.resolved_at) BETWEEN p.start_utc AND p.end_utc\n        AND m2.resolution_minutes IS NOT NULL\n    ),\n    'resolution_p95_minutes', (\n      SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY m2.resolution_minutes)\n      FROM m m2\n      WHERE COALESCE(m2.closed_at, m2.resolved_at) BETWEEN p.start_utc AND p.end_utc\n        AND m2.resolution_minutes IS NOT NULL\n    ),\n\n    'response_sla_total_count', o.response_sla_total_count,\n    'response_sla_breached_count', o.response_sla_breached_count,\n    'response_sla_attainment', (\n      CASE\n        WHEN o.response_sla_total_count > 0 THEN\n          (o.response_sla_total_count - o.response_sla_breached_count)::numeric / o.response_sla_total_count::numeric\n        ELSE NULL\n      END\n    ),\n\n    'resolution_sla_total_count', o.resolution_sla_total_count,\n    'resolution_sla_breached_count', o.resolution_sla_breached_count,\n    'resolution_sla_attainment', (\n      CASE\n        WHEN o.resolution_sla_total_count > 0 THEN\n          (o.resolution_sla_total_count - o.resolution_sla_breached_count)::numeric / o.resolution_sla_total_count::numeric\n        ELSE NULL\n      END\n    ),\n\n    'mttr_incident_p50_minutes', (\n      SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY m2.resolution_minutes)\n      FROM m m2\n      WHERE m2.resource_type = 'incident'\n        AND COALESCE(m2.closed_at, m2.resolved_at) BETWEEN p.start_utc AND p.end_utc\n        AND m2.resolution_minutes IS NOT NULL\n    ),\n    'mttr_incident_p95_minutes', (\n      SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY m2.resolution_minutes)\n      FROM m m2\n      WHERE m2.resource_type = 'incident'\n        AND COALESCE(m2.closed_at, m2.resolved_at) BETWEEN p.start_utc AND p.end_utc\n        AND m2.resolution_minutes IS NOT NULL\n    ),\n\n    'by_resource_type', (SELECT by_resource_type FROM by_type_json)\n  )::text AS metrics_json\nFROM params p\nCROSS JOIN overall o;"
+      },
+      "id": "8",
+      "name": "Query Daily Metrics (SoR)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst env = $env || {};\nconst row = ($input.first() && $input.first().json) ? $input.first().json : {};\n\nfunction required(value, name) {\n  if (value === undefined || value === null || String(value).trim() === '') {\n    throw new Error(`${name} is required`);\n  }\n  return value;\n}\n\nconst realm = String(row.realm || env.N8N_REALM || 'default').trim() || 'default';\nconst dt = String(row.dt || '').trim();\nrequired(dt, 'dt');\n\nconst s3Bucket = env.N8N_S3_BUCKET || env.S3_BUCKET || '';\nconst s3Prefix = String(env.N8N_S3_PREFIX || 'itsm/service_management').replace(/\\/+$/, '');\nrequired(s3Bucket, 'N8N_S3_BUCKET');\n\nconst metricsBody = String(row.metrics_json || '').trim();\nrequired(metricsBody, 'metrics_json');\n\nconst metricsKey = `${s3Prefix}/sla/daily_metrics/dt=${dt}/realm=${realm}/metrics.json`;\n\nreturn [\n  {\n    json: {\n      record_type: 'daily_metrics',\n      s3_bucket: s3Bucket,\n      s3_key: metricsKey,\n      dt,\n      realm\n    },\n    binary: {\n      data: {\n        data: Buffer.from(metricsBody, 'utf8').toString('base64'),\n        mimeType: 'application/json',\n        fileName: 'metrics.json'\n      }\n    }\n  }\n];\n"
+      },
+      "id": "9",
+      "name": "Build Metrics Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.record_type}}",
+              "value2": "daily_metrics"
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "IF Metrics",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{$json.s3_bucket}}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "fileName": "={{$json.s3_key}}"
+      },
+      "id": "6",
+      "name": "S3 Upload Metrics",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        300
+      ],
+      "credentials": {
+        "aws": {
+          "id": "aiops-aws",
+          "name": "aiops-aws"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT itsm.set_rls_context(\n    NULLIF('{{ String($json.realm || \"\").replace(/'/g, \"''\") }}','')\n  ) AS realm_id\n),\nparams AS (\n  SELECT\n    '{{ String($json.realm || \"\").replace(/'/g, \"''\") }}'::text AS realm_key,\n    '{{ String($json.dt || \"\").replace(/'/g, \"''\") }}'::text AS dt,\n    '{{ String($json.start_utc || \"\").replace(/'/g, \"''\") }}'::timestamptz AS start_utc,\n    '{{ String($json.end_utc || \"\").replace(/'/g, \"''\") }}'::timestamptz AS end_utc,\n    '{{ String($json.as_of || \"\").replace(/'/g, \"''\") }}'::timestamptz AS as_of\n),\nm AS (\n  SELECT *\n  FROM itsm.sla_metrics_at((SELECT as_of FROM params))\n),\nevents AS (\n  SELECT\n    jsonb_build_object(\n      'event_id', CONCAT(m.resource_type, ':', m.resource_id::text, ':response:', p.dt),\n      'event_type', 'sla_response',\n      'event_at', m.first_response_at,\n      'realm', p.realm_key,\n      'dt', p.dt,\n      'resource_type', m.resource_type,\n      'resource_id', m.resource_id,\n      'resource_number', m.resource_number,\n      'service_id', m.service_id,\n      'priority', m.priority,\n      'sla_target_key', m.sla_target_key,\n      'target_minutes', m.response_target_minutes,\n      'started_at', m.started_at,\n      'observed_at', m.response_observed_at,\n      'due_at', m.response_due_at,\n      'elapsed_minutes', m.response_minutes,\n      'paused_minutes', m.response_pause_minutes,\n      'breached', m.response_breached\n    ) AS event,\n    m.first_response_at AS event_at\n  FROM m\n  CROSS JOIN params p\n  WHERE m.first_response_at BETWEEN p.start_utc AND p.end_utc\n\n  UNION ALL\n\n  SELECT\n    jsonb_build_object(\n      'event_id', CONCAT(m.resource_type, ':', m.resource_id::text, ':resolution:', p.dt),\n      'event_type', 'sla_resolution',\n      'event_at', COALESCE(m.closed_at, m.resolved_at),\n      'realm', p.realm_key,\n      'dt', p.dt,\n      'resource_type', m.resource_type,\n      'resource_id', m.resource_id,\n      'resource_number', m.resource_number,\n      'service_id', m.service_id,\n      'priority', m.priority,\n      'sla_target_key', m.sla_target_key,\n      'target_minutes', m.resolution_target_minutes,\n      'started_at', m.started_at,\n      'observed_at', m.resolution_observed_at,\n      'due_at', m.resolution_due_at,\n      'elapsed_minutes', m.resolution_minutes,\n      'paused_minutes', m.resolution_pause_minutes,\n      'breached', m.resolution_breached\n    ) AS event,\n    COALESCE(m.closed_at, m.resolved_at) AS event_at\n  FROM m\n  CROSS JOIN params p\n  WHERE COALESCE(m.closed_at, m.resolved_at) BETWEEN p.start_utc AND p.end_utc\n)\nSELECT\n  p.dt,\n  p.realm_key AS realm,\n  p.as_of,\n  COALESCE(string_agg(e.event::text, E'\\n' ORDER BY e.event_at), '') ||\n    CASE WHEN COUNT(e.event) > 0 THEN E'\\n' ELSE '' END AS events_jsonl,\n  COUNT(e.event) AS events_count\nFROM params p\nLEFT JOIN events e ON true\nGROUP BY p.dt, p.realm_key, p.as_of;"
+      },
+      "id": "10",
+      "name": "Query Events (SoR)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        720,
+        140
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst env = $env || {};\nconst row = ($input.first() && $input.first().json) ? $input.first().json : {};\n\nfunction required(value, name) {\n  if (value === undefined || value === null || String(value).trim() === '') {\n    throw new Error(`${name} is required`);\n  }\n  return value;\n}\n\nconst realm = String(row.realm || env.N8N_REALM || 'default').trim() || 'default';\nconst dt = String(row.dt || '').trim();\nrequired(dt, 'dt');\n\nconst s3Bucket = env.N8N_S3_BUCKET || env.S3_BUCKET || '';\nconst s3Prefix = String(env.N8N_S3_PREFIX || 'itsm/service_management').replace(/\\/+$/, '');\nrequired(s3Bucket, 'N8N_S3_BUCKET');\n\nconst eventsBody = String(row.events_jsonl || '');\n\nconst eventsKey = `${s3Prefix}/sla/events/dt=${dt}/realm=${realm}/sla_events.jsonl`;\n\nreturn [\n  {\n    json: {\n      record_type: 'events',\n      s3_bucket: s3Bucket,\n      s3_key: eventsKey,\n      dt,\n      realm,\n      events_count: row.events_count ?? null\n    },\n    binary: {\n      data: {\n        data: Buffer.from(eventsBody, 'utf8').toString('base64'),\n        mimeType: 'application/json',\n        fileName: 'sla_events.jsonl'\n      }\n    }\n  }\n];\n"
+      },
+      "id": "11",
+      "name": "Build Events Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.record_type}}",
+              "value2": "events"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF Events",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{$json.s3_bucket}}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "fileName": "={{$json.s3_key}}"
+      },
+      "id": "4",
+      "name": "S3 Upload Events",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [
+        1460,
+        140
+      ],
+      "credentials": {
+        "aws": {
+          "id": "aiops-aws",
+          "name": "aiops-aws"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "### env（最小）\\n\\n- `N8N_REALM`（default: `default`）\\n- `N8N_S3_BUCKET`（required）\\n- `N8N_S3_PREFIX`（default: `itsm/service_management`）\\n- `N8N_METRICS_TARGET_DATE`（optional: `YYYY-MM-DD`）\\n\\n### DB（n8n credentials）\\n\\n- Postgres credential 名: `RDS Postgres`\\n- SoR に `itsm.sla_metrics_at(p_at)` が適用済みであること（`apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`）\\n",
+        "height": 260,
+        "width": 520
+      },
+      "id": "100",
+      "name": "Sticky Note: env",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -40
+      ]
+    }
+  ],
+  "connections": {
+    "Cron Metrics": {
+      "main": [
+        [
+          {
+            "node": "Compute Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook (OQ)": {
+      "main": [
+        [
+          {
+            "node": "Compute Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Params": {
+      "main": [
+        [
+          {
+            "node": "Query Events (SoR)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query Daily Metrics (SoR)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Events (SoR)": {
+      "main": [
+        [
+          {
+            "node": "Build Events Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Events Payload": {
+      "main": [
+        [
+          {
+            "node": "IF Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Events": {
+      "main": [
+        [
+          {
+            "node": "S3 Upload Events",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Query Daily Metrics (SoR)": {
+      "main": [
+        [
+          {
+            "node": "Build Metrics Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Metrics Payload": {
+      "main": [
+        [
+          {
+            "node": "IF Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Metrics": {
+      "main": [
+        [
+          {
+            "node": "S3 Upload Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "meta": {
+    "workflowId": "wf.itsm_sla_metrics_sync",
+    "revision": 1,
+    "aiops_catalog": {
+      "summary": "ITSM SoR\u304b\u3089SLA\u8a08\u6e2c\u3092\u65e5\u6b21\u96c6\u8a08\u3057\u3066S3/Athena\u3078\u9023\u643a\u3059\u308b",
+      "realm": "default",
+      "platform": "n8n",
+      "required_roles": [
+        "service_manager"
+      ],
+      "required_groups": [],
+      "required_users": [],
+      "risk_level": "low",
+      "impact_scope": "service",
+      "category": "service_level_management",
+      "workflow_class": "service_level_management"
+    }
+  }
+}
+

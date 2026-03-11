@@ -33,7 +33,7 @@ locals {
   gitlab_runner_image_tag_effective = coalesce(
     trimspace(var.gitlab_runner_image_tag != null ? var.gitlab_runner_image_tag : "") != "" ? trimspace(var.gitlab_runner_image_tag) : null,
     local.gitlab_omnibus_semver != "" ? "alpine-v${local.gitlab_omnibus_semver}" : null,
-    "alpine-v17.11.7"
+    "alpine-v17.11.4"
   )
   default_tags = merge(
     {
@@ -108,6 +108,8 @@ module "stack" {
   n8n_db_postgresdb_connection_timeout                 = var.n8n_db_postgresdb_connection_timeout
   n8n_db_postgresdb_idle_connection_timeout            = var.n8n_db_postgresdb_idle_connection_timeout
   n8n_db_ping_interval_seconds                         = var.n8n_db_ping_interval_seconds
+  n8n_executions_mode                                  = var.n8n_executions_mode
+  n8n_executions_timeout                               = var.n8n_executions_timeout
   aiops_agent_environment                              = var.aiops_agent_environment
   aiops_s3_bucket_names                                = var.aiops_s3_bucket_names
   aiops_s3_bucket_parameter_name_prefix                = var.aiops_s3_bucket_parameter_name_prefix
@@ -125,6 +127,7 @@ module "stack" {
   create_zulip                                         = var.create_zulip
   create_pgadmin                                       = var.create_pgadmin
   create_sulu                                          = var.create_sulu
+  create_horilla                                       = var.create_horilla
   create_sulu_efs                                      = var.create_sulu_efs
   create_keycloak                                      = var.create_keycloak
   default_realm                                        = var.default_realm
@@ -180,7 +183,9 @@ module "stack" {
   zulip_bot_tokens_param                               = var.zulip_bot_tokens_param
   zulip_desired_count                                  = var.zulip_desired_count
   sulu_desired_count                                   = var.sulu_desired_count
+  horilla_desired_count                                = var.horilla_desired_count
   sulu_health_check_grace_period_seconds               = var.sulu_health_check_grace_period_seconds
+  horilla_health_check_grace_period_seconds            = var.horilla_health_check_grace_period_seconds
   enable_sulu_autostop                                 = var.enable_sulu_autostop
   enable_pgadmin_autostop                              = var.enable_pgadmin_autostop
   pgadmin_email                                        = var.pgadmin_email
@@ -264,6 +269,7 @@ module "stack" {
   ecr_repo_grafana                                     = var.ecr_repo_grafana
   ecr_repo_pgadmin                                     = var.ecr_repo_pgadmin
   ecr_repo_keycloak                                    = var.ecr_repo_keycloak
+  ecr_repo_horilla                                     = var.ecr_repo_horilla
   ecr_repo_exastro_it_automation_web_server            = var.ecr_repo_exastro_it_automation_web_server
   ecr_repo_exastro_it_automation_api_admin             = var.ecr_repo_exastro_it_automation_api_admin
   ecr_repo_odoo                                        = var.ecr_repo_odoo
@@ -278,7 +284,13 @@ module "stack" {
   gitlab_omnibus_image_tag                             = var.gitlab_omnibus_image_tag
   gitlab_runner_image_tag                              = local.gitlab_runner_image_tag_effective
   keycloak_image_tag                                   = var.keycloak_image_tag
+  horilla_image_tag                                    = var.horilla_image_tag
   pgadmin_image_tag                                    = var.pgadmin_image_tag
+  horilla_task_cpu                                     = var.horilla_task_cpu
+  horilla_task_memory                                  = var.horilla_task_memory
+  horilla_db_name_prefix                               = var.horilla_db_name_prefix
+  horilla_environment                                  = var.horilla_environment
+  horilla_ssm_params                                   = var.horilla_ssm_params
   enable_gitlab_keycloak                               = var.enable_gitlab_keycloak
   enable_grafana_keycloak                              = var.enable_grafana_keycloak
   enable_pgadmin_keycloak                              = var.enable_pgadmin_keycloak
@@ -323,6 +335,13 @@ module "stack" {
   service_control_metrics_glue_database_name           = var.service_control_metrics_glue_database_name
   service_control_metrics_glue_table_name              = var.service_control_metrics_glue_table_name
   service_control_metrics_athena_prefix                = var.service_control_metrics_athena_prefix
+  itsm_audit_event_anchor_enabled                      = var.itsm_audit_event_anchor_enabled
+  itsm_audit_event_anchor_bucket_name                  = var.itsm_audit_event_anchor_bucket_name
+  itsm_audit_event_anchor_bucket_kms_key_arn           = var.itsm_audit_event_anchor_bucket_kms_key_arn
+  itsm_audit_event_anchor_retention_days               = var.itsm_audit_event_anchor_retention_days
+  itsm_audit_event_anchor_object_lock_enabled          = var.itsm_audit_event_anchor_object_lock_enabled
+  itsm_audit_event_anchor_object_lock_mode             = var.itsm_audit_event_anchor_object_lock_mode
+  itsm_audit_event_anchor_object_lock_retention_days   = var.itsm_audit_event_anchor_object_lock_retention_days
   enable_efs_backup                                    = var.enable_efs_backup
   efs_backup_delete_after_days                         = var.efs_backup_delete_after_days
   enable_exastro_keycloak                              = var.enable_exastro_keycloak

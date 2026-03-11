@@ -2,10 +2,10 @@
 
 ## 1. 対象と変更区分
 - **構成（Infrastructure）**: `main.tf` / `variables.tf` / `modules/**` / `terraform.*.tfvars`
-- **ポリシー（Policy）**: `apps/aiops_agent/data/default/policy/**`
-- **プロンプト（Prompt）**: `apps/aiops_agent/data/default/prompt/**`
-  - レルム別の上書きが必要な場合: `apps/aiops_agent/data/<realm>/{policy,prompt}/**`
-- **ワークフロー（Workflow）**: `apps/aiops_agent/workflows/**`
+- **ポリシー（Policy）**: `apps/aiops_agent/orchestrator/data/default/policy/**`
+- **プロンプト（Prompt）**: `apps/aiops_agent/orchestrator/data/default/prompt/**`
+  - レルム別の上書きが必要な場合: `apps/aiops_agent/orchestrator/data/<realm>/{policy,prompt}/**`
+- **ワークフロー（Workflow）**: `apps/aiops_agent/*/workflows/**`
 
 ## 2. 変更フロー（レビュー/承認/ロールバック）
 1. **起案**: 変更理由、影響範囲、ロールバック手順、検証観点を明記する。
@@ -17,13 +17,13 @@
 
 ### ロールバック指針
 - **Terraform 構成**: 直前の安定コミットに戻し、同じ `-var-file` セットで `terraform apply`。
-- **ポリシー/プロンプト/ワークフロー**: 直前の JSON/TXT に戻し、`apps/aiops_agent/scripts/deploy_workflows.sh` で再同期。
+- **ポリシー/プロンプト/ワークフロー**: 直前の JSON/TXT に戻し、`apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh` で再同期。
 - **データ変更**: 事前バックアップがない場合は保守作業扱いとし、復旧計画を最優先する。
 
 ## 3. 本番・検証環境の同期方法
 1. **検証環境で先行適用**
    - `terraform plan -var-file=...` を取得し、影響をレビューする。
-   - n8n 変更は `apps/aiops_agent/scripts/deploy_workflows.sh` を先に検証環境で実行する。
+   - n8n 変更は `apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh` を先に検証環境で実行する。
 2. **差分確認**
    - `terraform plan` の差分が想定外の場合は適用を止める。
 3. **本番へ反映**
@@ -48,4 +48,3 @@
 - 参照リンク（PR, plan, runbook）
 
 ## 5. 修正ログ
-

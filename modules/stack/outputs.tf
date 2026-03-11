@@ -186,6 +186,7 @@ output "service_urls" {
     gitlab      = var.create_ecs && var.create_gitlab ? "https://${local.gitlab_host}" : null
     grafana     = var.create_ecs && var.create_gitlab && var.create_grafana && local.grafana_primary_host != null ? "https://${local.grafana_primary_host}" : null
     sulu        = var.create_ecs && var.create_sulu && local.sulu_primary_host != null ? "https://${local.sulu_primary_host}" : null
+    horilla     = var.create_ecs && var.create_horilla && local.horilla_primary_host != null ? "https://${local.horilla_primary_host}" : null
     control_ui  = "https://${local.control_site_domain}"
     alb_dns     = try(aws_lb.app[0].dns_name, null)
     control_cf  = try(aws_cloudfront_distribution.control_site[0].domain_name, null)
@@ -280,6 +281,30 @@ output "grafana_realm_urls" {
 output "itsm_monitoring_context" {
   description = "Non-secret monitoring context derived from monitoring_yaml (realm => config)."
   value       = local.itsm_monitoring_context_by_realm
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_bucket_name" {
+  description = "S3 bucket name for anchoring ITSM audit_event hash-chain heads (WORM)."
+  value       = var.itsm_audit_event_anchor_enabled ? try(aws_s3_bucket.itsm_audit_event_anchor[0].bucket, null) : null
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_enabled" {
+  description = "Whether S3 Object Lock is enabled for the ITSM audit_event anchor bucket."
+  value       = var.itsm_audit_event_anchor_enabled ? var.itsm_audit_event_anchor_object_lock_enabled : null
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_mode" {
+  description = "Default S3 Object Lock mode for ITSM audit_event anchor objects."
+  value       = var.itsm_audit_event_anchor_enabled && var.itsm_audit_event_anchor_object_lock_enabled ? var.itsm_audit_event_anchor_object_lock_mode : null
+  sensitive   = false
+}
+
+output "itsm_audit_event_anchor_object_lock_retention_days" {
+  description = "Default S3 Object Lock retention days for ITSM audit_event anchor objects."
+  value       = var.itsm_audit_event_anchor_enabled && var.itsm_audit_event_anchor_object_lock_enabled ? var.itsm_audit_event_anchor_object_lock_retention_days : null
   sensitive   = false
 }
 
@@ -746,4 +771,9 @@ output "ses_smtp_starttls_port" {
 output "ses_smtp_ssl_port" {
   description = "SES SMTP implicit TLS port (465)"
   value       = 465
+}
+
+output "horilla_image_tag" {
+  description = "Horilla image tag to use for pulls/builds"
+  value       = var.horilla_image_tag
 }

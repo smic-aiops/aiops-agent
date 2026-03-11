@@ -42,6 +42,7 @@ locals {
   zulip_memcached_endpoint_parameter_name           = "/${local.name_prefix}/zulip/memcached/endpoint"
   sulu_app_secret_parameter_name                    = "/${local.name_prefix}/sulu/app_secret"
   sulu_database_url_parameter_name                  = "/${local.name_prefix}/sulu/database_url"
+  itsm_sor_database_url_parameter_name              = "/${local.name_prefix}/itsm_sor/database_url"
   sulu_mailer_dsn_parameter_name                    = "/${local.name_prefix}/sulu/mailer_dsn"
   sulu_oidc_client_id_parameter_name                = "/${local.name_prefix}/sulu/oidc/client_id"
   sulu_oidc_client_secret_parameter_name            = "/${local.name_prefix}/sulu/oidc/client_secret"
@@ -212,6 +213,7 @@ locals {
   sulu_db_username_value          = coalesce(var.sulu_db_username, local.master_username)
   sulu_app_secret_value           = var.sulu_app_secret != null ? var.sulu_app_secret : (local.ssm_writes_enabled && var.create_ecs && var.create_sulu ? try(random_password.sulu_app_secret[0].result, null) : null)
   sulu_database_url_value         = var.create_sulu && var.create_rds ? "postgresql://${local.sulu_db_username_value}:${urlencode(local.db_password_effective)}@${aws_db_instance.this[0].address}:${aws_db_instance.this[0].port}/${var.sulu_db_name}?serverVersion=${var.rds_engine_version}&sslmode=require" : null
+  itsm_sor_database_url_value     = var.create_rds ? "postgresql://${local.master_username}:${urlencode(local.db_password_effective)}@${aws_db_instance.this[0].address}:${aws_db_instance.this[0].port}/${var.n8n_db_name}?serverVersion=${var.rds_engine_version}&sslmode=require" : null
   sulu_mailer_dsn_value           = coalesce(var.sulu_mailer_dsn, local.ses_smtp_username_value != null && local.ses_smtp_password_value != null ? "smtp://${local.ses_smtp_username_value}:${urlencode(local.ses_smtp_password_value)}@email-smtp.${var.region}.amazonaws.com:587?encryption=tls&auth_mode=login" : null)
   exastro_web_oidc_client_id_value = try(coalesce(
     var.exastro_web_oidc_client_id,
@@ -1704,6 +1706,17 @@ resource "aws_ssm_parameter" "sulu_database_url" {
   overwrite = true
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-sulu-db-url" })
+}
+
+resource "aws_ssm_parameter" "itsm_sor_database_url" {
+  count = local.ssm_writes_enabled ? (var.create_ecs && var.create_sulu && var.create_rds ? 1 : 0) : 0
+
+  name      = local.itsm_sor_database_url_parameter_name
+  type      = "SecureString"
+  value     = local.itsm_sor_database_url_value
+  overwrite = true
+
+  tags = merge(local.tags, { Name = "${local.name_prefix}-itsm-sor-db-url" })
 }
 
 resource "aws_ssm_parameter" "sulu_mailer_dsn" {

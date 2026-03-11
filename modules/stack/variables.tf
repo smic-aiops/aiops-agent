@@ -745,6 +745,12 @@ variable "create_sulu" {
   default     = true
 }
 
+variable "create_horilla" {
+  description = "Whether to create Horilla service resources"
+  type        = bool
+  default     = false
+}
+
 variable "create_pgadmin" {
   description = "Whether to create pgAdmin service resources"
   type        = bool
@@ -772,7 +778,7 @@ variable "create_gitlab" {
 variable "create_gitlab_runner" {
   description = "Whether to create GitLab Runner (shell executor on Fargate) resources"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "create_grafana" {
@@ -816,6 +822,36 @@ variable "n8n_desired_count" {
   description = "Default desired count for n8n ECS service"
   type        = number
   default     = 1
+}
+
+variable "horilla_desired_count" {
+  description = "Default desired count for Horilla ECS services (per realm)"
+  type        = number
+  default     = 1
+}
+
+variable "horilla_health_check_grace_period_seconds" {
+  description = "Grace period for Horilla ECS service load balancer health checks (seconds)"
+  type        = number
+  default     = 120
+}
+
+variable "horilla_task_cpu" {
+  description = "Override CPU units for Horilla task definition (null to use ecs_task_cpu)"
+  type        = number
+  default     = null
+}
+
+variable "horilla_task_memory" {
+  description = "Override memory (MB) for Horilla task definition (null to use ecs_task_memory)"
+  type        = number
+  default     = null
+}
+
+variable "horilla_db_name_prefix" {
+  description = "PostgreSQL database name prefix for Horilla (per realm databases are created as <prefix>_<realm>)"
+  type        = string
+  default     = "horilla"
 }
 
 variable "enable_zulip_autostop" {
@@ -1801,6 +1837,12 @@ variable "ecr_repo_keycloak" {
   default     = null
 }
 
+variable "ecr_repo_horilla" {
+  description = "ECR repository name for Horilla"
+  type        = string
+  default     = null
+}
+
 variable "ecr_repo_exastro_it_automation_web_server" {
   description = "ECR repository name for Exastro IT Automation web server"
   type        = string
@@ -1886,9 +1928,9 @@ variable "gitlab_omnibus_image_tag" {
 }
 
 variable "gitlab_runner_image_tag" {
-  description = "GitLab Runner image tag to pull/build (upstream tag, e.g. alpine-v17.11.7)"
+  description = "GitLab Runner image tag to pull/build (upstream tag, e.g. alpine-v17.11.4)"
   type        = string
-  default     = "alpine-v17.11.7"
+  default     = "alpine-v17.11.4"
 }
 
 variable "sulu_image_tag" {
@@ -1945,6 +1987,12 @@ variable "keycloak_image_tag" {
   description = "Keycloak image tag to use for pulls/builds"
   type        = string
   default     = null
+}
+
+variable "horilla_image_tag" {
+  description = "Horilla image tag to use for pulls/builds"
+  type        = string
+  default     = "1.5.0"
 }
 
 variable "odoo_image_tag" {
@@ -2786,6 +2834,18 @@ variable "sulu_environment" {
   default = {}
 }
 
+variable "horilla_environment" {
+  description = "Additional environment variables for Horilla containers"
+  type        = map(string)
+  default     = {}
+}
+
+variable "horilla_ssm_params" {
+  description = "SSM parameters (or ARNs) injected into Horilla containers (merged with default DB params)"
+  type        = map(string)
+  default     = {}
+}
+
 variable "sulu_secrets" {
   type = list(object({
     name      = string
@@ -2839,6 +2899,26 @@ variable "n8n_db_ping_interval_seconds" {
   description = "n8n DB ping interval seconds (DB_PING_INTERVAL_SECONDS)"
   type        = number
   default     = 2
+}
+
+variable "n8n_executions_mode" {
+  description = "n8n executions mode (EXECUTIONS_MODE). Supported: regular, queue."
+  type        = string
+  default     = "regular"
+  validation {
+    condition     = contains(["regular", "queue"], var.n8n_executions_mode)
+    error_message = "n8n_executions_mode must be one of: regular, queue."
+  }
+}
+
+variable "n8n_executions_timeout" {
+  description = "n8n workflow execution timeout seconds (EXECUTIONS_TIMEOUT). Use -1 to disable."
+  type        = number
+  default     = -1
+  validation {
+    condition     = var.n8n_executions_timeout >= -1
+    error_message = "n8n_executions_timeout must be -1 or greater."
+  }
 }
 
 variable "aiops_agent_environment" {

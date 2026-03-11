@@ -215,7 +215,7 @@ bash scripts/itsm/n8n/refresh_n8n_api_key.sh
 - GitLab 管理者トークン（GitLab 連携ワークフロー/OQ が参照するため）:
 
 ```bash
-bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh
+bash apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh
 ```
 
 - GitLab Webhook secret（GitLab Webhook 受信系ワークフロー/OQ が検証に使うため）:
@@ -250,13 +250,13 @@ bash scripts/itsm/run_all_redeploy.sh
 `scripts/apps/deploy_all_workflows.sh --with-tests`（OQ を含む）を行う前に、**先に** GitLab 側のレルム用グループ/初期プロジェクト（テンプレ）を反映しておく（テストが参照する前提を揃えるため）。
 
 ```bash
-bash scripts/itsm/gitlab/ensure_realm_groups.sh
-bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh
+bash apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh
+bash apps/itsm_core/bootstrap/scripts/itsm_bootstrap_realms.sh
 ```
 
 変更箇所だけ反映する場合:
 ```bash
-bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh --files-only
+bash apps/itsm_core/bootstrap/scripts/itsm_bootstrap_realms.sh --files-only
 ```
 
 ミラーや RAG パイプライン確認（導入する場合）:

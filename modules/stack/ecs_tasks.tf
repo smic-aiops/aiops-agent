@@ -5,6 +5,7 @@ locals {
     var.create_n8n ? "n8n" : "",
     local.exastro_service_enabled ? "exastro" : "",
     var.create_sulu ? "sulu" : "",
+    var.create_horilla ? "horilla" : "",
     var.create_keycloak ? "keycloak" : "",
     var.create_odoo ? "odoo" : "",
     var.create_pgadmin ? "pgadmin" : "",
@@ -25,41 +26,43 @@ locals {
     coalesce(var.exastro_task_memory, var.ecs_task_memory),
     coalesce(var.exastro_task_memory, var.ecs_task_memory)
   ) * 2
-  ecr_uri_n8n              = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_n8n}:latest"
-  ecr_registry_prefix      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}"
-  ecr_uri_alpine_base      = "${local.ecr_registry_prefix}/${var.ecr_repo_alpine}"
-  alpine_image_3_19        = "${local.ecr_uri_alpine_base}:3.19"
-  alpine_image_3_20        = "${local.ecr_uri_alpine_base}:3.20"
-  redis_image              = "${local.ecr_registry_prefix}/${var.ecr_repo_redis}:7.2-alpine"
-  memcached_image          = "${local.ecr_registry_prefix}/${var.ecr_repo_memcached}:1.6-alpine"
-  rabbitmq_image           = "${local.ecr_registry_prefix}/${var.ecr_repo_rabbitmq}:3.13-alpine"
-  mongo_image              = "${local.ecr_registry_prefix}/${var.ecr_repo_mongo}:7.0"
-  python_image             = "${local.ecr_registry_prefix}/${var.ecr_repo_python}:3.12-alpine"
-  qdrant_image             = "${local.ecr_registry_prefix}/${var.ecr_repo_qdrant}:${var.qdrant_image_tag}"
-  ecr_uri_exastro_web      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_web_server}:latest"
-  ecr_uri_exastro_api      = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_api_admin}:latest"
-  sulu_image_tag_effective = var.sulu_image_tag != null && var.sulu_image_tag != "" ? var.sulu_image_tag : "latest"
-  ecr_uri_sulu             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu}:${local.sulu_image_tag_effective}"
-  ecr_uri_sulu_nginx       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu_nginx}:${local.sulu_image_tag_effective}"
-  ecr_uri_pgadmin          = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_pgadmin}:latest"
-  ecr_uri_keycloak         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_keycloak}:latest"
-  ecr_uri_odoo             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_odoo}:latest"
-  ecr_uri_gitlab           = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab}:latest"
-  ecr_uri_gitlab_runner    = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab_runner}:latest"
-  ecr_uri_grafana          = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_grafana}:latest"
-  ecr_uri_zulip            = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_zulip}:latest"
-  default_realm            = local.keycloak_realm_effective
-  keycloak_issuer_url      = "https://keycloak.${local.hosted_zone_name_input}/realms/${local.default_realm}"
-  keycloak_auth_url        = "${local.keycloak_issuer_url}/protocol/openid-connect/auth"
-  keycloak_token_url       = "${local.keycloak_issuer_url}/protocol/openid-connect/token"
-  keycloak_userinfo_url    = "${local.keycloak_issuer_url}/protocol/openid-connect/userinfo"
-  odoo_oidc_issuer_url     = trim(coalesce(local.oidc_idps_issuer_url_from_yaml["odoo"], local.keycloak_issuer_url), "/")
-  odoo_oidc_scopes         = coalesce(local.oidc_idps_scope_from_yaml["odoo"], "openid profile email")
-  gitlab_oidc_issuer_url   = trim(coalesce(local.oidc_idps_issuer_url_from_yaml["gitlab"], local.keycloak_issuer_url), "/")
-  gitlab_oidc_scope_raw    = coalesce(local.oidc_idps_scope_from_yaml["gitlab"], "openid profile email")
-  gitlab_oidc_scopes       = regexall("[^\\s]+", local.gitlab_oidc_scope_raw)
-  gitlab_oidc_label        = coalesce(local.oidc_idps_display_name_from_yaml["gitlab"], "Keycloak")
-  keycloak_host_for_oidc   = "${local.service_subdomain_map["keycloak"]}.${local.hosted_zone_name_input}"
+  ecr_uri_n8n                 = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_n8n}:latest"
+  ecr_registry_prefix         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}"
+  ecr_uri_alpine_base         = "${local.ecr_registry_prefix}/${var.ecr_repo_alpine}"
+  alpine_image_3_19           = "${local.ecr_uri_alpine_base}:3.19"
+  alpine_image_3_20           = "${local.ecr_uri_alpine_base}:3.20"
+  redis_image                 = "${local.ecr_registry_prefix}/${var.ecr_repo_redis}:7.2-alpine"
+  memcached_image             = "${local.ecr_registry_prefix}/${var.ecr_repo_memcached}:1.6-alpine"
+  rabbitmq_image              = "${local.ecr_registry_prefix}/${var.ecr_repo_rabbitmq}:3.13-alpine"
+  mongo_image                 = "${local.ecr_registry_prefix}/${var.ecr_repo_mongo}:7.0"
+  python_image                = "${local.ecr_registry_prefix}/${var.ecr_repo_python}:3.12-alpine"
+  qdrant_image                = "${local.ecr_registry_prefix}/${var.ecr_repo_qdrant}:${var.qdrant_image_tag}"
+  ecr_uri_exastro_web         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_web_server}:latest"
+  ecr_uri_exastro_api         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_api_admin}:latest"
+  sulu_image_tag_effective    = var.sulu_image_tag != null && var.sulu_image_tag != "" ? var.sulu_image_tag : "latest"
+  ecr_uri_sulu                = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu}:${local.sulu_image_tag_effective}"
+  ecr_uri_sulu_nginx          = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu_nginx}:${local.sulu_image_tag_effective}"
+  horilla_image_tag_effective = var.horilla_image_tag != null && var.horilla_image_tag != "" ? var.horilla_image_tag : "latest"
+  ecr_uri_horilla             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_horilla}:${local.horilla_image_tag_effective}"
+  ecr_uri_pgadmin             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_pgadmin}:latest"
+  ecr_uri_keycloak            = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_keycloak}:latest"
+  ecr_uri_odoo                = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_odoo}:latest"
+  ecr_uri_gitlab              = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab}:latest"
+  ecr_uri_gitlab_runner       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab_runner}:latest"
+  ecr_uri_grafana             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_grafana}:latest"
+  ecr_uri_zulip               = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_zulip}:latest"
+  default_realm               = local.keycloak_realm_effective
+  keycloak_issuer_url         = "https://keycloak.${local.hosted_zone_name_input}/realms/${local.default_realm}"
+  keycloak_auth_url           = "${local.keycloak_issuer_url}/protocol/openid-connect/auth"
+  keycloak_token_url          = "${local.keycloak_issuer_url}/protocol/openid-connect/token"
+  keycloak_userinfo_url       = "${local.keycloak_issuer_url}/protocol/openid-connect/userinfo"
+  odoo_oidc_issuer_url        = trim(coalesce(local.oidc_idps_issuer_url_from_yaml["odoo"], local.keycloak_issuer_url), "/")
+  odoo_oidc_scopes            = coalesce(local.oidc_idps_scope_from_yaml["odoo"], "openid profile email")
+  gitlab_oidc_issuer_url      = trim(coalesce(local.oidc_idps_issuer_url_from_yaml["gitlab"], local.keycloak_issuer_url), "/")
+  gitlab_oidc_scope_raw       = coalesce(local.oidc_idps_scope_from_yaml["gitlab"], "openid profile email")
+  gitlab_oidc_scopes          = regexall("[^\\s]+", local.gitlab_oidc_scope_raw)
+  gitlab_oidc_label           = coalesce(local.oidc_idps_display_name_from_yaml["gitlab"], "Keycloak")
+  keycloak_host_for_oidc      = "${local.service_subdomain_map["keycloak"]}.${local.hosted_zone_name_input}"
   grafana_oidc_issuer_url_effective_by_realm = {
     for realm in local.grafana_realms :
     realm => trim(coalesce(
@@ -189,6 +192,13 @@ locals {
     DB_USER     = local.oase_db_username_parameter_name
     DB_PASSWORD = local.oase_db_password_parameter_name
   }
+
+  default_ssm_params_horilla = {
+    DB_HOST     = local.db_host_parameter_name
+    DB_PORT     = local.db_port_parameter_name
+    DB_USER     = local.db_username_parameter_name
+    DB_PASSWORD = local.db_password_parameter_name
+  }
   # Prefer user-supplied filesystem IDs only when they are non-null/non-empty; otherwise fall back to the discovered/created EFS IDs.
   n8n_efs_id = (
     var.n8n_filesystem_id != null && var.n8n_filesystem_id != "" ? var.n8n_filesystem_id :
@@ -238,6 +248,8 @@ locals {
       N8N_METRICS                           = "true"
       N8N_DEFAULT_LOCALE                    = "ja"
       N8N_PUBLIC_API_DISABLED               = "false"
+      EXECUTIONS_MODE                       = var.n8n_executions_mode
+      EXECUTIONS_TIMEOUT                    = tostring(var.n8n_executions_timeout)
       N8N_ADMIN_EMAIL                       = local.n8n_admin_email_value
       # Enable decision/approval recognition by LLM for Zulip<->GitLab sync workflows by default.
       # (Workflows still require DECISION_LLM_API_* values to actually call the model.)
@@ -657,11 +669,36 @@ locals {
   }
   ssm_param_arns_exastro_web = { for k, v in merge(local.default_ssm_params_exastro, var.exastro_web_server_ssm_params) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
   ssm_param_arns_exastro_api = { for k, v in merge(local.default_ssm_params_exastro, var.exastro_api_admin_ssm_params) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
-  ssm_param_arns_pgadmin     = { for k, v in merge(local.default_ssm_params_pgadmin, var.pgadmin_ssm_params, local.optional_smtp_params_pgadmin, local.optional_oidc_params_pgadmin) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
-  ssm_param_arns_keycloak    = { for k, v in merge(local.default_ssm_params_keycloak, var.keycloak_db_ssm_params, var.keycloak_ssm_params, local.optional_smtp_params_keycloak) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
-  ssm_param_arns_odoo        = { for k, v in merge(local.default_ssm_params_odoo, var.odoo_ssm_params, local.optional_smtp_params_odoo, local.optional_oidc_params_odoo) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
-  ssm_param_arns_gitlab      = { for k, v in merge(local.default_ssm_params_gitlab, var.gitlab_db_ssm_params, var.gitlab_ssm_params, local.optional_smtp_params_gitlab, local.optional_oidc_params_gitlab) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
-  default_ssm_params_gitlab_runner = local.gitlab_runner_token_write_enabled ? {
+  ssm_param_arns_horilla     = { for k, v in merge(local.default_ssm_params_horilla, var.horilla_ssm_params) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
+  horilla_environment_common = merge(
+    {
+      DB_ENGINE = "django.db.backends.postgresql"
+    },
+    var.horilla_environment
+  )
+  horilla_environment_by_realm = {
+    for realm, host in local.horilla_realm_hosts :
+    realm => merge(
+      local.horilla_environment_common,
+      {
+        HORILLA_REALM        = realm
+        HORILLA_HOST         = host
+        HORILLA_BASE_URL     = "https://${host}/"
+        DB_NAME              = local.horilla_realm_db_names[realm]
+        DB_DATABASE          = local.horilla_realm_db_names[realm]
+        DB_POSTGRES_DB       = local.horilla_realm_db_names[realm]
+        DB_POSTGRESDB_DB     = local.horilla_realm_db_names[realm]
+        DB_POSTGRESDB_DBNAME = local.horilla_realm_db_names[realm]
+      }
+    )
+  }
+  ssm_param_arns_pgadmin  = { for k, v in merge(local.default_ssm_params_pgadmin, var.pgadmin_ssm_params, local.optional_smtp_params_pgadmin, local.optional_oidc_params_pgadmin) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
+  ssm_param_arns_keycloak = { for k, v in merge(local.default_ssm_params_keycloak, var.keycloak_db_ssm_params, var.keycloak_ssm_params, local.optional_smtp_params_keycloak) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
+  ssm_param_arns_odoo     = { for k, v in merge(local.default_ssm_params_odoo, var.odoo_ssm_params, local.optional_smtp_params_odoo, local.optional_oidc_params_odoo) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
+  ssm_param_arns_gitlab   = { for k, v in merge(local.default_ssm_params_gitlab, var.gitlab_db_ssm_params, var.gitlab_ssm_params, local.optional_smtp_params_gitlab, local.optional_oidc_params_gitlab) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
+  # Always inject the runner authentication token from SSM when GitLab Runner is enabled.
+  # The token itself is expected to be provisioned out-of-band (e.g. scripts/itsm/gitlab/ensure_gitlab_runner.sh).
+  default_ssm_params_gitlab_runner = var.create_ecs && var.create_gitlab_runner ? {
     GITLAB_RUNNER_TOKEN = local.gitlab_runner_token_parameter_name
   } : {}
   ssm_param_arns_gitlab_runner = {
@@ -689,10 +726,11 @@ locals {
   } : {}
   ssm_param_arns_zulip = { for k, v in merge(local.default_ssm_params_zulip_base, var.zulip_db_ssm_params, var.zulip_ssm_params, local.optional_smtp_params_zulip) : k => (can(regex("^arn:aws:ssm", v)) ? v : "arn:aws:ssm:${var.region}:${local.account_id}:parameter${startswith(v, "/") ? v : "/${v}"}") }
   sulu_ssm_core_params = {
-    APP_SECRET         = local.sulu_app_secret_parameter_name
-    DATABASE_URL       = local.sulu_database_url_parameter_name
-    MAILER_DSN         = local.sulu_mailer_dsn_parameter_name
-    N8N_OBSERVER_TOKEN = local.observer_token_parameter_name
+    APP_SECRET            = local.sulu_app_secret_parameter_name
+    DATABASE_URL          = local.sulu_database_url_parameter_name
+    ITSM_SOR_DATABASE_URL = local.itsm_sor_database_url_parameter_name
+    MAILER_DSN            = local.sulu_mailer_dsn_parameter_name
+    N8N_OBSERVER_TOKEN    = local.observer_token_parameter_name
   }
   sulu_ssm_oidc_params = var.enable_sulu_keycloak ? {
     SULU_SSO_CLIENT_ID     = local.sulu_oidc_client_id_parameter_name
@@ -1936,6 +1974,106 @@ SQL
   }
 
   tags = merge(local.tags, { realm = each.key, Name = "${local.name_prefix}-sulu-${each.key}-td" })
+}
+
+resource "aws_ecs_task_definition" "horilla" {
+  for_each = var.create_ecs && var.create_horilla ? local.horilla_realm_hosts : {}
+
+  family                   = "${local.name_prefix}-horilla-${each.key}"
+  cpu                      = coalesce(var.horilla_task_cpu, var.ecs_task_cpu)
+  memory                   = coalesce(var.horilla_task_memory, var.ecs_task_memory)
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  execution_role_arn       = aws_iam_role.ecs_execution[0].arn
+  task_role_arn            = aws_iam_role.ecs_task[0].arn
+
+  container_definitions = jsonencode([
+    merge(local.ecs_base_container, {
+      name       = "horilla-db-init-${each.key}"
+      image      = local.alpine_image_3_19
+      essential  = false
+      entryPoint = ["/bin/sh", "-c"]
+      command = [
+        <<-EOT
+          set -eu
+          echo "Installing PostgreSQL client (15.x) to match RDS 15.x..."
+          apk add --no-cache postgresql15-client >/dev/null
+
+          db_host="$${DB_HOST:-}"
+          db_port="$${DB_PORT:-5432}"
+          db_user="$${DB_USER:-}"
+          db_pass="$${DB_PASSWORD:-}"
+          db_name="${local.horilla_realm_db_names[each.key]}"
+
+          if [ -z "$${db_host}" ] || [ -z "$${db_user}" ] || [ -z "$${db_pass}" ] || [ -z "$${db_name}" ]; then
+            echo "Database variables are incomplete."
+            exit 1
+          fi
+
+          export PGPASSWORD="$${db_pass}"
+
+          echo "Waiting for PostgreSQL to become available..."
+          until pg_isready -h "$${db_host}" -p "$${db_port}" -U "$${db_user}" >/dev/null 2>&1; do
+            sleep 2
+          done
+
+          role_exists="$(psql -h "$${db_host}" -p "$${db_port}" -U "$${db_user}" -d postgres -Atc "SELECT 1 FROM pg_roles WHERE rolname = '$${db_user}'" || true)"
+          if [ "$${role_exists}" != "1" ]; then
+            echo "Creating role $${db_user}..."
+            psql -h "$${db_host}" -p "$${db_port}" -U "$${db_user}" -d postgres -c "CREATE ROLE \\\"$${db_user}\\\" WITH LOGIN PASSWORD '$${db_pass}';" || true
+          fi
+
+          db_exists="$(psql -h "$${db_host}" -p "$${db_port}" -U "$${db_user}" -d postgres -Atc "SELECT 1 FROM pg_database WHERE datname = '$${db_name}'" || true)"
+          if [ "$${db_exists}" != "1" ]; then
+            echo "Creating database $${db_name}..."
+            psql -h "$${db_host}" -p "$${db_port}" -U "$${db_user}" -d postgres -c "CREATE DATABASE \\\"$${db_name}\\\" OWNER \\\"$${db_user}\\\";"
+          else
+            echo "Database $${db_name} already exists."
+          fi
+        EOT
+      ]
+      secrets = [for k, v in local.ssm_param_arns_horilla : { name = k, valueFrom = v }]
+      logConfiguration = merge(local.ecs_base_container.logConfiguration, {
+        options = merge(local.ecs_base_container.logConfiguration.options, {
+          "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "horilla--horilla-db-init-${each.key}", aws_cloudwatch_log_group.ecs["horilla"].name)
+        })
+      })
+    }),
+    merge(local.ecs_base_container, {
+      name  = "horilla-${each.key}"
+      image = local.ecr_uri_horilla
+      portMappings = [{
+        containerPort = 8000
+        hostPort      = 8000
+        protocol      = "tcp"
+      }]
+      environment = [
+        for k, v in local.horilla_environment_by_realm[each.key] : {
+          name  = k
+          value = v
+        }
+      ]
+      secrets = [for k, v in local.ssm_param_arns_horilla : { name = k, valueFrom = v }]
+      dependsOn = [
+        {
+          containerName = "horilla-db-init-${each.key}"
+          condition     = "SUCCESS"
+        }
+      ]
+      logConfiguration = merge(local.ecs_base_container.logConfiguration, {
+        options = merge(local.ecs_base_container.logConfiguration.options, {
+          "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "horilla--horilla-${each.key}", aws_cloudwatch_log_group.ecs["horilla"].name)
+        })
+      })
+    })
+  ])
+
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = var.image_architecture_cpu
+  }
+
+  tags = merge(local.tags, { realm = each.key, Name = "${local.name_prefix}-horilla-${each.key}-td" })
 }
 
 resource "aws_ecs_task_definition" "keycloak" {

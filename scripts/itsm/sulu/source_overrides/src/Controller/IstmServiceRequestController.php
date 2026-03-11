@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\IstmServiceRequest;
-use Doctrine\ORM\EntityManagerInterface;
+use App\IstmSor\Entity\IstmServiceRequest;
+use App\ListBuilder\IstmDoctrineListBuilderFactory;
+use App\Service\IstmSorRlsContext;
 use FOS\RestBundle\View\ViewHandlerInterface;
 use Sulu\Component\Rest\AbstractRestController;
 use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilder;
-use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilderFactoryInterface;
 use Sulu\Component\Rest\ListBuilder\Metadata\FieldDescriptorFactoryInterface;
 use Sulu\Component\Rest\ListBuilder\PaginatedRepresentation;
 use Sulu\Component\Rest\RestHelperInterface;
@@ -28,10 +28,10 @@ final class IstmServiceRequestController extends AbstractRestController
         ViewHandlerInterface $viewHandler,
         TokenStorageInterface $tokenStorage,
         private readonly FieldDescriptorFactoryInterface $fieldDescriptorFactory,
-        private readonly DoctrineListBuilderFactoryInterface $listBuilderFactory,
+        private readonly IstmDoctrineListBuilderFactory $listBuilderFactory,
         private readonly RestHelperInterface $restHelper,
-        private readonly EntityManagerInterface $entityManager,
         private readonly SecurityCheckerInterface $securityChecker,
+        private readonly IstmSorRlsContext $rlsContext,
     ) {
         parent::__construct($viewHandler, $tokenStorage);
     }
@@ -39,6 +39,7 @@ final class IstmServiceRequestController extends AbstractRestController
     public function cgetAction(Request $request): Response
     {
         $this->securityChecker->checkPermission(self::SECURITY_CONTEXT, PermissionTypes::VIEW);
+        $this->rlsContext->apply($this->listBuilderFactory->getConnection(), $request);
 
         $fieldDescriptors = $this->fieldDescriptorFactory->getFieldDescriptors(self::LIST_KEY);
 
@@ -61,12 +62,13 @@ final class IstmServiceRequestController extends AbstractRestController
         return $this->handleView($this->view($representation));
     }
 
-    public function getAction(string $id): Response
+    public function getAction(Request $request, string $id): Response
     {
         $this->securityChecker->checkPermission(self::SECURITY_CONTEXT, PermissionTypes::VIEW);
+        $this->rlsContext->apply($this->listBuilderFactory->getConnection(), $request);
 
         /** @var IstmServiceRequest|null $requestEntity */
-        $requestEntity = $this->entityManager->find(IstmServiceRequest::class, $id);
+        $requestEntity = $this->listBuilderFactory->getEntityManager()->find(IstmServiceRequest::class, $id);
         if (!$requestEntity) {
             return $this->handleView($this->view(['message' => 'Not Found'], 404));
         }
@@ -90,4 +92,3 @@ final class IstmServiceRequestController extends AbstractRestController
         ]));
     }
 }
-

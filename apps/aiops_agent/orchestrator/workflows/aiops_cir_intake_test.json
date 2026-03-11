@@ -1,0 +1,70 @@
+{
+  "name": "aiops-cir-intake-test",
+  "active": false,
+  "settings": {},
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Manual Trigger (CIR Intake Test)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [\n  {\n    json: {\n      is_duplicate: false,\n      is_duplicate_flag: '',\n      iam_context: { realm: 'default' },\n      actor: { name: 'test-user', email: 'test-user@example.com' },\n      reply_target: {\n        source: 'zulip',\n        realm: 'default',\n        stream: 'test',\n        topic: 'cir-intake-test',\n        url: 'https://zulip.example/#narrow/stream/1/topic/cir-intake-test/near/123'\n      },\n      normalized_event: {\n        source: 'zulip',\n        text: '○○ができるようになってください。'\n      }\n    }\n  }\n];\n"
+      },
+      "id": "2",
+      "name": "Build Sample CIR Request (Zulip)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst base = $json ?? {};\nconst normalized = (base.normalized_event && typeof base.normalized_event === 'object') ? base.normalized_event : {};\nconst replyTarget = (base.reply_target && typeof base.reply_target === 'object') ? base.reply_target : {};\nconst source = String(normalized.source ?? base.source ?? replyTarget.source ?? 'unknown');\nconst isDuplicate = Boolean(base.is_duplicate) || String(base.is_duplicate_flag ?? '') === 'true';\n\nconst NL = String.fromCharCode(10);\nconst CR = String.fromCharCode(13);\n\nfunction truthy(v) {\n  const raw = String(v ?? '').trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(raw);\n}\n\nfunction trimSlash(v) {\n  return String(v ?? '').replace(/\\/+$/, '');\n}\n\nfunction pickEnv(...keys) {\n  for (const k of keys) {\n    const v = $env?.[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v);\n  }\n  return '';\n}\n\nfunction stripHtml(t) {\n  return String(t ?? '')\n    .replace(/<style[\\s\\S]*?>[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction stripMention(t) {\n  return String(t ?? '')\n    .replace(/^@\\*\\*[^*]+\\*\\*\\s*/, '')\n    .replace(/^@\\S+\\s*/, '');\n}\n\nfunction firstLine(t) {\n  const s = String(t ?? '').split(CR).join('').split(NL).map((l) => l.trim()).find(Boolean);\n  return s || '';\n}\n\nfunction normalizeText(t) {\n  return String(t ?? '').normalize('NFKC').toLowerCase().replace(/\\s+/g, ' ').trim();\n}\n\nconst raw = String(normalized.text ?? normalized.original_text ?? '').trim();\nconst plain = stripMention(stripHtml(raw));\nconst line = firstLine(plain);\n\nconst fullNorm = normalizeText(plain);\nconst polite = /(ください|お願いします|してほしい|したい|お願い)/.test(fullNorm);\nconst hasImproveToken = /(できるようになって|できるようにして|改善|要望|追加して|実装して|対応して|対応できるように)/.test(fullNorm);\nconst isImproveRequest = (polite && hasImproveToken) || /できるようになってください/.test(fullNorm);\n\nif (source !== 'zulip' || isDuplicate || !isImproveRequest) {\n  return [{ json: { ...base, ok: false, reason: 'not_target', source, is_duplicate: isDuplicate, is_improvement_request: isImproveRequest } }];\n}\n\nconst fingerprintBase = normalizeText(line || plain)\n  .replace(/[\\s\\u3000]+/g, ' ')\n  .trim()\n  .replace(/[\\s\\u3000、。・（）()［］\\[\\]「」『』【】{}<>＜＞…‥]/g, '');\nconst dedupeKey = `CIR-AIOPS-REQ:${crypto.createHash('sha256').update(fingerprintBase, 'utf8').digest('hex')}`;\n\nconst cirLabel = String(pickEnv('ITSM_CIR_LABEL', 'AIOPS_CIR_LABEL') || 'ITSM/継続的改善').trim() || 'ITSM/継続的改善';\nconst statusNewLabel = String(pickEnv('ITSM_CIR_STATUS_NEW_LABEL', 'AIOPS_CIR_STATUS_NEW_LABEL') || '状態/New').trim() || '状態/New';\n\nconst apiBase = trimSlash(pickEnv('N8N_GITLAB_API_BASE_URL', 'GITLAB_API_BASE_URL'));\nconst webBase = trimSlash(pickEnv('N8N_GITLAB_WEB_BASE_URL', 'GITLAB_WEB_BASE_URL') || apiBase.replace(/\\/api\\/v4$/, ''));\nconst projectRef = String(pickEnv('N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_ID', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_ID', 'N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH') || '').trim();\n\nconst projectEnc = projectRef ? encodeURIComponent(projectRef) : '(unset)';\nconst searchUrl = apiBase && projectRef\n  ? `${apiBase}/projects/${projectEnc}/issues?` + new URLSearchParams({ state: 'opened', labels: cirLabel, search: dedupeKey, per_page: '20' }).toString()\n  : null;\nconst createUrl = apiBase && projectRef\n  ? `${apiBase}/projects/${projectEnc}/issues`\n  : null;\n\nconst content = [\n  '承りました。できるかどうか検討し、別途お知らせします。',\n  '（テスト: dry-run / GitLab API は呼びません）'\n].join(NL);\n\nreturn [{\n  json: {\n    ...base,\n    ok: true,\n    content,\n    cir_intake_dry_run: true,\n    cir_intake_preview: {\n      dedupe_key: dedupeKey,\n      title_preview: `CIR: 改善要望 - ${line || plain || '改善要望'}`,\n      labels: [cirLabel, statusNewLabel],\n      planned: {\n        search_url: searchUrl,\n        create_url: createUrl\n      },\n      env_hints: {\n        needs: ['N8N_GITLAB_API_BASE_URL', 'N8N_GITLAB_TOKEN', 'N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_(ID|PATH)'],\n        has_api_base_url: Boolean(apiBase),\n        has_project_ref: Boolean(projectRef)\n      }\n    }\n  }\n}];\n"
+      },
+      "id": "3",
+      "name": "CIR Intake Preview (Dry Run Only)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger (CIR Intake Test)": {
+      "main": [
+        [
+          {
+            "node": "Build Sample CIR Request (Zulip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Sample CIR Request (Zulip)": {
+      "main": [
+        [
+          {
+            "node": "CIR Intake Preview (Dry Run Only)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+

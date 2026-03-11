@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\IstmChangeRequest;
-use Doctrine\ORM\EntityManagerInterface;
+use App\IstmSor\Entity\IstmChangeRequest;
+use App\ListBuilder\IstmDoctrineListBuilderFactory;
+use App\Service\IstmSorRlsContext;
 use FOS\RestBundle\View\ViewHandlerInterface;
 use Sulu\Component\Rest\AbstractRestController;
 use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilder;
-use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilderFactoryInterface;
 use Sulu\Component\Rest\ListBuilder\Metadata\FieldDescriptorFactoryInterface;
 use Sulu\Component\Rest\ListBuilder\PaginatedRepresentation;
 use Sulu\Component\Rest\RestHelperInterface;
@@ -28,10 +28,10 @@ final class IstmChangeRequestController extends AbstractRestController
         ViewHandlerInterface $viewHandler,
         TokenStorageInterface $tokenStorage,
         private readonly FieldDescriptorFactoryInterface $fieldDescriptorFactory,
-        private readonly DoctrineListBuilderFactoryInterface $listBuilderFactory,
+        private readonly IstmDoctrineListBuilderFactory $listBuilderFactory,
         private readonly RestHelperInterface $restHelper,
-        private readonly EntityManagerInterface $entityManager,
         private readonly SecurityCheckerInterface $securityChecker,
+        private readonly IstmSorRlsContext $rlsContext,
     ) {
         parent::__construct($viewHandler, $tokenStorage);
     }
@@ -39,6 +39,7 @@ final class IstmChangeRequestController extends AbstractRestController
     public function cgetAction(Request $request): Response
     {
         $this->securityChecker->checkPermission(self::SECURITY_CONTEXT, PermissionTypes::VIEW);
+        $this->rlsContext->apply($this->listBuilderFactory->getConnection(), $request);
 
         $fieldDescriptors = $this->fieldDescriptorFactory->getFieldDescriptors(self::LIST_KEY);
 
@@ -61,12 +62,13 @@ final class IstmChangeRequestController extends AbstractRestController
         return $this->handleView($this->view($representation));
     }
 
-    public function getAction(string $id): Response
+    public function getAction(Request $request, string $id): Response
     {
         $this->securityChecker->checkPermission(self::SECURITY_CONTEXT, PermissionTypes::VIEW);
+        $this->rlsContext->apply($this->listBuilderFactory->getConnection(), $request);
 
         /** @var IstmChangeRequest|null $changeRequest */
-        $changeRequest = $this->entityManager->find(IstmChangeRequest::class, $id);
+        $changeRequest = $this->listBuilderFactory->getEntityManager()->find(IstmChangeRequest::class, $id);
         if (!$changeRequest) {
             return $this->handleView($this->view(['message' => 'Not Found'], 404));
         }
@@ -89,4 +91,3 @@ final class IstmChangeRequestController extends AbstractRestController
         ]));
     }
 }
-

@@ -1,0 +1,6 @@
+# n8n observer ingest endpoint (token-based; no admin session required)
+n8n_observer_events_ingest:
+    path: /api/n8n/observer/events
+    controller: App\Controller\N8nObserverController::ingest
+    methods: [POST]
+

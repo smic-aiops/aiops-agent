@@ -1,0 +1,140 @@
+{
+  "name": "gitlab-cir-auto-label",
+  "active": false,
+  "settings": {},
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/cir/auto_label",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2c8f3a2d-8a63-4d1f-9b6e-0f0f7a5e9d11",
+      "name": "Webhook (GitLab)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = ($json && $json.headers) ? $json.headers : {};\nconst body = ($json && $json.body) ? $json.body : ($json ?? {});\nconst env = $env || {};\n\nfunction getHeader(name) {\n  const lower = String(name || '').toLowerCase();\n  if (headers[lower] !== undefined) return headers[lower];\n  if (headers[name] !== undefined) return headers[name];\n  const key = Object.keys(headers).find((k) => k.toLowerCase() === lower);\n  return key ? headers[key] : undefined;\n}\n\nfunction isTruthy(value) {\n  if (value === undefined || value === null) return false;\n  const v = String(value).trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on', 'enabled'].includes(v);\n}\n\nfunction pickFirst(paths, fallback = null) {\n  for (const path of paths) {\n    const parts = String(path).split('.').filter(Boolean);\n    let cur = body;\n    for (const part of parts) {\n      if (cur === null || cur === undefined) {\n        cur = undefined;\n        break;\n      }\n      cur = cur?.[part];\n    }\n    if (cur !== undefined && cur !== null && String(cur).trim() !== '') return cur;\n  }\n  return fallback;\n}\n\nfunction parseJsonMap(text) {\n  const raw = String(text || '').trim();\n  if (!raw) return null;\n  try {\n    const parsed = JSON.parse(raw);\n    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;\n  } catch (error) {}\n  return null;\n}\n\nfunction parseYamlMap(text) {\n  const map = {};\n  const lines = String(text || '').split(/\\r?\\n/);\n  for (const line of lines) {\n    const trimmed = String(line || '').trim();\n    if (!trimmed || trimmed.startsWith('#')) continue;\n    const idx = trimmed.indexOf(':');\n    if (idx <= 0) continue;\n    const key = trimmed.slice(0, idx).trim();\n    let value = trimmed.slice(idx + 1).trim();\n    if (!key) continue;\n    if ((value.startsWith('\"') && value.endsWith('\"')) || (value.startsWith(\"'\") && value.endsWith(\"'\"))) {\n      value = value.slice(1, -1);\n    }\n    map[key] = value;\n  }\n  return map;\n}\n\nfunction loadRealmMap(jsonText, yamlText) {\n  const jsonMap = parseJsonMap(jsonText);\n  if (jsonMap && Object.keys(jsonMap).length) return jsonMap;\n  return parseYamlMap(yamlText);\n}\n\nfunction looksLikeYamlMap(text) {\n  const t = String(text || '').trim();\n  if (!t) return false;\n  if (/^https?:\\/\\//i.test(t)) return false;\n  if (t.includes(String.fromCharCode(10)) || t.includes(String.fromCharCode(13)) || t.includes('\\\\n')) return true;\n  if (/^\\s*(default|\\*)\\s*:\\s*\\S+/i.test(t)) return true;\n  return false;\n}\n\nfunction resolveGitlabWebhookSecretsMap() {\n  const json = String(env.GITLAB_WEBHOOK_SECRETS_JSON || '').trim();\n  const yaml = String(env.GITLAB_WEBHOOK_SECRETS_YAML || '').trim();\n  if (json || yaml) return loadRealmMap(json, yaml);\n  const raw = String(env.GITLAB_WEBHOOK_SECRET || '').trim();\n  if (looksLikeYamlMap(raw)) return loadRealmMap('', raw);\n  return {};\n}\n\nfunction deriveRealmFromProjectPath(path) {\n  const p = String(path || '').trim();\n  if (!p) return '';\n  const first = p.split('/')[0] || '';\n  return first.trim();\n}\n\nfunction normalizeLabels(labelsRaw) {\n  const labels = Array.isArray(labelsRaw) ? labelsRaw : [];\n  const out = [];\n  for (const l of labels) {\n    if (l === null || l === undefined) continue;\n    if (typeof l === 'string') {\n      const t = l.trim();\n      if (t) out.push(t);\n    } else if (typeof l === 'object') {\n      const t = String(l.title ?? l.name ?? '').trim();\n      if (t) out.push(t);\n    }\n  }\n  return out;\n}\n\nconst eventHeader = String(getHeader('x-gitlab-event') || body.event_type || body.object_kind || '').trim();\nconst event = eventHeader.toLowerCase();\nif (!event.includes('issue')) {\n  return [{ json: { ok: true, status_code: 200, skipped: true, reason: 'not_issue_event', event: eventHeader } }];\n}\n\nconst token = String(getHeader('x-gitlab-token') || '').trim();\nconst scalarSecret = String(env.GITLAB_WEBHOOK_SECRET || '').trim();\nconst secretMap = resolveGitlabWebhookSecretsMap();\n\nconst projectPath = pickFirst(['project.path_with_namespace', 'project.path', 'project_path'], '') || '';\nconst realmFromProject = deriveRealmFromProjectPath(projectPath);\n\nlet expectedSecret = '';\nif (secretMap && Object.keys(secretMap).length) {\n  const candidates = [realmFromProject, (realmFromProject || '').toLowerCase(), 'default', '*'].filter(Boolean);\n  for (const k of candidates) {\n    const v = secretMap[k];\n    if (v !== undefined && v !== null && String(v).trim()) {\n      expectedSecret = String(v).trim();\n      break;\n    }\n  }\n}\nif (!expectedSecret) expectedSecret = scalarSecret;\n\nconst hasAnySecret = Boolean(scalarSecret) || Boolean(expectedSecret) || (secretMap && Object.keys(secretMap).length);\nif (hasAnySecret) {\n  if (!token || !expectedSecret || token !== expectedSecret) {\n    return [{\n      json: {\n        ok: false,\n        status_code: 403,\n        error: 'invalid_webhook_token',\n        skipped: true,\n        reason: 'invalid_webhook_token',\n        realm: realmFromProject || null,\n      }\n    }];\n  }\n}\n\nconst dryRun = isTruthy(pickFirst(['dry_run'], false)) || isTruthy(env.ITSM_CIR_AUTO_LABEL_DRY_RUN);\n\nconst cirMarker = String(env.ITSM_CIR_TEMPLATE_MARKER || '<!-- itsm:cir:template=continual_improvement_register -->');\nconst cirLabel = String(env.ITSM_CIR_LABEL || 'ITSM/継続的改善');\nconst statusPrefix = String(env.ITSM_CIR_STATUS_PREFIX || '状態/');\nconst newStatusLabel = String(env.ITSM_CIR_NEW_LABEL || '状態/New');\nconst projectSuffix = String(env.ITSM_CIR_AUTO_LABEL_PROJECT_SUFFIX || '/general-management');\n\nconst issueIid = String(pickFirst(['object_attributes.iid', 'object_attributes.iid', 'issue.iid', 'iid'], '') || '').trim();\nconst issueId = pickFirst(['object_attributes.id', 'issue.id', 'id'], null);\nconst issueTitle = String(pickFirst(['object_attributes.title', 'issue.title', 'title'], '') || '').trim();\nconst issueDescription = String(pickFirst(['object_attributes.description', 'issue.description', 'description'], '') || '');\n\nconst labelsRaw = pickFirst(['labels', 'object_attributes.labels', 'issue.labels'], []);\nconst labels = normalizeLabels(labelsRaw);\n\nif (!projectPath || !projectPath.endsWith(projectSuffix)) {\n  return [{ json: { ok: true, status_code: 200, skipped: true, reason: 'not_general_management_project', project_path: projectPath || null } }];\n}\n\nconst isCirTemplate = issueDescription.includes(cirMarker);\nif (!isCirTemplate) {\n  return [{ json: { ok: true, status_code: 200, skipped: true, reason: 'not_cir_template', project_path: projectPath || null, issue_iid: issueIid || null } }];\n}\n\nconst statusLabels = labels.filter((l) => l.startsWith(statusPrefix));\n\nconst addLabels = [];\nif (!labels.includes(cirLabel)) addLabels.push(cirLabel);\nif (statusLabels.length === 0) addLabels.push(newStatusLabel);\n\nif (addLabels.length === 0) {\n  return [{\n    json: {\n      ok: true,\n      status_code: 200,\n      skipped: true,\n      reason: 'labels_already_present',\n      dry_run: dryRun,\n      project_path: projectPath,\n      issue_iid: issueIid || null,\n      issue_id: issueId || null,\n      issue_title: issueTitle || null,\n      labels,\n    }\n  }];\n}\n\nconst projectId = pickFirst(['project.id', 'project_id'], null);\nconst gitlabApiBaseUrl = String(env.N8N_GITLAB_API_BASE_URL || env.GITLAB_API_BASE_URL || '').replace(/\\/+$/, '');\nconst gitlabToken = String(env.N8N_GITLAB_TOKEN || env.GITLAB_TOKEN || env.GITLAB_ADMIN_TOKEN || '').trim();\n\nconst missing = [];\nif (!projectId) missing.push('project.id');\nif (!issueIid) missing.push('object_attributes.iid');\nif (!gitlabApiBaseUrl) missing.push('GITLAB_API_BASE_URL');\nif (!gitlabToken) missing.push('GITLAB_TOKEN');\n\nif (!dryRun && missing.length) {\n  return [{ json: { ok: false, status_code: 424, error: 'missing_gitlab_config', missing } }];\n}\n\nreturn [{\n  json: {\n    ok: true,\n    status_code: 200,\n    dry_run: dryRun,\n    project_id: projectId,\n    project_path: projectPath,\n    issue_iid: issueIid,\n    issue_id: issueId || null,\n    issue_title: issueTitle || null,\n    current_labels: labels,\n    add_labels: addLabels,\n    gitlab_api_base_url: gitlabApiBaseUrl,\n    missing,\n  }\n}];\n"
+      },
+      "id": "7d48cda5-2c77-4b4c-b3da-0f1c1f9a1f9b",
+      "name": "Normalize + Verify + Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "booleans": [
+            {
+              "value1": "={{ $json.skipped === true }}",
+              "operation": "isTrue"
+            }
+          ]
+        }
+      },
+      "id": "c6c7baf0-3b3f-4d2f-9a6a-1a0b5d67e9d3",
+      "name": "IF Skipped",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $json ?? {};\nconst env = $env || {};\n\nfunction safeString(v) {\n  const s = (v === undefined || v === null) ? '' : String(v);\n  return s;\n}\n\nfunction uniq(list) {\n  const out = [];\n  const seen = new Set();\n  for (const v of list || []) {\n    const s = String(v ?? '').trim();\n    if (!s) continue;\n    if (seen.has(s)) continue;\n    seen.add(s);\n    out.push(s);\n  }\n  return out;\n}\n\nconst dryRun = Boolean(req.dry_run);\nconst projectId = safeString(req.project_id);\nconst issueIid = safeString(req.issue_iid);\nconst addLabels = Array.isArray(req.add_labels) ? uniq(req.add_labels) : [];\n\nif (dryRun) {\n  return [{ json: { ...req, updated: false, planned: { add_labels: addLabels } } }];\n}\n\nconst baseUrl = safeString(env.N8N_GITLAB_API_BASE_URL || env.GITLAB_API_BASE_URL).replace(/\\/+$/, '');\nconst token = safeString(env.N8N_GITLAB_TOKEN || env.GITLAB_TOKEN || env.GITLAB_ADMIN_TOKEN).trim();\n\nif (!baseUrl || !token) {\n  return [{ json: { ...req, ok: false, status_code: 424, error: 'missing_gitlab_config_runtime' } }];\n}\n\nif (!projectId || !issueIid) {\n  return [{ json: { ...req, ok: false, status_code: 400, error: 'missing_issue_identity' } }];\n}\n\nif (!addLabels.length) {\n  return [{ json: { ...req, ok: true, status_code: 200, skipped: true, reason: 'no_labels_to_add' } }];\n}\n\nconst issueUrl = `${baseUrl}/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issueIid)}`;\nconst payload = { add_labels: addLabels.join(',') };\n\ntry {\n  const updated = await this.helpers.httpRequest({\n    method: 'PUT',\n    url: issueUrl,\n    json: true,\n    timeout: 8000,\n    headers: { 'PRIVATE-TOKEN': token },\n    body: payload,\n  });\n  return [{\n    json: {\n      ...req,\n      ok: true,\n      status_code: 200,\n      updated: true,\n      added_labels: addLabels,\n      after_labels: updated?.labels || null,\n    }\n  }];\n} catch (err) {\n  const status = err?.response?.statusCode || err?.statusCode || err?.httpCode || null;\n  const responseBody = err?.response?.body || err?.response?.data || null;\n  return [{\n    json: {\n      ...req,\n      ok: false,\n      status_code: status || 502,\n      error: 'gitlab_update_issue_failed',\n      detail: String(err?.message || err),\n      response_body: responseBody,\n    }\n  }];\n}\n"
+      },
+      "id": "4b9b24d3-2d2b-4df2-b4df-6d056adad9b6",
+      "name": "Apply Labels (GitLab)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "d7f7b405-6fbe-4a66-8c9c-38a9fa9a0ad0",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (GitLab)": {
+      "main": [
+        [
+          {
+            "node": "Normalize + Verify + Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize + Verify + Plan": {
+      "main": [
+        [
+          {
+            "node": "IF Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Skipped": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apply Labels (GitLab)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Labels (GitLab)": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+

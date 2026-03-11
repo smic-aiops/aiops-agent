@@ -13,6 +13,37 @@ final class N8nObserverEventRepository
     }
 
     /**
+     * @param array<string, mixed> $payload
+     */
+    public function insertEvent(
+        ?string $realm,
+        ?string $workflow,
+        ?string $node,
+        ?string $executionId,
+        array $payload
+    ): int {
+        $receivedAt = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+
+        $this->connection->insert('n8n_observer_events', [
+            'received_at' => $receivedAt,
+            'realm' => $realm,
+            'workflow' => $workflow,
+            'node' => $node,
+            'execution_id' => $executionId,
+            'payload' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ], [
+            'received_at' => \Doctrine\DBAL\Types\Types::DATETIME_IMMUTABLE,
+            'realm' => \Doctrine\DBAL\Types\Types::STRING,
+            'workflow' => \Doctrine\DBAL\Types\Types::STRING,
+            'node' => \Doctrine\DBAL\Types\Types::STRING,
+            'execution_id' => \Doctrine\DBAL\Types\Types::STRING,
+            'payload' => \Doctrine\DBAL\Types\Types::JSON,
+        ]);
+
+        return (int) $this->connection->lastInsertId();
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function fetchEvents(?string $realm, ?string $workflow, ?string $node, ?int $sinceId, int $limit): array

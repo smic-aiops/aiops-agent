@@ -1,0 +1,240 @@
+{
+  "name": "GitLab DORA Metrics Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 2,
+              "minute": 10
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Cron Metrics",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "path": "gitlab/dora/metrics/sync/oq",
+        "httpMethod": "POST",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "7",
+      "name": "Webhook (OQ)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst workflowContext = this;\nconst env = $env || {};\nconst inputJson = (() => {\n  try {\n    const first = $input.first();\n    return first && first.json ? first.json : {};\n  } catch (error) {\n    return {};\n  }\n})();\n\nconst requestBody = (inputJson && typeof inputJson.body === 'object' && inputJson.body !== null) ? inputJson.body : inputJson;\n\nfunction required(value, name) {\n  if (value === undefined || value === null || String(value).trim() === '') {\n    throw new Error(`${name} is required`);\n  }\n  return value;\n}\n\nfunction trimSlash(value) {\n  return String(value || '').replace(/\\/+$/, '');\n}\n\nfunction toDateKey(dateObj) {\n  const year = dateObj.getUTCFullYear();\n  const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');\n  const day = String(dateObj.getUTCDate()).padStart(2, '0');\n  return `${year}-${month}-${day}`;\n}\n\nfunction dateRangeUtc(dt) {\n  const [y, m, d] = dt.split('-').map((v) => Number(v));\n  const start = new Date(Date.UTC(y, m - 1, d, 0, 0, 0));\n  const end = new Date(Date.UTC(y, m - 1, d, 23, 59, 59));\n  return { start, end };\n}\n\nfunction toMinutes(start, end) {\n  if (!start || !end) return null;\n  const diff = (end.getTime() - start.getTime()) / 60000;\n  return Number.isFinite(diff) ? diff : null;\n}\n\nfunction percentile(values, p) {\n  const list = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);\n  if (!list.length) return null;\n  const idx = Math.ceil((p / 100) * list.length) - 1;\n  return list[Math.max(0, Math.min(idx, list.length - 1))];\n}\n\nfunction asDate(value) {\n  if (!value) return null;\n  const d = new Date(value);\n  return Number.isFinite(d.getTime()) ? d : null;\n}\n\nfunction pickDeployedAt(deployment) {\n  return asDate(deployment.finished_at)\n    || asDate(deployment.updated_at)\n    || asDate(deployment.created_at)\n    || null;\n}\n\nfunction extractSha(deployment) {\n  return deployment.sha\n    || deployment.commit?.id\n    || deployment.commit?.sha\n    || deployment.deployable?.commit?.id\n    || deployment.deployable?.commit?.sha\n    || deployment.deployable?.pipeline?.sha\n    || deployment.deployable?.pipeline?.commit?.id\n    || null;\n}\n\nconst realm = String(env.N8N_REALM || 'default').trim() || 'default';\n\nconst gitlabBaseUrl = trimSlash(\n  requestBody.N8N_GITLAB_BASE_URL ||\n  requestBody.GITLAB_BASE_URL ||\n  requestBody.gitlab_base_url ||\n  env.N8N_GITLAB_BASE_URL ||\n  env.GITLAB_BASE_URL ||\n  env.GITLAB_URL ||\n  env.SERVICE_URL_GITLAB ||\n  ''\n);\n\nconst gitlabApiBase = trimSlash(\n  requestBody.N8N_GITLAB_API_BASE_URL ||\n  requestBody.GITLAB_API_BASE_URL ||\n  requestBody.gitlab_api_base_url ||\n  env.N8N_GITLAB_API_BASE_URL ||\n  env.GITLAB_API_BASE_URL ||\n  (gitlabBaseUrl ? `${gitlabBaseUrl}/api/v4` : '') ||\n  ''\n);\n\nconst gitlabToken = env.N8N_GITLAB_TOKEN || env.GITLAB_TOKEN || env.GITLAB_ADMIN_TOKEN || '';\n\nlet projectRef = (\n  requestBody.N8N_GITLAB_PROJECT_ID ||\n  requestBody.GITLAB_PROJECT_ID ||\n  requestBody.N8N_GITLAB_PROJECT_PATH ||\n  requestBody.GITLAB_PROJECT_PATH ||\n  requestBody.gitlab_project_path ||\n  env.N8N_GITLAB_PROJECT_ID ||\n  env.GITLAB_PROJECT_ID ||\n  env.N8N_GITLAB_PROJECT_PATH ||\n  env.GITLAB_PROJECT_PATH ||\n  ''\n);\nif (!projectRef) {\n  projectRef = `${realm}/technical-management`;\n}\n\nconst environmentName = String(env.N8N_GITLAB_ENVIRONMENT || 'production').trim() || 'production';\nconst deploymentsMaxPages = Number(env.N8N_GITLAB_DEPLOYMENTS_MAX_PAGES || '20');\n\nrequired(gitlabApiBase, 'GITLAB_API_BASE_URL');\nrequired(gitlabToken, 'GITLAB_TOKEN');\nrequired(projectRef, 'GITLAB_PROJECT_ID or GITLAB_PROJECT_PATH');\n\nconst s3Bucket = env.N8N_S3_BUCKET || env.S3_BUCKET || '';\nconst s3Prefix = String(env.N8N_S3_PREFIX || 'itsm/technical_management').replace(/\\/+$/, '');\nrequired(s3Bucket, 'N8N_S3_BUCKET');\n\nconst targetDate = String(\n  requestBody.N8N_METRICS_TARGET_DATE ||\n  requestBody.target_date ||\n  env.N8N_METRICS_TARGET_DATE ||\n  ''\n).trim();\n\nlet dt = '';\nif (targetDate) {\n  dt = targetDate;\n} else {\n  const now = new Date();\n  const utcMidnightToday = new Date(Date.UTC(\n    now.getUTCFullYear(),\n    now.getUTCMonth(),\n    now.getUTCDate(),\n    0,\n    0,\n    0\n  ));\n  const utcMidnightYesterday = new Date(utcMidnightToday.getTime() - 24 * 60 * 60 * 1000);\n  dt = toDateKey(utcMidnightYesterday);\n}\n\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dt)) {\n  throw new Error('target_date must be YYYY-MM-DD');\n}\n\nconst { start, end } = dateRangeUtc(dt);\n\nasync function fetchAll(url, qs, maxPages) {\n  const perPage = 100;\n  let page = 1;\n  const all = [];\n  while (page <= maxPages) {\n    const data = await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url,\n      qs: {\n        per_page: perPage,\n        page,\n        ...qs\n      },\n      json: true,\n      headers: { 'PRIVATE-TOKEN': gitlabToken }\n    });\n\n    if (!Array.isArray(data)) break;\n    all.push(...data);\n    if (data.length < perPage) break;\n    page += 1;\n  }\n  return all;\n}\n\nconst projectEncoded = encodeURIComponent(projectRef);\n\n// 1) Merge request lead time (created_at -> merged_at) for MRs merged within dt.\nlet mergedMrs = [];\ntry {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/merge_requests`;\n  const list = await fetchAll(url, {\n    state: 'merged',\n    updated_after: start.toISOString(),\n    scope: 'all',\n    order_by: 'updated_at',\n    sort: 'asc'\n  }, 20);\n\n  mergedMrs = list.filter((mr) => {\n    const mergedAt = asDate(mr.merged_at);\n    return mergedAt && mergedAt >= start && mergedAt <= end;\n  });\n} catch (error) {\n  mergedMrs = [];\n}\n\nconst mrLeadMinutes = mergedMrs\n  .map((mr) => toMinutes(asDate(mr.created_at), asDate(mr.merged_at)))\n  .filter((v) => v !== null);\n\n// 2) Deployment-based lead time (merged_at -> deployed_at) for successful deployments within dt.\nlet deployments = [];\ntry {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/deployments`;\n  deployments = await fetchAll(url, {\n    environment: environmentName,\n    updated_after: start.toISOString(),\n    order_by: 'updated_at',\n    sort: 'asc'\n  }, Number.isFinite(deploymentsMaxPages) ? deploymentsMaxPages : 20);\n} catch (error) {\n  deployments = [];\n}\n\nconst deploymentsInRange = deployments.filter((d) => {\n  const deployedAt = pickDeployedAt(d);\n  return deployedAt && deployedAt >= start && deployedAt <= end;\n});\n\nconst successDeployments = deploymentsInRange.filter((d) => String(d.status || '').toLowerCase() === 'success');\nconst failedDeployments = deploymentsInRange.filter((d) => String(d.status || '').toLowerCase() === 'failed');\n\nconst changeFailureRate = (successDeployments.length + failedDeployments.length) > 0\n  ? failedDeployments.length / (successDeployments.length + failedDeployments.length)\n  : null;\n\nconst shaCache = new Map();\n\nasync function resolveMergedAtBySha(sha) {\n  if (!sha) return null;\n  if (shaCache.has(sha)) return shaCache.get(sha);\n  let mergedAt = null;\n  try {\n    const url = `${gitlabApiBase}/projects/${projectEncoded}/repository/commits/${encodeURIComponent(sha)}/merge_requests`;\n    const mrs = await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url,\n      qs: { per_page: 20 },\n      json: true,\n      headers: { 'PRIVATE-TOKEN': gitlabToken }\n    });\n    if (Array.isArray(mrs)) {\n      const merged = mrs\n        .map((mr) => ({ mr, mergedAt: asDate(mr.merged_at) }))\n        .filter((x) => x.mergedAt)\n        .sort((a, b) => a.mergedAt.getTime() - b.mergedAt.getTime());\n      if (merged.length) {\n        mergedAt = merged[merged.length - 1].mergedAt;\n      }\n    }\n  } catch (error) {\n    mergedAt = null;\n  }\n  shaCache.set(sha, mergedAt);\n  return mergedAt;\n}\n\nconst deployLeadMinutes = [];\nconst deploymentEvents = [];\n\nfor (const d of successDeployments) {\n  const deployedAt = pickDeployedAt(d);\n  const sha = extractSha(d);\n  const mergedAt = await resolveMergedAtBySha(sha);\n  const minutes = toMinutes(mergedAt, deployedAt);\n  if (minutes !== null) deployLeadMinutes.push(minutes);\n\n  deploymentEvents.push({\n    event_type: 'deployment',\n    event_at: (deployedAt ? deployedAt.toISOString() : null),\n    realm,\n    gitlab_project_path: String(projectRef),\n    environment: environmentName,\n    deployment_id: d.id ?? null,\n    deployment_status: d.status ?? null,\n    deployed_at: d.finished_at || d.updated_at || d.created_at || null,\n    sha: sha || null,\n    merged_at: mergedAt ? mergedAt.toISOString() : null,\n    lead_time_minutes: minutes,\n    deployment_url: d.web_url || d.url || null\n  });\n}\n\nconst mrEvents = mergedMrs.map((mr) => {\n  const mergedAt = asDate(mr.merged_at);\n  const createdAt = asDate(mr.created_at);\n  const minutes = toMinutes(createdAt, mergedAt);\n  return {\n    event_type: 'merge_request',\n    event_at: mr.merged_at,\n    realm,\n    gitlab_project_path: String(projectRef),\n    mr_iid: mr.iid ?? null,\n    mr_id: mr.id ?? null,\n    mr_title: mr.title ?? null,\n    mr_url: mr.web_url || mr.url || null,\n    created_at: mr.created_at,\n    merged_at: mr.merged_at,\n    lead_time_minutes: minutes\n  };\n});\n\nconst metrics = {\n  realm,\n  environment: environmentName,\n  deployment_frequency: successDeployments.length,\n  deployments_success_count: successDeployments.length,\n  deployments_failed_count: failedDeployments.length,\n  change_failure_rate: changeFailureRate,\n  merge_requests_merged_count: mergedMrs.length,\n  lead_time_for_changes_deploy_p50_minutes: percentile(deployLeadMinutes, 50),\n  lead_time_for_changes_deploy_p95_minutes: percentile(deployLeadMinutes, 95),\n  lead_time_for_changes_mr_p50_minutes: percentile(mrLeadMinutes, 50),\n  lead_time_for_changes_mr_p95_minutes: percentile(mrLeadMinutes, 95)\n};\n\nmetrics.lead_time_for_changes_p50_minutes = metrics.lead_time_for_changes_deploy_p50_minutes ?? metrics.lead_time_for_changes_mr_p50_minutes;\nmetrics.lead_time_for_changes_p95_minutes = metrics.lead_time_for_changes_deploy_p95_minutes ?? metrics.lead_time_for_changes_mr_p95_minutes;\nmetrics.lead_time_for_changes_source = (metrics.lead_time_for_changes_deploy_p50_minutes !== null && metrics.lead_time_for_changes_deploy_p50_minutes !== undefined)\n  ? 'merge_to_deploy'\n  : 'mr_created_to_merged';\n\nconst events = [...deploymentEvents, ...mrEvents];\n\nconst eventsBody = events.map((item) => JSON.stringify(item)).join('\\n') + (events.length ? '\\n' : '');\nconst metricsBody = JSON.stringify(metrics);\n\nconst eventsKey = `${s3Prefix}/dora/events/dt=${dt}/realm=${realm}/gitlab_dora_events.jsonl`;\nconst metricsKey = `${s3Prefix}/dora/daily_metrics/dt=${dt}/realm=${realm}/metrics.json`;\n\nreturn [\n  {\n    json: {\n      record_type: 'events',\n      s3_bucket: s3Bucket,\n      s3_key: eventsKey,\n      dt,\n      realm\n    },\n    binary: {\n      data: {\n        data: Buffer.from(eventsBody, 'utf8').toString('base64'),\n        mimeType: 'application/json',\n        fileName: 'gitlab_dora_events.jsonl'\n      }\n    }\n  },\n  {\n    json: {\n      record_type: 'daily_metrics',\n      s3_bucket: s3Bucket,\n      s3_key: metricsKey,\n      dt,\n      realm\n    },\n    binary: {\n      data: {\n        data: Buffer.from(metricsBody, 'utf8').toString('base64'),\n        mimeType: 'application/json',\n        fileName: 'metrics.json'\n      }\n    }\n  }\n];\n"
+      },
+      "id": "2",
+      "name": "Build Metrics Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.record_type}}",
+              "value2": "events"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF Events",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{$json.s3_bucket}}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "fileName": "={{$json.s3_key}}"
+      },
+      "id": "4",
+      "name": "S3 Upload Events",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [
+        940,
+        140
+      ],
+      "credentials": {
+        "aws": {
+          "id": "aiops-aws",
+          "name": "aiops-aws"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.record_type}}",
+              "value2": "daily_metrics"
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "IF Metrics",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{$json.s3_bucket}}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "fileName": "={{$json.s3_key}}"
+      },
+      "id": "6",
+      "name": "S3 Upload Metrics",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [
+        940,
+        260
+      ],
+      "credentials": {
+        "aws": {
+          "id": "aiops-aws",
+          "name": "aiops-aws"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "env (SSM/Secrets→n8n env)\n- N8N_REALM (default: default)\n- GitLab:\n  - N8N_GITLAB_BASE_URL / GITLAB_BASE_URL\n  - N8N_GITLAB_API_BASE_URL / GITLAB_API_BASE_URL (default: <base>/api/v4)\n  - N8N_GITLAB_TOKEN / GITLAB_TOKEN / GITLAB_ADMIN_TOKEN\n  - N8N_GITLAB_PROJECT_ID or N8N_GITLAB_PROJECT_PATH (default: <realm>/technical-management)\n  - N8N_GITLAB_ENVIRONMENT (default: production)\n  - N8N_GITLAB_DEPLOYMENTS_MAX_PAGES (default: 20)\n- S3:\n  - N8N_S3_BUCKET (required)\n  - N8N_S3_PREFIX (default: itsm/technical_management)\n- Control (optional):\n  - N8N_METRICS_TARGET_DATE (YYYY-MM-DD) / body.target_date\n",
+        "height": 260,
+        "width": 460,
+        "color": 6
+      },
+      "id": "100",
+      "name": "Sticky Note: env",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Cron Metrics": {
+      "main": [
+        [
+          {
+            "node": "Build Metrics Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Metrics Payload": {
+      "main": [
+        [
+          {
+            "node": "IF Events",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Events": {
+      "main": [
+        [
+          {
+            "node": "S3 Upload Events",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "IF Metrics": {
+      "main": [
+        [
+          {
+            "node": "S3 Upload Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Webhook (OQ)": {
+      "main": [
+        [
+          {
+            "node": "Build Metrics Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "meta": {
+    "workflowId": "wf.gitlab_dora_metrics_sync",
+    "revision": 1,
+    "aiops_catalog": {
+      "summary": "GitLab DORA指標を日次集計してS3/Athenaへ連携する",
+      "realm": "default",
+      "platform": "n8n",
+      "required_roles": [],
+      "required_groups": [],
+      "required_users": [],
+      "risk_level": "low",
+      "impact_scope": "service",
+      "category": "technical_management",
+      "workflow_class": "metrics"
+    }
+  }
+}

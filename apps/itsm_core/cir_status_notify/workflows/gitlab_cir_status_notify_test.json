@@ -1,0 +1,77 @@
+{
+  "name": "gitlab-cir-status-notify-test",
+  "active": false,
+  "settings": {},
+  "nodes": [
+    {
+      "parameters": {
+        "path": "gitlab/cir/status/notify/test",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook (Test)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = ($json && $json.headers) ? $json.headers : {};\nconst body = ($json && $json.body) ? $json.body : ($json ?? {});\n\nconst missing = [];\nif (!String($env.GITLAB_WEBHOOK_SECRET || '').trim() && !String($env.GITLAB_WEBHOOK_SECRETS_JSON || '').trim() && !String($env.GITLAB_WEBHOOK_SECRETS_YAML || '').trim()) {\n  missing.push('GITLAB_WEBHOOK_SECRET');\n}\nif (!String($env.N8N_ZULIP_API_BASE_URL || $env.ZULIP_BASE_URL || '').trim()) missing.push('ZULIP_BASE_URL');\nif (!String($env.N8N_ZULIP_BOT_EMAIL || $env.ZULIP_BOT_EMAIL || '').trim()) missing.push('ZULIP_BOT_EMAIL');\nif (!String($env.N8N_ZULIP_BOT_TOKEN || $env.ZULIP_BOT_TOKEN || $env.ZULIP_BOT_API_KEY || '').trim()) missing.push('ZULIP_BOT_API_KEY');\n\nreturn [{\n  json: {\n    ok: missing.length === 0,\n    status_code: missing.length === 0 ? 200 : 424,\n    missing,\n    received_event: String(headers['x-gitlab-event'] || headers['X-Gitlab-Event'] || body.object_kind || ''),\n    tip: 'Issue Hook のラベル変更イベント（changes.labels）が届くことを確認してください。'\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Env Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 200 }}"
+        }
+      },
+      "id": "3",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        660,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Test)": {
+      "main": [
+        [
+          {
+            "node": "Env Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Env Check": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

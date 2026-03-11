@@ -3,6 +3,11 @@ n8n_observer_events:
     controller: App\Controller\N8nObserverController::events
     methods: [GET]
 
+itsm_decisions_list:
+    path: /admin/api/itsm/decisions
+    controller: App\Controller\IstmDecisionController::cgetAction
+    methods: [GET]
+
 itsm_incidents_list:
     path: /admin/api/itsm/incidents
     controller: App\Controller\IstmIncidentController::cgetAction
@@ -41,4 +46,24 @@ itsm_change_requests_list:
 itsm_change_requests_detail:
     path: /admin/api/itsm/change-requests/{id}
     controller: App\Controller\IstmChangeRequestController::getAction
+    methods: [GET]
+
+itsm_kpi_config:
+    path: /admin/api/itsm/kpi/config
+    controller: App\Controller\IstmKpiController::config
+    methods: [GET]
+
+itsm_kpi_mttr:
+    path: /admin/api/itsm/kpi/mttr
+    controller: App\Controller\IstmKpiController::mttr
+    methods: [GET]
+
+itsm_kpi_triage:
+    path: /admin/api/itsm/kpi/triage
+    controller: App\Controller\IstmKpiController::triage
+    methods: [GET]
+
+itsm_kpi_lead_time:
+    path: /admin/api/itsm/kpi/lead-time
+    controller: App\Controller\IstmKpiController::leadTime
     methods: [GET]

@@ -1,0 +1,107 @@
+<?xml version="1.0" ?>
+<list xmlns="http://schemas.sulu.io/list-builder/list">
+    <key>itsm_decisions</key>
+
+    <joins name="realm">
+        <join>
+            <entity-name>App\IstmSor\Entity\IstmRealm</entity-name>
+            <field-name>App\IstmSor\Entity\IstmAuditEvent.realm</field-name>
+        </join>
+    </joins>
+
+    <properties>
+        <property
+            name="id"
+            visibility="no"
+            searchability="yes"
+            translation="sulu_admin.id"
+        >
+            <field-name>id</field-name>
+            <entity-name>App\IstmSor\Entity\IstmAuditEvent</entity-name>
+        </property>
+
+        <property
+            name="occurredAt"
+            visibility="always"
+            sortable="true"
+            searchability="never"
+            translation="app.itsm.decisions.table.occurred_at"
+        >
+            <field-name>occurredAt</field-name>
+            <entity-name>App\IstmSor\Entity\IstmAuditEvent</entity-name>
+
+            <transformer type="datetime"/>
+            <filter type="datetime" />
+        </property>
+
+        <property
+            name="realmKey"
+            visibility="yes"
+            sortable="true"
+            searchability="yes"
+            translation="app.itsm.decisions.table.realm"
+        >
+            <field-name>realmKey</field-name>
+            <entity-name>App\IstmSor\Entity\IstmRealm</entity-name>
+
+            <joins ref="realm"/>
+            <filter type="text" />
+        </property>
+
+        <property
+            name="source"
+            visibility="yes"
+            sortable="true"
+            searchability="yes"
+            translation="app.itsm.decisions.table.source"
+        >
+            <field-name>source</field-name>
+            <entity-name>App\IstmSor\Entity\IstmAuditEvent</entity-name>
+            <filter type="text" />
+        </property>
+
+        <property
+            name="summary"
+            visibility="always"
+            sortable="false"
+            searchability="yes"
+            translation="app.itsm.decisions.table.summary"
+        >
+            <field-name>summary</field-name>
+            <entity-name>App\IstmSor\Entity\IstmAuditEvent</entity-name>
+        </property>
+
+        <property
+            name="message"
+            visibility="no"
+            sortable="false"
+            searchability="yes"
+            translation="app.itsm.decisions.table.message"
+        >
+            <field-name>message</field-name>
+            <entity-name>App\IstmSor\Entity\IstmAuditEvent</entity-name>
+        </property>
+
+        <property
+            name="correlationId"
+            visibility="no"
+            sortable="true"
+            searchability="yes"
+            translation="app.itsm.decisions.table.correlation_id"
+        >
+            <field-name>correlationId</field-name>
+            <entity-name>App\IstmSor\Entity\IstmAuditEvent</entity-name>
+            <filter type="text" />
+        </property>
+
+        <property
+            name="action"
+            visibility="never"
+            searchability="never"
+        >
+            <field-name>action</field-name>
+            <entity-name>App\IstmSor\Entity\IstmAuditEvent</entity-name>
+        </property>
+    </properties>
+</list>
+

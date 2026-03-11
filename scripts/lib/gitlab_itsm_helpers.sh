@@ -19,9 +19,9 @@ if [[ -z "${REPO_ROOT:-}" ]]; then
   REPO_ROOT="$(cd "${LIB_DIR}/../.." && pwd)"
 fi
 
-# Templates live under scripts/itsm/gitlab/templates
+# Templates live under apps/itsm_core/bootstrap/data/templates
 if [[ -z "${TEMPLATES_DIR:-}" ]]; then
-  TEMPLATES_DIR="${REPO_ROOT}/scripts/itsm/gitlab/templates"
+  TEMPLATES_DIR="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates"
 fi
 
 if [[ -z "${TFVARS_PATH_DEFAULT:-}" ]]; then
@@ -40,12 +40,17 @@ if ! declare -p ITSM_FORCE_UPDATE_INCLUDED_REALMS >/dev/null 2>&1; then
 fi
 
 tf_output_json() {
-  terraform -chdir="${REPO_ROOT}" output -json "$1" 2>/dev/null || true
+  local output
+  output="$(terraform -chdir="${REPO_ROOT}" output -no-color -json "$1" 2>/dev/null || true)"
+  if [[ -n "${output}" && "${output}" != *"No outputs found"* ]]; then
+    printf '%s' "${output}"
+  fi
 }
 
 tf_output_raw() {
   local output
-  if output="$(terraform -chdir="${REPO_ROOT}" output -raw "$1" 2>/dev/null)"; then
+  output="$(terraform -chdir="${REPO_ROOT}" output -no-color -raw "$1" 2>/dev/null || true)"
+  if [[ -n "${output}" && "${output}" != "null" && "${output}" != *"No outputs found"* ]]; then
     printf '%s' "${output}"
   fi
 }
@@ -87,14 +92,14 @@ sync_service_management_wiki_templates() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_SERVICE_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_SERVICE_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_SERVICE_SOURCE_DIRS:-${default_source_dirs}}"
@@ -132,14 +137,14 @@ sync_service_management_wiki_templates_to_project() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root default_source_dirs source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_SERVICE_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_SERVICE_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_SERVICE_SOURCE_DIRS:-${default_source_dirs}}"
@@ -173,14 +178,14 @@ sync_general_management_wiki_templates() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_GENERAL_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/general-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_GENERAL_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/general-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_GENERAL_SOURCE_DIRS:-${default_source_dirs}}"
@@ -218,14 +223,14 @@ sync_general_management_wiki_templates_to_project() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root default_source_dirs source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_GENERAL_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/general-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_GENERAL_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/general-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_GENERAL_SOURCE_DIRS:-${default_source_dirs}}"
@@ -259,14 +264,14 @@ sync_technical_management_wiki_templates() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_TECH_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/technical-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_TECH_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/technical-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_TECH_SOURCE_DIRS:-${default_source_dirs}}"
@@ -304,14 +309,14 @@ sync_technical_management_wiki_templates_to_project() {
   fi
 
   local sync_script
-  sync_script="${REPO_ROOT}/scripts/itsm/gitlab/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
+  sync_script="${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh"
   if [[ ! -f "${sync_script}" ]]; then
     echo "ERROR: wiki sync script not found: ${sync_script}" >&2
     exit 1
   fi
 
   local docs_root default_source_dirs source_dirs title_mode base_path
-  docs_root="${ITSM_WIKI_SYNC_TECH_DOCS_ROOT:-${REPO_ROOT}/scripts/itsm/gitlab/templates/technical-management/docs/wiki}"
+  docs_root="${ITSM_WIKI_SYNC_TECH_DOCS_ROOT:-${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates/technical-management/docs/wiki}"
   default_source_dirs=""
   default_source_dirs="${docs_root}"
   source_dirs="${ITSM_WIKI_SYNC_TECH_SOURCE_DIRS:-${default_source_dirs}}"
@@ -407,6 +412,31 @@ ensure_technical_template_project_exists() {
   fi
 
   echo "[gitlab] Creating technical template project: ${template_full_path}"
+  gitlab_create_project "${template_name}" "${template_path}" "${group_id}" "${project_visibility}" >/dev/null || true
+}
+
+ensure_hr_talent_template_project_exists() {
+  local group_id="$1"
+  local group_full_path="$2"
+  local project_visibility="$3"
+
+  local template_name template_path template_full_path template_project_id
+  template_name="${ITSM_TEMPLATE_HR_TALENT_MANAGEMENT_PROJECT_NAME:-template-hr-talent-management}"
+  template_path="${ITSM_TEMPLATE_HR_TALENT_MANAGEMENT_PROJECT_PATH:-template-hr-talent-management}"
+  template_full_path="${group_full_path}/${template_path}"
+
+  template_project_id="$(gitlab_find_project_id_by_full_path "${template_full_path}" "${template_path}")"
+  if [[ -n "${template_project_id}" ]]; then
+    echo "[gitlab] HR talent template project exists: ${template_full_path}"
+    return
+  fi
+
+  if [[ -n "${DRY_RUN:-}" ]]; then
+    echo "[gitlab] DRY_RUN create HR talent template project: ${template_full_path}"
+    return
+  fi
+
+  echo "[gitlab] Creating HR talent template project: ${template_full_path}"
   gitlab_create_project "${template_name}" "${template_path}" "${group_id}" "${project_visibility}" >/dev/null || true
 }
 

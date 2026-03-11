@@ -1,0 +1,196 @@
+{
+  "name": "itsm-sor-aiops-approval-decision",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "itsm/sor/aiops/approval/decision",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = ($json && typeof $json === 'object' && $json.body && typeof $json.body === 'object') ? $json.body : ($json ?? {});\nconst headers = ($json && typeof $json === 'object' && $json.headers && typeof $json.headers === 'object') ? $json.headers : {};\n\nconst fail = (statusCode, message) => ([{ json: { ok: false, status_code: statusCode, error: message } }]);\n\nconst isUuid = (value) => {\n  const s = String(value ?? '').trim();\n  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);\n};\n\nconst token = String($env.ITSM_SOR_WEBHOOK_TOKEN || '').trim();\nif (token) {\n  const auth = String(headers.authorization || headers.Authorization || '').trim();\n  const xToken = String(headers['x-itsm-sor-token'] || headers['X-ITSM-SOR-TOKEN'] || '').trim();\n  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice('bearer '.length).trim() : '';\n  if (bearer !== token && xToken !== token) {\n    return fail(401, 'unauthorized');\n  }\n}\n\nconst realm = String(body.realm || $env.N8N_REALM || $env.N8N_OBSERVER_REALM || 'default').trim() || 'default';\n\nconst approvalId = body.approval_id ?? body.approvalId ?? body.id ?? null;\nif (!approvalId) return fail(400, 'approval_id is required');\nif (!isUuid(approvalId)) return fail(400, 'approval_id must be uuid');\n\nconst contextId = body.context_id ?? body.contextId ?? body.resource_id ?? body.resourceId ?? null;\nif (!contextId) return fail(400, 'context_id is required');\nif (!isUuid(contextId)) return fail(400, 'context_id must be uuid');\n\nconst correlationId = body.correlation_id ?? body.correlationId ?? body.trace_id ?? body.traceId ?? null;\n\nconst actor = (body.actor && typeof body.actor === 'object') ? body.actor : {};\nconst jobPlan = (body.job_plan && typeof body.job_plan === 'object') ? body.job_plan : ((body.after && typeof body.after === 'object') ? body.after : {});\nconst replyTarget = (body.reply_target && typeof body.reply_target === 'object') ? body.reply_target : {};\n\nconst occurredAt = body.occurred_at || body.occurredAt || null;\n\nconst rawDecision = String(body.decision ?? body.status ?? '').trim().toLowerCase();\nif (!rawDecision) return fail(400, 'decision is required');\nlet decision = rawDecision;\nif (['approve', 'approved', 'yes', 'y', 'ok'].includes(rawDecision)) decision = 'approved';\nif (['deny', 'denied', 'rejected', 'no', 'n', 'ng'].includes(rawDecision)) decision = 'rejected';\nif (!decision) decision = 'rejected';\n\nconst status = decision === 'approved' ? 'approved' : 'rejected';\n\nconst approvedByPrincipalId = String(body.approved_by_principal_id || body.approvedByPrincipalId || actor.sub || actor.principal_id || actor.email || '').trim() || null;\n\nconst eventKey = String(body.event_key || body.eventKey || `aiops:approval:${approvalId || 'none'}:${rawDecision || decision}`).trim();\nif (!eventKey) return fail(400, 'event_key is required');\n\nconst source = String(body.source || 'aiops_agent').trim() || 'aiops_agent';\n\nreturn [{\n  json: {\n    ok: true,\n    record_type: 'sor_aiops_approval_decision',\n    realm,\n    occurred_at: occurredAt,\n    approval_id: approvalId,\n    context_id: contextId,\n    decision,\n    status,\n    approved_by_principal_id: approvedByPrincipalId,\n    actor,\n    job_plan: jobPlan,\n    reply_target: replyTarget,\n    correlation_id: correlationId,\n    source,\n    integrity: {\n      event_key: eventKey\n    }\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "10",
+      "name": "IF OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF(NULLIF('{{ String($json.approval_id || '').replace(/'/g, \"''\") }}',''), 'undefined')::uuid AS approval_id,\n    NULLIF('{{ String($json.realm || '').replace(/'/g, \"''\") }}','') AS realm_key,\n    NULLIF(NULLIF('{{ String($json.context_id || '').replace(/'/g, \"''\") }}',''), 'undefined')::uuid AS context_id,\n    LOWER('{{ String($json.decision || '').replace(/'/g, \"''\") }}') AS decision,\n    NULLIF('{{ String($json.approved_by_principal_id || '').replace(/'/g, \"''\") }}', '') AS approved_by_principal_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS job_plan,\n    COALESCE(NULLIF('{{ JSON.stringify($json.reply_target || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($json.correlation_id || '').replace(/'/g, \"''\") }}', '') AS correlation_id,\n    COALESCE(NULLIF(NULLIF('{{ String($json.occurred_at || '').replace(/'/g, \"''\") }}',''), 'undefined')::timestamptz, NOW()) AS approved_at\n)\nSELECT itsm.aiops_upsert_approval_decision(\n  v.realm_key,\n  v.approval_id,\n  v.context_id,\n  v.decision,\n  v.approved_by_principal_id,\n  v.actor,\n  v.job_plan,\n  v.reply_target,\n  v.correlation_id,\n  v.approved_at\n) AS id\nFROM v;"
+      },
+      "id": "3",
+      "name": "Upsert SoR Approval (itsm.approval)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        860,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF(NULLIF('{{ String($node[\"Normalize Input\"].json.approval_id || \"\").replace(/'/g, \"''\") }}',''), 'undefined')::uuid AS approval_id,\n    NULLIF('{{ String($node[\"Normalize Input\"].json.realm || \"\").replace(/'/g, \"''\") }}','') AS realm_key,\n    LOWER('{{ String($node[\"Normalize Input\"].json.decision || \"\").replace(/'/g, \"''\") }}') AS decision,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Normalize Input\"].json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Normalize Input\"].json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS job_plan,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Normalize Input\"].json.reply_target || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($node[\"Normalize Input\"].json.correlation_id || \"\").replace(/'/g, \"''\") }}', '') AS correlation_id,\n    COALESCE(NULLIF(NULLIF('{{ String($node[\"Normalize Input\"].json.occurred_at || \"\").replace(/'/g, \"''\") }}',''), 'undefined')::timestamptz, NOW()) AS occurred_at,\n    NULLIF('{{ String($node[\"Normalize Input\"].json.source || \"aiops_agent\").replace(/'/g, \"''\") }}', '') AS source,\n    NULLIF('{{ String($node[\"Normalize Input\"].json.integrity?.event_key || \"\").replace(/'/g, \"''\") }}','') AS event_key\n)\nSELECT id\nFROM (\n  SELECT itsm.aiops_insert_approval_decision_audit_event(\n    v.realm_key,\n    v.approval_id,\n    v.decision,\n    v.actor,\n    v.job_plan,\n    v.reply_target,\n    v.correlation_id,\n    v.occurred_at,\n    v.source,\n    v.event_key\n  ) AS id\n  FROM v\n) ins\nWHERE ins.id IS NOT NULL;"
+      },
+      "id": "4",
+      "name": "Insert SoR Audit Event (Approval Decision)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: $node['Normalize Input'].json.ok === true, input: $node['Normalize Input'].json, approval: $node['Upsert SoR Approval (itsm.approval)'].json, audit_event: $json } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "5",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, error: $json.error } }}",
+        "options": {
+          "responseCode": "={{ $json.status_code || 400 }}"
+        }
+      },
+      "id": "11",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        900,
+        360
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "IF OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert SoR Approval (itsm.approval)": {
+      "main": [
+        [
+          {
+            "node": "Insert SoR Audit Event (Approval Decision)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert SoR Audit Event (Approval Decision)": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF OK": {
+      "main": [
+        [
+          {
+            "node": "Upsert SoR Approval (itsm.approval)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1"
+}

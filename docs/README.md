@@ -41,20 +41,24 @@ flowchart TB
     ControlSite[(S3: Control Site)]
   end
 
-  subgraph VPC[VPC 内（ECS + データストア）]
+  subgraph VPC[VPC 内（ALB + ECS + データストア）]
     ALB[ALB]
     ECS[ECS Cluster]
     Keycloak[Keycloak（OIDC）]
-    N8N[n8n（Workflows）]
+    N8N[n8n（Workflows / realm別）]
     ExastroWeb[Exastro ITA Web]
     ExastroAPI[Exastro ITA API]
     Zulip[Zulip]
-    GitLab[GitLab]
-    Grafana[Grafana]
-    RDS[(RDS: PostgreSQL)]
+    subgraph GitLabService[GitLab サービス（GitLab + Grafana）]
+      GitLab[GitLab（Service Mgmt / CMDB / Issue）]
+      Grafana[Grafana（Dashboards / Annotations）]
+    end
+    Sulu[Sulu（監査/参照ポータル）]
+    RDS[(RDS: PostgreSQL（SoR: itsm.*）)]
     EFS[(EFS)]
-    Qdrant[Qdrant（Vector DB）]
+    Qdrant[Qdrant（n8n タスク内サイドカー / realm別）]
     Indexer[GitLab EFS Indexer（ECS Task）]
+    GitLabRunner[GitLab Runner（ECS/Fargate shell executor）]
     SSM[SSM / Secrets Manager]
   end
 
@@ -83,15 +87,18 @@ flowchart TB
   ECS --> Zulip
   ECS --> GitLab
   ECS --> Grafana
+  ECS --> Sulu
   ECS --> Qdrant
+  ECS --> Indexer
+  ECS --> GitLabRunner
 
   %% 依存関係（最小）
-  Keycloak -->|OIDC| N8N
   Keycloak -->|OIDC| ExastroWeb
   Keycloak -->|OIDC| ExastroAPI
   Keycloak -->|OIDC| Zulip
   Keycloak -->|OIDC| GitLab
   N8N --> RDS
+  Sulu -->|read-only| RDS
   GitLab -->|mirror| EFS
   Qdrant -->|EFS 永続化| EFS
   Indexer -->|read| EFS
@@ -101,6 +108,7 @@ flowchart TB
   N8N -->|Embeddings| EmbeddingAPI
   Grafana -->|Datasource| CW
   Grafana -->|Query| Athena
+  GitLabRunner -->|register / run jobs| GitLab
   ECS -->|env/keys| SSM
   ECS --> CW
 
@@ -110,12 +118,16 @@ flowchart TB
   N8N -->|API| GitLab
   N8N -->|API| Zulip
   N8N -->|API| Grafana
-  Grafana -->|Alert Webhook| N8N
+  Grafana -. optional .->|Webhook（補助経路）| N8N
   EB -->|Event| N8N
-  CW -->|Alarm/Event| N8N
+  CW -->|Alarm/Event| EB
+  CW -->|Alarm| SNSRelay[SNS / Lambda 中継]
+  SNSRelay -->|Webhook| N8N
   CW -->|Archive| S3Logs
   S3Logs --> Athena
 ```
+
+注: n8n は Keycloak OIDC 連携ではなく、ローカル認証（n8n ユーザー管理）で運用します。
 
 ---
 
@@ -131,9 +143,9 @@ AI 関連の成果物は分離し、**変更管理下の構成アイテム（con
 
 ## 内容
 
-- `apps/*/docs/cs/ai_behavior_spec.md`（例: `apps/aiops_agent/docs/cs/ai_behavior_spec.md`）  
+- `apps/*/docs/cs/ai_behavior_spec.md`（例: `apps/aiops_agent/orchestrator/docs/cs/ai_behavior_spec.md`）  
   AI の意図された振る舞い、制約、監督（オーバーサイト）を定義する
-- プロンプト（例: `apps/aiops_agent/data/default/prompt/`）  
+- プロンプト（例: `apps/aiops_agent/orchestrator/data/default/prompt/`）  
   環境別に管理されたプロンプト
 - ツール権限定義（未整備）  
   例: `tool_permissions.yaml`（現在このリポジトリには存在しない）

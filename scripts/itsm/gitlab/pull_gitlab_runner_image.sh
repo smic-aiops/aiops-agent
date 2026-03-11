@@ -11,7 +11,7 @@ set -euo pipefail
 #   PRESERVE_CACHE           true/false (alias of N8N_PRESERVE_PULL_CACHE)
 #   CLEAN_CACHE              true/false (alias of N8N_CLEAN_PULL_CACHE)
 #   IMAGE_ARCH               (default: terraform output image_architecture, fallback linux/amd64)
-#   GITLAB_RUNNER_TAG        (default: terraform output gitlab_runner_image_tag, fallback alpine-v17.11.7)
+#   GITLAB_RUNNER_TAG        (default: terraform output gitlab_runner_image_tag, fallback alpine-v17.11.4)
 #   GITLAB_RUNNER_IMAGE      (default: gitlab/gitlab-runner)
 #   IMAGES_DIR               (default: ./images)
 
@@ -42,12 +42,12 @@ discover_ci_apk_packages() {
       if [[ -f "${REPO_ROOT}/.gitlab-ci.yml" ]]; then
         cat "${REPO_ROOT}/.gitlab-ci.yml"
       fi
-      if [[ -d "${REPO_ROOT}/scripts/itsm/gitlab/templates" ]]; then
+      if [[ -d "${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates" ]]; then
         local f
         while IFS= read -r -d '' f; do
           cat "${f}"
           printf '\n'
-        done < <(find "${REPO_ROOT}/scripts/itsm/gitlab/templates" -maxdepth 4 -type f -name ".gitlab-ci.yml*.tpl" -print0 2>/dev/null || true)
+        done < <(find "${REPO_ROOT}/apps/itsm_core/bootstrap/data/templates" -maxdepth 4 -type f -name ".gitlab-ci.yml*.tpl" -print0 2>/dev/null || true)
       fi
     } 2>/dev/null
   )"
@@ -85,7 +85,7 @@ fi
 IMAGE_ARCH="${IMAGE_ARCH:-linux/amd64}"
 
 GITLAB_RUNNER_TAG="${GITLAB_RUNNER_TAG:-$(tf_output_raw gitlab_runner_image_tag || true)}"
-GITLAB_RUNNER_TAG="${GITLAB_RUNNER_TAG:-alpine-v17.11.7}"
+GITLAB_RUNNER_TAG="${GITLAB_RUNNER_TAG:-alpine-v17.11.4}"
 GITLAB_RUNNER_IMAGE="${GITLAB_RUNNER_IMAGE:-gitlab/gitlab-runner}"
 IMAGES_DIR="${IMAGES_DIR:-./images}"
 

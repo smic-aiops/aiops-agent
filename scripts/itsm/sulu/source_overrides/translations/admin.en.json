@@ -1,11 +1,18 @@
 {
   "app.itsm": "ITSM",
+  "app.itsm.decisions": "Decisions",
   "app.itsm.incidents": "Incidents",
   "app.itsm.service_requests": "Service Requests",
   "app.itsm.problems": "Problems",
   "app.itsm.change_requests": "Change Requests",
   "app.itsm.field.realm": "Realm",
   "app.itsm.field.service_id": "Service ID",
+  "app.itsm.decisions.table.occurred_at": "Occurred",
+  "app.itsm.decisions.table.realm": "Realm",
+  "app.itsm.decisions.table.source": "Source",
+  "app.itsm.decisions.table.summary": "Summary",
+  "app.itsm.decisions.table.message": "Message",
+  "app.itsm.decisions.table.correlation_id": "Correlation ID",
   "app.itsm.incidents.table.number": "Number",
   "app.itsm.incidents.table.status": "Status",
   "app.itsm.incidents.table.priority": "Priority",
@@ -31,6 +38,21 @@
   "app.itsm.change_requests.table.planned_start_at": "Planned Start",
   "app.itsm.change_requests.table.planned_end_at": "Planned End",
   "app.itsm.change_requests.field.approved_at": "Approved At",
-  "app.itsm.change_requests.field.implemented_at": "Implemented At"
-}
+  "app.itsm.change_requests.field.implemented_at": "Implemented At",
 
+  "app.itsm.kpi.mttr": "MTTR",
+  "app.itsm.kpi.triage": "Triage",
+  "app.itsm.kpi.lead_time": "Lead Time",
+  "app.itsm.kpi.filter.from": "From (YYYY-MM-DD)",
+  "app.itsm.kpi.filter.to": "To (YYYY-MM-DD)",
+  "app.itsm.kpi.filter.customer_id": "Customer ID (CMDB)",
+  "app.itsm.kpi.status.loading": "Loading...",
+  "app.itsm.kpi.status.error": "Error",
+  "app.itsm.kpi.grafana.open": "Open Grafana",
+  "app.itsm.kpi.grafana.not_configured": "Grafana URL is not configured (set an env var in Sulu)",
+  "app.itsm.kpi.summary": "Summary",
+  "app.itsm.kpi.summary.count": "Count",
+  "app.itsm.kpi.summary.p50_minutes": "p50 (min)",
+  "app.itsm.kpi.summary.p95_minutes": "p95 (min)",
+  "app.itsm.kpi.data": "Data"
+}

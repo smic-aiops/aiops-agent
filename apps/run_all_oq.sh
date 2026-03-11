@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run OQ for all apps under apps/* that provide scripts/run_oq.sh.
+# Run OQ for all apps under apps/* that provide scripts/run_all_oq.sh.
 
 REALM=""
 DRY_RUN=false
@@ -24,7 +24,9 @@ Options:
   -h, --help            Show this help
 
 Behavior:
-  - Discovers apps that have apps/<app>/scripts/run_oq.sh and executes them in a stable order.
+  - Discovers OQ runners under:
+      - apps/*/scripts/run_all_oq.sh
+    and executes them in a stable order.
   - Evidence location/format is owned by each app script.
 USAGE
 }
@@ -58,9 +60,12 @@ main() {
   done
 
   local scripts
-  scripts="$(find apps -mindepth 3 -maxdepth 3 -type f -path 'apps/*/scripts/run_oq.sh' | LC_ALL=C sort)"
+  scripts="$(
+    find apps -mindepth 3 -maxdepth 3 -type f -path 'apps/*/scripts/run_all_oq.sh' 2>/dev/null \
+      | LC_ALL=C sort -u
+  )"
   if [[ -z "${scripts}" ]]; then
-    warn "No apps/*/scripts/run_oq.sh found"
+    warn "No OQ runner scripts found"
     exit 1
   fi
 
@@ -103,4 +108,3 @@ main() {
 }
 
 main "$@"
-

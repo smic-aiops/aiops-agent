@@ -15,6 +15,7 @@ final class IstmAdmin extends Admin
 {
     public const NAVIGATION_ITSM = 'app.itsm';
 
+    public const VIEW_DECISIONS = 'app.itsm.decisions';
     public const VIEW_INCIDENTS = 'app.itsm.incidents';
     public const VIEW_INCIDENTS_DETAIL = 'app.itsm.incidents.detail';
     public const VIEW_INCIDENTS_DETAIL_FORM = 'app.itsm.incidents.detail.details';
@@ -31,6 +32,12 @@ final class IstmAdmin extends Admin
     public const VIEW_CHANGE_REQUESTS_DETAIL = 'app.itsm.change_requests.detail';
     public const VIEW_CHANGE_REQUESTS_DETAIL_FORM = 'app.itsm.change_requests.detail.details';
 
+    public const VIEW_KPI_MTTR = 'app.itsm.kpi.mttr';
+    public const VIEW_KPI_TRIAGE = 'app.itsm.kpi.triage';
+    public const VIEW_KPI_LEAD_TIME = 'app.itsm.kpi.lead_time';
+
+    public const RESOURCE_KEY_DECISIONS = 'itsm_decisions';
+    public const LIST_KEY_DECISIONS = 'itsm_decisions';
     public const RESOURCE_KEY_INCIDENTS = 'itsm_incidents';
     public const LIST_KEY_INCIDENTS = 'itsm_incidents';
     public const FORM_KEY_INCIDENT_DETAILS = 'itsm_incident_details';
@@ -47,10 +54,14 @@ final class IstmAdmin extends Admin
     public const LIST_KEY_CHANGE_REQUESTS = 'itsm_change_requests';
     public const FORM_KEY_CHANGE_REQUEST_DETAILS = 'itsm_change_request_details';
 
+    public const SECURITY_CONTEXT_DECISIONS = 'app.itsm.decisions';
     public const SECURITY_CONTEXT_INCIDENTS = 'app.itsm.incidents';
     public const SECURITY_CONTEXT_SERVICE_REQUESTS = 'app.itsm.service_requests';
     public const SECURITY_CONTEXT_PROBLEMS = 'app.itsm.problems';
     public const SECURITY_CONTEXT_CHANGE_REQUESTS = 'app.itsm.change_requests';
+    public const SECURITY_CONTEXT_KPI_MTTR = 'app.itsm.kpi.mttr';
+    public const SECURITY_CONTEXT_KPI_TRIAGE = 'app.itsm.kpi.triage';
+    public const SECURITY_CONTEXT_KPI_LEAD_TIME = 'app.itsm.kpi.lead_time';
 
     public function __construct(private readonly ViewBuilderFactoryInterface $viewBuilderFactory)
     {
@@ -61,6 +72,10 @@ final class IstmAdmin extends Admin
         $itsm = new NavigationItem(self::NAVIGATION_ITSM);
         $itsm->setLabel(self::NAVIGATION_ITSM);
         $itsm->setIcon('su-list-check');
+
+        $decisions = new NavigationItem(self::VIEW_DECISIONS);
+        $decisions->setLabel(self::VIEW_DECISIONS);
+        $decisions->setView(self::VIEW_DECISIONS);
 
         $incidents = new NavigationItem(self::VIEW_INCIDENTS);
         $incidents->setLabel(self::VIEW_INCIDENTS);
@@ -78,16 +93,44 @@ final class IstmAdmin extends Admin
         $changeRequests->setLabel(self::VIEW_CHANGE_REQUESTS);
         $changeRequests->setView(self::VIEW_CHANGE_REQUESTS);
 
+        $kpiMttr = new NavigationItem(self::VIEW_KPI_MTTR);
+        $kpiMttr->setLabel(self::VIEW_KPI_MTTR);
+        $kpiMttr->setView(self::VIEW_KPI_MTTR);
+
+        $kpiTriage = new NavigationItem(self::VIEW_KPI_TRIAGE);
+        $kpiTriage->setLabel(self::VIEW_KPI_TRIAGE);
+        $kpiTriage->setView(self::VIEW_KPI_TRIAGE);
+
+        $kpiLeadTime = new NavigationItem(self::VIEW_KPI_LEAD_TIME);
+        $kpiLeadTime->setLabel(self::VIEW_KPI_LEAD_TIME);
+        $kpiLeadTime->setView(self::VIEW_KPI_LEAD_TIME);
+
+        $itsm->addChild($decisions);
         $itsm->addChild($incidents);
         $itsm->addChild($serviceRequests);
         $itsm->addChild($problems);
         $itsm->addChild($changeRequests);
+        $itsm->addChild($kpiMttr);
+        $itsm->addChild($kpiTriage);
+        $itsm->addChild($kpiLeadTime);
         $navigationItemCollection->add($itsm);
     }
 
     public function configureViews(ViewCollection $viewCollection): void
     {
         $readOnlyToolbarActions = [];
+
+        $viewCollection->add(
+            $this->viewBuilderFactory
+                ->createListViewBuilder(self::VIEW_DECISIONS, '/itsm/decisions')
+                ->setResourceKey(self::RESOURCE_KEY_DECISIONS)
+                ->setListKey(self::LIST_KEY_DECISIONS)
+                ->setTitle(self::VIEW_DECISIONS)
+                ->addListAdapters(['table'])
+                ->enableSearching()
+                ->enableFiltering()
+                ->setOption('security_context', self::SECURITY_CONTEXT_DECISIONS)
+        );
 
         $viewCollection->add(
             $this->viewBuilderFactory
@@ -208,6 +251,25 @@ final class IstmAdmin extends Admin
                 ->setParent(self::VIEW_CHANGE_REQUESTS_DETAIL)
                 ->setOption('security_context', self::SECURITY_CONTEXT_CHANGE_REQUESTS)
         );
+
+        $viewCollection->add(
+            $this->viewBuilderFactory
+                ->createViewBuilder(self::VIEW_KPI_MTTR, '/itsm/kpi/mttr', self::VIEW_KPI_MTTR)
+                ->setOption('title', self::VIEW_KPI_MTTR)
+                ->setOption('security_context', self::SECURITY_CONTEXT_KPI_MTTR)
+        );
+        $viewCollection->add(
+            $this->viewBuilderFactory
+                ->createViewBuilder(self::VIEW_KPI_TRIAGE, '/itsm/kpi/triage', self::VIEW_KPI_TRIAGE)
+                ->setOption('title', self::VIEW_KPI_TRIAGE)
+                ->setOption('security_context', self::SECURITY_CONTEXT_KPI_TRIAGE)
+        );
+        $viewCollection->add(
+            $this->viewBuilderFactory
+                ->createViewBuilder(self::VIEW_KPI_LEAD_TIME, '/itsm/kpi/lead-time', self::VIEW_KPI_LEAD_TIME)
+                ->setOption('title', self::VIEW_KPI_LEAD_TIME)
+                ->setOption('security_context', self::SECURITY_CONTEXT_KPI_LEAD_TIME)
+        );
     }
 
     public function getSecurityContexts(): array
@@ -215,6 +277,9 @@ final class IstmAdmin extends Admin
         return [
             self::SULU_ADMIN_SECURITY_SYSTEM => [
                 self::NAVIGATION_ITSM => [
+                    self::SECURITY_CONTEXT_DECISIONS => [
+                        PermissionTypes::VIEW,
+                    ],
                     self::SECURITY_CONTEXT_INCIDENTS => [
                         PermissionTypes::VIEW,
                     ],
@@ -227,9 +292,17 @@ final class IstmAdmin extends Admin
                     self::SECURITY_CONTEXT_CHANGE_REQUESTS => [
                         PermissionTypes::VIEW,
                     ],
+                    self::SECURITY_CONTEXT_KPI_MTTR => [
+                        PermissionTypes::VIEW,
+                    ],
+                    self::SECURITY_CONTEXT_KPI_TRIAGE => [
+                        PermissionTypes::VIEW,
+                    ],
+                    self::SECURITY_CONTEXT_KPI_LEAD_TIME => [
+                        PermissionTypes::VIEW,
+                    ],
                 ],
             ],
         ];
     }
 }
-

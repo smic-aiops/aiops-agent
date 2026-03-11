@@ -2,17 +2,25 @@
 
 本ファイルは `../setup-guide.md` から **itsm 関連**の内容を抜き出して整理したものです。
 
-## 関連プロンプト（変更管理対象）
-- `ai/prompts/itsm/itsm_usecase_enrichment.md`（ITSM ユースケース集の拡張）
+## ITSM Bootstrap / ITSM Core / Usecase（入口）
+- 詳細は `apps/itsm_core/README.md` を参照（SoR、GitLab ITSM bootstrap、ユースケース関連、関連プロンプト/比較資料）。
 
-## 比較資料
-- `docs/itsm/features_comparison.md`（市販ITSM との機能対照表・未提供時の実装案）
-- `docs/itsm/data-model.md`（統合データモデル：テーブル/参照/ACL の設計）
+## ユースケース実装のテスタビリティ確認
+- 設計: `docs/itsm/designs/usecase_testability_gate.md`
+- 静的検証（ドライラン）:
+  - `python3 scripts/itsm/reports/check_usecase_testability.py --dry-run`
+- 静的検証（レポート生成）:
+  - `python3 scripts/itsm/reports/check_usecase_testability.py`
+- OQ導線の一括確認（ドライラン）:
+  - `apps/run_all_oq.sh --dry-run`
 
 ## 利用者向け（作法）
 
 - 環境の使い方（ITSM 利用者向け）: `docs/usage-guide.md`
-  - 最終決定は **Zulip または GitLab Issue** 上で行い、決定マーカー（Zulip: `/decision` / GitLab: `[DECISION]`/`決定:`）で明示する（証跡の正は GitLab）
+  - 最終決定は **Zulip または GitLab Issue** 上で行い、決定マーカー（Zulip: `/decision` / GitLab: `[DECISION]`/`決定:`）で明示する
+    - 構造化された判断/承認/決定の “正（SoR）” は共有 RDS（`itsm.audit_event` / `itsm.approval`）
+    - GitLab はレビュー/議論/根拠リンク/版管理などの **補助証跡（Change & Evidence）**
+  - （任意）決定マーカーに一致しない場合でも、LLM 判定が有効な環境では「決定/承認」に該当する表現が **決定として自動認定**され得る（デフォルト: 有効。無効化は `ZULIP_GITLAB_DECISION_LLM_ENABLED=false`。誤判定に注意。詳細は `apps/itsm_core/zulip_gitlab_issue_sync/README.md`）
   - AIOpsAgent の承認リンク（approve/deny）や `auto_enqueue`（自動承認/自動実行）で確定した内容も **決定**として扱われ、Zulip へ `/decision` が投稿される。過去の承認（決定）サマリは `/decisions` で参照する
   - 例外的に GitLab 側で決定を記録する場合は、先頭に `[DECISION]` / `決定:` を付けると Zulip に通知される（環境設定が必要）
 
@@ -26,85 +34,8 @@
 7. サービスの各種 Key/トークンを生成・反映し、必要なら再デプロイ。
 7. `terraform output` で URL 等を確認し、動作確認。
 
-最小の実行例:
-
-```bash
-aws sso login --profile "$(terraform output -raw aws_profile)"
-
-# （必須）ネットワークを参照モード（existing_*_id）へ移行して `terraform.env.tfvars` を安定化
-# - 内部で terraform state rm → terraform apply -refresh-only を行うため、まずは DRY_RUN で確認する
-DRY_RUN=true bash scripts/infra/update_env_tfvars_from_outputs.sh
-bash scripts/infra/update_env_tfvars_from_outputs.sh
-
-# （任意）イメージ更新が必要な場合のみ
-bash scripts/itsm/run_all_pull.sh
-bash scripts/itsm/run_all_build.sh
-
-# Keycloak 初期設定
-bash scripts/itsm/keycloak/show_keycloak_admin_credentials.sh
-bash scripts/itsm/keycloak/refresh_keycloak_realm.sh
-
-# Zulip（新しい組織/realm を作る場合: 作成リンクを生成）
-bash scripts/itsm/zulip/generate_realm_creation_link_for_zulip.sh
-
-# Zulip 初期セットアップ（必須）
-# - Zulip 系ワークフロー/OQ は `ZULIP_*` が揃っていないと失敗するため、
-#   n8n ワークフロー同期（特に `--with-tests`）の前に必ず収束させる。
-bash scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh
-bash scripts/itsm/n8n/refresh_zulip_bot.sh
-
-# （必要な場合は必須）ワークフロー同期/OQ 前に揃える refresh（例）
-# - n8n API key（同期スクリプトが必要とする）
-bash scripts/itsm/n8n/refresh_n8n_api_key.sh
-# - GitLab 管理者トークン / Webhook secret（GitLab 連携ワークフロー/OQ が必要とする）
-bash scripts/itsm/gitlab/refresh_gitlab_admin_token.sh
-bash scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh
-# - Grafana API token（Grafana API を使うワークフロー/スクリプトがある場合）
-bash scripts/itsm/grafana/refresh_grafana_api_tokens.sh
-# - Sulu 管理者ユーザー（Sulu を運用する場合）
-bash scripts/itsm/sulu/refresh_sulu_admin_user.sh
-
-# tfvars 更新を AWS（SSM 等）に反映し、n8n が新しい設定を読むように再デプロイして収束
-terraform apply \
-  -var-file=terraform.env.tfvars \
-  -var-file=terraform.itsm.tfvars \
-  -var-file=terraform.apps.tfvars \
-  --auto-approve
-bash scripts/itsm/n8n/redeploy_n8n.sh
-
-bash scripts/itsm/update_terraform_itsm_tfvars_auth_flags.sh
-
-# GitLab（レルム用のグループ/初期プロジェクト作成）
-bash scripts/itsm/gitlab/ensure_realm_groups.sh
-bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh
-
-# 変更箇所だけを GitLab へ反映したい場合（labels/boards/wiki 等は触らない）
-# - テンプレートPJ + service-management PJ の「特定ファイル」だけを upsert する
-# - 例: workflow_catalog / CMDB サンプル / runbook など
-bash scripts/itsm/gitlab/itsm_bootstrap_realms.sh --files-only
-
-# 反映（plan/apply をまとめて実行）
-bash scripts/plan_apply_all_tfvars.sh
-
-
-# n8n ワークフロー同期（ベースライン）
-bash scripts/apps/deploy_all_workflows.sh
-
-# サービス再起動（必要に応じて）
-bash scripts/itsm/run_all_redeploy.sh
-
-# セットアップ状況サマリ
-bash scripts/report_setup_status.sh
-
-# GitLab プロジェクト同期（GitLab -> EFS）
-bash scripts/itsm/gitlab/start_gitlab_efs_mirror.sh
-
-# 同期/インデックス状況チェック（GitLab -> EFS -> Qdrant）
-bash scripts/itsm/gitlab/check_gitlab_efs_rag_pipeline.sh
-
-# URL 確認
-terraform output -json service_urls
-```
+### ITSM Core / Bootstrap / Usecase（詳細）
+- SoR の適用/バックフィル、RLS、監査アンカー、Sulu admin の参照、GitLab ITSM bootstrap、ユースケース関連は `apps/itsm_core/README.md` を参照。
 
 ## 改善ステージ（任意）
 
@@ -115,9 +46,7 @@ terraform output -json service_urls
 bash scripts/itsm/refresh_all_secure.sh
 
 # apps の同期後に OQ も実行（回帰テスト + 証跡）
-# - `--with-tests` を使う場合は、事前に GitLab 側の ITSM ブートストラップ
-#   （`scripts/itsm/gitlab/ensure_realm_groups.sh` / `scripts/itsm/gitlab/itsm_bootstrap_realms.sh`）
-#   が済んでいることを確認してください。
+# 注: `--with-tests` 実行前に GitLab ITSM bootstrap が必要（詳細は `apps/itsm_core/README.md`）。
 bash scripts/apps/deploy_all_workflows.sh --with-tests
 ```
 
@@ -168,6 +97,7 @@ n8n_admin_password = "<set-by-operator>"
 - `N8N_APPROVAL_BASE_URL` は Terraform がレルムの n8n URL から自動生成し、SSM に書き込んで n8n へ注入します（tfvars に手書き不要）。
 - `N8N_APPROVAL_HMAC_SECRET_NAME` も Terraform がレルムごとに生成して SSM に書き込み、n8n に注入します。
 - `aiops_agent_environment`（例: `OPENAI_CREDENTIAL_ID` など）は、原則 `terraform.apps.tfvars` 側で管理します（`docs/apps/README.md` を参照）。
+- `EXECUTIONS_MODE` / `EXECUTIONS_TIMEOUT` の標準値と変更手順は `docs/apps/README.md` の「n8n 実行設定（`EXECUTIONS_MODE` / `EXECUTIONS_TIMEOUT`）」を参照してください。
 - `terraform output` は state ベースです。output 名を変更した場合は `terraform apply --refresh-only --auto-approve ...` を 1 回実行してから参照してください。
 
 ### 2) （必要に応じて）イメージを準備して ECR へ push
@@ -324,18 +254,45 @@ DRY_RUN=true scripts/itsm/n8n/ensure_n8n_owner.sh
 scripts/itsm/n8n/ensure_n8n_owner.sh
 ```
 
+### ITSM Bootstrap（GitLab）の正（SSoT）
+GitLab 側の ITSM テンプレ/運用資材（Issue template / Wiki template / Docs など）の **正（SSoT）** は `apps/itsm_core/bootstrap/` に集約しています。
+
+- 入口（テンプレ投入）: `apps/itsm_core/bootstrap/scripts/itsm_bootstrap_realms.sh`
+- realm 前提整備: `apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh`
+- テンプレ（SSoT）: `apps/itsm_core/bootstrap/data/templates/`
+- 手順: `apps/itsm_core/bootstrap/docs/usage/README.md`
+- 静的検証（推奨）: `apps/itsm_core/bootstrap/scripts/run_oq.sh --dry-run`
+- GitLab 管理 API スモーク（dry-run）: `apps/itsm_core/bootstrap/scripts/run_oq.sh --with-gitlab-smoke --dry-run`
+- GitLab 管理 API スモーク（実行）: `apps/itsm_core/bootstrap/scripts/run_oq.sh --execute-gitlab-smoke`
+
 ### GitLab 管理者トークンの更新
 GitLab コンテナ内の `gitlab-rails` で管理者 PAT を発行し、`terraform.itsm.tfvars` の `gitlab_admin_token` を更新します。
 
 - 仕様: [`docs/scripts.md`](../scripts.md)
 
 ```bash
-scripts/itsm/gitlab/refresh_gitlab_admin_token.sh
+bash apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh
 ```
 
 例:
-- `TOKEN_LIFETIME_DAYS=180 scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
-- `TOKEN_EXPIRES_AT=2026-12-31 scripts/itsm/gitlab/refresh_gitlab_admin_token.sh`
+- `TOKEN_LIFETIME_DAYS=180 bash apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh`
+- `TOKEN_EXPIRES_AT=2026-12-31 bash apps/itsm_core/bootstrap/scripts/refresh_gitlab_admin_token.sh`
+
+### GitLab Runner の作成/更新（ECS/Fargate shell executor）
+GitLab API で GitLab Runner を作成/更新し、Runner の属性（`tags` / `run_untagged` / `locked`）を設定したうえで、Runner authentication token を **SSM SecureString** に保存します。
+
+- 仕様: [`docs/scripts.md`](../scripts.md)
+
+```bash
+# まずはドライラン（何をするかだけ表示）
+DRY_RUN=true scripts/itsm/gitlab/ensure_gitlab_runner.sh --dry-run
+
+# 初回は token を確実に得るため `--rotate-token` 推奨
+scripts/itsm/gitlab/ensure_gitlab_runner.sh --rotate-token
+
+# token を ECS Runner に反映
+scripts/itsm/gitlab/redeploy_gitlab_runner.sh
+```
 
 ### GitLab レルム管理トークンの生成と n8n 連携
 GitLab グループアクセストークンをレルム単位で発行し、`terraform.itsm.tfvars` に反映します。Terraform apply 時にレルムを判定し、該当 n8n コンテナへ `GITLAB_ADMIN_TOKEN` を注入して GitLab API に接続します。
@@ -343,7 +300,7 @@ GitLab グループアクセストークンをレルム単位で発行し、`ter
 - 仕様: [`docs/scripts.md`](../scripts.md)
 
 ```bash
-scripts/itsm/gitlab/ensure_realm_groups.sh
+bash apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh
 ```
 
 反映確認（sensitive のため取り扱い注意）:
@@ -386,6 +343,71 @@ terraform output -raw qdrant_image_tag
 terraform output -json qdrant_realm_urls
 terraform output -json service_urls | jq -r '.qdrant'
 ```
+
+#### スナップショット運用（作成/一覧/取得/削除）
+
+Qdrant のスナップショット API を使って、コレクション単位でバックアップを取得できます。
+`QDRANT_API_KEY` を設定している環境では、API key ヘッダを付与してください。
+
+```bash
+# 1) 対象 realm と URL を決定
+REALM="general_management"
+QDRANT_URL="$(terraform output -json qdrant_realm_urls | jq -r --arg realm "$REALM" '.[$realm] // empty')"
+
+# 2) 対象コレクションを指定（既定の indexer alias 名）
+COLLECTION="gitlab_efs_general_management"
+
+# 3) 認証ヘッダ（未設定ならヘッダなし）
+AUTH_HEADER=()
+if [ -n "${QDRANT_API_KEY:-}" ]; then
+  AUTH_HEADER=(-H "api-key: ${QDRANT_API_KEY}")
+fi
+
+# 4) 既存スナップショット一覧
+curl -fsS "${AUTH_HEADER[@]}" \
+  "${QDRANT_URL%/}/collections/${COLLECTION}/snapshots" | jq .
+
+# 5) スナップショット作成（result.name を控える）
+SNAPSHOT_NAME="$(
+  curl -fsS -X POST "${AUTH_HEADER[@]}" \
+    "${QDRANT_URL%/}/collections/${COLLECTION}/snapshots" \
+  | jq -r '.result.name'
+)"
+echo "snapshot=${SNAPSHOT_NAME}"
+
+# 6) スナップショット取得（ローカル保存）
+curl -fSL "${AUTH_HEADER[@]}" \
+  "${QDRANT_URL%/}/collections/${COLLECTION}/snapshots/${SNAPSHOT_NAME}" \
+  -o "/tmp/${REALM}-${COLLECTION}-${SNAPSHOT_NAME}"
+
+# 7) 不要になったスナップショットを削除
+curl -fsS -X DELETE "${AUTH_HEADER[@]}" \
+  "${QDRANT_URL%/}/collections/${COLLECTION}/snapshots/${SNAPSHOT_NAME}" | jq .
+```
+
+運用メモ:
+- 定期取得する場合は `cron` や GitLab CI で上記 4)〜6) を実行し、成果物を S3 などへ退避してください。
+- 本構成では Qdrant データ自体が EFS に永続化されますが、障害復旧手順として API スナップショットの外部退避を併用する運用を推奨します。
+
+#### Qdrant API運用マトリクス（誰が呼ぶか / どのワークフローか）
+
+前提ルール:
+- Qdrant は検索用の派生データとして扱い、正は GitLab/DB とする。
+- 更新系 API は `indexer（ECS/Step Functions）` が実行し、n8n は検索系 API の利用を基本とする。
+- Qdrant へのアクセスは原則 n8n 経由（レルム別 `QDRANT_URL`）とする。
+
+| API（CSV 対応） | 主呼出主体 | 実行基盤 / ワークフロー | 主用途 | 運用ルール |
+| --- | --- | --- | --- | --- |
+| `POST /collections/{alias}/points/scroll`（CSV: 874） | n8n（検索系ワークフロー） | `apps/aiops_agent/orchestrator/workflows/aiops_orchestrator.json` を基準に、HTTP Request ノードで Qdrant を呼び出し | 条件付きページング取得（追跡調査・候補拡張） | `management_domain` フィルタを必須化し、結果には GitLab 参照 URL を保持する。 |
+| `POST /collections/{alias}/points/search/batch`（CSV: 1116） | n8n（検索系ワークフロー） | 同上（`aiops-orchestrator` 系） | 複数クエリの一括検索 | 単発検索をまとめる場合のみ利用し、更新系 API は呼ばない。 |
+| `POST /collections/{alias}/points/recommend`（CSV: 1129） | n8n（検索系ワークフロー） | 同上（`aiops-orchestrator` 系） | 正例/負例ベースの推薦検索 | 入力例は同一レルム・同一管理ドメインに限定する。 |
+| `POST /collections/{alias}/points/count`（CSV: 1130） | n8n（検索系ワークフロー） | 同上（`aiops-orchestrator` 系） | 条件付き件数確認（検索前の見積/閾値判定） | 監視・レポート用途では read-only で利用し、結果は運用判定にのみ使う。 |
+| `PUT /collections/{name}` / `POST /collections/aliases` / `GET /collections`（CSV: 1124） | indexer（ECS/Step Functions） | `modules/stack/gitlab_efs_indexer.tf` の `gitlab-indexer` タスク | コレクション生成・alias 切替・メタ情報管理 | `QDRANT_COLLECTION_ALIAS_MAP_JSON` に基づきドメイン別コレクションを運用する。 |
+| `POST /collections/{name}/points?wait=true`（CSV: 1121） | indexer（ECS/Step Functions） | 同上（`gitlab-indexer` タスク） | payload 付き upsert（実質的な set/overwrite） | 通常は再インデックス + alias 切替で整合性を維持し、n8n から更新系 API は呼ばない。 |
+
+補足:
+- indexer は `scripts/itsm/gitlab/start_gitlab_efs_indexer.sh` で起動し、Qdrant 側は build コレクション作成 → upsert → alias 切替で更新する。
+- 検索系ワークフローの現行実装は `points/search` が中心で、上記 API は同一経路（n8n → Qdrant）で運用可能な拡張 API として扱う。
 
 ### GitLab プロジェクトの EFS mirror（レルム別 / Step Functions ループ）
 GitLab の特定プロジェクト（一般管理/サービス管理/テクニカル管理）を、Qdrant から参照可能な EFS（`/${n8n_filesystem_path}/qdrant/${realm}/...`）へ **レルム別に mirror**（bare repo / mirror 形式）できます。mirror は Step Functions の常駐ループ（ECS タスク）で定期実行します。
@@ -543,51 +565,55 @@ bash scripts/itsm/grafana/show_grafana_admin_credentials.sh
 ```
 
 ### Grafana のユースケース用ダッシュボード同期
-Grafana の realm ごとに ITSM ユースケース向けのフォルダ/ダッシュボードを作成・同期します。Terraform の `output` を参照して Grafana の管理者認証情報と対象 URL を自動解決します。
+ユースケース関連の同期は `apps/itsm_core/bootstrap/scripts/sync_usecase_dashboards.sh` を利用します。実行例/引数/DRY_RUN は `apps/itsm_core/README.md` と `apps/itsm_core/bootstrap/docs/usage/README.md` を参照してください。
 
-- スクリプト: `scripts/itsm/grafana/sync_usecase_dashboards.sh`
-- 仕様/変数: [`docs/scripts.md`](../scripts.md)
+### Grafana 機能の採用方針（Alertmanager / Alert provisioning / Data source provisioning）
 
-基本の使い方（全 realm を対象に同期）:
+本システムでは、Grafana 機能を以下の方針で運用します。
 
-```bash
-aws sso login --profile "$(terraform output -raw aws_profile)"
-bash scripts/itsm/grafana/sync_usecase_dashboards.sh
-```
-
-特定 realm のみ対象にする例:
-
-```bash
-GRAFANA_TARGET_REALM="prod" \
-  bash scripts/itsm/grafana/sync_usecase_dashboards.sh
-```
-
-Terraform output を使わずに直接指定する例（Grafana URL と管理者認証を直指定）:
+- `Data source provisioning` は **採用**（標準運用）
+  - 実装: Terraform の ECS 初期化コンテナ `grafana-fs-init` が、realm ごとに
+    - `Athena` datasource（`athena.yaml`）
+    - `CloudWatch` datasource（`cloudwatch.yaml`）
+    を `GF_PATHS_PROVISIONING` 配下へ自動生成します（`modules/stack/ecs_tasks.tf`）。
+  - 目的: 監視参照の初期セットアップをコード化し、realm ごとの差異を抑制する。
+  - 確認例:
 
 ```bash
-GRAFANA_ADMIN_URL="https://grafana.example.com" \
-GRAFANA_ADMIN_USER="admin" \
-GRAFANA_ADMIN_PASSWORD="***" \
-  bash scripts/itsm/grafana/sync_usecase_dashboards.sh
+GRAFANA_URL="$(terraform output -json grafana_realm_urls | jq -r '.general_management')"
+GRAFANA_TOKEN="$(terraform output -json grafana_api_tokens_by_realm | jq -r '.general_management // .default')"
+
+curl -fsS -H "Authorization: Bearer ${GRAFANA_TOKEN}" \
+  "${GRAFANA_URL%/}/api/datasources/name/Athena" | jq -r '.name,.type'
+curl -fsS -H "Authorization: Bearer ${GRAFANA_TOKEN}" \
+  "${GRAFANA_URL%/}/api/datasources/name/CloudWatch" | jq -r '.name,.type'
 ```
 
-API を叩かずに実行内容だけ確認する例:
+- `Alertmanager data source` は **現行標準運用では不採用**
+  - 理由: 現行の一次通知経路は CloudWatch/SNS → n8n を正としており、Alertmanager を別経路で重畳しない。
+  - 将来、Prometheus/Alertmanager 系を正式導入する場合に再評価する。
 
-```bash
-GRAFANA_DRY_RUN="true" \
-  bash scripts/itsm/grafana/sync_usecase_dashboards.sh
-```
+- `Alert provisioning (file/API)` は **現行標準運用では不採用**
+  - 理由: 現行は CloudWatch 側アラームを起点に運用しており、Grafana 側 Alert rule/Contact point/Policy の IaC 化は標準スコープ外。
+  - 将来、Grafana Alerting を一次経路として採用する場合は、運用責務（通知先、重複抑止、優先度正規化）を定義した上で導入する。
+
+参照（Grafana 公式）:
+- Data source provisioning: <https://grafana.com/docs/grafana/latest/administration/provisioning/#data-sources>
+- Data source HTTP API: <https://grafana.com/docs/grafana/latest/developers/http_api/data_source/>
+- Alerting file provisioning: <https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/>
+- Alerting Provisioning HTTP API: <https://grafana.com/docs/grafana/latest/developers/http_api/alerting_provisioning/>
+- Alertmanager data source: <https://grafana.com/docs/grafana/latest/datasources/alertmanager/>
 
 ### GitLabメンション通知（n8n）
 GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@username` を抽出し、Zulip DM へ通知する連携です。
 
-- 仕様書: `../../apps/gitlab_mention_notify/README.md`
-- 実装: `../../apps/gitlab_mention_notify/`
-  - n8n workflow: `../../apps/gitlab_mention_notify/workflows/gitlab_mention_notify.json`
-  - デプロイスクリプト: `../../apps/gitlab_mention_notify/scripts/deploy_workflows.sh`
+- 仕様書: `../../apps/itsm_core/gitlab_mention_notify/README.md`
+- 実装: `../../apps/itsm_core/gitlab_mention_notify/`
+  - n8n workflow: `../../apps/itsm_core/gitlab_mention_notify/workflows/gitlab_mention_notify.json`
+  - デプロイスクリプト: `../../apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh`
 
 #### 事前準備
-- 対応表（例外のみ・テンプレ）: `mention_user_mapping.md`
+- 対応表（例外のみ・テンプレ）: `apps/itsm_core/bootstrap/docs/mention_user_mapping.md`
   - 実運用では GitLab の「サービス管理」プロジェクト内 `docs/mention_user_mapping.md` を正とします。
   - 本 README にも同内容を「GitLabメンション→ユーザー対応表」として統合しています（編集の正は上記ファイル）。
 - GitLab の Webhook Secret を決めておく（`GITLAB_WEBHOOK_SECRET`）。
@@ -614,7 +640,7 @@ GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@usern
 
 #### デプロイ（n8nへの注入）
 ```bash
-../../apps/gitlab_mention_notify/scripts/deploy_workflows.sh
+../../apps/itsm_core/gitlab_mention_notify/scripts/deploy_workflows.sh
 ```
 
 必要に応じて `ACTIVATE=true` を付けて有効化します。
@@ -626,7 +652,7 @@ GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@usern
 
 自動登録する場合:
 ```bash
-../../apps/gitlab_mention_notify/scripts/setup_gitlab_group_webhook.sh
+../../apps/itsm_core/gitlab_mention_notify/scripts/setup_gitlab_group_webhook.sh
 ```
 `gitlab_realm_admin_tokens_yaml` を利用して、レルムごとのグループにWebhookを作成/更新します。
 
@@ -639,7 +665,7 @@ GitLab の更新イベント（MD / Issue / Wiki / コメント）から `@usern
 GitLab の `@username` を Keycloak/Zulip のユーザーに突合するための例外対応表です。原則はメールアドレス一致や username 一致で解決し、対応表は「例外のみ」最小限にします。
 
 > 注: 実運用では、この対応表は GitLab の「サービス管理」プロジェクト内 `docs/mention_user_mapping.md` として管理する想定です。  
-> 本リポジトリの `docs/mention_user_mapping.md` はフォーマットの説明/テンプレート用途です（秘密情報は書かない）。
+> 本リポジトリではテンプレート（フォーマットの説明/テンプレ用途）は `apps/itsm_core/bootstrap/docs/mention_user_mapping.md` に集約しています（秘密情報は書かない）。
 
 ### 運用ルール
 
@@ -650,7 +676,7 @@ GitLab の `@username` を Keycloak/Zulip のユーザーに突合するため�
 
 ### 対応表（例外のみ）
 
-`../../apps/gitlab_mention_notify/workflows/gitlab_mention_notify.json` は、Markdown の表を読み取り、以下の列名を参照します。
+`../../apps/itsm_core/gitlab_mention_notify/workflows/gitlab_mention_notify.json` は、Markdown の表を読み取り、以下の列名を参照します。
 
 - 必須: `gitlab_mention`（または `mention`）
 - 任意: `zulip_user_id`（または `zulip_id`）
@@ -671,7 +697,7 @@ GitLab の `@username` を Keycloak/Zulip のユーザーに突合するため�
 
 ## Zulip 連携設定
 
-Zulip Bot（要求・仕様・実装・送信スタブ）を本 README に統合しました。より厳密な仕様（アプリ側の正の情報源）は `../../apps/aiops_agent/docs/zulip_chat_bot.md` を参照してください。
+Zulip Bot（要求・仕様・実装・送信スタブ）を本 README に統合しました。より厳密な仕様（アプリ側の正の情報源）は `../../apps/aiops_agent/orchestrator/docs/zulip_chat_bot.md` を参照してください。
 
 ### 要求
 
@@ -695,7 +721,7 @@ Zulip Bot（要求・仕様・実装・送信スタブ）を本 README に統合
 
 Zulip の同一レルムに外部ユーザーを招待できる運用を想定する場合、Zulip 受信後に **送信者メールが Keycloak の同一レルムに存在するか**をチェックし、未登録なら「回答できない」旨を返信して以降の処理（LLM/ジョブ投入）を止められます。
 
-- 実装: `../../apps/aiops_agent/workflows/aiops_adapter_ingest.json` の `Verify Keycloak Membership (Zulip)` ノード
+- 実装: `../../apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json` の `Verify Keycloak Membership (Zulip)` ノード
 - 動作: `actor.email` を Keycloak Admin API で検索し、0 件なら `Build Keycloak Reject Message (Ingest)` 経由で返信して終了
 - 注意: Keycloak 管理資格情報を n8n に渡す必要があります（SSM 注入）。本番は最小権限のサービスアカウント化を推奨します。
 
@@ -731,6 +757,25 @@ Zulip の stream 会話で本文が短文（既定: 100文字未満）の場合�
   - `N8N_ZULIP_BOT_TOKEN` または `ZULIP_BOT_TOKEN`（Bot API キー）
   - `N8N_ZULIP_BOT_EMAIL` / `N8N_ZULIP_BOT_TOKEN`（単一運用のフォールバック）
 
+##### 添付ファイル送信（Upload file API）
+
+`Zulip Upload file API` は、以下の順序でワークフローに組み込みます（通知本文 + 添付リンク）。
+
+1. n8n の Code ノードで添付対象（例: OQ 結果 JSON / 実行ログ）を binary プロパティへ格納する。
+2. HTTP Request ノードで `POST /api/v1/user_uploads` を呼び、multipart/form-data の `file` としてアップロードする（認証は Bot の Basic 認証）。
+3. レスポンスの `uri` を受け取り、`POST /api/v1/messages` の本文へ `https://<realm>.zulip...<uri>` を埋め込んで送信する。
+
+ワークフロー根拠（適用先）:
+
+- `apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json`
+- `apps/aiops_agent/adapter/workflows/aiops_adapter_approval.json`
+- `apps/aiops_agent/orchestrator/workflows/aiops_oq_runner.json`
+
+運用ルール:
+
+- 添付は「証跡（レポート/ログ/差分）」の送信時のみ使い、通常通知は `POST /messages` を基本とする。
+- 添付の正本は GitLab/S3 等に保持し、Zulip 側は共有導線（参照リンク）として扱う。
+
 #### 返信（Outgoing Webhook の HTTP レスポンス / bot_type=3）
 
 Zulip の Outgoing Webhook（bot_type=3）は、受信側が Webhook の **HTTP レスポンス**として JSON を返すことで、同じ会話に返信を投稿できます。
@@ -747,8 +792,8 @@ Zulip の Outgoing Webhook（bot_type=3）は、受信側が Webhook の **HTTP 
 n8n のフローから Zulip へ通知を送る場合は、Bot を作成して API キーを n8n の Credential に登録しておきます。
 
 1. Zulip 管理者の API キーが `terraform.itsm.tfvars`/SSM に入っていることを確認する（未設定なら `bash scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh` で DB から拾い、`zulip_admin_api_key` を更新）。
-2. `bash apps/aiops_agent/scripts/refresh_zulip_mess_bot.sh` を実行して送信専用 Bot を作成/取得し、`terraform.itsm.tfvars` の Bot 設定（トークン等）を更新する。既定では `VERIFY_AFTER=true` のため、更新後に `apps/aiops_agent/scripts/verify_zulip_aiops_agent_bots.sh --execute` による Bot 登録検証も自動で実行される（スキップしたい場合は `VERIFY_AFTER=false`）。
-   - 送信専用 Bot（mess）の既定 `ZULIP_BOT_SHORT_NAME`: `aiops-agent-mess-{realm}`（注: 現行実装では `{realm}` は置換せずそのまま short_name として扱う）
+2. `bash scripts/itsm/n8n/refresh_zulip_mess_bot.sh` を実行して送信専用 Bot を作成/取得し、`terraform.itsm.tfvars` の Bot 設定（トークン等）を更新する。既定では `VERIFY_AFTER=true` のため、更新後に `apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh --execute` による Bot 登録検証も自動で実行される（スキップしたい場合は `VERIFY_AFTER=false`）。
+   - 送信専用 Bot（mess）の既定 `ZULIP_BOT_SHORT_NAME`: `aiops-agent-mess-{realm}`（`{realm}` は置換される）
 3. 本リポジトリの AIOps ワークフローは、n8n の環境変数（SSM 注入）から **レルム単位の値**を参照して `Authorization: Basic ...` を組み立てるため、通常は n8n の `Zulip API` Credential を作成する必要はありません。
    - `terraform apply` により、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` から **レルム別 SSM パラメータ**が書き込まれ、n8n に `N8N_ZULIP_BOT_TOKEN` / `N8N_ZULIP_BOT_EMAIL` / `N8N_ZULIP_API_BASE_URL` がレルム単位で注入されます。
    - 参照用の SSM パラメータ名は `terraform output` の `aiops_zulip_*_param_by_realm` で確認できます。
@@ -779,9 +824,9 @@ JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ
 
 #### ボットタイプ（運用の呼び分け）
 
-- `mess`: 送信用 Bot（n8n -> Zulip 通知など）をレルムごとに作成/取得し、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` を更新。`apps/aiops_agent/scripts/refresh_zulip_mess_bot.sh`
+- `mess`: 送信用 Bot（n8n -> Zulip 通知など）をレルムごとに作成/取得し、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` を更新。`scripts/itsm/n8n/refresh_zulip_mess_bot.sh`
 - `outgoing`: Outgoing Webhook bot（bot_type=3）の作成/更新＋`terraform.itsm.tfvars` の `zulip_outgoing_tokens_yaml`/`zulip_outgoing_bot_emails_yaml` を更新。`scripts/itsm/n8n/refresh_zulip_bot.sh`
-- `verify`: Bot 登録の検証。`apps/aiops_agent/scripts/verify_zulip_aiops_agent_bots.sh`
+- `verify`: Bot 登録の検証。`apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh`
 
 ### Bot 再利用ポリシー（重要）
 
@@ -803,7 +848,7 @@ JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ
 - AI Ops Agent 側の受信口は `POST /ingest/zulip` を推奨とし、Zulip 側の Webhook URL もこのパスに固定する。
 - 通常の依頼・承認・フィードバック等はすべてこの受信口で受ける。
 - イベント種別の推定とフィールド抽出はプロンプト内のポリシー＋条件分岐で `event_kind` を JSON 出力させ、語彙は `policy_context.taxonomy.event_kind_vocab` を正とする。
-- コードは署名/冪等性/スキーマ検証、承認トークンの形式/TTL/ワンタイム性検証などのハード制約に限定する（承認/評価コマンドの具体例は `../../apps/aiops_agent/data/default/policy/interaction_grammar_ja.json` を正とする）。
+- コードは署名/冪等性/スキーマ検証、承認トークンの形式/TTL/ワンタイム性検証などのハード制約に限定する（承認/評価コマンドの具体例は `../../apps/aiops_agent/orchestrator/data/default/policy/interaction_grammar_ja.json` を正とする）。
 
 ### 検証（送信スタブ）
 

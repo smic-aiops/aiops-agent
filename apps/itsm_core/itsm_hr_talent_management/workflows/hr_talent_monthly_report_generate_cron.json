@@ -1,0 +1,64 @@
+{
+  "name": "hr-talent-monthly-report-generate-cron",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "custom",
+              "cronExpression": "10 0 1 * *"
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Cron (monthly)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowContext = this;\nconst env = $env || {};\n\nfunction required(value, name) {\n  if (value === undefined || value === null || String(value).trim() === '') {\n    throw new Error(`${name} is required`);\n  }\n  return value;\n}\n\nfunction trimSlash(value) {\n  return String(value || '').replace(/\\/+$/, '');\n}\n\nfunction safeString(value) {\n  if (value === undefined || value === null) return '';\n  return String(value).trim();\n}\n\nfunction yyyymm(d) {\n  const dt = (d instanceof Date) ? d : new Date(d);\n  const y = dt.getUTCFullYear();\n  const m = String(dt.getUTCMonth() + 1).padStart(2, '0');\n  return `${y}-${m}`;\n}\n\nfunction previousMonthYyyymm(now = new Date()) {\n  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));\n  d.setUTCMonth(d.getUTCMonth() - 1);\n  return yyyymm(d);\n}\n\nfunction parseYamlValue(text, key) {\n  const m = String(text || '').match(new RegExp(`^${key}:\\\\s*(.*)$`, 'm'));\n  if (!m) return '';\n  const raw = String(m[1] || '').trim();\n  if (!raw) return '';\n  if (raw.startsWith('\"') && raw.endsWith('\"')) return raw.slice(1, -1).replace(/\\\\\"/g, '\"');\n  if (raw.startsWith(\"'\") && raw.endsWith(\"'\")) return raw.slice(1, -1);\n  return raw;\n}\n\nfunction mdEscape(value) {\n  return String(value || '').replace(/\\|/g, '\\\\|');\n}\n\nconst realm = safeString(env.N8N_REALM || env.N8N_OBSERVER_REALM || 'default') || 'default';\n\nconst gitlabBaseUrl = trimSlash(env.N8N_GITLAB_BASE_URL || env.GITLAB_BASE_URL || env.GITLAB_URL || env.SERVICE_URL_GITLAB || '');\nconst gitlabApiBase = trimSlash(env.N8N_GITLAB_API_BASE_URL || env.GITLAB_API_BASE_URL || (gitlabBaseUrl ? `${gitlabBaseUrl}/api/v4` : '') || '');\nconst gitlabToken = safeString(env.N8N_GITLAB_TOKEN || env.GITLAB_TOKEN || env.GITLAB_ADMIN_TOKEN || '');\n\nfunction normalizeProjectRef(value) {\n  const v = safeString(value);\n  if (!v) return '';\n  if (/^\\d+$/.test(v)) return v;\n  if (v.includes('/')) return v;\n  return `${realm}/${v}`;\n}\n\nlet projectRefRaw = safeString(env.HR_TALENT_GITLAB_PROJECT_ID || env.HR_TALENT_GITLAB_PROJECT_PATH || env.N8N_GITLAB_PROJECT_ID || env.N8N_GITLAB_PROJECT_PATH || '' || env.HR_TALENT_PROJECT_PATH || env.HR_TALENT_MANAGEMENT_PROJECT_PATH || '');\nlet projectRef = normalizeProjectRef(projectRefRaw);\nif (!projectRef) {\n  projectRef = `${realm}/hr-talent-management`;\n}\n\nconst defaultBranch = safeString(env.HR_TALENT_DEFAULT_BRANCH || 'main') || 'main';\nconst targetMonth = previousMonthYyyymm(new Date());\n\nrequired(gitlabApiBase, 'GITLAB_API_BASE_URL');\nrequired(gitlabToken, 'GITLAB_TOKEN');\nrequired(projectRef, 'HR_TALENT_GITLAB_PROJECT_ID or HR_TALENT_GITLAB_PROJECT_PATH (or HR_TALENT_PROJECT_PATH)');\n\nconst zulipBaseUrl = trimSlash(env.ZULIP_API_BASE_URL || env.N8N_ZULIP_API_BASE_URL || '');\nconst zulipEmail = safeString(env.ZULIP_BOT_EMAIL || env.ZULIP_EMAIL || '');\nconst zulipApiKey = safeString(env.ZULIP_BOT_API_KEY || env.ZULIP_API_KEY || '');\nconst zulipStream = safeString(env.HR_TALENT_ZULIP_STREAM || '');\nconst zulipTopicDefault = safeString(env.HR_TALENT_ZULIP_TOPIC || 'hr-talent') || 'hr-talent';\n\nasync function zulipSendStreamMessage(content, topic) {\n  if (!zulipBaseUrl || !zulipEmail || !zulipApiKey || !zulipStream) return null;\n  const url = `${zulipBaseUrl}/api/v1/messages`;\n  const auth = Buffer.from(`${zulipEmail}:${zulipApiKey}`).toString('base64');\n  return await workflowContext.helpers.httpRequest({\n    method: 'POST',\n    url,\n    json: true,\n    headers: {\n      'Authorization': `Basic ${auth}`,\n    },\n    form: {\n      type: 'stream',\n      to: zulipStream,\n      topic: topic || zulipTopicDefault,\n      content,\n    }\n  });\n}\n\n\nconst projectEncoded = encodeURIComponent(projectRef);\n\nasync function listTree(path) {\n  const out = [];\n  let page = 1;\n  while (page <= 50) {\n    const url = `${gitlabApiBase}/projects/${projectEncoded}/repository/tree`;\n    const items = await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url,\n      json: true,\n      headers: { 'PRIVATE-TOKEN': gitlabToken },\n      qs: {\n        path,\n        recursive: true,\n        per_page: 100,\n        page\n      }\n    });\n    if (!Array.isArray(items) || items.length === 0) break;\n    out.push(...items);\n    if (items.length < 100) break;\n    page += 1;\n  }\n  return out;\n}\n\nasync function getFileRaw(filePath, ref) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/repository/files/${encodeURIComponent(filePath)}/raw`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'GET',\n    url,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    qs: { ref },\n    json: false\n  });\n}\n\nasync function createBranch(branch) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/repository/branches`;\n  try {\n    return await workflowContext.helpers.httpRequest({\n      method: 'POST',\n      url,\n      json: true,\n      headers: { 'PRIVATE-TOKEN': gitlabToken },\n      qs: { branch, ref: defaultBranch }\n    });\n  } catch (err) {\n    const status = err?.response?.statusCode || err?.statusCode || null;\n    if (status === 400 || status === 409) return null;\n    throw err;\n  }\n}\n\nasync function fileExists(filePath, ref) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/repository/files/${encodeURIComponent(filePath)}`;\n  try {\n    await workflowContext.helpers.httpRequest({\n      method: 'GET',\n      url,\n      json: true,\n      headers: { 'PRIVATE-TOKEN': gitlabToken },\n      qs: { ref }\n    });\n    return true;\n  } catch (err) {\n    const status = err?.response?.statusCode || err?.statusCode || null;\n    if (status === 404) return false;\n    return false;\n  }\n}\n\nasync function commitFile(branch, filePath, content, commitMessage, action) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/repository/commits`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'POST',\n    url,\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    body: {\n      branch,\n      commit_message: commitMessage,\n      actions: [\n        {\n          action,\n          file_path: filePath,\n          content,\n        }\n      ]\n    }\n  });\n}\n\nasync function createMr(sourceBranch, title, description) {\n  const url = `${gitlabApiBase}/projects/${projectEncoded}/merge_requests`;\n  return await workflowContext.helpers.httpRequest({\n    method: 'POST',\n    url,\n    json: true,\n    headers: { 'PRIVATE-TOKEN': gitlabToken },\n    body: {\n      source_branch: sourceBranch,\n      target_branch: defaultBranch,\n      title,\n      description,\n      remove_source_branch: true,\n    }\n  });\n}\n\nconst tree = await listTree('ledger/skill_updates');\nconst ymlFiles = (Array.isArray(tree) ? tree : [])\n  .filter((i) => i && i.type === 'blob')\n  .map((i) => String(i.path || ''))\n  .filter((p) => p.endsWith('.yml') || p.endsWith('.yaml'));\n\nconst rows = [];\nconst skillCount = {};\nconst peopleSet = new Set();\n\nfor (const p of ymlFiles) {\n  let raw;\n  try {\n    raw = await getFileRaw(p, defaultBranch);\n  } catch (err) {\n    continue;\n  }\n  const requestedAt = parseYamlValue(raw, 'requested_at');\n  const personKey = parseYamlValue(raw, 'person_key');\n  const skillId = parseYamlValue(raw, 'skill_id');\n  const level = parseYamlValue(raw, 'level');\n\n  const month = requestedAt ? String(requestedAt).slice(0, 7) : '';\n  if (month !== targetMonth) continue;\n\n  rows.push({\n    file: p,\n    requested_at: requestedAt,\n    person_key: personKey,\n    skill_id: skillId,\n    level,\n  });\n  if (personKey) peopleSet.add(personKey);\n  if (skillId) skillCount[skillId] = (skillCount[skillId] || 0) + 1;\n}\n\nconst total = rows.length;\nconst uniquePeople = peopleSet.size;\nconst uniqueSkills = Object.keys(skillCount).length;\nconst topSkills = Object.entries(skillCount)\n  .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))\n  .slice(0, 20);\n\nconst nowIso = new Date().toISOString();\n\nconst reportMd = [\n  `# HR Talent 月次レポート (${targetMonth})`,\n  '',\n  `- realm: ${realm}`,\n  `- generated_at: ${nowIso}`,\n  '',\n  '## サマリ',\n  '',\n  `- スキル更新（skill_updates）件数: **${total}**`,\n  `- 対象者（ユニーク）: **${uniquePeople}**`,\n  `- 更新スキル種別（ユニーク）: **${uniqueSkills}**`,\n  '',\n  '## スキル別 件数（上位）',\n  '',\n  '| skill_id | count |',\n  '|---|---:|',\n  ...topSkills.map(([skill, count]) => `| ${mdEscape(skill)} | ${count} |`),\n  '',\n  '## 明細（当月の skill_update レジャー）',\n  '',\n  '| requested_at | person_key | skill_id | level | file |',\n  '|---|---|---|---|---|',\n  ...rows\n    .sort((a, b) => String(a.requested_at || '').localeCompare(String(b.requested_at || '')))\n    .map((r) => `| ${mdEscape(r.requested_at)} | ${mdEscape(r.person_key)} | ${mdEscape(r.skill_id)} | ${mdEscape(r.level)} | ${mdEscape(r.file)} |`),\n  '',\n  '---',\n  'このレポートは `ledger/skill_updates/*.yml`（requested_at の YYYY-MM）を集計して生成。',\n].join('\\n');\n\nconst branch = `hr-monthly-report-${targetMonth}`;\nconst reportPath = `reports/monthly/${targetMonth}.md`;\n\nawait createBranch(branch);\nconst exists = await fileExists(reportPath, branch);\nconst action = exists ? 'update' : 'create';\n\nawait commitFile(\n  branch,\n  reportPath,\n  reportMd + '\\n',\n  `Add HR Talent monthly report (${targetMonth})`,\n  action\n);\n\nconst mr = await createMr(\n  branch,\n  `HR Talent monthly report (${targetMonth})`,\n  `This MR was generated by n8n (hr-talent-monthly-report-generate-cron).\\n\\nrealm: ${realm}\\nmonth: ${targetMonth}`\n);\n\n\ntry {\n  const msg = [\n    `HR Talent: 月次レポートMRを作成しました (${targetMonth})`,\n    `- realm: ${realm}`,\n    mr?.web_url ? `- mr: ${mr.web_url}` : null,\n    `- report: ${reportPath}`,\n  ].filter((v) => v !== null).join('\\n');\n  await zulipSendStreamMessage(msg, 'hr-monthly-report');\n} catch (err) {\n  // ignore zulip failures\n}\n\nreturn [{\n  json: {\n    ok: true,\n    status_code: 200,\n    realm,\n    project_ref: projectRef,\n    month: targetMonth,\n    report_path: reportPath,\n    mr_url: mr?.web_url || null,\n    counts: { total, unique_people: uniquePeople, unique_skills: uniqueSkills },\n  }\n}];\n"
+      },
+      "id": "2",
+      "name": "Generate Monthly Report (Cron)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Cron: 毎月 1日 00:10 UTC\\n- 先月分（YYYY-MM）を集計し `reports/monthly/<YYYY-MM>.md` を MR で反映\\n\\nEnv (expected):\\n- N8N_GITLAB_API_BASE_URL (or GITLAB_API_BASE_URL)\\n- N8N_GITLAB_TOKEN (or GITLAB_TOKEN)\\n- HR_TALENT_GITLAB_PROJECT_PATH (optional; default: <realm>/hr-talent-management)\\n- HR_TALENT_DEFAULT_BRANCH (optional; default: main)\\n"
+      },
+      "id": "3",
+      "name": "Sticky Note: cron",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        200,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Cron (monthly)": {
+      "main": [
+        [
+          {
+            "node": "Generate Monthly Report (Cron)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

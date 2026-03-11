@@ -5,6 +5,7 @@ locals {
   ecs_n8n_shared_realm     = coalesce(local.n8n_primary_realm, local.ecs_default_realm)
   ecs_grafana_shared_realm = coalesce(local.grafana_primary_realm, local.ecs_default_realm)
   ecs_sulu_shared_realm    = coalesce(local.sulu_primary_realm, local.ecs_default_realm)
+  ecs_horilla_shared_realm = coalesce(local.horilla_primary_realm, local.ecs_default_realm)
 
   n8n_has_efs_effective = (
     trimspace(coalesce(var.n8n_filesystem_id, "")) != "" ||
@@ -77,6 +78,10 @@ locals {
       [for realm in local.sulu_realms : { name = "php-fpm-${realm}", realm = realm }],
       [for realm in local.sulu_realms : { name = "nginx-${realm}", realm = realm }]
     ) : []
+    horilla = contains(local.enabled_services, "horilla") ? concat(
+      [for realm in local.horilla_realms : { name = "horilla-db-init-${realm}", realm = realm }],
+      [for realm in local.horilla_realms : { name = "horilla-${realm}", realm = realm }]
+    ) : []
     keycloak = contains(local.enabled_services, "keycloak") ? concat(
       local.keycloak_has_efs_effective ? [{ name = "keycloak-fs-init", realm = local.ecs_default_realm }] : [],
       [
@@ -145,6 +150,7 @@ locals {
     n8n             = local.ecs_n8n_shared_realm
     exastro         = local.ecs_default_realm
     sulu            = local.ecs_sulu_shared_realm
+    horilla         = local.ecs_horilla_shared_realm
     keycloak        = local.ecs_default_realm
     odoo            = local.ecs_default_realm
     pgadmin         = local.ecs_default_realm
@@ -173,6 +179,7 @@ locals {
   ecs_service_log_group_pairs_additional = toset(concat(
     contains(local.enabled_services, "n8n") ? [for realm in local.n8n_realms : "${realm}::n8n"] : [],
     contains(local.enabled_services, "sulu") ? [for realm in local.sulu_realms : "${realm}::sulu"] : [],
+    contains(local.enabled_services, "horilla") ? [for realm in local.horilla_realms : "${realm}::horilla"] : [],
     contains(local.enabled_services, "grafana") ? [for realm in local.grafana_realms : "${realm}::grafana"] : [],
   ))
   ecs_service_log_group_extra_candidates = {

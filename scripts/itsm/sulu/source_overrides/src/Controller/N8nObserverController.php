@@ -32,6 +32,67 @@ final class N8nObserverController
         ]);
     }
 
+    public function ingest(Request $request, N8nObserverEventRepository $repository): JsonResponse
+    {
+        $expectedToken = $this->getObserverToken();
+        if ($expectedToken === null) {
+            return new JsonResponse([
+                'ok' => false,
+                'error' => 'observer_token_not_configured',
+            ], 500);
+        }
+
+        $receivedToken = (string) $request->headers->get('X-Observer-Token', '');
+        if ($receivedToken === '' || !hash_equals($expectedToken, $receivedToken)) {
+            return new JsonResponse([
+                'ok' => false,
+                'error' => 'unauthorized',
+            ], 401);
+        }
+
+        $raw = (string) $request->getContent();
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return new JsonResponse([
+                'ok' => false,
+                'error' => 'invalid_json',
+            ], 400);
+        }
+
+        $realm = $this->normalizeFilter($decoded['realm'] ?? null);
+        $workflow = $this->normalizeFilter($decoded['workflow'] ?? null);
+        $executionId = $this->normalizeFilter($decoded['execution_id'] ?? null);
+
+        $event = $decoded['event'] ?? null;
+        $eventObj = is_array($event) ? $event : [];
+        $node = $this->normalizeFilter($eventObj['target'] ?? null)
+            ?? $this->normalizeFilter($eventObj['source'] ?? null);
+
+        $phase = $this->normalizeFilter($eventObj['phase'] ?? null);
+        $items = $eventObj['items'] ?? null;
+        $itemsList = is_array($items) ? $items : [];
+
+        $normalizedPayload = [
+            'kind' => $this->normalizeFilter($decoded['kind'] ?? null),
+            'realm' => $realm,
+            'workflow' => $workflow,
+            'node' => $node,
+            'execution_id' => $executionId,
+            'phase' => $phase,
+            'sent_at' => $this->normalizeFilter($decoded['sent_at'] ?? null),
+            'input' => $phase === 'before' ? $itemsList : null,
+            'output' => $phase === 'after' ? $itemsList : null,
+            'raw' => $decoded,
+        ];
+
+        $id = $repository->insertEvent($realm, $workflow, $node, $executionId, $normalizedPayload);
+
+        return new JsonResponse([
+            'ok' => true,
+            'id' => $id,
+        ], 201);
+    }
+
     private function normalizeFilter(mixed $value): ?string
     {
         if (!is_string($value)) {
@@ -39,5 +100,15 @@ final class N8nObserverController
         }
         $trimmed = trim($value);
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function getObserverToken(): ?string
+    {
+        $token = $_ENV['N8N_OBSERVER_TOKEN'] ?? null;
+        if (!is_string($token)) {
+            return null;
+        }
+        $token = trim($token);
+        return $token === '' ? null : $token;
     }
 }

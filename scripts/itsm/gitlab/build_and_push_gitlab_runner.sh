@@ -17,7 +17,7 @@ set -euo pipefail
 #   IMAGE_ARCH          (default: terraform output image_architecture, fallback linux/amd64)
 #   ECR_PREFIX          (default: terraform output ecr_namespace, fallback aiops)
 #   ECR_REPO_GITLAB_RUNNER (default: terraform output ecr_repo_gitlab_runner, fallback gitlab-runner)
-#   GITLAB_RUNNER_TAG   (default: terraform output gitlab_runner_image_tag, fallback alpine-v17.11.7)
+#   GITLAB_RUNNER_TAG   (default: terraform output gitlab_runner_image_tag, fallback alpine-v17.11.4)
 #   GITLAB_RUNNER_IMAGE (default: gitlab/gitlab-runner)
 #   GITLAB_RUNNER_CONTEXT    (default: ./docker/gitlab-runner)
 #   GITLAB_RUNNER_DOCKERFILE (default: <context>/Dockerfile)
@@ -97,7 +97,7 @@ fi
 ECR_REPO_GITLAB_RUNNER="${ECR_REPO_GITLAB_RUNNER:-gitlab-runner}"
 
 GITLAB_RUNNER_TAG="${GITLAB_RUNNER_TAG:-$(tf_output_raw gitlab_runner_image_tag)}"
-GITLAB_RUNNER_TAG="${GITLAB_RUNNER_TAG:-alpine-v17.11.7}"
+GITLAB_RUNNER_TAG="${GITLAB_RUNNER_TAG:-alpine-v17.11.4}"
 GITLAB_RUNNER_IMAGE="${GITLAB_RUNNER_IMAGE:-gitlab/gitlab-runner}"
 GITLAB_RUNNER_CONTEXT="$(resolve_path "${GITLAB_RUNNER_CONTEXT:-./docker/gitlab-runner}")"
 GITLAB_RUNNER_DOCKERFILE="${GITLAB_RUNNER_DOCKERFILE:-${GITLAB_RUNNER_CONTEXT}/Dockerfile}"

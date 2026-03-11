@@ -277,6 +277,26 @@ variable "n8n_db_ping_interval_seconds" {
   default     = 2
 }
 
+variable "n8n_executions_mode" {
+  description = "n8n executions mode (EXECUTIONS_MODE). Supported: regular, queue."
+  type        = string
+  default     = "regular"
+  validation {
+    condition     = contains(["regular", "queue"], var.n8n_executions_mode)
+    error_message = "n8n_executions_mode must be one of: regular, queue."
+  }
+}
+
+variable "n8n_executions_timeout" {
+  description = "n8n workflow execution timeout seconds (EXECUTIONS_TIMEOUT). Use -1 to disable."
+  type        = number
+  default     = -1
+  validation {
+    condition     = var.n8n_executions_timeout >= -1
+    error_message = "n8n_executions_timeout must be -1 or greater."
+  }
+}
+
 variable "pg_db_password" {
   description = "Master password for the PostgreSQL instance"
   type        = string
@@ -646,6 +666,7 @@ EOF
     exastro_web = "ita-web"
     exastro_api = "ita-api"
     sulu        = "sulu"
+    horilla     = "horilla"
     pgadmin     = "pgadmin"
     keycloak    = "keycloak"
     odoo        = "odoo"
@@ -1067,10 +1088,22 @@ variable "ecr_repo_keycloak" {
   default     = "keycloak"
 }
 
+variable "ecr_repo_horilla" {
+  description = "ECR repository name for Horilla"
+  type        = string
+  default     = "horilla"
+}
+
 variable "keycloak_image_tag" {
   description = "Keycloak image tag to use for pulls/builds"
   type        = string
   default     = "26.4.7"
+}
+
+variable "horilla_image_tag" {
+  description = "Horilla image tag to use for pulls/builds"
+  type        = string
+  default     = "1.5.0"
 }
 
 variable "keycloak_smtp_username" {
@@ -1648,6 +1681,12 @@ variable "create_sulu" {
   default     = true
 }
 
+variable "create_horilla" {
+  description = "Whether to create Horilla service resources"
+  type        = bool
+  default     = false
+}
+
 variable "create_sulu_efs" {
   description = "Whether to create an EFS for sulu (tfvars-only flag)"
   type        = bool
@@ -1670,6 +1709,48 @@ variable "sulu_desired_count" {
   description = "Default desired count for sulu ECS service"
   type        = number
   default     = 1
+}
+
+variable "horilla_desired_count" {
+  description = "Default desired count for Horilla ECS service (per realm)"
+  type        = number
+  default     = 1
+}
+
+variable "horilla_health_check_grace_period_seconds" {
+  description = "Grace period for Horilla ECS service load balancer health checks (seconds)"
+  type        = number
+  default     = 120
+}
+
+variable "horilla_task_cpu" {
+  description = "Override CPU units for Horilla task definition (null to use ecs_task_cpu)"
+  type        = number
+  default     = null
+}
+
+variable "horilla_task_memory" {
+  description = "Override memory (MB) for Horilla task definition (null to use ecs_task_memory)"
+  type        = number
+  default     = null
+}
+
+variable "horilla_db_name_prefix" {
+  description = "PostgreSQL database name prefix for Horilla (per realm databases are created as <prefix>_<realm>)"
+  type        = string
+  default     = "horilla"
+}
+
+variable "horilla_environment" {
+  description = "Additional environment variables injected into Horilla containers"
+  type        = map(string)
+  default     = {}
+}
+
+variable "horilla_ssm_params" {
+  description = "SSM parameter names (or ARNs) injected into Horilla containers (merged with default DB params)"
+  type        = map(string)
+  default     = {}
 }
 
 variable "sulu_health_check_grace_period_seconds" {
@@ -1856,7 +1937,7 @@ variable "create_gitlab" {
 variable "create_gitlab_runner" {
   description = "Whether to create GitLab Runner (shell executor on Fargate) resources"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_gitlab_autostop" {
@@ -1937,9 +2018,9 @@ variable "gitlab_omnibus_image_tag" {
 }
 
 variable "gitlab_runner_image_tag" {
-  description = "GitLab Runner image tag to pull/build (upstream tag, e.g. alpine-v17.11.7). Defaults to the GitLab omnibus version (alpine-v<gitlab_omnibus_semver>) when unset."
+  description = "GitLab Runner image tag to pull/build (upstream tag, e.g. alpine-v17.11.4). Defaults to the GitLab omnibus version (alpine-v<gitlab_omnibus_semver>) when unset."
   type        = string
-  default     = null
+  default     = "alpine-v17.11.4"
 }
 
 variable "gitlab_runner_url" {
@@ -1989,6 +2070,12 @@ variable "gitlab_runner_run_untagged" {
   description = "Whether the runner can pick untagged jobs"
   type        = bool
   default     = true
+}
+
+variable "gitlab_runner_locked" {
+  description = "Whether the runner is locked to the current project/group (GitLab-side runner attribute; managed via scripts)"
+  type        = bool
+  default     = false
 }
 
 variable "gitlab_runner_environment" {

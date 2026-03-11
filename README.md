@@ -36,7 +36,7 @@ ITSM x AI Ops x AI Agent を組み合わせた運用のアイデアと手順を�
 - 本リポジトリは **ChatGPT 5.2** で作成されています。
 - 本リポジトリの拡張を含む動作検証も **ChatGPT 5.2** で実施されています。
 - **ChatGPT 5.2** では自律的拡張（自律的に作業を進める振る舞い）が機能しますが、**ChatGPT 5.2 Codex** では自律拡張プロンプト類は想定動作になりません（作業確認のために中断が多いため）。このため **自律的機能拡張の実施には実質的に人手が必要**になります。
-- 自律拡張を行う場合は、まず ChatGPT に `ai/prompts/itsm/itsm_usecase_enrichment.md` の実行を指示し、ユースケース追加（`scripts/itsm/gitlab/templates/*/docs/usecases/` と各 `usecase_guide.md.tpl` の更新）まで実施します。その後 `apps/*/data/default/prompt/system.md` などの「実行指示（system prompt）」を与えることで、以降は原則としてモデルが自律的に拡張を進める前提です。
+- 自律拡張を行う場合は、まず ChatGPT に `ai/prompts/itsm/itsm_usecase_enrichment.md` の実行を指示し、ユースケース追加（`apps/itsm_core/bootstrap/data/templates/*/docs/usecases/` と各 `usecase_guide.md.tpl` の更新）まで実施します。その後 `apps/*/data/default/prompt/system.md` などの「実行指示（system prompt）」を与えることで、以降は原則としてモデルが自律的に拡張を進める前提です。
 
 <p align="center">
   <img src="docs/assets/orchestrator-adapter.jpg" alt="オーケストラレータとアダプター" width="1000" />
@@ -85,16 +85,16 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 
 | 成果物（読み替え） | 主目的 | 参照先 |
 | --- | --- | --- |
-| システム概要（System Description） | 全体像・境界の共有 | `docs/itsm/itsm-platform.md` / `apps/aiops_agent/docs/aiops_agent_design.md` |
-| 要件（URS相当） | 期待値・制約・前提の明確化 | `apps/aiops_agent/docs/app_requirements.md` |
-| 仕様（FS/DS相当） | 動作仕様・設計の明確化 | `apps/aiops_agent/docs/aiops_agent_specification.md` |
-| 実装（参考） | 実装方針の共有 | `apps/aiops_agent/docs/aiops_agent_implementation.md` |
+| システム概要（System Description） | 全体像・境界の共有 | `docs/itsm/itsm-platform.md` / `apps/aiops_agent/orchestrator/docs/aiops_agent_design.md` |
+| 要件（URS相当） | 期待値・制約・前提の明確化 | `apps/aiops_agent/orchestrator/docs/app_requirements.md` |
+| 仕様（FS/DS相当） | 動作仕様・設計の明確化 | `apps/aiops_agent/orchestrator/docs/aiops_agent_specification.md` |
+| 実装（参考） | 実装方針の共有 | `apps/aiops_agent/orchestrator/docs/aiops_agent_implementation.md` |
 | 構築手順（Installation/Configuration） | 再現性ある環境構築 | `docs/setup-guide.md` / `docs/usage-guide.md` / `docs/itsm/README.md` |
-| DQ（設計適格性確認） | 設計・構成の妥当性確認 | `apps/aiops_agent/docs/dq/dq.md` |
-| IQ（据付適格性確認） | 環境が正しく構築されたことの確認 | `apps/aiops_agent/docs/iq/iq.md` |
-| OQ（運用適格性確認） | 想定ユースケースでの動作確認 | `apps/aiops_agent/docs/oq/oq.md` / `apps/workflow_manager/docs/oq/oq.md` |
-| PQ（性能適格性確認） | 性能・限界値の定義と検証 | `apps/aiops_agent/docs/pq/pq.md` |
-| 運用手順（SOP/Runbook相当） | 定常運用・障害対応の明確化 | `apps/aiops_agent/docs/aiops_agent_usage.md` / `apps/aiops_agent/data/default/prompt/README.md` |
+| DQ（設計適格性確認） | 設計・構成の妥当性確認 | `apps/aiops_agent/orchestrator/docs/dq/dq.md` |
+| IQ（据付適格性確認） | 環境が正しく構築されたことの確認 | `apps/aiops_agent/orchestrator/docs/iq/iq.md` |
+| OQ（運用適格性確認） | 想定ユースケースでの動作確認 | `apps/aiops_agent/orchestrator/docs/oq/oq.md` / `apps/workflow_manager/workflow_catalog/docs/shared/oq/oq.md` |
+| PQ（性能適格性確認） | 性能・限界値の定義と検証 | `apps/aiops_agent/orchestrator/docs/pq/pq.md` |
+| 運用手順（SOP/Runbook相当） | 定常運用・障害対応の明確化 | `apps/aiops_agent/orchestrator/docs/aiops_agent_usage.md` / `apps/aiops_agent/orchestrator/data/default/prompt/README.md` |
 | 変更管理・監査ログ運用 | 変更の統制と証跡の一貫性 | `docs/change-management.md` |
 | 証跡（evidence） | 実行結果の保全 | `evidence/` |
 
@@ -125,13 +125,13 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 - ECS サービスは `apps/*` と 1:1 で対応することを目安にする
 - **Configuration Specification（構成定義）**
 
-#### `apps/*/docs/cs/` + `apps/aiops_agent/data/` — AI 有効化機能（AI-enabled Functionality）（`/ai` 相当）
+#### `apps/*/docs/cs/` + `apps/aiops_agent/orchestrator/data/` — AI 有効化機能（AI-enabled Functionality）（`/ai` 相当）
 
 - AI は **共有され、ガバナンスされた能力**として扱う
 - プロンプトとツールは変更管理下の構成アイテムとして扱う
 - 振る舞いは AIS で定義する
 
-※ 本リポジトリでは AIS は `apps/*/docs/cs/ai_behavior_spec.md`、プロンプト/ポリシーは主に `apps/aiops_agent/data/` 配下で管理しています（`/ai` をトップレベルに切り出すのは必要に応じて導入）。
+※ 本リポジトリでは AIS は `apps/*/docs/cs/ai_behavior_spec.md`、プロンプト/ポリシーは主に `apps/aiops_agent/orchestrator/data/` 配下で管理しています（`/ai` をトップレベルに切り出すのは必要に応じて導入）。
 
 ### 4.2 GAMP® 5 分類サマリ（目安）
 
@@ -155,13 +155,13 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 
 - **アクセス制御**: 認証（Keycloak）や権限設計を前提に、誰が何を実行できるかを分離する
 - **証跡（audit trail / evidence）**: OQ/PQ 実行結果を `evidence/` に保存し、判断の根拠と紐付ける
-- **SoR（System of Record）**: 共有 RDS(PostgreSQL) の `itsm.*`（例: `itsm.audit_event` / `itsm.approval`）に、承認・決定・主要レコードの構造化データを集約し、AIOpsAgent が「誰が・いつ・何を・どう決めたか」を照会できるようにする（詳細: `docs/itsm/data-model.md`, `docs/itsm/README.md`）
+- **SoR（System of Record）**: 共有 RDS(PostgreSQL) の `itsm.*`（例: `itsm.audit_event` / `itsm.approval`）に、承認・決定・主要レコードの構造化データを集約し、AIOpsAgent が「誰が・いつ・何を・どう決めたか」を照会できるようにする（詳細: `apps/itsm_core/bootstrap/docs/data-model.md`, `docs/itsm/README.md`）
 - **変更管理**: 設定・ワークフロー・プロンプト変更を `docs/change-management.md` の手順で記録し、追跡可能にする
 
 ## 6. AI ガバナンス（NIST AI RMF を意識した整理）
 
 - AI の「意図された振る舞い（Intended Behavior）」は AIS として定義し、変更管理下で維持します
-  - 例: `apps/aiops_agent/docs/cs/ai_behavior_spec.md`、`apps/*/docs/cs/ai_behavior_spec.md`
+  - 例: `apps/aiops_agent/orchestrator/docs/cs/ai_behavior_spec.md`、`apps/*/docs/cs/ai_behavior_spec.md`
 - GxP に関連する出力は、人による監督（レビュー/承認）を前提にします
 
 ## 7. 進め方（CSV 最小フロー）
@@ -172,15 +172,16 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 
 ## 8. 検証（DQ/IQ/OQ/PQ）と証跡
 
-- 検証観点は `apps/aiops_agent/docs/{dq,iq,oq,pq}.md` を参照。
-- OQ の実行手順と証跡（evidence）は `apps/aiops_agent/docs/oq/oq.md` を起点にし、`docs/change-management.md` の方針で保存する。
+- 検証観点は `apps/aiops_agent/orchestrator/docs/{dq,iq,oq,pq}.md` を参照。
+- OQ の実行手順と証跡（evidence）は `apps/aiops_agent/orchestrator/docs/oq/oq.md` を起点にし、`docs/change-management.md` の方針で保存する。
 
 ## 9. クイックスタート（環境構築）
 
 - 環境構築ガイド: `docs/setup-guide.md`
 - 環境の利用手順と SSO の流れ: `docs/usage-guide.md`
 - ITSM セットアップ: `docs/itsm/README.md`
-- ITSM コア（SoR）機能一覧（実装状況）: `docs/itsm/itsm-core-feature-status.md`
+- ITSM コア（SoR）機能一覧（実装状況）: `apps/itsm_core/bootstrap/docs/itsm-core-feature-status.md`
+- CIR（継続的改善）運用フロー（半自律/自律拡張）: `apps/itsm_core/bootstrap/docs/cir_continual_improvement_flow.md`
 
 ## 10. ディレクトリ構成（クイック参照）
 

@@ -44,8 +44,8 @@ resource "aws_ecs_task_definition" "gitlab_runner" {
           CHECK_INTERVAL="$${GITLAB_RUNNER_CHECK_INTERVAL:-0}"
           BUILDS_DIR="$${GITLAB_RUNNER_BUILDS_DIR:-/tmp/gitlab-runner/builds}"
           CACHE_DIR="$${GITLAB_RUNNER_CACHE_DIR:-/tmp/gitlab-runner/cache}"
-          TAG_LIST="$${GITLAB_RUNNER_TAG_LIST:-}"
-          RUN_UNTAGGED="$${GITLAB_RUNNER_RUN_UNTAGGED:-true}"
+	          # Runner attributes like tags/locked/run_untagged are managed on GitLab side
+	          # (see scripts/itsm/gitlab/ensure_gitlab_runner.sh), not via config.toml.
 
           mkdir -p "$${CONFIG_DIR}" "$${BUILDS_DIR}" "$${CACHE_DIR}"
 
@@ -67,23 +67,9 @@ resource "aws_ecs_task_definition" "gitlab_runner" {
               printf '%s\\n' "  url = \\\"$${RUNNER_URL}\\\""
               printf '%s\\n' "  token = \\\"$${RUNNER_TOKEN}\\\""
               printf '%s\\n' "  executor = \\\"shell\\\""
-              if [ -n "$${TAG_LIST}" ]; then
-                printf '%s\\n' "  tag_list = ["
-                oldifs="$${IFS}"
-                IFS=,
-                for t in $${TAG_LIST}; do
-                  t_trim="$(printf '%s' "$${t}" | tr -d '[:space:]')"
-                  if [ -n "$${t_trim}" ]; then
-                    printf '%s\\n' "    \\\"$${t_trim}\\\","
-                  fi
-                done
-                IFS="$${oldifs}"
-                printf '%s\\n' "  ]"
-              fi
-              printf '%s\\n' "  run_untagged = $${RUN_UNTAGGED}"
-              printf '%s\\n' "  locked = false"
-            } > "$${CONFIG_TOML}"
-          fi
+	              :
+	            } > "$${CONFIG_TOML}"
+	          fi
 
           echo "[gitlab-runner] Starting (shell executor)"
           exec gitlab-runner run --config "$${CONFIG_TOML}" --working-directory "/tmp/gitlab-runner"
@@ -125,4 +111,3 @@ resource "aws_ecs_service" "gitlab_runner" {
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-gitlab-runner-svc" })
 }
-
