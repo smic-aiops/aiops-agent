@@ -72,6 +72,15 @@ OpenAI の API Key は「購入するもの」ではなく、**OpenAI Platform �
 
 本リポジトリでの設定方法（`terraform.apps.tfvars` の `OPENAI_MODEL_API_KEY` / SSM パラメータ運用など）は `docs/apps/README.md` を参照してください。
 
+## VS Code で Codex / ChatGPT を使う
+
+OpenAI 公式導線での個人用セットアップ手順は `docs/infra/vscode-codex-chatgpt.md` を参照してください。
+
+- VS Code 拡張: OpenAI 公式 `Codex – OpenAI's coding agent`
+- 認証: `ChatGPT` アカウントでサインイン
+- 役割分担: 実装/レビューは Codex、要件整理や長文の壁打ちは ChatGPT Web/Desktop
+- 機微情報: `terraform.*.tfvars`、`.env`、秘密鍵、顧客データは AI 入力対象外
+
 ## 2. システム概要（System Description）
 
 監査・説明用のシステム概要は次を正とします。

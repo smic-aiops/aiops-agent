@@ -2,6 +2,11 @@
 
 本ファイルは `../setup-guide.md` から **infra 関連**の内容を抜き出して整理したものです。
 
+## VS Code / Codex のセットアップ
+
+- VS Code 上で OpenAI 公式の Codex 拡張を使う個人向け手順は `vscode-codex-chatgpt.md` を参照してください。
+- このリポジトリでは、`terraform.*.tfvars`、`.env`、秘密鍵、顧客データを AI へ渡さない前提で運用します。
+
 ## リポジトリと前提
 - **Git remote** – 必要に応じてリモートを SSH/HTTPS へ切り替える（例：`ssh://git@<host>:<port>/<group>/<repo>.git` または `https://github.com/<org>/<repo>.git`）。`git remote set-url origin ...` で合わせておく。
 - **AWS の準備** – AWS Organizations が使える状態で、IAM Identity Center の権限セットを作って対象アカウントに割り当てておく。
