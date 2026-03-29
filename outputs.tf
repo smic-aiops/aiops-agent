@@ -1083,6 +1083,30 @@ output "gitlab_runner_service_name" {
   value       = local.service_names.gitlab_runner
 }
 
+output "gitlab_data_filesystem_id" {
+  description = "EFS ID used for GitLab data (if created or supplied)"
+  value       = module.stack.gitlab_data_filesystem_id
+  sensitive   = true
+}
+
+output "gitlab_config_filesystem_id" {
+  description = "EFS ID used for GitLab config (if created or supplied)"
+  value       = module.stack.gitlab_config_filesystem_id
+  sensitive   = true
+}
+
+output "gitlab_data_access_point_id" {
+  description = "Access Point ID for the GitLab data EFS mount"
+  value       = module.stack.gitlab_data_access_point_id
+  sensitive   = true
+}
+
+output "gitlab_config_access_point_id" {
+  description = "Access Point ID for the GitLab config EFS mount"
+  value       = module.stack.gitlab_config_access_point_id
+  sensitive   = true
+}
+
 output "exastro_service_name" {
   description = "Unified Exastro ECS service name (web+api)"
   value       = local.service_names.exastro

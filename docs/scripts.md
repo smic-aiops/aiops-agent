@@ -103,6 +103,8 @@
 - `scripts/itsm/gitlab/reset_web_ide_oauth_application.sh` - Web IDE 用 OAuth アプリ設定を再作成
 - `scripts/itsm/gitlab/delete_group_projects.sh` - 指定グループ配下のプロジェクトを削除（メンテ用）
 - `scripts/itsm/gitlab/check_gitlab_efs_rag_pipeline.sh` - GitLab EFS RAG の同期/パイプライン状況を確認（トラブルシュート用）
+- `scripts/itsm/gitlab/dump_gitlab_rds_sql.sh` - GitLab の PostgreSQL を SQL dump として取得（`--dry-run` / `--via-ecs-exec` 対応）
+- `scripts/itsm/gitlab/export_gitlab_efs_tarballs.sh` - GitLab の data/config EFS を tar.gz としてエクスポート（Terraform output から EFS/AP を解決、`--dry-run` 対応）
 - `apps/itsm_core/bootstrap/data/templates/service-management/scripts/cmdb/validate_cmdb.sh` - CMDB サンプルの検証用スクリプト（テンプレ内）
 - `apps/itsm_core/bootstrap/data/templates/service-management/scripts/cmdb/sync_zulip_streams.sh` - CMDB に基づく Zulip ストリーム同期（n8n Webhook 呼び出し、テンプレ内）
 - `apps/itsm_core/bootstrap/data/templates/service-management/scripts/wiki/sync_wiki_from_templates.sh` - docs テンプレートを GitLab Wiki に同期（テンプレ内）
