@@ -138,10 +138,12 @@ fi
 if command -v docker >/dev/null 2>&1; then
   docker run --rm \
     -u "$(id -u)":"$(id -g)" \
+    -e HOME=/tmp \
+    -e NPM_CONFIG_CACHE=/tmp/.npm \
     -v "${SULU_CONTEXT}/source:/app" \
     -w /app/assets/admin \
     "${ADMIN_ASSETS_BUILD_IMAGE}" \
-    sh -lc "npm install ${NPM_INSTALL_ARGS} && npm run ${NPM_BUILD_SCRIPT}"
+    sh -lc "mkdir -p /tmp/.npm && npm install ${NPM_INSTALL_ARGS} && npm run ${NPM_BUILD_SCRIPT}"
   echo "[sulu-admin] build completed (docker)"
   exit 0
 fi

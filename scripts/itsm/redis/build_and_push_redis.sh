@@ -18,6 +18,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+source "${REPO_ROOT}/scripts/itsm/lib/docker_cache.sh"
 
 usage() {
   echo "Usage: scripts/itsm/redis/build_and_push_redis.sh [--dry-run]"
@@ -112,17 +113,13 @@ main() {
   local repo="${ECR_PREFIX}/${ECR_REPO_REDIS}"
   local ecr_uri="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${repo}"
   local tar_path="${IMAGES_DIR}/redis/redis-${REDIS_TAG}.tar"
+  local src="public.ecr.aws/docker/library/redis:${REDIS_TAG}"
 
   echo "[redis] AWS_PROFILE=${AWS_PROFILE} AWS_REGION=${AWS_REGION} AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}"
   echo "[redis] ECR_URI=${ecr_uri}"
   echo "[redis] TAR=${tar_path}"
   if [[ "${DRY_RUN}" == "true" ]]; then
     echo "[redis] DRY_RUN=true (no docker push, no AWS calls)"
-  fi
-
-  if [[ ! -f "${tar_path}" ]]; then
-    echo "[redis] Missing cache tar: ${tar_path} (run scripts/itsm/redis/pull_redis_image.sh)" >&2
-    exit 1
   fi
 
   login_ecr
@@ -137,8 +134,8 @@ main() {
     return 0
   fi
 
-  docker load -i "${tar_path}" >/dev/null
-  docker tag "public.ecr.aws/docker/library/redis:${REDIS_TAG}" "${ecr_uri}:${REDIS_TAG}"
+  docker_use_local_or_load_cache "redis" "${src}" "${tar_path}" "run scripts/itsm/redis/pull_redis_image.sh"
+  docker tag "${src}" "${ecr_uri}:${REDIS_TAG}"
   docker push "${ecr_uri}:${REDIS_TAG}"
   docker tag "${ecr_uri}:${REDIS_TAG}" "${ecr_uri}:latest"
   docker push "${ecr_uri}:latest"

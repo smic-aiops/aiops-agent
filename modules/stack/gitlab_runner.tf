@@ -57,16 +57,16 @@ resource "aws_ecs_task_definition" "gitlab_runner" {
           if [ ! -s "$${CONFIG_TOML}" ]; then
             echo "[gitlab-runner] Writing $${CONFIG_TOML}"
             {
-              printf '%s\\n' "concurrent = $${CONCURRENT}"
-              printf '%s\\n' "check_interval = $${CHECK_INTERVAL}"
-              printf '%s\\n' "builds_dir = \\\"$${BUILDS_DIR}\\\""
-              printf '%s\\n' "cache_dir = \\\"$${CACHE_DIR}\\\""
-              printf '%s\\n' ""
-              printf '%s\\n' "[[runners]]"
-              printf '%s\\n' "  name = \\\"$${RUNNER_NAME}\\\""
-              printf '%s\\n' "  url = \\\"$${RUNNER_URL}\\\""
-              printf '%s\\n' "  token = \\\"$${RUNNER_TOKEN}\\\""
-              printf '%s\\n' "  executor = \\\"shell\\\""
+              printf '%s\n' "concurrent = $${CONCURRENT}"
+              printf '%s\n' "check_interval = $${CHECK_INTERVAL}"
+              printf '%s\n' "builds_dir = \"$${BUILDS_DIR}\""
+              printf '%s\n' "cache_dir = \"$${CACHE_DIR}\""
+              printf '%s\n' ""
+              printf '%s\n' "[[runners]]"
+              printf '%s\n' "  name = \"$${RUNNER_NAME}\""
+              printf '%s\n' "  url = \"$${RUNNER_URL}\""
+              printf '%s\n' "  token = \"$${RUNNER_TOKEN}\""
+              printf '%s\n' "  executor = \"shell\""
 	              :
 	            } > "$${CONFIG_TOML}"
 	          fi

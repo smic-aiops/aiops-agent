@@ -186,11 +186,12 @@ locals {
     SERVICE_CONTROL_CLIENT_SECRET = local.service_control_oidc_client_secret_parameter_name
   } : {}
   default_ssm_params_exastro = {
-    DB_HOST     = local.db_host_parameter_name
-    DB_PORT     = local.db_port_parameter_name
-    DB_DATABASE = local.oase_db_name_parameter_name
-    DB_USER     = local.oase_db_username_parameter_name
-    DB_PASSWORD = local.oase_db_password_parameter_name
+    DB_HOST     = local.mysql_db_host_parameter_name
+    DB_PORT     = local.mysql_db_port_parameter_name
+    DB_DATABASE = local.mysql_db_name_parameter_name
+    DB_USER     = local.mysql_db_username_parameter_name
+    DB_PASSWORD = local.mysql_db_password_parameter_name
+    ENCRYPT_KEY = local.exastro_encrypt_key_parameter_name
   }
 
   default_ssm_params_horilla = {

@@ -15,6 +15,7 @@ set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${REPO_ROOT}"
+source "${REPO_ROOT}/scripts/itsm/lib/docker_cache.sh"
 
 tf_output_raw() {
   local output
@@ -72,7 +73,5 @@ if is_truthy "${DRY_RUN}"; then
 fi
 
 docker pull --platform "${IMAGE_ARCH}" "${XRAY_DAEMON_IMAGE}"
-docker save "${XRAY_DAEMON_IMAGE}" -o "${out_tar}"
-echo "[xray] Saved: ${out_tar}"
+docker_save_cache_or_warn "xray" "${XRAY_DAEMON_IMAGE}" "${out_tar}"
 echo "[xray] Done."
-

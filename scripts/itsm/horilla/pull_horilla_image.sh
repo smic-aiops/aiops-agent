@@ -155,7 +155,7 @@ extract_source() {
 
   local workdir extracted
   workdir="$(mktemp -d)"
-  trap 'rm -rf "${workdir}"' EXIT
+  trap 'rm -rf "${workdir:-}"' RETURN
   tar -xzf "${HORILLA_ARCHIVE_PATH}" -C "${workdir}"
   extracted="$(find "${workdir}" -maxdepth 1 -mindepth 1 -type d | head -n 1)"
   if [[ -z "${extracted}" ]]; then
@@ -189,4 +189,3 @@ main() {
 }
 
 main "$@"
-

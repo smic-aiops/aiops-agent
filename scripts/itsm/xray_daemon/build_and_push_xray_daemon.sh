@@ -18,6 +18,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+source "${REPO_ROOT}/scripts/itsm/lib/docker_cache.sh"
 
 usage() { echo "Usage: scripts/itsm/xray_daemon/build_and_push_xray_daemon.sh [--dry-run]"; }
 
@@ -96,14 +97,10 @@ main() {
   local repo="${ECR_PREFIX}/${ECR_REPO_XRAY_DAEMON}"
   local ecr_uri="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${repo}"
   local tar_path="${IMAGES_DIR}/xray-daemon/xray-daemon-${XRAY_DAEMON_TAG}.tar"
+  local src="public.ecr.aws/xray/aws-xray-daemon:${XRAY_DAEMON_TAG}"
 
   echo "[xray] ECR_URI=${ecr_uri}"
   echo "[xray] TAR=${tar_path}"
-
-  if [[ ! -f "${tar_path}" ]]; then
-    echo "[xray] Missing cache tar: ${tar_path} (run scripts/itsm/xray_daemon/pull_xray_daemon_image.sh)" >&2
-    exit 1
-  fi
 
   login_ecr
   ensure_repo "${repo}"
@@ -117,8 +114,8 @@ main() {
     return 0
   fi
 
-  docker load -i "${tar_path}" >/dev/null
-  docker tag "public.ecr.aws/xray/aws-xray-daemon:${XRAY_DAEMON_TAG}" "${ecr_uri}:${XRAY_DAEMON_TAG}"
+  docker_use_local_or_load_cache "xray" "${src}" "${tar_path}" "run scripts/itsm/xray_daemon/pull_xray_daemon_image.sh"
+  docker tag "${src}" "${ecr_uri}:${XRAY_DAEMON_TAG}"
   docker push "${ecr_uri}:${XRAY_DAEMON_TAG}"
   docker tag "${ecr_uri}:${XRAY_DAEMON_TAG}" "${ecr_uri}:latest"
   docker push "${ecr_uri}:latest"

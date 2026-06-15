@@ -19,8 +19,23 @@ if [[ "${#scripts[@]}" -eq 0 ]]; then
   exit 1
 fi
 
+MAX_ATTEMPTS="${RUN_ALL_PULL_ATTEMPTS:-5}"
+
 for script in "${scripts[@]}"; do
   rel="${script#${REPO_ROOT}/}"
   printf '==> %s\n' "${rel}"
-  bash "${script}"
+  attempt=1
+  while true; do
+    if bash "${script}"; then
+      break
+    fi
+    if (( attempt >= MAX_ATTEMPTS )); then
+      echo "ERROR: ${rel} failed after ${MAX_ATTEMPTS} attempts" >&2
+      exit 1
+    fi
+    sleep_s=$((attempt * 10))
+    echo "WARN: ${rel} failed (attempt ${attempt}/${MAX_ATTEMPTS}); retrying in ${sleep_s}s" >&2
+    sleep "${sleep_s}"
+    attempt=$((attempt + 1))
+  done
 done

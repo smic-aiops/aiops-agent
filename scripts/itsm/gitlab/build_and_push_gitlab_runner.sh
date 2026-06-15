@@ -27,6 +27,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+source "${REPO_ROOT}/scripts/itsm/lib/docker_cache.sh"
 
 usage() {
   echo "Usage: scripts/itsm/gitlab/build_and_push_gitlab_runner.sh [--dry-run]"
@@ -177,16 +178,6 @@ main() {
   echo "[gitlab-runner] Context not found; falling back to cached tarball re-tag/push."
   echo "[gitlab-runner] TAR=${tar_path}"
 
-  if [[ ! -f "${tar_path}" ]]; then
-    if [[ "${DRY_RUN}" == "true" ]]; then
-      echo "[gitlab-runner] (dry-run) cache tar not found: ${tar_path}"
-      echo "[gitlab-runner] (dry-run) would require: scripts/itsm/gitlab/pull_gitlab_runner_image.sh"
-      return 0
-    fi
-    echo "[gitlab-runner] Missing cache tar: ${tar_path} (run scripts/itsm/gitlab/pull_gitlab_runner_image.sh)" >&2
-    exit 1
-  fi
-
   if [[ "${DRY_RUN}" == "true" ]]; then
     echo "[gitlab-runner] (dry-run) docker load -i \"${tar_path}\""
     echo "[gitlab-runner] (dry-run) docker tag \"${src_ref}\" \"${ecr_uri}:${GITLAB_RUNNER_TAG}\""
@@ -196,7 +187,7 @@ main() {
     return 0
   fi
 
-  docker load -i "${tar_path}" >/dev/null
+  docker_use_local_or_load_cache "gitlab-runner" "${src_ref}" "${tar_path}" "run scripts/itsm/gitlab/pull_gitlab_runner_image.sh"
   docker tag "${src_ref}" "${ecr_uri}:${GITLAB_RUNNER_TAG}"
   docker push "${ecr_uri}:${GITLAB_RUNNER_TAG}"
   docker tag "${ecr_uri}:${GITLAB_RUNNER_TAG}" "${ecr_uri}:latest"

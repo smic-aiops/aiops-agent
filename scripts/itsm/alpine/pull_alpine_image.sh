@@ -15,6 +15,7 @@ set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${REPO_ROOT}"
+source "${REPO_ROOT}/scripts/itsm/lib/docker_cache.sh"
 
 tf_output_raw() {
   local output
@@ -96,8 +97,7 @@ for tag in ${ALPINE_TAGS}; do
   fi
 
   retry 5 docker pull --platform "${IMAGE_ARCH}" "${src}"
-  docker save "${src}" -o "${out_tar}"
-  echo "[alpine] Saved: ${out_tar}"
+  docker_save_cache_or_warn "alpine" "${src}" "${out_tar}"
 done
 
 echo "[alpine] Done."

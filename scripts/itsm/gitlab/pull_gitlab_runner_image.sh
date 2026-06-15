@@ -18,6 +18,7 @@ set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${REPO_ROOT}"
+source "${REPO_ROOT}/scripts/itsm/lib/docker_cache.sh"
 
 tf_output_raw() {
   local name="$1" output
@@ -114,8 +115,7 @@ if is_truthy "${DRY_RUN}"; then
   echo "[gitlab-runner] [dry-run] docker save \"${src}\" -o \"${out_tar}\""
 else
   docker pull --platform "${IMAGE_ARCH}" "${src}"
-  docker save "${src}" -o "${out_tar}"
-  echo "[gitlab-runner] Saved: ${out_tar}"
+  docker_save_cache_or_warn "gitlab-runner" "${src}" "${out_tar}"
 fi
 
 recommended_packages="$(discover_ci_apk_packages || true)"

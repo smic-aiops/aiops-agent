@@ -358,10 +358,12 @@ build_admin_assets() {
   if command -v docker >/dev/null 2>&1; then
     docker run --rm \
       -u "$(id -u)":"$(id -g)" \
+      -e HOME=/tmp \
+      -e NPM_CONFIG_CACHE=/tmp/.npm \
       -v "${SULU_SOURCE_DIR}:/app" \
       -w /app/assets/admin \
       "${ADMIN_ASSETS_BUILD_IMAGE}" \
-      sh -lc "npm install --no-audit --no-fund && npm run build"
+      sh -lc "mkdir -p /tmp/.npm && npm install --no-audit --no-fund && npm run build"
     return 0
   fi
 

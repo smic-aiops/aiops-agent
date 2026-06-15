@@ -18,6 +18,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+source "${REPO_ROOT}/scripts/itsm/lib/docker_cache.sh"
 
 usage() { echo "Usage: scripts/itsm/qdrant/build_and_push_qdrant.sh [--dry-run]"; }
 
@@ -98,14 +99,10 @@ main() {
   local repo="${ECR_PREFIX}/${ECR_REPO_QDRANT}"
   local ecr_uri="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${repo}"
   local tar_path="${IMAGES_DIR}/qdrant/qdrant-${QDRANT_IMAGE_TAG}.tar"
+  local src="qdrant/qdrant:${QDRANT_IMAGE_TAG}"
 
   echo "[qdrant] ECR_URI=${ecr_uri}"
   echo "[qdrant] TAR=${tar_path}"
-
-  if [[ ! -f "${tar_path}" ]]; then
-    echo "[qdrant] Missing cache tar: ${tar_path} (run scripts/itsm/qdrant/pull_qdrant_image.sh)" >&2
-    exit 1
-  fi
 
   login_ecr
   ensure_repo "${repo}"
@@ -119,8 +116,8 @@ main() {
     return 0
   fi
 
-  docker load -i "${tar_path}" >/dev/null
-  docker tag "qdrant/qdrant:${QDRANT_IMAGE_TAG}" "${ecr_uri}:${QDRANT_IMAGE_TAG}"
+  docker_use_local_or_load_cache "qdrant" "${src}" "${tar_path}" "run scripts/itsm/qdrant/pull_qdrant_image.sh"
+  docker tag "${src}" "${ecr_uri}:${QDRANT_IMAGE_TAG}"
   docker push "${ecr_uri}:${QDRANT_IMAGE_TAG}"
   docker tag "${ecr_uri}:${QDRANT_IMAGE_TAG}" "${ecr_uri}:latest"
   docker push "${ecr_uri}:latest"

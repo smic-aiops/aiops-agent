@@ -19,6 +19,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+source "${REPO_ROOT}/scripts/itsm/lib/docker_cache.sh"
 
 usage() {
   cat <<'USAGE'
@@ -130,21 +131,18 @@ main() {
 
   for tag in ${ALPINE_TAGS}; do
     tar_path="${cache_dir}/alpine-${tag}.tar"
-    if [[ ! -f "${tar_path}" ]]; then
-      echo "[alpine] Missing cache tar: ${tar_path} (run scripts/itsm/alpine/pull_alpine_image.sh)" >&2
-      exit 1
-    fi
+    src="public.ecr.aws/docker/library/alpine:${tag}"
     if [[ "${DRY_RUN}" == "true" ]]; then
       echo "[alpine] (dry-run) docker load -i \"${tar_path}\""
-      echo "[alpine] (dry-run) docker tag \"public.ecr.aws/docker/library/alpine:${tag}\" \"${ecr_uri}:${tag}\""
+      echo "[alpine] (dry-run) docker tag \"${src}\" \"${ecr_uri}:${tag}\""
       echo "[alpine] (dry-run) docker push \"${ecr_uri}:${tag}\""
       echo "[alpine] (dry-run) docker tag \"${ecr_uri}:${tag}\" \"${ecr_uri}:latest\""
       echo "[alpine] (dry-run) docker push \"${ecr_uri}:latest\""
       continue
     fi
 
-    docker load -i "${tar_path}" >/dev/null
-    docker tag "public.ecr.aws/docker/library/alpine:${tag}" "${ecr_uri}:${tag}"
+    docker_use_local_or_load_cache "alpine" "${src}" "${tar_path}" "run scripts/itsm/alpine/pull_alpine_image.sh"
+    docker tag "${src}" "${ecr_uri}:${tag}"
     docker push "${ecr_uri}:${tag}"
     docker tag "${ecr_uri}:${tag}" "${ecr_uri}:latest"
     docker push "${ecr_uri}:latest"

@@ -17,6 +17,7 @@ COPY init-db.sh /app/docker/init-db.sh
 COPY init-db.php /app/docker/init-db.php
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV COMPOSER_MEMORY_LIMIT=-1
+ENV ITSM_SOR_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/itsm_sor?serverVersion=16&charset=utf8"
 RUN composer install --no-dev --no-interaction --prefer-dist --classmap-authoritative --no-progress
 
 FROM ${PHP_IMAGE} AS runtime

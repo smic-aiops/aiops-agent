@@ -147,6 +147,7 @@ locals {
   exastro_web_smtp_password_parameter_name          = "/${local.name_prefix}/exastro-web/smtp/password"
   exastro_api_smtp_username_parameter_name          = "/${local.name_prefix}/exastro-api/smtp/username"
   exastro_api_smtp_password_parameter_name          = "/${local.name_prefix}/exastro-api/smtp/password"
+  exastro_encrypt_key_parameter_name                = "/${local.name_prefix}/exastro/encrypt_key"
   pgadmin_smtp_username_parameter_name              = "/${local.name_prefix}/pgadmin/smtp/username"
   pgadmin_smtp_password_parameter_name              = "/${local.name_prefix}/pgadmin/smtp/password"
 }
@@ -1419,6 +1420,23 @@ resource "random_password" "sulu_app_secret" {
   count   = local.ssm_writes_enabled ? (var.create_ecs && var.create_sulu && var.sulu_app_secret == null ? 1 : 0) : 0
   length  = 64
   special = true
+}
+
+resource "random_id" "exastro_encrypt_key" {
+  count = local.ssm_writes_enabled ? (var.create_ecs && local.exastro_service_enabled ? 1 : 0) : 0
+
+  byte_length = 32
+}
+
+resource "aws_ssm_parameter" "exastro_encrypt_key" {
+  count = local.ssm_writes_enabled ? (var.create_ecs && local.exastro_service_enabled ? 1 : 0) : 0
+
+  name      = local.exastro_encrypt_key_parameter_name
+  type      = "SecureString"
+  value     = random_id.exastro_encrypt_key[0].b64_std
+  overwrite = true
+
+  tags = merge(local.tags, { Name = "${local.name_prefix}-exastro-encrypt-key" })
 }
 
 resource "aws_ssm_parameter" "zulip_secret_key" {

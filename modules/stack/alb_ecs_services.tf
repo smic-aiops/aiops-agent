@@ -313,7 +313,7 @@ resource "aws_lb_target_group" "exastro_api_admin" {
 
   health_check {
     path                = "/healthz"
-    matcher             = "200-399"
+    matcher             = "200-499" # Exastro API returns 400 to ALB health checks without application headers.
     healthy_threshold   = 2
     unhealthy_threshold = 5
     timeout             = 5
