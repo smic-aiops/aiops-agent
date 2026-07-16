@@ -1,0 +1,50 @@
+{
+  "name": "Test Sulu RFC Source Analysis",
+  "nodes": [
+    {
+      "parameters": {"path": "tests/sulu/rfc-source-analysis", "httpMethod": "POST", "responseMode": "responseNode", "options": {}},
+      "id": "1",
+      "name": "Webhook Test Sulu RFC Source Analysis",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst getHeader = (name) => { const lower = String(name).toLowerCase(); const key = Object.keys(headers).find((item) => String(item).toLowerCase() === lower); return key ? headers[key] : undefined; };\nconst expectedToken = String($env.N8N_WORKFLOWS_TOKEN || '').trim();\nconst providedToken = String(getHeader('authorization') || getHeader('x-aiops-workflows-token') || '').trim().replace(/^bearer\\s+/i, '').trim();\nif (!expectedToken) return [{ json: { ok: false, status_code: 500, error: 'N8N_WORKFLOWS_TOKEN is not set' } }];\nif (providedToken !== expectedToken) return [{ json: { ok: false, status_code: 401, error: 'invalid workflows token' } }];\nconst rawBase = String($env.N8N_WEBHOOK_BASE_URL || ($env.N8N_PUBLIC_API_BASE_URL ? `${String($env.N8N_PUBLIC_API_BASE_URL).replace(/\\/+$/, '')}/webhook` : '')).replace(/\\/+$/, '');\nif (!rawBase) return [{ json: { ok: false, status_code: 500, error: 'webhook base URL is not configured' } }];\nconst payload = request.body && typeof request.body === 'object' ? request.body : {};\nconst baseVersion = String(payload.base_version ?? payload.baseVersion ?? '3.0.3').trim();\nconst targetVersion = String(payload.target_version ?? payload.targetVersion ?? '3.0.4').trim();\nconst description = ['## 種別', '種別：変更', '', '## 対象サービス', 'Sulu', '', '## 現行バージョン', baseVersion, '', '## 修正対象バージョン', targetVersion, '', '## 変更内容', 'Suluを修正対象バージョンへ更新する。'].join('\\n');\ntry {\n  const response = await this.helpers.httpRequest({ method: 'POST', url: `${rawBase}/sulu/rfc-source-analysis`, json: true, timeout: 120000, headers: { Authorization: `Bearer ${expectedToken}` }, body: { realm: String(payload.realm ?? $env.N8N_REALM ?? $env.N8N_ENV_REALM ?? 'aiops'), rfc: { id: 'RFC-OQ-SULU-VERSION', iid: 0, title: `RFC: Sulu ${targetVersion}修正依頼`, description, labels: ['ITSM/変更管理', 'RFC'], state: 'opened' }, correlation_id: 'oq-sulu-rfc-source-analysis-selftest' } });\n  const passed = response?.ok === true && response?.workflow_id === 'wf.sulu_rfc_source_analysis' && response?.status === 'analyzed_from_rfc' && response?.rfc?.extracted_target_version === targetVersion && response?.versions?.base_version === baseVersion && response?.versions?.target_version === targetVersion && Number(response?.comparison?.changed_files ?? 0) > 0 && Array.isArray(response?.findings) && response.findings.length > 0;\n  return [{ json: { ok: passed, status_code: passed ? 200 : 500, target_response: response, error: passed ? null : 'RFC source analysis assertions failed' } }];\n} catch (error) { return [{ json: { ok: false, status_code: 500, error: error?.message ? String(error.message) : String(error) } }]; }"
+      },
+      "id": "2",
+      "name": "Run RFC Source Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json ?? {};\nconst publish = result.target_response?.image_publish ?? {};\nconst passed = result.ok === true && publish.status === 'validated' && publish.dryRun === true && publish.applied === false && publish.latestTagPreserved === true;\nreturn [{ json: { ...result, ok: passed, status_code: passed ? 200 : 500, error: passed ? null : 'RFC image publish dry-run assertions failed' } }];"
+      },
+      "id": "3",
+      "name": "Verify Image Publish Dry Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ { ok: $json.ok, data: $json, error: $json.error } }}", "options": {"responseCode": "={{$json.status_code}}"}},
+      "id": "4",
+      "name": "Respond RFC Source Analysis Test",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1080, 200]
+    }
+  ],
+  "connections": {
+    "Webhook Test Sulu RFC Source Analysis": {"main": [[{"node": "Run RFC Source Analysis", "type": "main", "index": 0}]]},
+    "Run RFC Source Analysis": {"main": [[{"node": "Verify Image Publish Dry Run", "type": "main", "index": 0}]]},
+    "Verify Image Publish Dry Run": {"main": [[{"node": "Respond RFC Source Analysis Test", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionTimeout": 180},
+  "versionId": "1.0.0",
+  "meta": {"revision": 1, "createdBy": {"id": "1", "name": "system"}}
+}

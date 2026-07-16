@@ -1179,6 +1179,11 @@ output "service_control_api_base_url" {
   sensitive   = true
 }
 
+output "sulu_image_builder_project_name" {
+  description = "AWS CodeBuild project used by the RFC workflow to build and push Sulu images"
+  value       = module.stack.sulu_image_builder_project_name
+}
+
 output "gitlab_admin_token_parameter_name" {
   description = "SSM parameter name for the GitLab admin token (if created)"
   value       = module.stack.gitlab_admin_token_parameter_name

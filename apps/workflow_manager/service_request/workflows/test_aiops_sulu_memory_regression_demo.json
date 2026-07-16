@@ -1,0 +1,90 @@
+{
+  "name": "Test Sulu Memory Regression Integrated Demo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tests/sulu/memory-regression-demo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "test.wf.sulu_memory_regression_demo-webhook",
+      "name": "Webhook Test Sulu Memory Regression Demo",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst payload = request.body && typeof request.body === 'object' ? request.body : request;\nconst expectedToken = String($env.N8N_WORKFLOWS_TOKEN || '').trim();\nconst authKey = Object.keys(headers).find((key) => ['authorization', 'x-aiops-workflows-token'].includes(String(key).toLowerCase()));\nconst providedToken = authKey ? String(headers[authKey] || '').replace(/^bearer\\s+/i, '').trim() : '';\nif (!expectedToken) return [{ json: { ok: false, status_code: 500, error: 'N8N_WORKFLOWS_TOKEN is not configured' } }];\nif (providedToken !== expectedToken) return [{ json: { ok: false, status_code: 401, error: 'invalid workflows token' } }];\nconst rawOrigin = String($env.N8N_WEBHOOK_BASE_URL || $env.N8N_PUBLIC_API_BASE_URL || '')\n  .replace(/\\/+$/, '')\n  .replace(/\\/api\\/v1$/, '');\nconst webhookBase = rawOrigin ? (rawOrigin.endsWith('/webhook') ? rawOrigin : `${rawOrigin}/webhook`) : '';\nif (!webhookBase) return [{ json: { ok: false, status_code: 500, error: 'webhook base URL is not configured' } }];\nconst fixtureRealm = String(payload.realm || $env.N8N_REALM || $env.N8N_ENV_REALM || 'aiops');\n\nconst fixture = {\n  realm: fixtureRealm,\n  trace_id: 'oq-sulu-memory-regression-selftest',\n  dry_run: true,\n  service: 'sulu',\n  fixed_version: '3.0.4-smic.1',\n  deployment: {\n    previous_version: '3.0.3',\n    current_version: '3.0.4',\n    deployed_at: '2026-07-17T01:00:00Z',\n    change_id: 'CHG-OQ-SULU-304'\n  },\n  events: [\n    { event_id: 'mem-001', kind: 'memory_high', occurred_at: '2026-07-17T01:01:00Z', metric_value: 92, service: 'sulu', realm: fixtureRealm, image_tag: '3.0.4' },\n    { event_id: 'mem-002', kind: 'memory_high', occurred_at: '2026-07-17T01:02:00Z', metric_value: 94, service: 'sulu', realm: fixtureRealm, image_tag: '3.0.4' },\n    { event_id: 'oom-001', kind: 'oom', occurred_at: '2026-07-17T01:03:00Z', service: 'sulu', realm: fixtureRealm, image_tag: '3.0.4' }\n  ]\n};\n\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${webhookBase}/sulu/memory-regression-demo`,\n    json: true,\n    timeout: 120000,\n    headers: expectedToken ? { Authorization: `Bearer ${expectedToken}` } : {},\n    body: fixture\n  });\n  const candidates = response?.recovery?.candidates;\n  const screens = response?.demo_screens;\n  const passed = response?.ok === true\n    && response?.workflow_id === 'wf.sulu_memory_regression_demo'\n    && response?.correlation?.status === 'correlated'\n    && Number(response?.correlation?.confidence || 0) >= 0.9\n    && Array.isArray(candidates)\n    && candidates.length >= 3\n    && candidates[0]?.workflow_id === 'wf.sulu_version_deploy'\n    && candidates[0]?.rank === 1\n    && response?.test_and_risk?.all_required_tests_passed === true\n    && response?.test_and_risk?.level === 'medium'\n    && screens?.video_1_correlation?.status === 'ready'\n    && screens?.video_2_recovery?.status === 'ready'\n    && screens?.video_3_change?.status === 'ready'\n    && screens?.video_4_closure?.status === 'ready';\n  return [{ json: { ok: passed, status_code: passed ? 200 : 500, data: { target_response: response }, error: passed ? null : 'integrated demo assertions failed' } }];\n} catch (error) {\n  return [{ json: { ok: false, status_code: 500, error: error?.message ? String(error.message) : String(error) } }];\n}\n"
+      },
+      "id": "test.wf.sulu_memory_regression_demo-code",
+      "name": "Run and Verify Integrated Demo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {
+          "responseCode": "={{$json.status_code || ($json.ok === false ? 500 : 200)}}"
+        }
+      },
+      "id": "test.wf.sulu_memory_regression_demo-respond",
+      "name": "Respond Sulu Memory Regression Demo Test",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        780,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Test Sulu Memory Regression Demo": {
+      "main": [
+        [
+          {
+            "node": "Run and Verify Integrated Demo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run and Verify Integrated Demo": {
+      "main": [
+        [
+          {
+            "node": "Respond Sulu Memory Regression Demo Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionTimeout": 900
+  },
+  "versionId": "",
+  "staticData": null,
+  "meta": {
+    "revision": 1,
+    "workflowId": "test.wf.sulu_memory_regression_demo",
+    "createdBy": {
+      "id": "1",
+      "name": "system"
+    }
+  },
+  "tags": []
+}

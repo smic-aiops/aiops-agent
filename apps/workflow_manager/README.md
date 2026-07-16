@@ -53,6 +53,9 @@ ITSM のサービスリクエストを n8n ワークフローとして実装し�
       - `GET /webhook/catalog/workflows/get?name=<workflow_name>`
     - サービス制御（例）
       - `POST /webhook/sulu/service-control`
+      - `POST /webhook/sulu/version-deploy`
+      - `POST /webhook/sulu/source-version-compare`
+      - `POST /webhook/sulu/rfc-source-analysis`
 
 ### 構成図（Mermaid / 現行実装）
 
@@ -70,6 +73,15 @@ flowchart LR
 
   Operator --> ServiceControl["n8n Webhook<br/>POST /webhook/sulu/service-control"]
   ServiceControl --> SCAPI[Service Control API（Sulu 起動/停止）]
+  Operator --> VersionDeploy["n8n Webhook<br/>POST /webhook/sulu/version-deploy"]
+  VersionDeploy --> SCAPI
+  Operator --> SourceCompare["n8n Webhook<br/>POST /webhook/sulu/source-version-compare"]
+  SourceCompare --> GitHub[GitHub Compare API]
+  Operator --> RFCAnalysis["n8n Webhook<br/>POST /webhook/sulu/rfc-source-analysis"]
+  RFCAnalysis --> GitLab
+  RFCAnalysis --> SourceCompare
+  RFCAnalysis --> CodeBuild[AWS CodeBuild]
+  CodeBuild --> ECR[Sulu PHP/Nginx ECR]
 ```
 
 ### 接続通信表（Workflow Manager ⇄ ソース）
@@ -78,13 +90,18 @@ flowchart LR
 |---|---|---|---|---|
 | `n8n_api` | ワークフロー一覧/取得 | n8n Public API | n8n API key | ワークフロー/資格情報の参照、同期、メタデータ取得 |
 | `gitlab` | サービスカタログ連携 | GitLab API | API token | カタログ同期、missing 検知/解消 |
-| `service_control` | サービス制御 | Service Control API（Sulu 起動/停止等） | API key/token（運用設定） | `action`/`realm` 等の制御要求と結果ステータス |
+| `service_control` | サービス制御 | Service Control API（Sulu 起動/停止、バージョン指定デプロイ） | API key/token（運用設定） | `action`/`realm`、`image_tag`、dry-run/実行許可と結果ステータス |
+| `github` | Suluソース比較 | GitHub Compare API（`sulu/skeleton`） | public API（必要に応じて運用側で制限管理） | 比較元・比較先タグ、commit、ファイル差分 |
+| `codebuild_ecr` | 修正版イメージ作成 | Service Control API → AWS CodeBuild → ECR | IAMロール | 対象ソースバージョン、ビルド定義ref、新規イメージタグ、build/push結果 |
 
 #### ソース名 → Workflow Manager（受信）
 | ソース名 | 方式/エンドポイント例 | 認証/検証（例） | 伝達内容（サマリ） |
 |---|---|---|---|
 | `catalog_client` | `GET /webhook/catalog/workflows/list` / `GET /webhook/catalog/workflows/get` | `N8N_WORKFLOWS_TOKEN`（`Authorization: Bearer ...`） | ワークフローカタログ API の要求 |
 | `client` | `POST /webhook/sulu/service-control` | 方式は運用設定（例: bearer token） | サービス制御要求（`action`, `realm` など） |
+| `client` | `POST /webhook/sulu/version-deploy` | 方式は運用設定（例: bearer token） | Suluイメージタグ、realm、dry-run/実行許可 |
+| `client` | `POST /webhook/sulu/source-version-compare` | 方式は運用設定（例: bearer token） | 比較元・比較先のSuluタグ |
+| `client` | `POST /webhook/sulu/rfc-source-analysis` | Bearer token | 承認済みRFC Issue、対象ソースバージョン、ECR push明示許可 |
 
 ### ディレクトリ構成
 - `apps/workflow_manager/workflow_catalog/`: ワークフローカタログ（機能）

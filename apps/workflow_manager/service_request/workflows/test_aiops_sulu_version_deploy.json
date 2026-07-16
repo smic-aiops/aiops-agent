@@ -1,0 +1,39 @@
+{
+  "name": "Test Sulu Version Deploy",
+  "nodes": [
+    {
+      "parameters": {"path": "tests/sulu/version-deploy", "httpMethod": "POST", "responseMode": "responseNode", "options": {}},
+      "id": "1",
+      "name": "Webhook Test Sulu Version Deploy",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst getHeader = (name) => { const lower = String(name).toLowerCase(); const key = Object.keys(headers).find((item) => String(item).toLowerCase() === lower); return key ? headers[key] : undefined; };\nconst expectedToken = String($env.N8N_WORKFLOWS_TOKEN || '').trim();\nconst providedToken = String(getHeader('authorization') || getHeader('x-aiops-workflows-token') || '').trim().replace(/^bearer\\s+/i, '').trim();\nif (!expectedToken) return [{ json: { ok: false, status_code: 500, error: 'N8N_WORKFLOWS_TOKEN is not set' } }];\nif (providedToken !== expectedToken) return [{ json: { ok: false, status_code: 401, error: 'invalid workflows token' } }];\nconst rawBase = String($env.N8N_WEBHOOK_BASE_URL || ($env.N8N_PUBLIC_API_BASE_URL ? `${String($env.N8N_PUBLIC_API_BASE_URL).replace(/\\/+$/, '')}/webhook` : '')).replace(/\\/+$/, '');\nif (!rawBase) return [{ json: { ok: false, status_code: 500, error: 'webhook base URL is not configured' } }];\nconst payload = request.body && typeof request.body === 'object' ? request.body : {};\nconst imageTag = String(payload.image_tag ?? payload.imageTag ?? payload.version ?? '3.0.4').trim();\nconst realm = String(payload.realm ?? payload.tenant ?? $env.N8N_REALM ?? $env.N8N_ENV_REALM ?? 'aiops').trim();\ntry {\n  const response = await this.helpers.httpRequest({ method: 'POST', url: `${rawBase}/sulu/version-deploy`, json: true, headers: { Authorization: `Bearer ${expectedToken}` }, body: { realm, image_tag: imageTag, dry_run: true, allow_service_change: false, correlation_id: 'oq-sulu-version-deploy-selftest' }, timeout: 60000 });\n  const passed = response?.ok === true && response?.workflow_id === 'wf.sulu_version_deploy' && response?.status === 'validated' && response?.image_tag === imageTag && response?.dry_run === true && response?.applied === false && response?.verification?.status === 'passed' && response?.verification?.php_image_planned === true && response?.verification?.nginx_image_planned === true;\n  return [{ json: { ok: passed, status_code: passed ? 200 : 500, target_response: response, error: passed ? null : 'target workflow dry-run assertions failed' } }];\n} catch (error) { return [{ json: { ok: false, status_code: 500, error: error?.message ? String(error.message) : String(error) } }]; }"
+      },
+      "id": "2",
+      "name": "Run Version Deploy Dry Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 200]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ { ok: $json.ok, data: $json, error: $json.error } }}", "options": {"responseCode": "={{$json.status_code}}"}},
+      "id": "3",
+      "name": "Respond Version Deploy Test",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [800, 200]
+    }
+  ],
+  "connections": {
+    "Webhook Test Sulu Version Deploy": {"main": [[{"node": "Run Version Deploy Dry Run", "type": "main", "index": 0}]]},
+    "Run Version Deploy Dry Run": {"main": [[{"node": "Respond Version Deploy Test", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionTimeout": 120},
+  "versionId": "1.0.0",
+  "meta": {"revision": 1, "createdBy": {"id": "1", "name": "system"}}
+}

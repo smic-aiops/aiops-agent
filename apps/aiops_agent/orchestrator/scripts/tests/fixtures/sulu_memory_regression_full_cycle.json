@@ -1,0 +1,77 @@
+{
+  "realm": "aiops",
+  "trace_id": "demo-sulu-memory-regression-20260717",
+  "dry_run": true,
+  "service": "sulu",
+  "fixed_version": "3.0.4-smic.1",
+  "deployment": {
+    "previous_version": "3.0.3",
+    "current_version": "3.0.4",
+    "deployed_at": "2026-07-17T01:00:00Z",
+    "change_id": "CHG-DEMO-SULU-304",
+    "change_url": "https://gitlab.example/demo/service-management/-/issues/304"
+  },
+  "events": [
+    {
+      "event_id": "cw-sulu-memory-001",
+      "kind": "memory_high",
+      "occurred_at": "2026-07-17T01:01:00Z",
+      "metric_value": 92,
+      "service": "sulu",
+      "realm": "aiops",
+      "image_tag": "3.0.4"
+    },
+    {
+      "event_id": "cw-sulu-memory-002",
+      "kind": "memory_high",
+      "occurred_at": "2026-07-17T01:02:00Z",
+      "metric_value": 94,
+      "service": "sulu",
+      "realm": "aiops",
+      "image_tag": "3.0.4"
+    },
+    {
+      "event_id": "cw-sulu-oom-001",
+      "kind": "oom",
+      "occurred_at": "2026-07-17T01:03:00Z",
+      "service": "sulu",
+      "realm": "aiops",
+      "image_tag": "3.0.4",
+      "message": "OutOfMemory in Sulu PHP task"
+    }
+  ],
+  "gitlab": {
+    "code_project_path": "aiops/aiops-agent",
+    "service_project_path": "aiops/service-management",
+    "base_branch": "main",
+    "fix_branch": "fix/sulu-memory-regression-demo"
+  },
+  "approval": {
+    "approved": false,
+    "decision_id": null
+  },
+  "recording": {
+    "video_1_correlation": {
+      "pptx_page": 58,
+      "focus": ["cw-sulu-memory-001", "cw-sulu-memory-002", "cw-sulu-oom-001", "CHG-DEMO-SULU-304"]
+    },
+    "video_2_recovery": {
+      "pptx_page": 60,
+      "selected_candidate": "rollback_previous_version"
+    },
+    "video_3_change": {
+      "pptx_page": 64,
+      "fix_branch": "fix/sulu-memory-regression-demo",
+      "fixed_version": "3.0.4-smic.1"
+    },
+    "video_4_closure": {
+      "pptx_page": 71,
+      "cmdb_version": "3.0.4-smic.1",
+      "known_error_title": "Sulu 3.0.4 memory regression"
+    },
+    "cab_reuse": {
+      "pptx_page": 66,
+      "source_oq": "OQ-USECASE-31"
+    }
+  }
+}

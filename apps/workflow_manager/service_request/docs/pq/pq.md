@@ -7,6 +7,9 @@
 ## 対象
 
 - サービス制御: `POST /webhook/sulu/service-control`
+- バージョン指定デプロイ: `POST /webhook/sulu/version-deploy`
+- ソースバージョン比較: `POST /webhook/sulu/source-version-compare`
+- RFC差分分析・修正版ECR push: `POST /webhook/sulu/rfc-source-analysis`
 - サービスカタログ同期（テスト）: `GET /webhook/tests/gitlab/service-catalog-sync`（実装を正とする）
 - ワークフロー（正）: `apps/workflow_manager/service_request/workflows/`
 

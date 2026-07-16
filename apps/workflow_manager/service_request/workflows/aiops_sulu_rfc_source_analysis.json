@@ -1,0 +1,142 @@
+{
+  "name": "Sulu RFC Source Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "sulu/rfc-source-analysis",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Sulu RFC Source Analysis",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst getHeader = (name) => { const wanted = String(name).toLowerCase(); const key = Object.keys(headers).find((item) => String(item).toLowerCase() === wanted); return key ? headers[key] : ''; };\nconst expected = String($env.N8N_WORKFLOWS_TOKEN || '').trim();\nconst provided = String(getHeader('authorization') || getHeader('x-aiops-workflows-token') || '').trim().replace(/^bearer\\s+/i, '').trim();\nreturn [{ json: { ...request, auth_ok: Boolean(expected) && provided === expected, auth_error: expected ? 'invalid workflows token' : 'N8N_WORKFLOWS_TOKEN is not configured' } }];"
+      },
+      "id": "110",
+      "name": "Authorize RFC Source Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 160]
+    },
+    {
+      "parameters": {"conditions": {"options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2}, "conditions": [{"id": "authorized", "leftValue": "={{ $json.auth_ok }}", "rightValue": true, "operator": {"type": "boolean", "operation": "true", "singleValue": true}}], "combinator": "and"}, "options": {}},
+      "id": "111",
+      "name": "IF RFC Source Analysis Authorized",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 160]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ { ok: false, error: $json.auth_error } }}", "options": {"responseCode": 401}},
+      "id": "112",
+      "name": "Respond RFC Source Analysis Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [880, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = ($json && typeof $json === 'object' && $json.body !== undefined) ? ($json.body ?? {}) : ($json ?? {});\nconst clean = (value) => value === null || value === undefined ? '' : String(value).trim();\nconst trimSlash = (value) => clean(value).replace(/\\/+$/, '');\nconst versionPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;\nconst normalizeLabel = (value) => clean(value).normalize('NFKC').toLowerCase().replace(/[\\s_-]+/g, '');\nconst targetAliases = ['修正対象バージョン', '対象バージョン', 'target version', 'target_version', 'requested version'];\nconst baseAliases = ['現行バージョン', '比較元バージョン', 'current version', 'base version', 'base_version'];\nconst serviceAliases = ['対象サービス', 'サービス', 'target service', 'service'];\nfunction aliasMatches(label, aliases) { const normalized = normalizeLabel(label); return aliases.some((alias) => normalizeLabel(alias) === normalized); }\nfunction extractField(text, aliases) {\n  const lines = String(text || '').replace(/\\r/g, '').split('\\n');\n  for (const line of lines) {\n    const table = line.match(/^\\s*\\|\\s*([^|]+?)\\s*\\|\\s*([^|]+?)\\s*\\|/);\n    if (table && aliasMatches(table[1], aliases) && !/^[-: ]+$/.test(table[2])) return clean(table[2]);\n    const keyValue = line.match(/^\\s*(?:[-*]\\s*)?([^:：|]+?)\\s*[:：]\\s*(.+?)\\s*$/);\n    if (keyValue && aliasMatches(keyValue[1], aliases)) return clean(keyValue[2]);\n  }\n  for (let index = 0; index < lines.length; index += 1) {\n    const heading = lines[index].match(/^\\s*#{1,6}\\s*(.+?)\\s*$/);\n    if (!heading || !aliasMatches(heading[1], aliases)) continue;\n    for (let next = index + 1; next < lines.length; next += 1) {\n      const candidate = clean(lines[next]).replace(/^[-*]\\s*/, '');\n      if (!candidate) continue;\n      if (candidate.startsWith('#')) break;\n      if (/^\\|?\\s*[-:]+/.test(candidate)) continue;\n      return candidate;\n    }\n  }\n  return '';\n}\nfunction normalizeVersion(value, fieldName) {\n  const raw = clean(value).replace(/`/g, '');\n  const semantic = raw.match(/v?([0-9]+\\.[0-9]+\\.[0-9]+(?:[-._][A-Za-z0-9.-]+)?)/);\n  const version = semantic ? semantic[1] : raw;\n  if (!version) throw new Error(`${fieldName} is required in the RFC`);\n  if (version.toLowerCase() === 'latest') throw new Error(`${fieldName} must be an explicit version; latest is not allowed`);\n  if (!versionPattern.test(version)) throw new Error(`${fieldName} contains unsupported characters`);\n  return version;\n}\nfunction parseIssueUrl(issueUrl) {\n  const raw = clean(issueUrl);\n  if (!raw) return {};\n  let parsed;\n  try { parsed = new URL(raw); } catch (error) { throw new Error('rfc_issue_url is invalid'); }\n  const marker = '/-/issues/';\n  const markerIndex = parsed.pathname.indexOf(marker);\n  if (markerIndex < 1) throw new Error('rfc_issue_url must be a GitLab issue URL');\n  return { project_path: decodeURIComponent(parsed.pathname.slice(1, markerIndex)), issue_iid: parsed.pathname.slice(markerIndex + marker.length).split('/')[0] };\n}\nconst realm = clean(payload.realm ?? payload.tenant ?? $env.N8N_REALM ?? $env.N8N_ENV_REALM);\nif (!realm) throw new Error('realm is required');\nconst issueUrlParts = parseIssueUrl(payload.rfc_issue_url ?? payload.rfcIssueUrl ?? payload.issue_url ?? payload.issueUrl);\nlet projectPath = clean(payload.rfc_project_path ?? payload.rfcProjectPath ?? payload.project_path ?? payload.projectPath ?? issueUrlParts.project_path ?? $env.N8N_GITLAB_PROJECT_PATH ?? $env.GITLAB_PROJECT_PATH);\nlet issueIid = clean(payload.rfc_issue_iid ?? payload.rfcIssueIid ?? payload.issue_iid ?? payload.issueIid ?? issueUrlParts.issue_iid);\nlet rfc = payload.rfc && typeof payload.rfc === 'object' ? { ...payload.rfc } : null;\nif (!rfc && (payload.rfc_description || payload.rfcDescription)) rfc = { id: clean(payload.rfc_id ?? payload.rfcId) || 'inline-rfc', title: clean(payload.rfc_title ?? payload.rfcTitle) || 'Sulu RFC', description: clean(payload.rfc_description ?? payload.rfcDescription), labels: ['RFC'] };\nif (!rfc) {\n  if (!projectPath || !issueIid) throw new Error('rfc_issue_url or rfc_project_path and rfc_issue_iid are required');\n  const gitlabApiBase = trimSlash($env.GITLAB_API_BASE_URL || ($env.GITLAB_BASE_URL ? `${trimSlash($env.GITLAB_BASE_URL)}/api/v4` : ''));\n  const gitlabToken = clean($env.N8N_GITLAB_TOKEN ?? $env.GITLAB_TOKEN);\n  if (!gitlabApiBase) throw new Error('GITLAB_API_BASE_URL is required');\n  if (!gitlabToken) throw new Error('GITLAB_TOKEN is required');\n  rfc = await this.helpers.httpRequest({ method: 'GET', url: `${gitlabApiBase}/projects/${encodeURIComponent(projectPath)}/issues/${encodeURIComponent(issueIid)}`, json: true, timeout: 30000, headers: { 'PRIVATE-TOKEN': gitlabToken } });\n}\nconst title = clean(rfc.title);\nconst description = clean(rfc.description ?? rfc.body);\nconst labels = Array.isArray(rfc.labels) ? rfc.labels.map(clean).filter(Boolean) : [];\nconst typeEvidence = [title, description, ...labels].join(' ');\nif (!/(RFC|変更|change)/i.test(typeEvidence)) throw new Error('the referenced issue is not identifiable as an RFC/change request');\nconst serviceValue = clean(payload.service) || extractField(description, serviceAliases) || (/sulu/i.test(title) ? 'sulu' : '');\nif (serviceValue && !/sulu/i.test(serviceValue)) throw new Error(`RFC target service must be Sulu: ${serviceValue}`);\nif (!serviceValue && !/sulu/i.test(description)) throw new Error('RFC must identify Sulu as the target service');\nconst targetRaw = clean(payload.target_version ?? payload.targetVersion) || extractField(description, targetAliases);\nconst targetVersion = normalizeVersion(targetRaw, 'target_version');\nlet baseRaw = clean(payload.base_version ?? payload.baseVersion) || extractField(description, baseAliases);\nlet baseVersionSource = baseRaw ? 'request-or-rfc' : 'service-control';\nif (!baseRaw) {\n  const serviceControlBase = trimSlash($env.SERVICE_CONTROL_API_BASE_URL);\n  if (!serviceControlBase) throw new Error('SERVICE_CONTROL_API_BASE_URL is required when the RFC omits the current version');\n  const serviceStatus = await this.helpers.httpRequest({ method: 'GET', url: `${serviceControlBase}/status`, qs: { service: 'sulu', realm }, json: true, timeout: 30000 });\n  baseRaw = clean(serviceStatus?.imageTag);\n}\nconst baseVersion = normalizeVersion(baseRaw, 'base_version');\nif (baseVersion === targetVersion) throw new Error('RFC target version is already the current/base version');\nconst webhookBase = trimSlash($env.N8N_WEBHOOK_BASE_URL || ($env.N8N_PUBLIC_API_BASE_URL ? `${trimSlash($env.N8N_PUBLIC_API_BASE_URL)}/webhook` : ''));\nif (!webhookBase) throw new Error('N8N webhook base URL is not configured');\nconst resolvedIssueUrl = clean(rfc.web_url ?? payload.rfc_issue_url ?? payload.rfcIssueUrl ?? payload.issue_url ?? payload.issueUrl);\nreturn [{ json: { workflow_id: 'wf.sulu_rfc_source_analysis', realm, webhook_base: webhookBase, base_version: baseVersion, target_version: targetVersion, base_version_source: baseVersionSource, correlation_id: clean(payload.correlation_id ?? payload.correlationId ?? payload.trace_id ?? payload.traceId) || null, rfc: { id: rfc.id ?? null, iid: rfc.iid ?? (issueIid || null), project_path: projectPath || null, issue_url: resolvedIssueUrl || null, title: title || null, state: rfc.state ?? null, labels, target_service: 'sulu', extracted_target_version: targetVersion } } }];"
+      },
+      "id": "2",
+      "name": "Resolve RFC and Versions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [510, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst analysis = await this.helpers.httpRequest({ method: 'POST', url: `${String(request.webhook_base).replace(/\\/+$/, '')}/sulu/source-version-compare`, json: true, timeout: 90000, headers: { Authorization: `Bearer ${String($env.N8N_WORKFLOWS_TOKEN || '').trim()}` }, body: { base_version: request.base_version, target_version: request.target_version, correlation_id: request.correlation_id } });\nif (!analysis || analysis.ok !== true || analysis.status !== 'analyzed') throw new Error(`Sulu source comparison failed: ${JSON.stringify(analysis)}`);\nreturn [{ json: { ok: true, workflow_id: request.workflow_id, status: 'analyzed_from_rfc', realm: request.realm, rfc: request.rfc, versions: { base_version: request.base_version, target_version: request.target_version, base_version_source: request.base_version_source }, assessment: analysis.assessment, findings: analysis.findings, comparison: analysis.comparison, source_analysis: analysis, correlation_id: request.correlation_id } }];"
+      },
+      "id": "3",
+      "name": "Analyze RFC Target Version",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const analysis = $json ?? {};\nconst webhook = $node['Webhook Sulu RFC Source Analysis']?.json ?? {};\nconst payload = webhook.body && typeof webhook.body === 'object' ? webhook.body : webhook;\nconst clean = (value) => value === null || value === undefined ? '' : String(value).trim();\nconst truthy = (value) => ['1', 'true', 'yes', 'y', 'on'].includes(clean(value).toLowerCase());\nconst pushImages = truthy(payload.push_images ?? payload.pushImages ?? payload.build_and_push ?? payload.buildAndPush);\nconst imageTag = clean(payload.image_tag ?? payload.imageTag) || analysis.versions?.target_version;\nconst sourceRef = clean(payload.source_ref ?? payload.sourceRef ?? $env.SULU_IMAGE_BUILDER_SOURCE_REF) || 'main';\nif (!pushImages) return [{ json: { ...analysis, publish_request: { push_images: false, image_tag: imageTag, source_ref: sourceRef, source_generation: 'codebuild-target-version' } } }];\nconst issueUrl = clean(analysis.rfc?.issue_url);\nconst projectPath = clean(analysis.rfc?.project_path);\nconst issueIid = clean(analysis.rfc?.iid);\nif (!issueUrl || !projectPath || !issueIid || issueIid === '0') throw new Error('a real GitLab RFC issue is required for image publication');\nconst gitlabApiBase = clean($env.GITLAB_API_BASE_URL || ($env.GITLAB_BASE_URL ? `${clean($env.GITLAB_BASE_URL).replace(/\\/+$/, '')}/api/v4` : '')).replace(/\\/+$/, '');\nconst gitlabToken = clean($env.N8N_GITLAB_TOKEN ?? $env.GITLAB_TOKEN);\nif (!gitlabApiBase || !gitlabToken) throw new Error('GitLab API configuration is required for CAB verification');\nconst headers = { 'PRIVATE-TOKEN': gitlabToken };\nconst issue = await this.helpers.httpRequest({ method: 'GET', url: `${gitlabApiBase}/projects/${encodeURIComponent(projectPath)}/issues/${encodeURIComponent(issueIid)}`, headers, json: true, timeout: 30000 });\nconst notes = await this.helpers.httpRequest({ method: 'GET', url: `${gitlabApiBase}/projects/${encodeURIComponent(projectPath)}/issues/${encodeURIComponent(issueIid)}/notes`, headers, json: true, timeout: 30000, qs: { per_page: 100 } });\nconst labels = Array.isArray(issue?.labels) ? issue.labels.map((item) => clean(item).toLowerCase()) : [];\nconst approvedLabel = labels.some((label) => ['状態/approved', 'status:approved', 'cab/approved', 'approved'].includes(label));\nconst approvalNote = (Array.isArray(notes) ? notes : []).filter((note) => /(^|\\s)\\/approve(\\s|$)|cab\\s*approved|承認済/i.test(clean(note?.body))).sort((a, b) => Date.parse(b?.created_at || 0) - Date.parse(a?.created_at || 0))[0];\nif (!approvedLabel || !approvalNote) throw new Error('GitLab RFC must have an approved label and an approval note');\nconst evidence = { changeId: `RFC-${issueIid}`, issueUrl: clean(issue.web_url) || issueUrl, approvedAt: clean(approvalNote.created_at), approvedBy: clean(approvalNote.author?.username ?? approvalNote.author?.name), approvalNoteId: approvalNote.id ?? null };\nif (!evidence.approvedAt || !evidence.approvedBy) throw new Error('GitLab approval evidence is incomplete');\nconst canonical = ['build', analysis.realm, imageTag, evidence.changeId, evidence.issueUrl, evidence.approvedAt, evidence.approvedBy].join('\\n');\nconst crypto = require('crypto');\nconst signature = crypto.createHmac('sha256', clean($env.N8N_WORKFLOWS_TOKEN)).update(canonical).digest('hex');\nreturn [{ json: { ...analysis, publish_request: { push_images: true, image_tag: imageTag, source_version: analysis.versions?.target_version, source_ref: sourceRef, source_generation: 'codebuild-target-version', approval_evidence: evidence, approval_signature: signature } } }];"
+      },
+      "id": "120",
+      "name": "Verify RFC CAB Approval",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [990, 80]
+    },
+    {
+      "parameters": {
+        "jsCode": "const analysis = $json ?? {};\nconst webhook = $node['Webhook Sulu RFC Source Analysis']?.json ?? {};\nconst payload = webhook.body && typeof webhook.body === 'object' ? webhook.body : webhook;\nconst clean = (value) => value === null || value === undefined ? '' : String(value).trim();\nconst truthy = (value) => ['1', 'true', 'yes', 'y', 'on'].includes(clean(value).toLowerCase());\nconst pushImages = analysis.publish_request?.push_images === true || truthy(payload.push_images ?? payload.pushImages ?? payload.build_and_push ?? payload.buildAndPush);\nconst allowEcrPush = truthy(payload.allow_ecr_push ?? payload.allowEcrPush);\nconst rfcDescription = clean(payload.rfc?.description ?? payload.rfc?.body ?? payload.rfc_description ?? payload.rfcDescription);\nconst inlineRef = rfcDescription.match(/^\\s*(?:[-*]\\s*)?(?:修正ソースref|修正ソース参照|source[_ ]?ref)\\s*[:：]\\s*([^\\s`]+)\\s*$/im);\nconst headingRef = rfcDescription.match(/^\\s*#{1,6}\\s*(?:修正ソースref|修正ソース参照|source[_ ]?ref)\\s*$[\\s\\n]*^\\s*([^\\s#`]+)\\s*$/im);\nconst sourceRef = clean(analysis.publish_request?.source_ref ?? payload.source_ref ?? payload.sourceRef ?? inlineRef?.[1] ?? headingRef?.[1] ?? $env.SULU_IMAGE_BUILDER_SOURCE_REF) || 'main';\nif (pushImages && !allowEcrPush) throw new Error('allow_ecr_push=true is required when push_images=true');\nconst serviceControlBase = String($env.SERVICE_CONTROL_API_BASE_URL || '').replace(/\\/+$/, '');\nif (!serviceControlBase) throw new Error('SERVICE_CONTROL_API_BASE_URL is required');\nconst imageTag = clean(analysis.publish_request?.image_tag) || analysis.versions?.target_version;\nconst buildRequest = { imageTag, sourceVersion: analysis.versions?.target_version, sourceRef, dryRun: !pushImages, allowEcrPush, correlationId: analysis.correlation_id, rfcUrl: analysis.rfc?.issue_url, approvalEvidence: analysis.publish_request?.approval_evidence, approvalSignature: analysis.publish_request?.approval_signature };\nconst build = await this.helpers.httpRequest({ method: 'POST', url: `${serviceControlBase}/build`, qs: { service: 'sulu', realm: analysis.realm }, json: true, timeout: 30000, headers: { Authorization: `Bearer ${String($env.N8N_WORKFLOWS_TOKEN || '').trim()}` }, body: buildRequest });\nif (!pushImages) return [{ json: { ...analysis, image_publish: { ...build, requested: false, status: 'validated', note: build.canBuild === false ? 'target tag already exists; select a new tag before push' : 'ready for explicit push after source fixes' } } }];\nconst terminal = new Set(['SUCCEEDED', 'FAILED', 'FAULT', 'STOPPED', 'TIMED_OUT']);\nlet status = null;\nfor (let attempt = 1; attempt <= 240; attempt += 1) {\n  status = await this.helpers.httpRequest({ method: 'GET', url: `${serviceControlBase}/build-status`, qs: { service: 'sulu', realm: analysis.realm, build_id: build.buildId }, json: true, timeout: 30000, headers: { Authorization: `Bearer ${String($env.N8N_WORKFLOWS_TOKEN || '').trim()}` } });\n  if (terminal.has(status?.status)) {\n    if (status.status !== 'SUCCEEDED') throw new Error(`Sulu image build failed: ${JSON.stringify(status)}`);\n    const images = Array.isArray(status.images) ? status.images : [];\n    if (images.length < 2 || !images.every((image) => image.exists === true && image.imageTag === imageTag)) throw new Error(`ECR push verification failed: ${JSON.stringify(status)}`);\n    return [{ json: { ...analysis, status: 'built_and_pushed', source_generation: { mode: 'codebuild-target-version', source_ref: sourceRef, source_version: analysis.versions?.target_version }, image_publish: { ...build, requested: true, dryRun: false, applied: true, verification: { status: 'passed', attempts: attempt, images, latest_tag_preserved: status.latestTagPreserved === true }, build_status: status } } }];\n  }\n  await new Promise((resolve) => setTimeout(resolve, 15000));\n}\nthrow new Error(`Timed out waiting for Sulu image build: ${JSON.stringify(status)}`);"
+      },
+      "id": "4",
+      "name": "Build and Push Sulu Images",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "5",
+      "name": "Respond RFC Source Analysis",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1370, 160]
+    },
+    {
+      "parameters": {
+        "content": "RFCから修正対象バージョンを抽出して差分分析する。修正後は明示したsource_refをAWS CodeBuildでビルドし、新規タグをSulu PHP/Nginx ECRへpushできる。実pushには二重の明示許可が必要。",
+        "height": 180,
+        "width": 420,
+        "color": 5
+      },
+      "id": "100",
+      "name": "Sticky Note: RFC analysis",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -80]
+    }
+  ],
+  "connections": {
+    "Webhook Sulu RFC Source Analysis": {"main": [[{"node": "Authorize RFC Source Analysis", "type": "main", "index": 0}]]},
+    "Authorize RFC Source Analysis": {"main": [[{"node": "IF RFC Source Analysis Authorized", "type": "main", "index": 0}]]},
+    "IF RFC Source Analysis Authorized": {"main": [[{"node": "Resolve RFC and Versions", "type": "main", "index": 0}], [{"node": "Respond RFC Source Analysis Unauthorized", "type": "main", "index": 0}]]},
+    "Resolve RFC and Versions": {"main": [[{"node": "Analyze RFC Target Version", "type": "main", "index": 0}]]},
+    "Analyze RFC Target Version": {"main": [[{"node": "Verify RFC CAB Approval", "type": "main", "index": 0}]]},
+    "Verify RFC CAB Approval": {"main": [[{"node": "Build and Push Sulu Images", "type": "main", "index": 0}]]},
+    "Build and Push Sulu Images": {"main": [[{"node": "Respond RFC Source Analysis", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionTimeout": 3900},
+  "versionId": "1.0.0",
+  "meta": {
+    "workflowId": "wf.sulu_rfc_source_analysis",
+    "revision": 1,
+    "createdBy": {"id": "1", "name": "system"},
+    "aiops_catalog": {
+      "summary": "Sulu RFCの差分分析後、修正版を新規タグでECRへビルド・push",
+      "realm": "prod",
+      "platform": "sulu",
+      "required_roles": ["ops:oncall"],
+      "required_groups": ["infra", "developers"],
+      "required_users": [],
+      "risk_level": "high",
+      "impact_scope": "artifact",
+      "category": "change-build",
+      "run_window": "approved-change-window",
+      "approval_contact": "infra-lead@example.com",
+      "available": true,
+      "available_from_monitoring": false,
+      "workflow_class": "service_request"
+    }
+  }
+}

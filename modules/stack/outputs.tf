@@ -489,6 +489,11 @@ output "service_control_api_base_url" {
   sensitive   = true
 }
 
+output "sulu_image_builder_project_name" {
+  description = "AWS CodeBuild project used by the RFC workflow to build and push Sulu images"
+  value       = local.sulu_image_builder_enabled ? aws_codebuild_project.sulu_image_builder[0].name : null
+}
+
 output "n8n_filesystem_id" {
   description = "EFS ID used for n8n (if created or supplied)"
   value       = local.n8n_filesystem_id_effective

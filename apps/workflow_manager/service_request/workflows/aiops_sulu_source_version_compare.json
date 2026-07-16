@@ -1,0 +1,120 @@
+{
+  "name": "Sulu Source Version Compare",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "sulu/source-version-compare",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Sulu Source Version Compare",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst getHeader = (name) => { const wanted = String(name).toLowerCase(); const key = Object.keys(headers).find((item) => String(item).toLowerCase() === wanted); return key ? headers[key] : ''; };\nconst expected = String($env.N8N_WORKFLOWS_TOKEN || '').trim();\nconst provided = String(getHeader('authorization') || getHeader('x-aiops-workflows-token') || '').trim().replace(/^bearer\\s+/i, '').trim();\nreturn [{ json: { ...request, auth_ok: Boolean(expected) && provided === expected, auth_error: expected ? 'invalid workflows token' : 'N8N_WORKFLOWS_TOKEN is not configured' } }];"
+      },
+      "id": "110",
+      "name": "Authorize Source Compare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 160]
+    },
+    {
+      "parameters": {"conditions": {"options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2}, "conditions": [{"id": "authorized", "leftValue": "={{ $json.auth_ok }}", "rightValue": true, "operator": {"type": "boolean", "operation": "true", "singleValue": true}}], "combinator": "and"}, "options": {}},
+      "id": "111",
+      "name": "IF Source Compare Authorized",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 160]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ { ok: false, error: $json.auth_error } }}", "options": {"responseCode": 401}},
+      "id": "112",
+      "name": "Respond Source Compare Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [880, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = ($json && typeof $json === 'object' && $json.body !== undefined) ? ($json.body ?? {}) : ($json ?? {});\nconst clean = (value) => value === null || value === undefined ? '' : String(value).trim();\nconst versionPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;\nconst baseVersion = clean(payload.base_version ?? payload.baseVersion ?? payload.from_version ?? payload.fromVersion);\nconst targetVersion = clean(payload.target_version ?? payload.targetVersion ?? payload.to_version ?? payload.toVersion);\nconst correlationId = clean(payload.correlation_id ?? payload.correlationId ?? payload.trace_id ?? payload.traceId);\nif (!baseVersion) throw new Error('base_version is required');\nif (!targetVersion) throw new Error('target_version is required');\nif (!versionPattern.test(baseVersion) || !versionPattern.test(targetVersion)) throw new Error('version contains unsupported characters');\nif (baseVersion.toLowerCase() === 'latest' || targetVersion.toLowerCase() === 'latest') throw new Error('explicit version tags are required; latest is not allowed');\nif (baseVersion === targetVersion) throw new Error('base_version and target_version must be different');\nreturn [{ json: { workflow_id: 'wf.sulu_source_version_compare', source_repository: 'sulu/skeleton', base_version: baseVersion, target_version: targetVersion, correlation_id: correlationId || null } }];"
+      },
+      "id": "2",
+      "name": "Validate Version Comparison",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [510, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst compareApiUrl = `https://api.github.com/repos/sulu/skeleton/compare/${encodeURIComponent(request.base_version)}...${encodeURIComponent(request.target_version)}`;\nconst response = await this.helpers.httpRequest({ method: 'GET', url: compareApiUrl, json: true, timeout: 60000, headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'smic-aiops-sulu-source-compare', 'X-GitHub-Api-Version': '2022-11-28' } });\nif (!response || !Array.isArray(response.files)) throw new Error(`GitHub comparison response is invalid: ${JSON.stringify(response)}`);\nconst files = response.files.map((file) => ({ filename: String(file.filename || ''), previous_filename: file.previous_filename || null, status: String(file.status || 'unknown'), additions: Number(file.additions || 0), deletions: Number(file.deletions || 0), changes: Number(file.changes || 0), patch: file.patch ? String(file.patch).slice(0, 12000) : null, blob_url: file.blob_url || null }));\nconst paths = (predicate) => files.filter(predicate).map((file) => file.filename);\nconst dependencyFiles = paths((file) => /(^|\\/)(composer\\.(json|lock)|symfony\\.lock|package(-lock)?\\.json|yarn\\.lock)$/.test(file.filename));\nconst configFiles = paths((file) => file.filename.startsWith('config/') || /(^|\\/)\\.env/.test(file.filename));\nconst databaseFiles = paths((file) => /(^|\\/)(migrations?|Entity|Repository)\\//i.test(file.filename) || /doctrine/i.test(file.filename));\nconst adminAssetFiles = paths((file) => file.filename.startsWith('public/build/admin/') || file.filename.startsWith('assets/admin/'));\nconst runtimeFiles = paths((file) => file.filename.startsWith('bin/') || file.filename === 'public/index.php' || file.filename === 'src/Kernel.php');\nconst testFiles = paths((file) => /(^|\\/)(tests?|phpunit)/i.test(file.filename));\nconst destructiveFiles = files.filter((file) => ['removed', 'renamed'].includes(file.status)).map((file) => file.filename);\nconst findings = [];\nconst addFinding = (id, severity, category, title, affectedFiles, reason, recommendation, tests) => { if (affectedFiles.length) findings.push({ id, severity, category, title, affected_files: [...new Set(affectedFiles)], reason, recommendation, recommended_tests: tests }); };\naddFinding('SULU-CMP-DEPENDENCY', 'high', 'dependencies', '依存パッケージとロック情報の更新確認', dependencyFiles, 'Sulu本体、Symfony recipe、またはPHP/JavaScript依存関係の変更が含まれます。', 'composer installを再実行し、composer.lockとsymfony.lockの差分、PHP/Symfony要件、非推奨APIを確認してください。', ['composer validate', 'composer install --no-interaction', 'bin/adminconsole about', '既存PHPテスト']);\naddFinding('SULU-CMP-CONFIG', 'high', 'configuration', '設定・ルーティング差分の反映', configFiles, 'config配下または環境設定に変更があり、ローカルoverrideと競合する可能性があります。', '対象設定をscripts/itsm/sulu/source_overridesと照合し、旧resource参照や廃止設定を置換してください。', ['bin/adminconsole lint:yaml config', 'bin/adminconsole debug:router', 'キャッシュwarmup']);\naddFinding('SULU-CMP-DATABASE', 'high', 'database', 'DBスキーマ・Doctrine互換性の確認', databaseFiles, 'migration、Entity、Repository、Doctrine関連の変更が含まれます。', 'バックアップとロールバック手順を用意し、migration dry-run後にステージングDBで適用してください。', ['doctrine:migrations:diff確認', 'doctrine:schema:validate', '既存データを使った回帰テスト']);\naddFinding('SULU-CMP-ADMIN-ASSETS', 'high', 'admin-assets', '管理画面ビルド成果物とカスタム資産の再生成', adminAssetFiles, '管理画面のハッシュ付き成果物またはmanifestが変わり、テーマ・監視画面パッチへ影響します。', '新バージョンを取得後に管理画面資産を再ビルドし、manifest参照とAIOpsカスタム画面を再検証してください。', ['scripts/itsm/sulu/build_admin_assets.sh --dry-run', 'scripts/itsm/sulu/check_sulu_admin_theme_in_nginx.sh', '管理画面ログインとAIOpsメニュー確認']);\naddFinding('SULU-CMP-RUNTIME', 'medium', 'runtime-bootstrap', '起動処理・Kernel差分の確認', runtimeFiles, 'console、front controller、またはKernel起動処理が変更されています。', 'ローカル変更との競合を解消し、CLIとHTTP双方の起動確認を行ってください。', ['bin/console list', 'bin/adminconsole list', '外形HTTP 2xx']);\naddFinding('SULU-CMP-DESTRUCTIVE', 'high', 'removed-or-renamed', '削除・改名ファイルの参照修正', destructiveFiles, '削除または改名されたファイルをローカル設定やビルド処理が参照している可能性があります。', '旧ファイル名の参照を全検索し、新ファイル名またはmanifestベースの参照へ変更してください。', ['旧ファイル名のrg検索', 'コンテナビルド', 'ブラウザの404/console error確認']);\naddFinding('SULU-CMP-TESTS', 'low', 'tests', '上流テスト変更の取り込み', testFiles, '上流のテストまたはテスト設定が変更されています。', '変更されたテスト意図をローカル回帰テストへ反映してください。', ['PHPUnit', 'n8n OQ', 'Sulu外形監視']);\nconst categorized = new Set([...dependencyFiles, ...configFiles, ...databaseFiles, ...adminAssetFiles, ...runtimeFiles, ...testFiles, ...destructiveFiles]);\nconst uncategorizedFiles = files.map((file) => file.filename).filter((filename) => !categorized.has(filename));\naddFinding('SULU-CMP-GENERAL', 'medium', 'general-source', 'その他ソース差分の手動レビュー', uncategorizedFiles, '自動分類外のソース差分があります。', 'patchと関連呼び出し元を確認し、必要に応じてローカルoverrideへ反映してください。', ['対象機能の単体テスト', 'Suluスモークテスト']);\nconst truncated = files.length >= 300;\nconst highCount = findings.filter((item) => item.severity === 'high').length;\nreturn [{ json: { ok: true, workflow_id: request.workflow_id, status: 'analyzed', source: { repository: request.source_repository, base_version: request.base_version, target_version: request.target_version, compare_api_url: compareApiUrl, compare_html_url: response.html_url || `https://github.com/sulu/skeleton/compare/${request.base_version}...${request.target_version}`, base_commit: response.base_commit?.sha || null, target_commit: response.commits?.length ? response.commits[response.commits.length - 1].sha : null }, comparison: { status: response.status || 'unknown', ahead_by: Number(response.ahead_by || 0), behind_by: Number(response.behind_by || 0), total_commits: Number(response.total_commits || 0), changed_files: files.length, additions: files.reduce((sum, file) => sum + file.additions, 0), deletions: files.reduce((sum, file) => sum + file.deletions, 0), truncated }, assessment: { risk_level: highCount > 0 ? 'high' : (findings.length ? 'medium' : 'low'), manual_review_required: findings.length > 0, high_priority_findings: highCount, finding_count: findings.length, recommended_sequence: ['依存関係と設定差分を反映', '削除・改名参照を修正', '管理画面資産を再生成', 'DB dry-runと回帰テスト', '3.0.4イメージのdry-runデプロイ'] }, findings, files, correlation_id: request.correlation_id } }];"
+      },
+      "id": "3",
+      "name": "Fetch and Analyze Sulu Diff",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [790, 160]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Respond Source Comparison",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1080, 160]
+    },
+    {
+      "parameters": {
+        "content": "Sulu skeletonの比較元・比較先タグをGitHub Compare APIで比較し、依存関係、設定、DB、管理画面資産、削除・改名などの修正候補を返す。ソースやサービスは変更しない。",
+        "height": 180,
+        "width": 420,
+        "color": 5
+      },
+      "id": "100",
+      "name": "Sticky Note: source analysis",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [240, -80]
+    }
+  ],
+  "connections": {
+    "Webhook Sulu Source Version Compare": {"main": [[{"node": "Authorize Source Compare", "type": "main", "index": 0}]]},
+    "Authorize Source Compare": {"main": [[{"node": "IF Source Compare Authorized", "type": "main", "index": 0}]]},
+    "IF Source Compare Authorized": {"main": [[{"node": "Validate Version Comparison", "type": "main", "index": 0}], [{"node": "Respond Source Compare Unauthorized", "type": "main", "index": 0}]]},
+    "Validate Version Comparison": {"main": [[{"node": "Fetch and Analyze Sulu Diff", "type": "main", "index": 0}]]},
+    "Fetch and Analyze Sulu Diff": {"main": [[{"node": "Respond Source Comparison", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionTimeout": 120},
+  "versionId": "1.0.0",
+  "meta": {
+    "workflowId": "wf.sulu_source_version_compare",
+    "revision": 1,
+    "createdBy": {"id": "1", "name": "system"},
+    "aiops_catalog": {
+      "summary": "比較元・比較先のSuluタグ間でソース差分と修正候補を分析",
+      "realm": "prod",
+      "platform": "sulu",
+      "required_roles": ["ops:oncall"],
+      "required_groups": ["infra", "developers"],
+      "required_users": [],
+      "risk_level": "low",
+      "impact_scope": "analysis",
+      "category": "source-analysis",
+      "run_window": "24x7",
+      "approval_contact": "infra-lead@example.com",
+      "available": true,
+      "available_from_monitoring": false,
+      "workflow_class": "service_request"
+    }
+  }
+}
