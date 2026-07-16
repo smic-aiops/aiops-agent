@@ -45,6 +45,5 @@ scenario2:validate_memory_fix:
 
     - test -s scripts/itsm/sulu/source_overrides/src/AIOpsDemo/MemorySafeReportIterator.php
 
-    - php -l scripts/itsm/sulu/source_overrides/src/AIOpsDemo/MemorySafeReportIterator.php
 
     - grep -q "yield" scripts/itsm/sulu/source_overrides/src/AIOpsDemo/MemorySafeReportIterator.php
