@@ -81,12 +81,13 @@ tf_json="$(terraform output -json)"
 N8N_BASE_URL="$(jq -r --arg realm "${REALM}" '.n8n_realm_urls.value[$realm] // .service_urls.value.n8n // empty' <<<"${tf_json}")"
 SERVICE_CONTROL_BASE_URL="$(jq -r '.service_control_api_base_url.value // .service_urls.value.control_api // empty' <<<"${tf_json}")"
 WORKFLOWS_TOKEN="$(jq -r '.N8N_WORKFLOWS_TOKEN.value // empty' <<<"${tf_json}")"
+N8N_API_KEY="$(jq -r --arg realm "${REALM}" '.n8n_api_keys_by_realm.value[$realm] // .n8n_api_key.value // empty' <<<"${tf_json}")"
 GITLAB_API_BASE_URL="$(jq -r '.gitlab_api_base_url.value // empty' <<<"${tf_json}")"
 GITLAB_TOKEN="$(jq -r '.gitlab_admin_token.value // empty' <<<"${tf_json}")"
 GITLAB_PROJECT_PATH="$(jq -r --arg realm "${REALM}" '.gitlab_service_projects_path.value[$realm] // .GITLAB_SERVICE_PROJECTS_PATH.value[$realm] // empty' <<<"${tf_json}")"
 ORIGINAL_IMAGE_TAG="$(jq -r '.sulu_image_tag.value // empty' <<<"${tf_json}")"
 
-for required in N8N_BASE_URL SERVICE_CONTROL_BASE_URL WORKFLOWS_TOKEN GITLAB_API_BASE_URL GITLAB_TOKEN GITLAB_PROJECT_PATH ORIGINAL_IMAGE_TAG; do
+for required in N8N_BASE_URL SERVICE_CONTROL_BASE_URL WORKFLOWS_TOKEN N8N_API_KEY GITLAB_API_BASE_URL GITLAB_TOKEN GITLAB_PROJECT_PATH ORIGINAL_IMAGE_TAG; do
   if [[ -z "${!required}" || "${!required}" == "null" ]]; then
     echo "Required value is unavailable: ${required}" >&2
     exit 1
@@ -180,8 +181,9 @@ if [[ -z "${ISSUE_IID}" || "${ISSUE_IID}" == "null" || -z "${ISSUE_URL}" || "${I
   echo "GitLab RFC creation failed" >&2
   exit 1
 fi
+approval_note="$(printf '/approve\n\nSulu release OQ %s' "${timestamp}")"
 curl -fsS -X POST -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" -H 'Content-Type: application/json' \
-  --data "$(jq -cn --arg body "/approve\n\nSulu release OQ ${timestamp}" '{body:$body}')" \
+  --data "$(jq -cn --arg body "${approval_note}" '{body:$body}')" \
   "${GITLAB_API_BASE_URL%/}/projects/${project_encoded}/issues/${ISSUE_IID}/notes" \
   >"${EVIDENCE_DIR}/gitlab-rfc-approval-note.json"
 
@@ -193,6 +195,22 @@ workflow_post() {
     --data "${payload}" "${N8N_BASE_URL%/}/webhook/${path}"
 }
 
+assert_latest_workflow_error() {
+  local workflow_name="$1" evidence_name="$2" expected_message="$3"
+  local api_base="${N8N_BASE_URL%/}/api/v1" workflow_id execution
+  workflow_id="$(curl -fsS -H "X-N8N-API-KEY: ${N8N_API_KEY}" "${api_base}/workflows?limit=250" \
+    | jq -r --arg name "${workflow_name}" '.data[] | select(.name == $name) | .id' | head -n 1)"
+  if [[ -z "${workflow_id}" ]]; then
+    echo "Workflow id not found: ${workflow_name}" >&2
+    return 1
+  fi
+  execution="$(curl -fsS -H "X-N8N-API-KEY: ${N8N_API_KEY}" "${api_base}/executions?workflowId=${workflow_id}&limit=1&includeData=true")"
+  printf '%s\n' "${execution}" >"${EVIDENCE_DIR}/${evidence_name}-execution.json"
+  jq -e --arg pattern "${expected_message}" \
+    '.data[0].status == "error" and ((.data[0].data.resultData.error.message // "") | test($pattern; "i"))' \
+    <<<"${execution}" >/dev/null
+}
+
 common_build_payload() {
   local tag="$1" ref="$2"
   jq -cn \
@@ -202,12 +220,14 @@ common_build_payload() {
     '{realm:$realm,rfc_issue_url:$issue_url,base_version:$base,target_version:$target,image_tag:$image_tag,source_ref:$source_ref,push_images:true,allow_ecr_push:true}'
 }
 
-workflow_post "existing-tag-overwrite-rejected" "sulu/rfc-source-analysis" '^(400|409|500)$' \
+workflow_post "existing-tag-overwrite-rejected" "sulu/rfc-source-analysis" '^200$' \
   "$(common_build_payload "${ORIGINAL_IMAGE_TAG}" "${SOURCE_REF}")"
+assert_latest_workflow_error "Sulu RFC Source Analysis" "existing-tag-overwrite-rejected" "already exists|will not be overwritten"
 
 missing_ref="oq/missing-${timestamp}"
-workflow_post "codebuild-failure" "sulu/rfc-source-analysis" '^(400|500)$' \
+workflow_post "codebuild-failure" "sulu/rfc-source-analysis" '^200$' \
   "$(common_build_payload "${IMAGE_TAG}-failed" "${missing_ref}")"
+assert_latest_workflow_error "Sulu RFC Source Analysis" "codebuild-failure" "build failed|FAILED|FAULT|TIMED_OUT"
 
 workflow_post "real-ecr-build-push" "sulu/rfc-source-analysis" '^200$' \
   "$(common_build_payload "${IMAGE_TAG}" "${SOURCE_REF}")"
