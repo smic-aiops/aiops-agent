@@ -20,3 +20,31 @@ sync:n8n_workflows:
   script:
     - bash scripts/n8n/sync_workflows.sh
 
+
+# Scenario 2 OQ: validate the generated memory-regression fix branch.
+
+scenario2:validate_memory_fix:
+
+  stage: n8n_sync
+
+  image: php:8.3-cli-alpine
+
+  rules:
+
+    - if: '$CI_COMMIT_BRANCH =~ /^fix\/sulu-memory-/'
+
+      when: on_success
+
+    - when: never
+
+  script:
+
+    - test -n "$AIOPS_TRACE_ID"
+
+    - test -n "$AIOPS_SELECTED_TESTS"
+
+    - test -s scripts/itsm/sulu/source_overrides/src/AIOpsDemo/MemorySafeReportIterator.php
+
+    - php -l scripts/itsm/sulu/source_overrides/src/AIOpsDemo/MemorySafeReportIterator.php
+
+    - grep -q "yield" scripts/itsm/sulu/source_overrides/src/AIOpsDemo/MemorySafeReportIterator.php
