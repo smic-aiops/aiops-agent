@@ -343,15 +343,23 @@ build_admin_assets() {
     return 0
   fi
 
+  local align_ckeditor_script="${SCRIPT_DIR}/align_sulu_admin_ckeditor_versions.sh"
+  if [[ ! -x "${align_ckeditor_script}" ]]; then
+    echo "[sulu] CKEditor alignment helper is missing or not executable: ${align_ckeditor_script}" >&2
+    exit 1
+  fi
+
   if [[ "${DRY_RUN}" == "true" ]]; then
+    SULU_CONTEXT="${SULU_CONTEXT}" "${align_ckeditor_script}" --dry-run
     echo "[sulu] [dry-run] would build admin assets in ${admin_dir}"
-    echo "[sulu] [dry-run] npm install --no-audit --no-fund && npm run build"
+    echo "[sulu] [dry-run] npm install --no-audit --no-fund && npm dedupe --no-audit --no-fund && npm run build"
     return 0
   fi
 
+  SULU_CONTEXT="${SULU_CONTEXT}" "${align_ckeditor_script}"
   echo "[sulu] Building admin assets..."
   if command -v npm >/dev/null 2>&1; then
-    (cd "${admin_dir}" && npm install --no-audit --no-fund && npm run build)
+    (cd "${admin_dir}" && npm install --no-audit --no-fund && npm dedupe --no-audit --no-fund && npm run build)
     return 0
   fi
 
@@ -363,7 +371,7 @@ build_admin_assets() {
       -v "${SULU_SOURCE_DIR}:/app" \
       -w /app/assets/admin \
       "${ADMIN_ASSETS_BUILD_IMAGE}" \
-      sh -lc "mkdir -p /tmp/.npm && npm install --no-audit --no-fund && npm run build"
+      sh -lc "mkdir -p /tmp/.npm && npm install --no-audit --no-fund && npm dedupe --no-audit --no-fund && npm run build"
     return 0
   fi
 

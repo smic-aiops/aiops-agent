@@ -2,11 +2,21 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
+const {pathToFileURL} = require('node:url');
 
-const {
-    buildDecisionExplanation,
-    isScenario2Event,
-} = require('../admin_monitoring_assets/assets/admin/views/AiNodeMonitoring/decisionTrace');
+let buildDecisionExplanation;
+let isScenario2Event;
+
+test.before(async() => {
+    const modulePath = path.resolve(
+        __dirname,
+        '../admin_monitoring_assets/assets/admin/views/AiNodeMonitoring/decisionTrace.mjs'
+    );
+    const decisionTrace = await import(pathToFileURL(modulePath).href);
+    buildDecisionExplanation = decisionTrace.buildDecisionExplanation;
+    isScenario2Event = decisionTrace.isScenario2Event;
+});
 
 function event(node, output, overrides = {}) {
     return {

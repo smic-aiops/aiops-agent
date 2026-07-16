@@ -6,7 +6,7 @@ import Input from 'sulu-admin-bundle/components/Input';
 import SingleSelect from 'sulu-admin-bundle/components/SingleSelect';
 import {translate} from 'sulu-admin-bundle/utils/Translator/Translator';
 
-const {buildDecisionExplanation} = require('./decisionTrace');
+import {buildDecisionExplanation} from './decisionTrace.mjs';
 
 const DEFAULT_POLL_MS = 1500;
 const DEFAULT_LIMIT = 100;

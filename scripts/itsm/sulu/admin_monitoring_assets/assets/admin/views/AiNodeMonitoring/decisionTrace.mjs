@@ -296,7 +296,7 @@ function isScenario2Event(event) {
     return buildDecisionExplanation(event).isScenario2;
 }
 
-module.exports = {
+export {
     buildDecisionExplanation,
     isScenario2Event,
     NEXT_ACTION_LABELS,
