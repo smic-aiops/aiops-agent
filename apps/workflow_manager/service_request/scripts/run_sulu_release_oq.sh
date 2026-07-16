@@ -181,7 +181,7 @@ if [[ -z "${ISSUE_IID}" || "${ISSUE_IID}" == "null" || -z "${ISSUE_URL}" || "${I
   echo "GitLab RFC creation failed" >&2
   exit 1
 fi
-approval_note="$(printf '/approve\n\nSulu release OQ %s' "${timestamp}")"
+approval_note="$(printf 'CAB approved\n\nSulu release OQ %s' "${timestamp}")"
 curl -fsS -X POST -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" -H 'Content-Type: application/json' \
   --data "$(jq -cn --arg body "${approval_note}" '{body:$body}')" \
   "${GITLAB_API_BASE_URL%/}/projects/${project_encoded}/issues/${ISSUE_IID}/notes" \
