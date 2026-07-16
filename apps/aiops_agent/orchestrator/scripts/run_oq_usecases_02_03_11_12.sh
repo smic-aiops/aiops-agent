@@ -512,7 +512,12 @@ def node_last_json(node_name):
     return item["json"]
   return None
 
-use_reply = node_last_json("Use Chat Core Reply") or {}
+use_reply = (
+  node_last_json("Use Chat Core Reply")
+  or node_last_json("Fast Zulip Response (Build)")
+  or node_last_json("Build Initial Reply")
+  or {}
+)
 parsed_chat_core = node_last_json("Parse Chat Core Response") or {}
 call_preview = node_last_json("Call Orchestrator Preview") or {}
 enqueue = node_last_json("Enqueue Job") or {}
