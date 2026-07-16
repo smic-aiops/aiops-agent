@@ -241,6 +241,17 @@ N8N_OBSERVER_EVENT_REPOSITORY_B64="$(b64_file "${N8N_OBSERVER_EVENT_REPOSITORY_P
 PHP_CONTAINER_SCRIPT="$(cat <<EOF
 set -euo pipefail
 cd /var/www/html
+
+if [[ -n "\${DATABASE_URL:-}" ]]; then
+  export DATABASE_URL="\$(printf '%s' "\${DATABASE_URL}" | sed 's/%/%%/g')"
+fi
+if [[ -n "\${ITSM_SOR_DATABASE_URL:-}" ]]; then
+  export ITSM_SOR_DATABASE_URL="\$(printf '%s' "\${ITSM_SOR_DATABASE_URL}" | sed 's/%/%%/g')"
+fi
+if [[ -n "\${MAILER_DSN:-}" ]]; then
+  export MAILER_DSN="\$(printf '%s' "\${MAILER_DSN}" | sed 's/%/%%/g')"
+fi
+
 mkdir -p src/Admin src/Controller src/Entity src/Repository translations config
 
 printf %s ${ADMIN_PHP_B64} | base64 -d > src/Admin/MonitoringAdmin.php

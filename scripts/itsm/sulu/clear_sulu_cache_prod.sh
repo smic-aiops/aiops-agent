@@ -215,6 +215,7 @@ for realm in "${REALMS_LIST[@]}"; do
   container_name="$(resolve_container_name "${realm}")"
 
   clear_cmd=""
+  symfony_env_escape='if [ -n "${DATABASE_URL:-}" ]; then DATABASE_URL="$(printf '\''%s'\'' "${DATABASE_URL}" | sed '\''s/%/%%/g'\'')"; export DATABASE_URL; fi; if [ -n "${ITSM_SOR_DATABASE_URL:-}" ]; then ITSM_SOR_DATABASE_URL="$(printf '\''%s'\'' "${ITSM_SOR_DATABASE_URL}" | sed '\''s/%/%%/g'\'')"; export ITSM_SOR_DATABASE_URL; fi; if [ -n "${MAILER_DSN:-}" ]; then MAILER_DSN="$(printf '\''%s'\'' "${MAILER_DSN}" | sed '\''s/%/%%/g'\'')"; export MAILER_DSN; fi'
   for ctx in ${CACHE_CONTEXTS_RAW}; do
     [[ -n "${ctx}" ]] || continue
     console="bin/${ctx}console"
@@ -235,6 +236,8 @@ for realm in "${REALMS_LIST[@]}"; do
       clear_cmd="${step}"
     fi
   done
+
+  clear_cmd="${symfony_env_escape} && ${clear_cmd}"
 
   # ECS Exec runs as the container user (php-fpm container is typically root here).
   # cache:clear/cache:warmup can leave files owned by root, while php-fpm workers run as www-data.

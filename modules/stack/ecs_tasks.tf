@@ -2143,6 +2143,16 @@ SQL
             export DATABASE_URL="$(printf '%s' "$${DATABASE_URL}" | sed 's/%/%%/g')"
           fi
 
+          # Symfony interprets %...% in container environment values as parameter
+          # placeholders. Preserve URL-encoded credentials for the secondary DB
+          # and mailer just as we do for DATABASE_URL above.
+          if [ -n "$${ITSM_SOR_DATABASE_URL:-}" ]; then
+            export ITSM_SOR_DATABASE_URL="$(printf '%s' "$${ITSM_SOR_DATABASE_URL}" | sed 's/%/%%/g')"
+          fi
+          if [ -n "$${MAILER_DSN:-}" ]; then
+            export MAILER_DSN="$(printf '%s' "$${MAILER_DSN}" | sed 's/%/%%/g')"
+          fi
+
           if [ -n "$${SULU_FPM_PORT:-}" ]; then
             for conf in \
               /usr/local/etc/php-fpm.d/zz-docker.conf \
