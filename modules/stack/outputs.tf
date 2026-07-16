@@ -683,6 +683,14 @@ output "initial_credentials" {
   }
 }
 
+output "gitlab_oidc_ssm_parameters" {
+  description = "SSM parameter names used by the GitLab Keycloak OIDC client"
+  value = var.create_ecs && var.create_gitlab ? {
+    client_id     = local.gitlab_oidc_client_id_parameter_name
+    client_secret = local.gitlab_oidc_client_secret_parameter_name
+  } : null
+}
+
 output "service_admin_info" {
   description = "Initial admin URLs and credential pointers per service (password values are not exposed; console links point to SSM SecureString entries)"
   value = {

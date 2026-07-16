@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\IstmSor\Entity\IstmServiceRequest;
 use App\ListBuilder\IstmDoctrineListBuilderFactory;
 use App\Service\IstmSorRlsContext;
+use App\Service\IstmCoreWriter;
 use FOS\RestBundle\View\ViewHandlerInterface;
 use Sulu\Component\Rest\AbstractRestController;
 use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilder;
@@ -21,6 +22,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 final class IstmServiceRequestController extends AbstractRestController
 {
+    use IstmWritableControllerTrait;
     private const LIST_KEY = 'itsm_service_requests';
     private const SECURITY_CONTEXT = 'app.itsm.service_requests';
 
@@ -32,6 +34,7 @@ final class IstmServiceRequestController extends AbstractRestController
         private readonly RestHelperInterface $restHelper,
         private readonly SecurityCheckerInterface $securityChecker,
         private readonly IstmSorRlsContext $rlsContext,
+        private readonly IstmCoreWriter $coreWriter,
     ) {
         parent::__construct($viewHandler, $tokenStorage);
     }
@@ -84,11 +87,15 @@ final class IstmServiceRequestController extends AbstractRestController
             'priority' => $requestEntity->getPriority(),
             'requesterPrincipalId' => $requestEntity->getRequesterPrincipalId(),
             'assigneePrincipalId' => $requestEntity->getAssigneePrincipalId(),
-            'openedAt' => $requestEntity->getOpenedAt()->format(DATE_ATOM),
+            'openedAt' => $requestEntity->getOpenedAt()?->format(DATE_ATOM),
             'fulfilledAt' => $requestEntity->getFulfilledAt()?->format(DATE_ATOM),
             'closedAt' => $requestEntity->getClosedAt()?->format(DATE_ATOM),
             'createdAt' => $requestEntity->getCreatedAt()->format(DATE_ATOM),
             'updatedAt' => $requestEntity->getUpdatedAt()->format(DATE_ATOM),
         ]));
     }
+
+    public function postAction(Request $request): Response { return $this->createResource($request, 'service_request'); }
+    public function putAction(Request $request, string $id): Response { return $this->updateResource($request, 'service_request', $id); }
+    public function deleteAction(Request $request, string $id): Response { return $this->deleteResource($request, 'service_request', $id); }
 }

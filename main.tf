@@ -88,6 +88,7 @@ module "stack" {
   efs_transition_to_ia                                 = var.efs_transition_to_ia
   manage_existing_efs                                  = var.manage_existing_efs
   rds_deletion_protection                              = var.rds_deletion_protection
+  rds_engine_version                                   = var.rds_engine_version
   rds_skip_final_snapshot                              = var.rds_skip_final_snapshot
   rds_backup_retention                                 = var.rds_backup_retention
   rds_max_locks_per_transaction                        = var.rds_max_locks_per_transaction

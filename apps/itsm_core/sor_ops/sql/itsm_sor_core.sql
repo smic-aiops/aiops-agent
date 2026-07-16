@@ -832,7 +832,7 @@ AS $$
          AND w.dow = EXTRACT(dow FROM d.local_date)::smallint
         WHERE itsm.is_business_day(p_realm_id, d.cal_id, d.local_date) = true
       ),
-      overlaps AS (
+      overlap_calc AS (
         SELECT
           GREATEST(
             0,
@@ -861,7 +861,7 @@ AS $$
           ) > from_ts
       )
       SELECT ROUND(SUM(overlap_seconds) / 60.0, 2)
-      FROM overlaps
+      FROM overlap_calc
     ), 0)
   END;
 $$;
@@ -1680,7 +1680,10 @@ BEGIN
 
   NEW.integrity := COALESCE(NEW.integrity, '{}'::jsonb);
   NEW.integrity := NEW.integrity - 'prev_hash' - 'hash' - 'hash_algo' - 'hash_version';
-  NEW.integrity := jsonb_set(NEW.integrity, '{prev_hash}', to_jsonb(v_prev_hash), true);
+  -- to_jsonb(NULL::text) is SQL NULL and would turn the whole jsonb_set result
+  -- into NULL for the first event in a realm. Persist an empty predecessor
+  -- marker for the head of the chain instead.
+  NEW.integrity := jsonb_set(NEW.integrity, '{prev_hash}', to_jsonb(COALESCE(v_prev_hash, '')), true);
 
   v_hash := itsm._audit_event_compute_hash(
     NEW.realm_id,
@@ -1863,7 +1866,7 @@ BEGIN
   VALUES (
     p_approval_id,
     v_realm_id,
-    'aiops_job',
+    'aiops_context',
     p_context_id,
     v_status,
     v_approved_by,
@@ -2120,7 +2123,7 @@ BEGIN
     'automation',
     'decision.recorded',
     v_source,
-    'aiops_job',
+    'aiops_context',
     p_context_id,
     NULLIF(BTRIM(p_correlation_id), ''),
     COALESCE(p_reply_target, '{}'::jsonb),
@@ -2933,7 +2936,7 @@ BEGIN
     SELECT
       m.approval_uuid AS id,
       m.realm_id,
-      'aiops_job' AS resource_type,
+      'aiops_context' AS resource_type,
       m.context_id AS resource_id,
       CASE
         WHEN m.decision = 'approved' THEN 'approved'
@@ -3171,6 +3174,726 @@ BEGIN
   ON CONFLICT DO NOTHING;
 
   RETURN v_summary || jsonb_build_object('dry_run', false);
+END;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- ITSM Core completion: reference integrity, state machine, request catalog,
+-- CMDB/API operational paths
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS itsm.resource_type_registry (
+  resource_type text PRIMARY KEY,
+  table_name text NOT NULL UNIQUE,
+  api_enabled boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO itsm.resource_type_registry (resource_type, table_name) VALUES
+  ('incident', 'incident'),
+  ('change_request', 'change_request'),
+  ('service_request', 'service_request'),
+  ('problem', 'problem'),
+  ('service', 'service'),
+  ('configuration_item', 'configuration_item'),
+  ('task', 'task'),
+  ('approval', 'approval')
+ON CONFLICT (resource_type) DO UPDATE SET table_name = EXCLUDED.table_name;
+
+CREATE OR REPLACE FUNCTION itsm.resource_exists(
+  p_realm_id uuid,
+  p_resource_type text,
+  p_resource_id uuid
+)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+  v_table text;
+  v_exists boolean;
+BEGIN
+  IF p_realm_id IS NULL OR p_resource_id IS NULL THEN
+    RETURN false;
+  END IF;
+  -- AIOps approvals point at ContextStore records in the same appDB. The
+  -- ContextStore is realm-isolated by deployment/database and has no realm_id.
+  IF lower(NULLIF(BTRIM(p_resource_type), '')) = 'aiops_context' THEN
+    SELECT EXISTS (
+      SELECT 1 FROM public.aiops_context WHERE context_id = p_resource_id
+    ) INTO v_exists;
+    RETURN COALESCE(v_exists, false);
+  END IF;
+  SELECT table_name INTO v_table
+  FROM itsm.resource_type_registry
+  WHERE resource_type = lower(NULLIF(BTRIM(p_resource_type), ''));
+  IF v_table IS NULL THEN
+    RETURN false;
+  END IF;
+  EXECUTE format(
+    'SELECT EXISTS (SELECT 1 FROM itsm.%I WHERE id = $1 AND realm_id = $2)',
+    v_table
+  ) INTO v_exists USING p_resource_id, p_realm_id;
+  RETURN COALESCE(v_exists, false);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION itsm._validate_polymorphic_resource()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.resource_id IS NULL AND TG_TABLE_NAME = 'approval' THEN
+    RETURN NEW;
+  END IF;
+  IF NOT itsm.resource_exists(NEW.realm_id, NEW.resource_type, NEW.resource_id) THEN
+    RAISE EXCEPTION 'Unknown or cross-realm resource reference: %.%', NEW.resource_type, NEW.resource_id;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DO $$
+DECLARE
+  v_table text;
+BEGIN
+  FOREACH v_table IN ARRAY ARRAY['external_ref', 'resource_acl', 'comment', 'attachment', 'tag', 'task', 'approval'] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS itsm_%I_resource_fk ON itsm.%I', v_table, v_table);
+    EXECUTE format(
+      'CREATE TRIGGER itsm_%I_resource_fk BEFORE INSERT OR UPDATE OF realm_id, resource_type, resource_id ON itsm.%I FOR EACH ROW EXECUTE FUNCTION itsm._validate_polymorphic_resource()',
+      v_table,
+      v_table
+    );
+  END LOOP;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS itsm_tag_resource_key_uniq
+  ON itsm.tag (realm_id, resource_type, resource_id, key);
+
+CREATE UNIQUE INDEX IF NOT EXISTS itsm_resource_acl_subject_permission_uniq
+  ON itsm.resource_acl (realm_id, resource_type, resource_id, subject_type, subject_id, permission);
+
+CREATE OR REPLACE FUNCTION itsm._cleanup_polymorphic_resources()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_type text := TG_ARGV[0];
+BEGIN
+  DELETE FROM itsm.external_ref WHERE realm_id = OLD.realm_id AND resource_type = v_type AND resource_id = OLD.id;
+  DELETE FROM itsm.resource_acl WHERE realm_id = OLD.realm_id AND resource_type = v_type AND resource_id = OLD.id;
+  DELETE FROM itsm.comment WHERE realm_id = OLD.realm_id AND resource_type = v_type AND resource_id = OLD.id;
+  DELETE FROM itsm.attachment WHERE realm_id = OLD.realm_id AND resource_type = v_type AND resource_id = OLD.id;
+  DELETE FROM itsm.tag WHERE realm_id = OLD.realm_id AND resource_type = v_type AND resource_id = OLD.id;
+  DELETE FROM itsm.task WHERE realm_id = OLD.realm_id AND resource_type = v_type AND resource_id = OLD.id;
+  DELETE FROM itsm.approval WHERE realm_id = OLD.realm_id AND resource_type = v_type AND resource_id = OLD.id;
+  RETURN OLD;
+END;
+$$;
+
+DO $$
+DECLARE
+  v_pair text[];
+BEGIN
+  FOREACH v_pair SLICE 1 IN ARRAY ARRAY[
+    ARRAY['incident','incident'], ARRAY['change_request','change_request'],
+    ARRAY['service_request','service_request'], ARRAY['problem','problem'],
+    ARRAY['service','service'], ARRAY['configuration_item','configuration_item']
+  ] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS itsm_%I_polymorphic_cleanup ON itsm.%I', v_pair[2], v_pair[2]);
+    EXECUTE format(
+      'CREATE TRIGGER itsm_%I_polymorphic_cleanup AFTER DELETE ON itsm.%I FOR EACH ROW EXECUTE FUNCTION itsm._cleanup_polymorphic_resources(%L)',
+      v_pair[2], v_pair[2], v_pair[1]
+    );
+  END LOOP;
+END $$;
+
+-- Every operational record/CI gets a valid service. Existing NULL values are
+-- migrated to a realm-local UNASSIGNED dictionary entry before NOT NULL.
+INSERT INTO itsm.service (realm_id, number, name, description, criticality, status)
+SELECT id, 'SVC-UNASSIGNED', 'Unassigned service', 'System fallback for records awaiting CMDB classification', 'low', 'active'
+FROM itsm.realm
+ON CONFLICT (realm_id, number) DO NOTHING;
+
+UPDATE itsm.configuration_item c
+SET service_id = s.id
+FROM itsm.service s
+WHERE c.service_id IS NULL AND s.realm_id = c.realm_id AND s.number = 'SVC-UNASSIGNED';
+UPDATE itsm.incident r SET service_id = s.id FROM itsm.service s
+WHERE r.service_id IS NULL AND s.realm_id = r.realm_id AND s.number = 'SVC-UNASSIGNED';
+UPDATE itsm.change_request r SET service_id = s.id FROM itsm.service s
+WHERE r.service_id IS NULL AND s.realm_id = r.realm_id AND s.number = 'SVC-UNASSIGNED';
+UPDATE itsm.service_request r SET service_id = s.id FROM itsm.service s
+WHERE r.service_id IS NULL AND s.realm_id = r.realm_id AND s.number = 'SVC-UNASSIGNED';
+UPDATE itsm.problem r SET service_id = s.id FROM itsm.service s
+WHERE r.service_id IS NULL AND s.realm_id = r.realm_id AND s.number = 'SVC-UNASSIGNED';
+
+UPDATE itsm.configuration_item SET ci_type = 'generic' WHERE ci_type IS NULL OR BTRIM(ci_type) = '';
+UPDATE itsm.configuration_item SET lifecycle_status = 'active' WHERE lifecycle_status IS NULL OR BTRIM(lifecycle_status) = '';
+
+ALTER TABLE itsm.configuration_item ALTER COLUMN service_id SET NOT NULL;
+ALTER TABLE itsm.configuration_item ALTER COLUMN ci_type SET NOT NULL;
+ALTER TABLE itsm.configuration_item ALTER COLUMN lifecycle_status SET NOT NULL;
+ALTER TABLE itsm.incident ALTER COLUMN service_id SET NOT NULL;
+ALTER TABLE itsm.change_request ALTER COLUMN service_id SET NOT NULL;
+ALTER TABLE itsm.service_request ALTER COLUMN service_id SET NOT NULL;
+ALTER TABLE itsm.problem ALTER COLUMN service_id SET NOT NULL;
+
+CREATE TABLE IF NOT EXISTS itsm.request_catalog_item (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id uuid NOT NULL REFERENCES itsm.realm(id) ON DELETE CASCADE,
+  item_key text NOT NULL,
+  name text NOT NULL,
+  description text NULL,
+  service_id uuid NOT NULL REFERENCES itsm.service(id) ON DELETE RESTRICT,
+  input_schema jsonb NOT NULL DEFAULT '{}'::jsonb,
+  fulfillment_workflow_id text NULL,
+  approval_policy_key text NULL,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW(),
+  UNIQUE (realm_id, item_key)
+);
+
+DROP TRIGGER IF EXISTS itsm_request_catalog_item_touch_updated_at ON itsm.request_catalog_item;
+CREATE TRIGGER itsm_request_catalog_item_touch_updated_at
+BEFORE UPDATE ON itsm.request_catalog_item
+FOR EACH ROW EXECUTE FUNCTION itsm._touch_updated_at();
+
+INSERT INTO itsm.request_catalog_item (realm_id, item_key, name, description, service_id, input_schema)
+SELECT r.id, 'generic-request', 'Generic service request', 'Fallback request catalog item', s.id,
+       '{"type":"object","additionalProperties":true}'::jsonb
+FROM itsm.realm r
+JOIN itsm.service s ON s.realm_id = r.id AND s.number = 'SVC-UNASSIGNED'
+ON CONFLICT (realm_id, item_key) DO NOTHING;
+
+ALTER TABLE itsm.service_request ADD COLUMN IF NOT EXISTS catalog_item_id uuid NULL;
+UPDATE itsm.service_request sr
+SET catalog_item_id = ci.id,
+    catalog_item_key = COALESCE(NULLIF(sr.catalog_item_key, ''), ci.item_key)
+FROM itsm.request_catalog_item ci
+WHERE sr.catalog_item_id IS NULL
+  AND ci.realm_id = sr.realm_id
+  AND ci.item_key = COALESCE(NULLIF(sr.catalog_item_key, ''), 'generic-request');
+UPDATE itsm.service_request sr
+SET catalog_item_id = ci.id,
+    catalog_item_key = ci.item_key
+FROM itsm.request_catalog_item ci
+WHERE sr.catalog_item_id IS NULL AND ci.realm_id = sr.realm_id AND ci.item_key = 'generic-request';
+ALTER TABLE itsm.service_request ALTER COLUMN catalog_item_id SET NOT NULL;
+ALTER TABLE itsm.service_request ALTER COLUMN catalog_item_key SET NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'itsm_service_request_catalog_item_fk') THEN
+    ALTER TABLE itsm.service_request ADD CONSTRAINT itsm_service_request_catalog_item_fk
+      FOREIGN KEY (catalog_item_id) REFERENCES itsm.request_catalog_item(id) ON DELETE RESTRICT;
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS itsm.record_status (
+  resource_type text NOT NULL,
+  status text NOT NULL,
+  is_initial boolean NOT NULL DEFAULT false,
+  is_terminal boolean NOT NULL DEFAULT false,
+  required_fields text[] NOT NULL DEFAULT ARRAY[]::text[],
+  PRIMARY KEY (resource_type, status)
+);
+
+CREATE TABLE IF NOT EXISTS itsm.status_transition (
+  resource_type text NOT NULL,
+  from_status text NOT NULL,
+  to_status text NOT NULL,
+  requires_approval boolean NOT NULL DEFAULT false,
+  PRIMARY KEY (resource_type, from_status, to_status),
+  FOREIGN KEY (resource_type, from_status) REFERENCES itsm.record_status(resource_type, status) ON DELETE CASCADE,
+  FOREIGN KEY (resource_type, to_status) REFERENCES itsm.record_status(resource_type, status) ON DELETE CASCADE
+);
+
+INSERT INTO itsm.record_status (resource_type, status, is_initial, is_terminal, required_fields) VALUES
+  ('incident','new',true,false,ARRAY['title','service_id']),
+  ('incident','open',true,false,ARRAY['title','service_id']),
+  ('incident','triaged',false,false,ARRAY['title','service_id','priority']),
+  ('incident','in_progress',false,false,ARRAY['title','service_id']),
+  ('incident','resolved',false,false,ARRAY['title','service_id','resolved_at']),
+  ('incident','closed',false,true,ARRAY['title','service_id','closed_at']),
+  ('incident','canceled',false,true,ARRAY['title','service_id']),
+  ('change_request','new',true,false,ARRAY['title','service_id']),
+  ('change_request','open',true,false,ARRAY['title','service_id']),
+  ('change_request','assessing',false,false,ARRAY['title','service_id','risk_level']),
+  ('change_request','approved',false,false,ARRAY['title','service_id','implementation_plan','backout_plan']),
+  ('change_request','scheduled',false,false,ARRAY['title','service_id','planned_start_at','planned_end_at']),
+  ('change_request','implemented',false,false,ARRAY['title','service_id','implemented_at']),
+  ('change_request','closed',false,true,ARRAY['title','service_id']),
+  ('change_request','rejected',false,true,ARRAY['title','service_id']),
+  ('change_request','canceled',false,true,ARRAY['title','service_id']),
+  ('service_request','new',true,false,ARRAY['title','service_id','catalog_item_id']),
+  ('service_request','open',true,false,ARRAY['title','service_id','catalog_item_id']),
+  ('service_request','in_progress',false,false,ARRAY['title','service_id','catalog_item_id']),
+  ('service_request','resolved',false,false,ARRAY['title','service_id','catalog_item_id','resolved_at']),
+  ('service_request','closed',false,true,ARRAY['title','service_id','catalog_item_id','closed_at']),
+  ('service_request','canceled',false,true,ARRAY['title','service_id','catalog_item_id']),
+  ('problem','new',true,false,ARRAY['title','service_id']),
+  ('problem','open',true,false,ARRAY['title','service_id']),
+  ('problem','investigating',false,false,ARRAY['title','service_id']),
+  ('problem','known_error',false,false,ARRAY['title','service_id','root_cause_summary']),
+  ('problem','resolved',false,false,ARRAY['title','service_id','root_cause_summary']),
+  ('problem','closed',false,true,ARRAY['title','service_id','root_cause_summary']),
+  ('problem','canceled',false,true,ARRAY['title','service_id'])
+ON CONFLICT (resource_type, status) DO UPDATE
+SET is_initial = EXCLUDED.is_initial,
+    is_terminal = EXCLUDED.is_terminal,
+    required_fields = EXCLUDED.required_fields;
+
+INSERT INTO itsm.status_transition (resource_type, from_status, to_status, requires_approval) VALUES
+  ('incident','new','triaged',false), ('incident','new','in_progress',false), ('incident','new','resolved',false),
+  ('incident','open','triaged',false), ('incident','open','in_progress',false), ('incident','open','resolved',false), ('incident','open','closed',false),
+  ('incident','triaged','in_progress',false), ('incident','triaged','resolved',false),
+  ('incident','in_progress','resolved',false), ('incident','resolved','in_progress',false), ('incident','resolved','closed',false),
+  ('change_request','new','assessing',false), ('change_request','open','assessing',false),
+  ('change_request','assessing','approved',true), ('change_request','assessing','rejected',true),
+  ('change_request','approved','scheduled',false), ('change_request','scheduled','implemented',false), ('change_request','implemented','closed',false),
+  ('service_request','new','in_progress',false), ('service_request','open','in_progress',false),
+  ('service_request','in_progress','resolved',false), ('service_request','resolved','in_progress',false), ('service_request','resolved','closed',false),
+  ('problem','new','investigating',false), ('problem','open','investigating',false),
+  ('problem','investigating','known_error',false), ('problem','investigating','resolved',false),
+  ('problem','known_error','resolved',false), ('problem','resolved','closed',false)
+ON CONFLICT DO NOTHING;
+
+-- Cancellation is valid from every non-terminal state.
+INSERT INTO itsm.status_transition (resource_type, from_status, to_status)
+SELECT s.resource_type, s.status, 'canceled'
+FROM itsm.record_status s
+WHERE NOT s.is_terminal
+  AND EXISTS (
+    SELECT 1 FROM itsm.record_status c
+    WHERE c.resource_type = s.resource_type AND c.status = 'canceled'
+  )
+ON CONFLICT DO NOTHING;
+
+UPDATE itsm.incident SET status = 'open' WHERE status IS NULL OR BTRIM(status) = '';
+UPDATE itsm.change_request SET status = 'open' WHERE status IS NULL OR BTRIM(status) = '';
+UPDATE itsm.service_request SET status = 'open' WHERE status IS NULL OR BTRIM(status) = '';
+UPDATE itsm.problem SET status = 'open' WHERE status IS NULL OR BTRIM(status) = '';
+ALTER TABLE itsm.incident ALTER COLUMN status SET NOT NULL;
+ALTER TABLE itsm.change_request ALTER COLUMN status SET NOT NULL;
+ALTER TABLE itsm.service_request ALTER COLUMN status SET NOT NULL;
+ALTER TABLE itsm.problem ALTER COLUMN status SET NOT NULL;
+
+CREATE OR REPLACE FUNCTION itsm._validate_record_state()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_type text := TG_ARGV[0];
+  v_required text[];
+  v_field text;
+  v_json jsonb;
+BEGIN
+  SELECT required_fields INTO v_required
+  FROM itsm.record_status
+  WHERE resource_type = v_type AND status = NEW.status;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Unsupported status %.% ', v_type, NEW.status;
+  END IF;
+  IF TG_OP = 'INSERT' AND NOT EXISTS (
+    SELECT 1 FROM itsm.record_status WHERE resource_type = v_type AND status = NEW.status AND is_initial
+  ) THEN
+    RAISE EXCEPTION 'Initial status not allowed: %.%', v_type, NEW.status;
+  END IF;
+  IF TG_OP = 'UPDATE' AND NEW.status IS DISTINCT FROM OLD.status AND NOT EXISTS (
+    SELECT 1 FROM itsm.status_transition
+    WHERE resource_type = v_type AND from_status = OLD.status AND to_status = NEW.status
+  ) THEN
+    RAISE EXCEPTION 'Invalid status transition: %.% -> %', v_type, OLD.status, NEW.status;
+  END IF;
+  v_json := to_jsonb(NEW);
+  FOREACH v_field IN ARRAY v_required LOOP
+    IF NOT (v_json ? v_field) OR v_json->v_field IS NULL OR NULLIF(BTRIM(v_json->>v_field), '') IS NULL THEN
+      RAISE EXCEPTION 'Required field % is missing for %.%', v_field, v_type, NEW.status;
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS itsm_incident_state_machine ON itsm.incident;
+CREATE TRIGGER itsm_incident_state_machine BEFORE INSERT OR UPDATE OF status, title, service_id, priority, resolved_at, closed_at
+ON itsm.incident FOR EACH ROW EXECUTE FUNCTION itsm._validate_record_state('incident');
+DROP TRIGGER IF EXISTS itsm_change_request_state_machine ON itsm.change_request;
+CREATE TRIGGER itsm_change_request_state_machine BEFORE INSERT OR UPDATE OF status, title, service_id, risk_level, implementation_plan, backout_plan, planned_start_at, planned_end_at, implemented_at
+ON itsm.change_request FOR EACH ROW EXECUTE FUNCTION itsm._validate_record_state('change_request');
+DROP TRIGGER IF EXISTS itsm_service_request_state_machine ON itsm.service_request;
+CREATE TRIGGER itsm_service_request_state_machine BEFORE INSERT OR UPDATE OF status, title, service_id, catalog_item_id, resolved_at, closed_at
+ON itsm.service_request FOR EACH ROW EXECUTE FUNCTION itsm._validate_record_state('service_request');
+DROP TRIGGER IF EXISTS itsm_problem_state_machine ON itsm.problem;
+CREATE TRIGGER itsm_problem_state_machine BEFORE INSERT OR UPDATE OF status, title, service_id, root_cause_summary
+ON itsm.problem FOR EACH ROW EXECUTE FUNCTION itsm._validate_record_state('problem');
+
+CREATE OR REPLACE FUNCTION itsm._validate_ci_relation_realm()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM itsm.configuration_item WHERE id = NEW.from_ci_id AND realm_id = NEW.realm_id)
+     OR NOT EXISTS (SELECT 1 FROM itsm.configuration_item WHERE id = NEW.to_ci_id AND realm_id = NEW.realm_id) THEN
+    RAISE EXCEPTION 'CI relation endpoints must exist in the same realm';
+  END IF;
+  IF NEW.from_ci_id = NEW.to_ci_id THEN
+    RAISE EXCEPTION 'Self-referencing CI relation is not allowed';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS itsm_ci_relation_realm_fk ON itsm.ci_relation;
+CREATE TRIGGER itsm_ci_relation_realm_fk BEFORE INSERT OR UPDATE ON itsm.ci_relation
+FOR EACH ROW EXECUTE FUNCTION itsm._validate_ci_relation_realm();
+
+CREATE OR REPLACE VIEW itsm.reference_integrity_issues AS
+SELECT 'configuration_item'::text AS resource_type, id AS resource_id, realm_id, 'service_id_missing'::text AS issue
+FROM itsm.configuration_item WHERE service_id IS NULL
+UNION ALL SELECT 'incident', id, realm_id, 'service_id_missing' FROM itsm.incident WHERE service_id IS NULL
+UNION ALL SELECT 'change_request', id, realm_id, 'service_id_missing' FROM itsm.change_request WHERE service_id IS NULL
+UNION ALL SELECT 'service_request', id, realm_id, 'service_id_missing' FROM itsm.service_request WHERE service_id IS NULL
+UNION ALL SELECT 'problem', id, realm_id, 'service_id_missing' FROM itsm.problem WHERE service_id IS NULL;
+
+CREATE OR REPLACE FUNCTION itsm.core_api_dispatch(
+  p_realm_key text,
+  p_action text,
+  p_resource_type text,
+  p_payload jsonb DEFAULT '{}'::jsonb,
+  p_resource_id uuid DEFAULT NULL,
+  p_query text DEFAULT NULL,
+  p_limit integer DEFAULT 50
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_realm_id uuid;
+  v_action text := lower(NULLIF(BTRIM(p_action), ''));
+  v_type text := lower(NULLIF(BTRIM(p_resource_type), ''));
+  v_table text;
+  v_id uuid := COALESCE(p_resource_id, NULLIF(p_payload->>'id','')::uuid, gen_random_uuid());
+  v_result jsonb;
+  v_service_id uuid;
+  v_catalog_id uuid;
+  v_number text;
+BEGIN
+  IF p_limit < 1 OR p_limit > 200 THEN RAISE EXCEPTION 'limit must be between 1 and 200'; END IF;
+  v_realm_id := itsm.get_realm_id(p_realm_key);
+  SELECT table_name INTO v_table FROM itsm.resource_type_registry WHERE resource_type = v_type AND api_enabled;
+
+  IF v_action IN ('get','search','list') THEN
+    IF v_table IS NULL THEN RAISE EXCEPTION 'Unsupported API resource type: %', v_type; END IF;
+    IF v_action = 'get' THEN
+      EXECUTE format('SELECT to_jsonb(t) FROM itsm.%I t WHERE t.realm_id=$1 AND t.id=$2', v_table)
+        INTO v_result USING v_realm_id, p_resource_id;
+      RETURN jsonb_build_object('ok', v_result IS NOT NULL, 'data', v_result);
+    END IF;
+    EXECUTE format(
+      'SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY t.created_at DESC), ''[]''::jsonb) FROM (SELECT * FROM itsm.%I WHERE realm_id=$1 AND ($2 IS NULL OR to_jsonb(%I.*)::text ILIKE ''%%'' || $2 || ''%%'') ORDER BY created_at DESC LIMIT $3) t',
+      v_table, v_table
+    ) INTO v_result USING v_realm_id, NULLIF(BTRIM(p_query), ''), p_limit;
+    RETURN jsonb_build_object('ok', true, 'data', v_result);
+  END IF;
+
+  IF v_action = 'create' OR p_payload ? 'service_number' THEN
+    SELECT id INTO v_service_id FROM itsm.service
+    WHERE realm_id = v_realm_id AND number = COALESCE(NULLIF(p_payload->>'service_number',''), 'SVC-UNASSIGNED');
+    IF v_service_id IS NULL THEN
+      SELECT id INTO v_service_id FROM itsm.service WHERE realm_id = v_realm_id AND number = 'SVC-UNASSIGNED';
+    END IF;
+  END IF;
+
+  IF v_action = 'create' THEN
+    CASE v_type
+      WHEN 'incident' THEN
+        v_number := COALESCE(NULLIF(p_payload->>'number',''), itsm.next_record_number(v_realm_id,'incident','INC',7));
+        INSERT INTO itsm.incident (id,realm_id,number,title,description,status,priority,service_id,reporter_principal_id,requester_principal_id)
+        VALUES (v_id,v_realm_id,v_number,p_payload->>'title',p_payload->>'description',COALESCE(NULLIF(p_payload->>'status',''),'new'),p_payload->>'priority',v_service_id,p_payload->>'reporter_principal_id',p_payload->>'requester_principal_id');
+      WHEN 'change_request' THEN
+        v_number := COALESCE(NULLIF(p_payload->>'number',''), itsm.next_record_number(v_realm_id,'change_request','CHG',7));
+        INSERT INTO itsm.change_request (id,realm_id,number,title,description,status,risk_level,change_type,service_id,requested_by_principal_id,implementation_plan,backout_plan)
+        VALUES (v_id,v_realm_id,v_number,p_payload->>'title',p_payload->>'description',COALESCE(NULLIF(p_payload->>'status',''),'new'),p_payload->>'risk_level',p_payload->>'change_type',v_service_id,p_payload->>'requested_by_principal_id',p_payload->>'implementation_plan',p_payload->>'backout_plan');
+      WHEN 'service_request' THEN
+        SELECT id INTO v_catalog_id FROM itsm.request_catalog_item WHERE realm_id=v_realm_id AND item_key=COALESCE(NULLIF(p_payload->>'catalog_item_key',''),'generic-request') AND active;
+        IF v_catalog_id IS NULL THEN RAISE EXCEPTION 'Unknown or inactive catalog item'; END IF;
+        v_number := COALESCE(NULLIF(p_payload->>'number',''), itsm.next_record_number(v_realm_id,'service_request','SRQ',7));
+        INSERT INTO itsm.service_request (id,realm_id,number,title,description,status,service_id,requester_principal_id,catalog_item_key,catalog_item_id,inputs)
+        VALUES (v_id,v_realm_id,v_number,p_payload->>'title',p_payload->>'description',COALESCE(NULLIF(p_payload->>'status',''),'new'),v_service_id,p_payload->>'requester_principal_id',COALESCE(NULLIF(p_payload->>'catalog_item_key',''),'generic-request'),v_catalog_id,COALESCE(p_payload->'inputs','{}'::jsonb));
+      WHEN 'problem' THEN
+        v_number := COALESCE(NULLIF(p_payload->>'number',''), itsm.next_record_number(v_realm_id,'problem','PRB',7));
+        INSERT INTO itsm.problem (id,realm_id,number,title,description,status,priority,service_id,owner_group_id)
+        VALUES (v_id,v_realm_id,v_number,p_payload->>'title',p_payload->>'description',COALESCE(NULLIF(p_payload->>'status',''),'new'),p_payload->>'priority',v_service_id,p_payload->>'owner_group_id');
+      WHEN 'service' THEN
+        INSERT INTO itsm.service (id,realm_id,number,name,description,owner_group_id,criticality,status)
+        VALUES (v_id,v_realm_id,p_payload->>'number',p_payload->>'name',p_payload->>'description',p_payload->>'owner_group_id',p_payload->>'criticality',COALESCE(NULLIF(p_payload->>'status',''),'active'));
+      WHEN 'configuration_item' THEN
+        INSERT INTO itsm.configuration_item (id,realm_id,number,service_id,ci_type,name,attributes,lifecycle_status,owner_group_id)
+        VALUES (v_id,v_realm_id,p_payload->>'number',v_service_id,COALESCE(NULLIF(p_payload->>'ci_type',''),'generic'),p_payload->>'name',COALESCE(p_payload->'attributes','{}'::jsonb),COALESCE(NULLIF(p_payload->>'lifecycle_status',''),'active'),p_payload->>'owner_group_id');
+      ELSE RAISE EXCEPTION 'Unsupported create resource type: %', v_type;
+    END CASE;
+  ELSIF v_action = 'update' THEN
+    IF p_resource_id IS NULL THEN RAISE EXCEPTION 'resource_id is required for update'; END IF;
+    CASE v_type
+      WHEN 'incident' THEN UPDATE itsm.incident SET title=COALESCE(p_payload->>'title',title),description=CASE WHEN p_payload?'description' THEN p_payload->>'description' ELSE description END,status=COALESCE(p_payload->>'status',status),priority=CASE WHEN p_payload?'priority' THEN p_payload->>'priority' ELSE priority END,service_id=COALESCE(v_service_id,service_id),resolved_at=CASE WHEN p_payload?'resolved_at' THEN (p_payload->>'resolved_at')::timestamptz ELSE resolved_at END,closed_at=CASE WHEN p_payload?'closed_at' THEN (p_payload->>'closed_at')::timestamptz ELSE closed_at END WHERE id=p_resource_id AND realm_id=v_realm_id;
+      WHEN 'change_request' THEN UPDATE itsm.change_request SET title=COALESCE(p_payload->>'title',title),description=CASE WHEN p_payload?'description' THEN p_payload->>'description' ELSE description END,status=COALESCE(p_payload->>'status',status),risk_level=CASE WHEN p_payload?'risk_level' THEN p_payload->>'risk_level' ELSE risk_level END,service_id=COALESCE(v_service_id,service_id),implementation_plan=CASE WHEN p_payload?'implementation_plan' THEN p_payload->>'implementation_plan' ELSE implementation_plan END,backout_plan=CASE WHEN p_payload?'backout_plan' THEN p_payload->>'backout_plan' ELSE backout_plan END WHERE id=p_resource_id AND realm_id=v_realm_id;
+      WHEN 'service_request' THEN UPDATE itsm.service_request SET title=COALESCE(p_payload->>'title',title),description=CASE WHEN p_payload?'description' THEN p_payload->>'description' ELSE description END,status=COALESCE(p_payload->>'status',status),service_id=COALESCE(v_service_id,service_id),inputs=CASE WHEN p_payload?'inputs' THEN p_payload->'inputs' ELSE inputs END,resolved_at=CASE WHEN p_payload?'resolved_at' THEN (p_payload->>'resolved_at')::timestamptz ELSE resolved_at END,closed_at=CASE WHEN p_payload?'closed_at' THEN (p_payload->>'closed_at')::timestamptz ELSE closed_at END WHERE id=p_resource_id AND realm_id=v_realm_id;
+      WHEN 'problem' THEN UPDATE itsm.problem SET title=COALESCE(p_payload->>'title',title),description=CASE WHEN p_payload?'description' THEN p_payload->>'description' ELSE description END,status=COALESCE(p_payload->>'status',status),priority=CASE WHEN p_payload?'priority' THEN p_payload->>'priority' ELSE priority END,service_id=COALESCE(v_service_id,service_id),root_cause_summary=CASE WHEN p_payload?'root_cause_summary' THEN p_payload->>'root_cause_summary' ELSE root_cause_summary END WHERE id=p_resource_id AND realm_id=v_realm_id;
+      WHEN 'service' THEN UPDATE itsm.service SET name=COALESCE(p_payload->>'name',name),description=CASE WHEN p_payload?'description' THEN p_payload->>'description' ELSE description END,status=COALESCE(p_payload->>'status',status),criticality=CASE WHEN p_payload?'criticality' THEN p_payload->>'criticality' ELSE criticality END WHERE id=p_resource_id AND realm_id=v_realm_id;
+      WHEN 'configuration_item' THEN UPDATE itsm.configuration_item SET name=COALESCE(p_payload->>'name',name),service_id=COALESCE(v_service_id,service_id),ci_type=COALESCE(p_payload->>'ci_type',ci_type),attributes=CASE WHEN p_payload?'attributes' THEN p_payload->'attributes' ELSE attributes END,lifecycle_status=COALESCE(p_payload->>'lifecycle_status',lifecycle_status) WHERE id=p_resource_id AND realm_id=v_realm_id;
+      ELSE RAISE EXCEPTION 'Unsupported update resource type: %', v_type;
+    END CASE;
+    v_id := p_resource_id;
+  ELSIF v_action = 'delete' THEN
+    IF p_resource_id IS NULL THEN RAISE EXCEPTION 'resource_id is required for delete'; END IF;
+    IF v_table IS NULL OR v_type IN ('task','approval') THEN RAISE EXCEPTION 'Unsupported delete resource type: %', v_type; END IF;
+    EXECUTE format('DELETE FROM itsm.%I WHERE id=$1 AND realm_id=$2', v_table) USING p_resource_id, v_realm_id;
+    RETURN jsonb_build_object('ok', FOUND, 'deleted_id', p_resource_id);
+  ELSIF v_action = 'add_comment' THEN
+    INSERT INTO itsm.comment (realm_id,resource_type,resource_id,body,author_principal_id)
+    VALUES (v_realm_id,v_type,p_resource_id,p_payload->>'body',p_payload->>'author_principal_id') RETURNING id INTO v_id;
+  ELSIF v_action = 'set_tag' THEN
+    INSERT INTO itsm.tag (realm_id,resource_type,resource_id,key,value)
+    VALUES (v_realm_id,v_type,p_resource_id,p_payload->>'key',p_payload->>'value')
+    ON CONFLICT (realm_id,resource_type,resource_id,key) DO UPDATE SET value=EXCLUDED.value RETURNING id INTO v_id;
+  ELSIF v_action = 'grant_acl' THEN
+    INSERT INTO itsm.resource_acl (realm_id,resource_type,resource_id,subject_type,subject_id,permission,expires_at,granted_by_principal_id)
+    VALUES (v_realm_id,v_type,p_resource_id,p_payload->>'subject_type',p_payload->>'subject_id',p_payload->>'permission',NULLIF(p_payload->>'expires_at','')::timestamptz,p_payload->>'granted_by_principal_id')
+    ON CONFLICT (realm_id,resource_type,resource_id,subject_type,subject_id,permission) DO UPDATE SET expires_at=EXCLUDED.expires_at RETURNING id INTO v_id;
+  ELSIF v_action = 'add_attachment' THEN
+    INSERT INTO itsm.attachment (realm_id,resource_type,resource_id,storage_type,storage_key,content_type,size_bytes,sha256,created_by_principal_id)
+    VALUES (v_realm_id,v_type,p_resource_id,p_payload->>'storage_type',p_payload->>'storage_key',p_payload->>'content_type',NULLIF(p_payload->>'size_bytes','')::bigint,p_payload->>'sha256',p_payload->>'created_by_principal_id') RETURNING id INTO v_id;
+  ELSE
+    RAISE EXCEPTION 'Unsupported API action: %', v_action;
+  END IF;
+
+  SELECT itsm.core_api_dispatch(p_realm_key,'get',v_type,'{}'::jsonb,v_id,NULL,1)->'data' INTO v_result;
+  RETURN jsonb_build_object('ok', true, 'data', v_result);
+END;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- Operational CMDB synchronization
+-- -----------------------------------------------------------------------------
+
+ALTER TABLE itsm.ci_relation
+  ADD COLUMN IF NOT EXISTS attributes jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+CREATE OR REPLACE FUNCTION itsm.sync_cmdb(
+  p_realm_key text,
+  p_payload jsonb,
+  p_dry_run boolean DEFAULT false
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_realm_id uuid;
+  v_item jsonb;
+  v_service_id uuid;
+  v_from_id uuid;
+  v_to_id uuid;
+  v_services integer := 0;
+  v_cis integer := 0;
+  v_relations integer := 0;
+BEGIN
+  IF jsonb_typeof(COALESCE(p_payload, '{}'::jsonb)) <> 'object' THEN
+    RAISE EXCEPTION 'CMDB payload must be a JSON object';
+  END IF;
+  v_realm_id := itsm.set_rls_context(p_realm_key);
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(COALESCE(p_payload->'services', '[]'::jsonb)) LOOP
+    IF NULLIF(BTRIM(v_item->>'number'), '') IS NULL OR NULLIF(BTRIM(v_item->>'name'), '') IS NULL THEN
+      RAISE EXCEPTION 'Each CMDB service requires number and name';
+    END IF;
+    v_services := v_services + 1;
+    IF NOT p_dry_run THEN
+      INSERT INTO itsm.service (realm_id, number, name, description, owner_group_id, criticality, status)
+      VALUES (v_realm_id, v_item->>'number', v_item->>'name', v_item->>'description',
+              v_item->>'owner_group_id', v_item->>'criticality', COALESCE(NULLIF(v_item->>'status',''),'active'))
+      ON CONFLICT (realm_id, number) DO UPDATE
+      SET name=EXCLUDED.name, description=EXCLUDED.description,
+          owner_group_id=EXCLUDED.owner_group_id, criticality=EXCLUDED.criticality,
+          status=EXCLUDED.status;
+    END IF;
+  END LOOP;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(COALESCE(p_payload->'configuration_items', '[]'::jsonb)) LOOP
+    IF NULLIF(BTRIM(v_item->>'number'), '') IS NULL OR NULLIF(BTRIM(v_item->>'name'), '') IS NULL
+       OR NULLIF(BTRIM(v_item->>'service_number'), '') IS NULL THEN
+      RAISE EXCEPTION 'Each CMDB configuration item requires number, name and service_number';
+    END IF;
+    SELECT id INTO v_service_id FROM itsm.service
+    WHERE realm_id=v_realm_id AND number=v_item->>'service_number';
+    IF v_service_id IS NULL AND NOT p_dry_run THEN
+      RAISE EXCEPTION 'Unknown CMDB service_number: %', v_item->>'service_number';
+    END IF;
+    v_cis := v_cis + 1;
+    IF NOT p_dry_run THEN
+      INSERT INTO itsm.configuration_item
+        (realm_id, number, service_id, ci_type, name, attributes, lifecycle_status, owner_group_id)
+      VALUES
+        (v_realm_id, v_item->>'number', v_service_id, COALESCE(NULLIF(v_item->>'ci_type',''),'generic'),
+         v_item->>'name', COALESCE(v_item->'attributes','{}'::jsonb),
+         COALESCE(NULLIF(v_item->>'lifecycle_status',''),'active'), v_item->>'owner_group_id')
+      ON CONFLICT (realm_id, number) DO UPDATE
+      SET service_id=EXCLUDED.service_id, ci_type=EXCLUDED.ci_type, name=EXCLUDED.name,
+          attributes=EXCLUDED.attributes, lifecycle_status=EXCLUDED.lifecycle_status,
+          owner_group_id=EXCLUDED.owner_group_id;
+    END IF;
+  END LOOP;
+
+  FOR v_item IN SELECT value FROM jsonb_array_elements(COALESCE(p_payload->'relations', '[]'::jsonb)) LOOP
+    IF NULLIF(BTRIM(v_item->>'from_ci_number'), '') IS NULL
+       OR NULLIF(BTRIM(v_item->>'to_ci_number'), '') IS NULL
+       OR NULLIF(BTRIM(v_item->>'relation_type'), '') IS NULL THEN
+      RAISE EXCEPTION 'Each CMDB relation requires from_ci_number, to_ci_number and relation_type';
+    END IF;
+    SELECT id INTO v_from_id FROM itsm.configuration_item
+    WHERE realm_id=v_realm_id AND number=v_item->>'from_ci_number';
+    SELECT id INTO v_to_id FROM itsm.configuration_item
+    WHERE realm_id=v_realm_id AND number=v_item->>'to_ci_number';
+    IF (v_from_id IS NULL OR v_to_id IS NULL) AND NOT p_dry_run THEN
+      RAISE EXCEPTION 'CMDB relation endpoint was not found';
+    END IF;
+    v_relations := v_relations + 1;
+    IF NOT p_dry_run THEN
+      INSERT INTO itsm.ci_relation (realm_id, from_ci_id, to_ci_id, relation_type, attributes)
+      VALUES (v_realm_id, v_from_id, v_to_id, v_item->>'relation_type', COALESCE(v_item->'attributes','{}'::jsonb))
+      ON CONFLICT (realm_id, from_ci_id, to_ci_id, relation_type) DO UPDATE
+      SET attributes=EXCLUDED.attributes;
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object('ok',true,'dry_run',p_dry_run,'services',v_services,
+                            'configuration_items',v_cis,'relations',v_relations);
+END;
+$$;
+
+-- Supply realm-local dictionary defaults for legacy integrations that insert
+-- records directly instead of using core_api_dispatch.
+CREATE OR REPLACE FUNCTION itsm._apply_record_dictionary_defaults()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_record jsonb;
+  v_catalog_id uuid;
+  v_catalog_key text;
+BEGIN
+  IF NEW.service_id IS NULL THEN
+    SELECT id INTO NEW.service_id FROM itsm.service
+    WHERE realm_id=NEW.realm_id AND number='SVC-UNASSIGNED';
+  END IF;
+  IF TG_TABLE_NAME = 'service_request' THEN
+    v_record := to_jsonb(NEW);
+    IF NULLIF(v_record->>'catalog_item_id','') IS NULL THEN
+      SELECT id, item_key INTO v_catalog_id, v_catalog_key
+    FROM itsm.request_catalog_item
+      WHERE realm_id=NEW.realm_id
+        AND item_key=COALESCE(NULLIF(v_record->>'catalog_item_key',''),'generic-request')
+        AND active;
+      v_record := jsonb_set(v_record,'{catalog_item_id}',to_jsonb(v_catalog_id),true);
+      v_record := jsonb_set(v_record,'{catalog_item_key}',to_jsonb(v_catalog_key),true);
+      NEW := jsonb_populate_record(NEW,v_record);
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DO $$
+DECLARE v_table text;
+BEGIN
+  FOREACH v_table IN ARRAY ARRAY['configuration_item','incident','change_request','service_request','problem'] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS itsm_00_%I_dictionary_defaults ON itsm.%I',v_table,v_table);
+    EXECUTE format('CREATE TRIGGER itsm_00_%I_dictionary_defaults BEFORE INSERT ON itsm.%I FOR EACH ROW EXECUTE FUNCTION itsm._apply_record_dictionary_defaults()',v_table,v_table);
+  END LOOP;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- Attachment object deletion queue
+-- -----------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS itsm.attachment_deletion_queue (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  realm_id uuid NOT NULL REFERENCES itsm.realm(id) ON DELETE CASCADE,
+  attachment_id uuid NOT NULL,
+  storage_type text NOT NULL,
+  storage_key text NOT NULL,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','deleted','failed')),
+  attempts integer NOT NULL DEFAULT 0,
+  last_error text NULL,
+  queued_at timestamptz NOT NULL DEFAULT NOW(),
+  processed_at timestamptz NULL,
+  UNIQUE (storage_type, storage_key)
+);
+
+CREATE OR REPLACE FUNCTION itsm._enqueue_attachment_object_deletion()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF lower(OLD.storage_type) = 's3' AND NULLIF(BTRIM(OLD.storage_key),'') IS NOT NULL THEN
+    INSERT INTO itsm.attachment_deletion_queue
+      (realm_id,attachment_id,storage_type,storage_key,status,queued_at)
+    VALUES (OLD.realm_id,OLD.id,OLD.storage_type,OLD.storage_key,'pending',NOW())
+    ON CONFLICT (storage_type,storage_key) DO UPDATE
+    SET status=CASE WHEN itsm.attachment_deletion_queue.status='deleted' THEN 'deleted' ELSE 'pending' END,
+        last_error=NULL, queued_at=NOW();
+  END IF;
+  RETURN OLD;
+END;
+$$;
+DROP TRIGGER IF EXISTS itsm_attachment_object_delete_queue ON itsm.attachment;
+CREATE TRIGGER itsm_attachment_object_delete_queue
+AFTER DELETE ON itsm.attachment FOR EACH ROW
+EXECUTE FUNCTION itsm._enqueue_attachment_object_deletion();
+
+CREATE OR REPLACE FUNCTION itsm.attachment_deletion_dispatch(
+  p_realm_key text,
+  p_action text,
+  p_id uuid DEFAULT NULL,
+  p_error text DEFAULT NULL,
+  p_limit integer DEFAULT 100
+)
+RETURNS jsonb LANGUAGE plpgsql AS $$
+DECLARE v_realm_id uuid; v_data jsonb;
+BEGIN
+  v_realm_id := itsm.set_rls_context(p_realm_key);
+  IF p_action='list' THEN
+    SELECT COALESCE(jsonb_agg(to_jsonb(q) ORDER BY q.queued_at),'[]'::jsonb) INTO v_data
+    FROM (SELECT id,storage_type,storage_key,attempts,queued_at
+          FROM itsm.attachment_deletion_queue
+          WHERE realm_id=v_realm_id AND status IN ('pending','failed')
+          ORDER BY queued_at LIMIT LEAST(GREATEST(p_limit,1),500)) q;
+    RETURN jsonb_build_object('ok',true,'data',v_data);
+  ELSIF p_action='deleted' THEN
+    UPDATE itsm.attachment_deletion_queue SET status='deleted',processed_at=NOW(),last_error=NULL,attempts=attempts+1
+    WHERE id=p_id AND realm_id=v_realm_id;
+  ELSIF p_action='failed' THEN
+    UPDATE itsm.attachment_deletion_queue SET status='failed',processed_at=NOW(),last_error=LEFT(p_error,2000),attempts=attempts+1
+    WHERE id=p_id AND realm_id=v_realm_id;
+  ELSE
+    RAISE EXCEPTION 'Unsupported attachment deletion action: %',p_action;
+  END IF;
+  RETURN jsonb_build_object('ok',FOUND,'id',p_id,'status',p_action);
+END;
+$$;
+
+-- Extend the API dispatcher with operational actions without exposing SQL.
+CREATE OR REPLACE FUNCTION itsm.core_api_dispatch_v2(
+  p_realm_key text, p_action text, p_resource_type text,
+  p_payload jsonb DEFAULT '{}'::jsonb, p_resource_id uuid DEFAULT NULL,
+  p_query text DEFAULT NULL, p_limit integer DEFAULT 50
+) RETURNS jsonb LANGUAGE plpgsql AS $$
+BEGIN
+  IF lower(p_action)='sync_cmdb' AND lower(p_resource_type)='cmdb' THEN
+    RETURN itsm.sync_cmdb(p_realm_key,p_payload,COALESCE((p_payload->>'dry_run')::boolean,false));
+  ELSIF lower(p_action)='list_attachment_deletions' AND lower(p_resource_type)='attachment_deletion' THEN
+    RETURN itsm.attachment_deletion_dispatch(p_realm_key,'list',NULL,NULL,p_limit);
+  ELSIF lower(p_action)='ack_attachment_deletion' AND lower(p_resource_type)='attachment_deletion' THEN
+    RETURN itsm.attachment_deletion_dispatch(p_realm_key,COALESCE(NULLIF(p_payload->>'status',''),'deleted'),p_resource_id,p_payload->>'error',p_limit);
+  END IF;
+  RETURN itsm.core_api_dispatch(p_realm_key,p_action,p_resource_type,p_payload,p_resource_id,p_query,p_limit);
 END;
 $$;
 

@@ -1,0 +1,81 @@
+openapi: 3.1.0
+info:
+  title: ITSM Core API
+  version: 1.0.0
+  description: Realm 分離された ITSM SoR の CRUD、検索、CMDB 同期、共通付加情報 API。
+servers:
+  - url: https://{n8nHost}/webhook
+    variables:
+      n8nHost:
+        default: n8n.example.invalid
+paths:
+  /itsm/core/api:
+    post:
+      operationId: dispatchItsmCoreApi
+      security:
+        - bearerAuth: []
+        - apiTokenHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoreApiRequest'
+      responses:
+        '200':
+          description: 操作結果。`ok` が true の場合に成功。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoreApiResponse'
+        '401':
+          description: トークン不正。
+        '400':
+          description: action/resource_type または payload 不正。
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    apiTokenHeader:
+      type: apiKey
+      in: header
+      name: x-itsm-api-token
+  schemas:
+    CoreApiRequest:
+      type: object
+      required: [action, resource_type]
+      properties:
+        realm:
+          type: string
+          example: aiops
+        action:
+          type: string
+          enum: [get, list, search, create, update, delete, add_comment, set_tag, grant_acl, add_attachment, sync_cmdb, list_attachment_deletions, ack_attachment_deletion]
+        resource_type:
+          type: string
+          example: incident
+        resource_id:
+          type: [string, 'null']
+          format: uuid
+        query:
+          type: [string, 'null']
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 200
+          default: 50
+        payload:
+          type: object
+          additionalProperties: true
+          default: {}
+    CoreApiResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+        data:
+          description: 操作固有の object または array。
+        error:
+          type: string

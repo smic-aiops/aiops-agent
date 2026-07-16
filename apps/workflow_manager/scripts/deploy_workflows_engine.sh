@@ -22,6 +22,8 @@ set -euo pipefail
 #   SKIP_API_WHEN_DRY_RUN: "true" to skip all API calls and only validate/list local workflow files (default: false; auto-enabled when base_url/api_key are missing)
 #   N8N_DB_CREDENTIAL_NAME     : n8n credential name for Postgres (default: aiops-postgres)
 #   N8N_DB_CREDENTIAL_ID       : existing credential ID to update instead of creating
+#   N8N_DB_EXPECTED_DATABASE   : expected application DB for aiops-postgres (default: terraform output rds_postgresql.database)
+#   N8N_DB_ALLOW_DATABASE_MISMATCH : "true" to explicitly allow a nonstandard DB target (default: false)
 #   N8N_DB_ALLOW_UNAUTHORIZED_CERTS : "true" to allow self-signed/untrusted certs for Postgres credential (default: true)
 #   N8N_AWS_CREDENTIAL_NAME    : name for the n8n AWS credential (default: aiops-aws)
 #   N8N_AWS_CREDENTIAL_ID      : existing AWS credential ID to update instead of creating
@@ -413,6 +415,8 @@ PROMPT_LOCK="${N8N_PROMPT_LOCK:-false}"
 POLICY_DIR="${N8N_POLICY_DIR:-apps/aiops_agent/orchestrator/data/default/policy}"
 N8N_DB_CREDENTIAL_NAME="${N8N_DB_CREDENTIAL_NAME:-aiops-postgres}"
 N8N_DB_CREDENTIAL_ID="${N8N_DB_CREDENTIAL_ID:-}"
+N8N_DB_EXPECTED_DATABASE="${N8N_DB_EXPECTED_DATABASE:-}"
+N8N_DB_ALLOW_DATABASE_MISMATCH="${N8N_DB_ALLOW_DATABASE_MISMATCH:-false}"
 N8N_AWS_CREDENTIAL_NAME="${N8N_AWS_CREDENTIAL_NAME:-aiops-aws}"
 N8N_AWS_CREDENTIAL_ID="${N8N_AWS_CREDENTIAL_ID:-}"
 TFVARS_FILE="${TFVARS_FILE:-terraform.itsm.tfvars}"
@@ -1346,14 +1350,16 @@ build_aws_credential_payload() {
 }
 
 resolve_db_from_tf() {
-  if [[ -n "${DB_HOST}" && -n "${DB_PORT}" && -n "${DB_NAME}" && -n "${DB_USER}" && -n "${DB_PASSWORD}" ]]; then
-    return
-  fi
-
+  local tf_json=""
   if command -v terraform >/dev/null 2>&1; then
-    local tf_json=""
     tf_json="$(terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null || true)"
     if [[ -n "${tf_json}" ]]; then
+      if [[ -z "${N8N_DB_EXPECTED_DATABASE}" ]]; then
+        N8N_DB_EXPECTED_DATABASE="$(jq -r '.rds_postgresql.value.database // empty' <<<"${tf_json}")"
+      fi
+      if [[ -n "${DB_HOST}" && -n "${DB_PORT}" && -n "${DB_NAME}" && -n "${DB_USER}" && -n "${DB_PASSWORD}" ]]; then
+        return
+      fi
       if [[ -z "${DB_HOST}" ]]; then
         DB_HOST="$(jq -r '.rds_postgresql.value.host // empty' <<<"${tf_json}")"
       fi
@@ -1388,6 +1394,16 @@ ensure_postgres_credentials() {
   require_var "DB_NAME" "${DB_NAME}"
   require_var "DB_USER" "${DB_USER}"
   require_var "DB_PASSWORD" "${DB_PASSWORD}"
+
+  if [[ "${N8N_DB_CREDENTIAL_NAME}" == "aiops-postgres" ]] && ! is_truthy "${N8N_DB_ALLOW_DATABASE_MISMATCH}"; then
+    require_var "N8N_DB_EXPECTED_DATABASE" "${N8N_DB_EXPECTED_DATABASE}"
+    if [[ "${DB_NAME}" != "${N8N_DB_EXPECTED_DATABASE}" ]]; then
+      echo "[n8n] Refusing aiops-postgres DB '${DB_NAME}'; expected application DB '${N8N_DB_EXPECTED_DATABASE}'." >&2
+      echo "[n8n] Set N8N_DB_ALLOW_DATABASE_MISMATCH=true only for an intentional nonstandard deployment." >&2
+      exit 1
+    fi
+  fi
+  echo "[n8n] Postgres credential target: ${N8N_DB_CREDENTIAL_NAME} -> database=${DB_NAME}"
 
   local payload
   payload="$(build_credential_payload)"

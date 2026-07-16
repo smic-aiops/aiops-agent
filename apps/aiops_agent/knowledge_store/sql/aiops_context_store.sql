@@ -1,6 +1,8 @@
 -- Context store schema for the AIOps adapter/orchestrator/job-engine reference implementation.
 -- This is intentionally separate from n8n's internal tables.
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS aiops_dedupe (
   dedupe_key TEXT PRIMARY KEY,
   context_id UUID NOT NULL,
@@ -176,6 +178,24 @@ CREATE INDEX IF NOT EXISTS aiops_job_feedback_job_id_idx
 CREATE INDEX IF NOT EXISTS aiops_job_feedback_context_id_idx
   ON aiops_job_feedback (context_id);
 
+CREATE TABLE IF NOT EXISTS aiops_preview_feedback (
+  preview_feedback_id UUID PRIMARY KEY,
+  approval_id UUID NOT NULL,
+  context_id UUID NOT NULL REFERENCES aiops_context(context_id) ON DELETE CASCADE,
+  actor JSONB NOT NULL,
+  score SMALLINT NOT NULL CHECK (score BETWEEN 1 AND 4),
+  comment TEXT NULL,
+  selected_workflow_id TEXT NULL,
+  selected_policy_id TEXT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS aiops_preview_feedback_approval_id_idx
+  ON aiops_preview_feedback (approval_id);
+
+CREATE INDEX IF NOT EXISTS aiops_preview_feedback_context_id_idx
+  ON aiops_preview_feedback (context_id);
+
 CREATE TABLE IF NOT EXISTS aiops_prompt_history (
   prompt_id BIGSERIAL PRIMARY KEY,
   prompt_key TEXT NOT NULL,
@@ -350,3 +370,5 @@ ON CONFLICT (prompt_key, prompt_hash) DO NOTHING;
 
 ALTER TABLE aiops_job_queue
   ADD COLUMN IF NOT EXISTS trace_id TEXT NULL;
+
+COMMIT;

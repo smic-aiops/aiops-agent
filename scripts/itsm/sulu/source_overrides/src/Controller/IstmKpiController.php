@@ -236,14 +236,21 @@ SQL;
 
         $summary = $connection->fetchAssociative($summarySql, $params) ?: [];
 
+        $firstResponseSelect = $firstResponseCol
+            ? "i.{$firstResponseCol} AS first_response_at,"
+            : 'NULL::timestamptz AS first_response_at,';
+        $ackSelect = $ackCol
+            ? "i.{$ackCol} AS acknowledged_at,"
+            : 'NULL::timestamptz AS acknowledged_at,';
+
         $slowestSql = <<<SQL
 SELECT
   i.number,
   i.priority,
   i.service_id,
   i.{$openedCol} AS opened_at,
-  {$firstResponseCol ? "i.{$firstResponseCol} AS first_response_at," : "NULL::timestamptz AS first_response_at,"}
-  {$ackCol ? "i.{$ackCol} AS acknowledged_at," : "NULL::timestamptz AS acknowledged_at,"}
+  {$firstResponseSelect}
+  {$ackSelect}
   ({$triageExpr}) AS minutes
 FROM itsm.incident i
 {$serviceJoin}

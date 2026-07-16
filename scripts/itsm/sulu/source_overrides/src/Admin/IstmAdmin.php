@@ -118,7 +118,7 @@ final class IstmAdmin extends Admin
 
     public function configureViews(ViewCollection $viewCollection): void
     {
-        $readOnlyToolbarActions = [];
+        $writeToolbarActions = ['sulu_admin.save', 'sulu_admin.delete'];
 
         $viewCollection->add(
             $this->viewBuilderFactory
@@ -157,7 +157,7 @@ final class IstmAdmin extends Admin
                 ->setResourceKey(self::RESOURCE_KEY_INCIDENTS)
                 ->setFormKey(self::FORM_KEY_INCIDENT_DETAILS)
                 ->setTabTitle('sulu_admin.details')
-                ->addToolbarActions($readOnlyToolbarActions)
+                ->addToolbarActions($writeToolbarActions)
                 ->setParent(self::VIEW_INCIDENTS_DETAIL)
                 ->setOption('security_context', self::SECURITY_CONTEXT_INCIDENTS)
         );
@@ -187,7 +187,7 @@ final class IstmAdmin extends Admin
                 ->setResourceKey(self::RESOURCE_KEY_SERVICE_REQUESTS)
                 ->setFormKey(self::FORM_KEY_SERVICE_REQUEST_DETAILS)
                 ->setTabTitle('sulu_admin.details')
-                ->addToolbarActions($readOnlyToolbarActions)
+                ->addToolbarActions($writeToolbarActions)
                 ->setParent(self::VIEW_SERVICE_REQUESTS_DETAIL)
                 ->setOption('security_context', self::SECURITY_CONTEXT_SERVICE_REQUESTS)
         );
@@ -217,7 +217,7 @@ final class IstmAdmin extends Admin
                 ->setResourceKey(self::RESOURCE_KEY_PROBLEMS)
                 ->setFormKey(self::FORM_KEY_PROBLEM_DETAILS)
                 ->setTabTitle('sulu_admin.details')
-                ->addToolbarActions($readOnlyToolbarActions)
+                ->addToolbarActions($writeToolbarActions)
                 ->setParent(self::VIEW_PROBLEMS_DETAIL)
                 ->setOption('security_context', self::SECURITY_CONTEXT_PROBLEMS)
         );
@@ -247,7 +247,7 @@ final class IstmAdmin extends Admin
                 ->setResourceKey(self::RESOURCE_KEY_CHANGE_REQUESTS)
                 ->setFormKey(self::FORM_KEY_CHANGE_REQUEST_DETAILS)
                 ->setTabTitle('sulu_admin.details')
-                ->addToolbarActions($readOnlyToolbarActions)
+                ->addToolbarActions($writeToolbarActions)
                 ->setParent(self::VIEW_CHANGE_REQUESTS_DETAIL)
                 ->setOption('security_context', self::SECURITY_CONTEXT_CHANGE_REQUESTS)
         );
@@ -282,15 +282,27 @@ final class IstmAdmin extends Admin
                     ],
                     self::SECURITY_CONTEXT_INCIDENTS => [
                         PermissionTypes::VIEW,
+                        PermissionTypes::ADD,
+                        PermissionTypes::EDIT,
+                        PermissionTypes::DELETE,
                     ],
                     self::SECURITY_CONTEXT_SERVICE_REQUESTS => [
                         PermissionTypes::VIEW,
+                        PermissionTypes::ADD,
+                        PermissionTypes::EDIT,
+                        PermissionTypes::DELETE,
                     ],
                     self::SECURITY_CONTEXT_PROBLEMS => [
                         PermissionTypes::VIEW,
+                        PermissionTypes::ADD,
+                        PermissionTypes::EDIT,
+                        PermissionTypes::DELETE,
                     ],
                     self::SECURITY_CONTEXT_CHANGE_REQUESTS => [
                         PermissionTypes::VIEW,
+                        PermissionTypes::ADD,
+                        PermissionTypes::EDIT,
+                        PermissionTypes::DELETE,
                     ],
                     self::SECURITY_CONTEXT_KPI_MTTR => [
                         PermissionTypes::VIEW,

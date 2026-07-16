@@ -423,15 +423,20 @@ locals {
 	        providers = []
 
 	        if idps.is_a?(Hash)
-	          idps.each do |key, cfg|
-	            next unless cfg.is_a?(Hash)
+	          configured_idps = idps.select do |_key, cfg|
+	            cfg.is_a?(Hash) &&
+	              !cfg['oidc_url'].to_s.strip.empty? &&
+	              !cfg['client_id'].to_s.strip.empty? &&
+	              !cfg['secret'].to_s.empty?
+	          end
+
+	          configured_idps.each do |key, cfg|
 	            issuer = cfg['oidc_url'].to_s.strip
 	            client_id = cfg['client_id'].to_s.strip
 	            client_secret = cfg['secret'].to_s
-	            next if issuer.empty? || client_id.empty? || client_secret.empty?
 
 	            suffix = key.to_s.gsub(/[^0-9A-Za-z_]/, '_')
-	            provider = "openid_connect_#{suffix}"
+	            provider = configured_idps.length == 1 ? 'openid_connect' : "openid_connect_#{suffix}"
 	            label = cfg['display_name'].to_s.strip
 	            label = key.to_s if label.empty?
 	            scope = cfg.dig('extra_params', 'scope').to_s.strip
@@ -632,7 +637,11 @@ locals {
     ODOO_OIDC_CLIENT_ID     = local.odoo_oidc_client_id_parameter_name
     ODOO_OIDC_CLIENT_SECRET = local.odoo_oidc_client_secret_parameter_name
   } : {}
-  optional_oidc_params_gitlab = var.enable_gitlab_keycloak && local.gitlab_oidc_client_id_value != null && local.gitlab_oidc_client_secret_value != null ? {
+  # Once GitLab OIDC is enabled, inject the well-known SSM paths. The standard
+  # flow writes credentials to local tfvars and lets Terraform manage SSM; the
+  # dedicated GitLab refresh script can create the same paths for early recovery.
+  # In either flow, the parameters must exist before the task starts.
+  optional_oidc_params_gitlab = var.enable_gitlab_keycloak ? {
     GITLAB_OIDC_CLIENT_ID     = local.gitlab_oidc_client_id_parameter_name
     GITLAB_OIDC_CLIENT_SECRET = local.gitlab_oidc_client_secret_parameter_name
   } : {}

@@ -92,7 +92,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { ok: $node['Normalize Input'].json.ok === true, input: $node['Normalize Input'].json, approval: $node['Upsert SoR Approval (itsm.approval)'].json, audit_event: $json } }}",
+        "responseBody": "={{ { ok: $node['Normalize Input'].json.ok === true && Boolean($node['Upsert SoR Approval (itsm.approval)'].json.id) && !$node['Upsert SoR Approval (itsm.approval)'].json.error && Boolean($json.id) && !$json.error, input: $node['Normalize Input'].json, approval: $node['Upsert SoR Approval (itsm.approval)'].json, audit_event: $json } }}",
         "options": {
           "responseCode": 200
         }

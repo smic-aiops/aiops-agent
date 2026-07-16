@@ -13,7 +13,7 @@
 - **キー受け渡し（refresh 系の基本）**:
   - パターン A（サービス注入）: `refresh_*.sh` が **キーを発行/取得 → tfvars へ記録 → `terraform apply -refresh-only` → SSM SecureString へ反映 → ECS `secrets` でコンテナ環境変数へ注入**
   - パターン B（運用スクリプト用）: `refresh_*.sh` が **キーを発行/取得 → tfvars へ記録 → `terraform output`（sensitive）として参照 → `apps/*/scripts/*.sh` が Public API 呼び出しに使用**
-  - 注意: tfvars に平文で書かれる値があります（例: `pg_db_password`, `gitlab_admin_token` 等）。**Git へコミットしない**でください。
+  - ローカル `*.tfvars` は資格情報のSSoTとして平文値を保持できます。`*.tfvars` が `.gitignore` 対象であることを確認し、**Gitへコミットしない**でください。`git add -f`は禁止し、共有・バックアップ時も秘密情報として扱います。
 
 ## 目的別スクリプト一覧
 
@@ -114,16 +114,21 @@
 - `scripts/itsm/zulip/generate_realm_creation_link_for_zulip.sh` - Zulip 組織作成用リンクを生成
 - `scripts/itsm/zulip/delete_aiops_users.sh` - レルム横断で aiops-* ユーザーを削除（`--dry-run` 対応）
 - `scripts/itsm/zulip/ensure_zulip_streams.sh` - Zulip のストリームを作成/更新（初期セットアップ用）
+  - realm 別 URL は `N8N_ZULIP_API_BASE_URLS_YAML` を優先し、旧 `N8N_ZULIP_API_BASE_URL` と `zulip_api_mess_base_urls_yaml` は後方互換として扱います。`ZULIP_TARGET_REALM` 指定時にルート URLへフォールバックしていないことをドライランで確認してください。
 - `scripts/itsm/n8n/refresh_zulip_mess_bot.sh` - Zulip 送信用 Bot（mess）を作成し、トークン等を更新（実行後に検証も実施）
-- `scripts/itsm/n8n/refresh_zulip_bot.sh` - Zulip Outgoing Webhook bot（bot_type=3）を作成/更新し、`terraform.itsm.tfvars` のトークンを更新
+- `scripts/itsm/n8n/refresh_zulip_bot.sh` - Zulip Outgoing Webhook bot（bot_type=3）を作成/更新し、`terraform.itsm.tfvars` のトークンを更新（既定で mess/outgoing の両方を API 検証）
   - 注（2026-02-03）: Terraform output の旧名 `AIOPS_ZULIP_*` は削除しました。`N8N_ZULIP_*` を使用してください。
-- `apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh` - レルムごとの Zulip API で Bot 登録を検証
+- `apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh` - レルムごとの Zulip API で Bot 登録を検証。`--include-outgoing` で mess/outgoing の両方を検証
+  - `GET /api/v1/bots` の識別子は Zulip バージョンにより `username` または `email` です。このスクリプトは両方に対応するため、運用確認で `.bots[].email` のみを使わないでください。
+- `scripts/itsm/zulip/tests/test_zulip_setup_helpers.sh` - `username` 形式の Bot API 応答、outgoing Bot 欠落検出、現行の realm URL output 解決を回帰テスト
 - `scripts/itsm/zulip/refresh_zulip_admin_api_keys.sh` - Zulip 管理者 API キーを更新
 - `scripts/itsm/zulip/refresh_zulip_admin_api_key_from_db.sh` - DB から管理者 API キーを取得して反映
 - `scripts/itsm/zulip/resolve_zulip_env.sh` - Zulip の API URL/トークン等を解決して環境変数出力（運用補助）
 - `scripts/itsm/zulip/tail_zulip_ecs_logs.sh` - Zulip の ECS logs を tail（運用補助）
 
 ### Grafana
+
+Grafana は独立した ECS サービスではなく GitLab タスク内のコンテナです。状態確認と再デプロイは `prod-aiops-gitlab` を対象にし、Grafana 単独の ECS サービス名を前提にしないでください。
 
 - `scripts/itsm/grafana/show_grafana_admin_credentials.sh` - Grafana 管理者の初期認証情報を表示
 - `apps/itsm_core/bootstrap/scripts/sync_usecase_dashboards.sh` - ユースケース用ダッシュボードを同期
@@ -159,6 +164,8 @@
 - `scripts/apps/create_oq_evidence_run_md.sh` - OQ の証跡 Markdown を作成（出力: `apps/<app>/docs/oq/evidence/evidence_run_YYYY-MM-DD.md`、`--dry-run` 対応）
 - `scripts/apps/export_aiops_agent_environment_to_tfvars.sh` - `terraform.apps.tfvars` の `aiops_agent_environment` を生成/補完（最後に `terraform apply -refresh-only --auto-approve`）
 - `scripts/apps/report_aiops_rag_status.sh` - Qdrant / GitLab EFS 同期 / n8n 実行状況をレポート（既定 DRY_RUN）
+- `apps/aiops_agent/knowledge_store/scripts/apply_aiops_context_store_schema.sh` - `aiops-postgres` 接続先のアプリDBへ ContextStore スキーマを適用・検証（既定 dry-run、n8n本体DBへの適用を拒否）
+- `apps/aiops_agent/knowledge_store/scripts/cleanup_aiops_context_store_from_n8n_db.sh` - n8n本体DBへ誤作成した対象8テーブルを空の場合だけ限定削除（既定 dry-run、`--inspect` は読取専用、`CASCADE` 不使用）
 - `scripts/report_setup_status.sh` - `evidence/setup_status/setup_log.jsonl` からセットアップ進捗を集計（既定 DRY_RUN）
 - `scripts/verify_apps_scripts_tf_resolution.sh` - `apps/*/scripts/*.sh` の terraform output 参照などを検証
 - `scripts/itsm/terraform/pre_destroy_cleanup.sh` - `terraform destroy` 前の詰まりポイント（参照モードの NAT/Subnet 依存、S3 version/delete marker）を事前に解消する（NAT削除 + S3完全空化、`--dry-run` 対応）
@@ -215,6 +222,18 @@
 - `scripts/lib/name_prefix_from_tf.sh` - `terraform output` から `name_prefix` を解決
 - `scripts/lib/setup_log.sh` - 実行ログ（JSONL）を `evidence/` に記録するためのヘルパ
 - `scripts/lib/gitlab_http.sh` / `scripts/lib/gitlab_lib.sh` / `scripts/lib/gitlab_itsm_helpers.sh` - GitLab API 呼び出し用ヘルパ
+
+## GitLab Keycloak OIDC
+
+### `scripts/itsm/gitlab/refresh_gitlab_keycloak_oidc.sh`
+
+- 目的: `aiops` realm のGitLab OIDCクライアントを冪等に作成・更新し、資格情報をSSM SecureStringへ保存
+- コールバックURL: `https://gitlab.<hosted_zone_name>/users/auth/openid_connect/callback`
+- SSM: `/<name_prefix>/gitlab/oidc/client_id`、`/<name_prefix>/gitlab/oidc/client_secret`
+- `--dry-run`: Keycloak/SSMを変更せず、作成・更新予定とSSMパスを確認
+- GitLab単独の先行復旧用で、秘密値はtfvars、ログ、標準出力へ記載せずSSMへ直接保存します
+- 実行後は `enable_gitlab_keycloak = true` を設定してTerraformを適用し、GitLabタスク定義へSSM参照を注入します
+- 標準の統合更新は `SERVICE_NAME=gitlab bash scripts/itsm/keycloak/refresh_keycloak_realm.sh` を使用し、`gitlab_oidc_idps_yaml`をローカルtfvarsのSSoTとしてTerraform経由でSSMへ反映します
 
 ## tfvars 更新（ITSM）
 
@@ -355,6 +374,7 @@
 - キー受け渡し:
   - `gitlab_webhook_secrets_yaml`（tfvars, YAML）→ `terraform apply -refresh-only` → SSM `/${name_prefix}/n8n/gitlab/webhook_secret/<realm>`
   - 主な利用: n8n に `GITLAB_WEBHOOK_SECRET` として注入（GitLab Webhook の `x-gitlab-token` 検証）
+- 実行: `--dry-run`（既定）で計画確認後、`--execute` で生成・反映します。
 
 ### `apps/itsm_core/bootstrap/scripts/ensure_realm_groups.sh`
 

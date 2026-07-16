@@ -32,7 +32,22 @@
 5. Zulip の初期セットアップ（組織/管理者ユーザー作成 → API key 反映 → n8n bot 反映 → terraform apply → n8n 再デプロイ）を完了させる。
 6. （必要な場合は必須）n8n/GitLab/Grafana/Sulu の `refresh_*.sh` を実行して、ワークフロー同期/OQ に必要なキー類を揃える（未実施だと失敗しやすい）。
 7. サービスの各種 Key/トークンを生成・反映し、必要なら再デプロイ。
-7. `terraform output` で URL 等を確認し、動作確認。
+8. AIOps ContextStore を `aiops-postgres` 接続先のアプリDBへ適用し、ワークフロー同期後にE2Eを確認。
+9. `terraform output` で URL 等を確認し、動作確認。
+
+### AIOps ContextStore（DB取り違え防止）
+
+同一RDS内でも、AIOpsのアプリDB（現環境 `appDB`）とn8n本体DB（現環境 `n8napp`）は別です。DB名は固定値として手入力せず、Terraform output と SSM から解決する専用スクリプトを使います。
+
+```bash
+# 対象確認（変更なし）
+bash apps/aiops_agent/knowledge_store/scripts/apply_aiops_context_store_schema.sh --dry-run
+
+# アプリDBへ適用・検証
+bash apps/aiops_agent/knowledge_store/scripts/apply_aiops_context_store_schema.sh --execute
+```
+
+誤適用分のクリーンアップは、正しいDBでのE2E成功後に限り、`--inspect` で対象テーブルが空であることを確認してから行います。対象は今回 n8n 本体DBへ誤適用された従来スキーマの8テーブルだけで、他テーブルや依存オブジェクトは削除しません。
 
 ### ITSM Core / Bootstrap / Usecase（詳細）
 - SoR の適用/バックフィル、RLS、監査アンカー、Sulu admin の参照、GitLab ITSM bootstrap、ユースケース関連は `apps/itsm_core/README.md` を参照。
@@ -56,8 +71,10 @@ bash scripts/apps/deploy_all_workflows.sh --with-tests
 ITSM 系の手動設定は主に `terraform.itsm.tfvars`（サービス/運用設定）と `terraform.apps.tfvars`（アプリ設定/ワークフロー同期）に集約します（インフラ側は `terraform.env.tfvars`）。
 
 注意:
-- tfvars に秘密情報（パスワード/トークン/API key 等）を書いても運用はできますが、**絶対に Git にコミットしない**でください。
-- 可能なものは SSM/Secrets Manager に置き、tfvars は「参照名」や「スクリプトで更新されるマップ」を正にします。
+- ローカルの `*.tfvars` は、スクリプトが生成・更新するパスワード、トークン、OIDC client secret等を含む設定のSSoTとして使用できます。`.gitignore` の `*.tfvars` 対象であることを `git check-ignore <file>` で確認し、**絶対にGitへコミットしない**でください。
+- `git add -f` による追加は禁止です。共有・端末バックアップ・画面共有でも秘密情報として扱い、必要に応じてファイル権限を600に制限してください。
+- 実行環境への配布先はSSM SecureString/Secrets Managerを正とし、TerraformがローカルtfvarsからSSMへ反映し、ECSはSSM参照で受け取ります。サンプルやコミット対象文書には実値を記載しません。
+- Zulip の組織管理者パスワードは tfvars、スクリプト、Git、チャットへ記載せず、組織のパスワードマネージャーへ保管します。自動設定は管理者パスワードではなく管理者 API キーを使い、API キーは SSM SecureString へ反映します。
 
 #### `terraform.itsm.tfvars`（サービス/運用設定）の例
 
@@ -128,6 +145,18 @@ tfvars に基づくレルム/クライアント/SSM 反映:
 ```bash
 bash scripts/itsm/keycloak/refresh_keycloak_realm.sh
 ```
+
+GitLabだけを先行復旧する場合は、専用スクリプトでKeycloakクライアントを冪等に作成・更新し、資格情報をSSM SecureStringへ直接保存できます。
+
+```bash
+# 変更内容の確認
+bash scripts/itsm/gitlab/refresh_gitlab_keycloak_oidc.sh --dry-run
+
+# Keycloakクライアント作成・更新とSSM保存
+bash scripts/itsm/gitlab/refresh_gitlab_keycloak_oidc.sh
+```
+
+標準の統合セットアップでは `SERVICE_NAME=gitlab bash scripts/itsm/keycloak/refresh_keycloak_realm.sh` を使用します。この経路はKeycloakで取得した資格情報をローカル `terraform.itsm.tfvars` の `gitlab_oidc_idps_yaml` へ書き戻し、TerraformからSSMへ反映します。単一realm時のコールバックURLは `https://gitlab.<hosted_zone_name>/users/auth/openid_connect/callback` です。その後、`enable_gitlab_keycloak = true` を指定してTerraformを適用し、GitLab ECSタスクへ反映します。
 
 OIDC を有効にしたいサービスのフラグを tfvars で `true` にし、再度 apply します（例）:
 
@@ -813,6 +842,8 @@ Zulip 側の Outgoing Webhook 統合を、各レルム（組織）ごとに作�
 
 認証トークンはレルムごとに分け、n8n には `N8N_ZULIP_OUTGOING_TOKEN` を **レルム単位で注入**します。
 
+`bash scripts/itsm/n8n/refresh_zulip_bot.sh` を実行すると、outgoing Bot の作成・更新、tfvars の更新、Terraform refresh-only に続いて、既定で `verify_zulip_aiops_agent_bots.sh --execute --include-outgoing` が実行されます。検証を明示的に省略する場合だけ `VERIFY_AFTER=false` を指定します。
+
 注（2026-02-03）: Terraform output の旧名 `AIOPS_ZULIP_*` は削除しました。`N8N_ZULIP_*` を使用してください。
 
 Outgoing Webhook のトークンは `terraform.itsm.tfvars` の `zulip_outgoing_tokens_yaml` を正とし、`terraform apply` により SSM の `N8N_ZULIP_OUTGOING_TOKEN` として n8n に注入します（トークンは Git に入れない）。
@@ -826,7 +857,7 @@ JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ
 
 - `mess`: 送信用 Bot（n8n -> Zulip 通知など）をレルムごとに作成/取得し、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` を更新。`scripts/itsm/n8n/refresh_zulip_mess_bot.sh`
 - `outgoing`: Outgoing Webhook bot（bot_type=3）の作成/更新＋`terraform.itsm.tfvars` の `zulip_outgoing_tokens_yaml`/`zulip_outgoing_bot_emails_yaml` を更新。`scripts/itsm/n8n/refresh_zulip_bot.sh`
-- `verify`: Bot 登録の検証。`apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh`
+- `verify`: Bot 登録の検証。`apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh`（`--include-outgoing` で mess/outgoing の両方）
 
 ### Bot 再利用ポリシー（重要）
 
@@ -841,6 +872,10 @@ JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ
   - 期待する Bot（メール一致）が見つからないが、同一レルム内に bot_type=3 の Bot が既に存在する場合は、**Bot 増殖防止を優先して既存 Bot を再利用**します（優先順: `aiops-agent` → `aiops-outgoing-<realm>` → その他）。
 
 既存 Bot の特定は、`GET /api/v1/bots` だけでなく、必要に応じて `GET /api/v1/users?include_inactive=true` を併用してメールアドレスから `user_id` を解決します（無効化された Bot が存在するケースを含む）。
+
+`GET /api/v1/bots` の Bot 識別子は Zulip バージョンにより `username` または `email` で返ります。手作業の jq で `.bots[].email` に固定すると存在する Bot を 0 件と誤判定するため、標準 verifier を使ってください。
+
+Terraform output の現行名は複数レルムの YAML マップを表す `N8N_ZULIP_API_BASE_URLS_YAML` / `N8N_ZULIP_BOT_EMAILS_YAML` / `N8N_ZULIP_BOT_TOKENS_YAML` です。n8n コンテナへレルム単位で注入される環境変数名は単数形の `N8N_ZULIP_API_BASE_URL` / `N8N_ZULIP_BOT_EMAIL` / `N8N_ZULIP_BOT_TOKEN` であり、用途を混同しないでください。
 
 ### 実装メモ
 

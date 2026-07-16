@@ -122,6 +122,9 @@ api_call() {
   body_out="${response%$'\n'*}"
 
   echo "${name} status=${status} body=${body_out}"
+  if [[ "${status}" != "200" ]] || ! jq -e '.ok == true' >/dev/null 2>&1 <<<"${body_out}"; then
+    return 1
+  fi
 }
 
 if ${DRY_RUN}; then
@@ -132,16 +135,15 @@ fi
 
 api_call "cir-issue-close-test" "${N8N_BASE_URL%/}/webhook/itsm/cir/issues/close/test" '{"strict": false}'
 
-api_call "cir-issue-close" "${N8N_BASE_URL%/}/webhook/itsm/cir/issues/close" "$(jq -cn --arg realm \"${REALM}\" '{
+api_call "cir-issue-close" "${N8N_BASE_URL%/}/webhook/itsm/cir/issues/close" "$(jq -cn --arg realm "${REALM}" '{
   dry_run: true,
   realm: $realm,
-  target_app_root: \"apps/itsm_core/cir_issue_close\",
+  target_app_root: "apps/itsm_core/cir_issue_close",
   issues: [
-    { project_ref: ($realm + \"/general-management\"), iid: \"1\", usecase_ids: [\"UC-ITSM-07\"] }
+    { project_ref: ($realm + "/general-management"), iid: "1", usecase_ids: ["UC-ITSM-07"] }
   ],
-  result_summary: \"OQ: dry_run=true で更新計画が返ることを確認\",
-  verification: { oq: \"pass\" },
+  result_summary: "OQ: dry_run=true で更新計画が返ることを確認",
+  verification: { oq: "pass" },
   artifacts: [],
-  run_meta: { operator: \"oq\", run_id: (now|tostring) }
+  run_meta: { operator: "oq", run_id: (now|tostring) }
 }')" 
-

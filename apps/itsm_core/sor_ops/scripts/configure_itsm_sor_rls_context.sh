@@ -136,7 +136,7 @@ db_role_sql="${DB_ROLE//\'/''}"
 db_name_sql="${DB_NAME//\'/''}"
 
 sql="$(cat <<SQL
-\\set ON_ERROR_STOP on
+\set ON_ERROR_STOP on
 
 DO \$\$
 DECLARE

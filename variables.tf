@@ -207,6 +207,12 @@ variable "rds_deletion_protection" {
   default     = true
 }
 
+variable "rds_engine_version" {
+  description = "PostgreSQL engine version"
+  type        = string
+  default     = "15.17"
+}
+
 variable "rds_skip_final_snapshot" {
   description = "When true, skip creating a final snapshot on RDS deletion (PostgreSQL)"
   type        = bool

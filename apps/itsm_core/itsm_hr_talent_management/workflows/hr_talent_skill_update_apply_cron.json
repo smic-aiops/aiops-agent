@@ -6,7 +6,8 @@
         "triggerTimes": {
           "item": [
             {
-              "mode": "every5Minutes"
+              "mode": "custom",
+              "cronExpression": "*/5 * * * *"
             }
           ]
         }

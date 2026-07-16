@@ -9,6 +9,29 @@ set -euo pipefail
 #   GITLAB_WEBHOOK_SECRET      -> 共通 secret を使う場合に指定
 #   SKIP_TFVARS_UPDATE         -> true で tfvars への書き込みをスキップ
 
+DRY_RUN=true
+
+usage() {
+  cat <<'USAGE'
+Usage: scripts/itsm/gitlab/refresh_gitlab_webhook_secrets.sh [options]
+
+Options:
+  --dry-run   Show target realms and planned updates only (default)
+  --execute   Generate secrets, update tfvars, and run terraform refresh-only
+  -h, --help  Show this help
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) DRY_RUN=true ;;
+    --execute) DRY_RUN=false ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "ERROR: Unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
 require_cmd() {
   local cmd="$1"
   command -v "${cmd}" >/dev/null 2>&1 || { echo "ERROR: ${cmd} is required." >&2; exit 1; }
@@ -179,6 +202,16 @@ main() {
     realms="$(resolve_realms | tr '\n' ' ')"
   fi
   require_var "REALMS" "${realms}"
+
+  if [[ "${DRY_RUN}" == "true" ]]; then
+    echo "[dry-run] tfvars=${TFVARS_PATH} variable=${var_name}" >&2
+    for realm in ${realms}; do
+      echo "[dry-run] would generate/update GitLab webhook secret for realm=${realm}" >&2
+    done
+    echo "[dry-run] would run terraform apply -refresh-only with all tfvars" >&2
+    printf '{}\n'
+    return 0
+  fi
 
   local realm_secret_entries=""
   local realm_secret_json="{}"

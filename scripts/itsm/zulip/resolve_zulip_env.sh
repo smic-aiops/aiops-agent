@@ -137,7 +137,13 @@ if [[ -z "${REALM}" ]]; then
 fi
 
 # Base URL
-zulip_api_base_urls_yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+zulip_api_base_urls_yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URLS_YAML)"
+if [[ -z "${zulip_api_base_urls_yaml}" || "${zulip_api_base_urls_yaml}" == "null" ]]; then
+  zulip_api_base_urls_yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+fi
+if [[ -z "${zulip_api_base_urls_yaml}" || "${zulip_api_base_urls_yaml}" == "null" ]]; then
+  zulip_api_base_urls_yaml="$(tf_output_raw zulip_api_mess_base_urls_yaml)"
+fi
 zulip_base_url="$(mapping_get "${zulip_api_base_urls_yaml}" "${REALM}")"
 if [[ -z "${zulip_base_url}" ]]; then
   zulip_base_url="$(mapping_get "${zulip_api_base_urls_yaml}" "default")"
@@ -147,7 +153,10 @@ if [[ -z "${zulip_base_url}" ]]; then
 fi
 
 # Bot email
-zulip_bot_emails_yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
+zulip_bot_emails_yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAILS_YAML)"
+if [[ -z "${zulip_bot_emails_yaml}" || "${zulip_bot_emails_yaml}" == "null" ]]; then
+  zulip_bot_emails_yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
+fi
 if [[ -z "${zulip_bot_emails_yaml}" || "${zulip_bot_emails_yaml}" == "null" ]]; then
   zulip_bot_emails_yaml="$(tf_output_raw zulip_mess_bot_emails_yaml)"
 fi
@@ -170,7 +179,10 @@ fi
 
 # Prefer terraform output token mapping (sensitive; never printed)
 if [[ -z "${zulip_bot_api_key}" ]]; then
-  tokens_yaml="$(tf_output_raw N8N_ZULIP_BOT_TOKEN)"
+  tokens_yaml="$(tf_output_raw N8N_ZULIP_BOT_TOKENS_YAML)"
+  if [[ -z "${tokens_yaml}" || "${tokens_yaml}" == "null" ]]; then
+    tokens_yaml="$(tf_output_raw N8N_ZULIP_BOT_TOKEN)"
+  fi
   if [[ -z "${tokens_yaml}" || "${tokens_yaml}" == "null" ]]; then
     tokens_yaml="$(tf_output_raw zulip_mess_bot_tokens_yaml)"
   fi

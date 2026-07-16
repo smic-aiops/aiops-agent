@@ -1,0 +1,27 @@
+{
+  "name": "Test Sulu Configuration Recovery",
+  "nodes": [
+    {
+      "parameters": {"path": "tests/sulu/configuration-recovery", "httpMethod": "POST", "responseMode": "responseNode", "options": {}},
+      "id": "1", "name": "Webhook Test Configuration Recovery", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [240, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst getHeader = (name) => { const lower = String(name).toLowerCase(); const key = Object.keys(headers).find((item) => String(item).toLowerCase() === lower); return key ? headers[key] : undefined; };\nconst expectedToken = String($env.N8N_WORKFLOWS_TOKEN || '').trim();\nlet providedToken = String(getHeader('authorization') || getHeader('x-aiops-workflows-token') || '').trim().replace(/^bearer\\s+/i, '').trim();\nif (!expectedToken) return [{ json: { ok: false, status_code: 500, error: 'N8N_WORKFLOWS_TOKEN is not set' } }];\nif (providedToken !== expectedToken) return [{ json: { ok: false, status_code: 401, error: 'invalid workflows token' } }];\nconst rawBase = String($env.N8N_WEBHOOK_BASE_URL || ($env.N8N_PUBLIC_API_BASE_URL ? `${String($env.N8N_PUBLIC_API_BASE_URL).replace(/\\/+$/, '')}/webhook` : '')).replace(/\\/+$/, '');\nif (!rawBase) return [{ json: { ok: false, status_code: 500, error: 'webhook base URL is not configured' } }];\ntry {\n  const response = await this.helpers.httpRequest({ method: 'POST', url: `${rawBase}/sulu/configuration-recovery`, json: true, body: { realm: String($env.N8N_REALM || $env.N8N_ENV_REALM || 'aiops'), desired_state: 'up', dry_run: true, change_id: 'OQ-S2-SELFTEST', issue_url: 'https://gitlab.invalid/issues/1', mr_url: 'https://gitlab.invalid/merge_requests/1', correlation_id: 'oq-s2-selftest' }, timeout: 30000 });\n  const tests = Array.isArray(response?.assessment?.tests) ? response.assessment.tests : [];\n  const passed = response?.ok === true && response?.workflow_id === 'wf.sulu_configuration_recovery' && response?.dry_run === true && response?.simulated === true && response?.applied === false && response?.verification?.status === 'passed' && tests.every((test) => test?.status === 'passed');\n  return [{ json: { ok: passed, status_code: passed ? 200 : 500, target_response: response, error: passed ? null : 'target workflow assertions failed' } }];\n} catch (error) { return [{ json: { ok: false, status_code: 500, error: error?.message ? String(error.message) : String(error) } }]; }"
+      },
+      "id": "2", "name": "Run Dry Run Assertions", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [520, 200]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ { ok: $json.ok, data: $json, error: $json.error } }}", "options": {"responseCode": "={{$json.status_code}}"}},
+      "id": "3", "name": "Respond Test Result", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [800, 200]
+    }
+  ],
+  "connections": {
+    "Webhook Test Configuration Recovery": {"main": [[{"node": "Run Dry Run Assertions", "type": "main", "index": 0}]]},
+    "Run Dry Run Assertions": {"main": [[{"node": "Respond Test Result", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionTimeout": 300},
+  "versionId": "1.0.0",
+  "meta": {"revision": 1, "createdBy": {"id": "1", "name": "system"}}
+}

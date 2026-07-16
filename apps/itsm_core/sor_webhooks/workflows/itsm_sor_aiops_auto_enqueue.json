@@ -72,7 +72,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { ok: $node['Normalize Input'].json.ok === true, input: $node['Normalize Input'].json, inserted: $json } }}",
+        "responseBody": "={{ { ok: $node['Normalize Input'].json.ok === true && Boolean($json.id) && !$json.error, input: $node['Normalize Input'].json, inserted: $json } }}",
         "options": {
           "responseCode": 200
         }

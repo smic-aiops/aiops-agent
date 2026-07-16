@@ -19,7 +19,8 @@ Env:
   ZULIP_ADMIN_EMAIL              Admin email (default: terraform output zulip_admin_email_input)
   ZULIP_ADMIN_API_KEY            Admin API key for single-realm fallback
   ZULIP_ADMIN_API_KEYS_YAML      Per-realm admin API keys (simple YAML; default: terraform output zulip_admin_api_keys_yaml)
-  N8N_ZULIP_API_BASE_URL Per-realm Zulip base URLs (simple YAML)
+  N8N_ZULIP_API_BASE_URLS_YAML   Per-realm Zulip base URLs (current output)
+  N8N_ZULIP_API_BASE_URL         Legacy per-realm Zulip base URLs
   ZULIP_BASE_URL                 Single-realm base URL fallback
 USAGE
 }
@@ -139,7 +140,10 @@ resolve_admin_email() {
 }
 
 resolve_base_urls_yaml() {
-  local yaml="${N8N_ZULIP_API_BASE_URL:-}"
+  local yaml="${N8N_ZULIP_API_BASE_URLS_YAML:-${N8N_ZULIP_API_BASE_URL:-}}"
+  if [[ -z "${yaml}" ]]; then
+    yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URLS_YAML)"
+  fi
   if [[ -z "${yaml}" ]]; then
     yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
   fi

@@ -3,6 +3,7 @@ set -euo pipefail
 
 DRY_RUN=1
 REALMS_CSV=""
+INCLUDE_OUTGOING=0
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
@@ -11,10 +12,12 @@ cd "${REPO_ROOT}"
 usage() {
   cat <<'USAGE'
 Usage:
-  apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh [--execute] [--realms tenant-a,tenant-b]
+  apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh [--execute] [--include-outgoing] [--realms tenant-a,tenant-b]
 
 Options:
   --execute        Run verification against Zulip API (default: dry-run)
+  --include-outgoing
+                   Also verify the outgoing webhook bot for each realm
   --realms <csv>   Override realms (default: terraform output N8N_AGENT_REALMS)
   -h, --help       Show this help
 
@@ -22,6 +25,7 @@ Resolution order:
   - realms: terraform output N8N_AGENT_REALMS (or --realms)
   - zulip base url: env N8N_ZULIP_API_BASE_URLS_YAML (or legacy N8N_ZULIP_API_BASE_URL) or terraform output N8N_ZULIP_API_BASE_URLS_YAML (fallback: terraform output zulip_api_mess_base_urls_yaml)
   - expected bot email: env N8N_ZULIP_BOT_EMAILS_YAML (or legacy N8N_ZULIP_BOT_EMAIL) or terraform output N8N_ZULIP_BOT_EMAILS_YAML (fallback: terraform output zulip_mess_bot_emails_yaml)
+  - expected outgoing bot email: env/terraform output N8N_ZULIP_OUTGOING_BOT_EMAILS_YAML (fallback: terraform output zulip_outgoing_bot_emails_yaml)
   - admin credentials: terraform output zulip_admin_email_input + zulip_admin_api_keys_yaml
 USAGE
 }
@@ -34,6 +38,10 @@ parse_args() {
     case "$1" in
       --execute)
         DRY_RUN=0
+        shift
+        ;;
+      --include-outgoing)
+        INCLUDE_OUTGOING=1
         shift
         ;;
       --realms)
@@ -150,14 +158,27 @@ resolve_expected_bot_email_for_realm() {
   printf '%s' ""
 }
 
+resolve_expected_outgoing_bot_email_for_realm() {
+  local realm="$1"
+  local yaml="${N8N_ZULIP_OUTGOING_BOT_EMAILS_YAML:-}"
+  if [[ -z "$yaml" ]]; then
+    yaml="$(tf_output_raw N8N_ZULIP_OUTGOING_BOT_EMAILS_YAML)"
+  fi
+  if [[ -z "$yaml" || "$yaml" == "null" ]]; then
+    yaml="$(tf_output_raw zulip_outgoing_bot_emails_yaml)"
+  fi
+  parse_simple_yaml_get "$yaml" "$realm"
+}
+
 verify_realm() {
   local realm="$1"
   local zulip_url="$2"
   local expected_email="$3"
-  local admin_email="$4"
-  local admin_key="$5"
+  local expected_outgoing_email="$4"
+  local admin_email="$5"
+  local admin_key="$6"
 
-  log "realm=${realm} zulip_url=${zulip_url} expected_bot=${expected_email}"
+  log "realm=${realm} zulip_url=${zulip_url} expected_mess_bot=${expected_email} expected_outgoing_bot=${expected_outgoing_email:-<skip>}"
 
   if [[ "$DRY_RUN" == "1" ]]; then
     return 0
@@ -167,14 +188,18 @@ verify_realm() {
     warn "realm=${realm} missing required values (zulip_url/admin/bot_email/admin_key)"
     return 1
   fi
+  if [[ "$INCLUDE_OUTGOING" == "1" && -z "$expected_outgoing_email" ]]; then
+    warn "realm=${realm} missing outgoing bot email"
+    return 1
+  fi
 
   local resp
   resp="$(curl -sS -u "${admin_email}:${admin_key}" "${zulip_url%/}/api/v1/bots")"
   local ok
-  ok="$(python3 - <<'PY' "$resp" "$expected_email"
+  ok="$(python3 - <<'PY' "$resp" "$expected_email" "$expected_outgoing_email"
 import json, sys
 body = sys.argv[1]
-expected = sys.argv[2]
+expected = [value for value in sys.argv[2:] if value]
 try:
     data = json.loads(body)
 except Exception:
@@ -184,18 +209,19 @@ if data.get("result") != "success":
     print("error:api_error")
     sys.exit(0)
 bots = data.get("bots") or []
+found = set()
 for b in bots:
     if not isinstance(b, dict):
         continue
     username = b.get("username") or b.get("email") or ""
-    if username == expected:
-        print("ok")
-        sys.exit(0)
-print("missing")
+    if username in expected:
+        found.add(username)
+missing = [value for value in expected if value not in found]
+print("ok" if not missing else "missing:" + ",".join(missing))
 PY
 )"
   if [[ "$ok" == "ok" ]]; then
-    log "realm=${realm} OK (bot exists)"
+    log "realm=${realm} OK (expected bots exist)"
     return 0
   fi
   warn "realm=${realm} NG (${ok})"
@@ -226,11 +252,15 @@ main() {
   local failed=0
   while IFS= read -r realm; do
     [[ -z "$realm" ]] && continue
-    local zulip_url expected_email admin_key
+    local zulip_url expected_email expected_outgoing_email admin_key
     zulip_url="$(resolve_zulip_url_for_realm "$realm")"
     expected_email="$(resolve_expected_bot_email_for_realm "$realm")"
+    expected_outgoing_email=""
+    if [[ "$INCLUDE_OUTGOING" == "1" ]]; then
+      expected_outgoing_email="$(resolve_expected_outgoing_bot_email_for_realm "$realm")"
+    fi
     admin_key="$(resolve_admin_key_for_realm "$realm")"
-    if ! verify_realm "$realm" "$zulip_url" "$expected_email" "$admin_email" "$admin_key"; then
+    if ! verify_realm "$realm" "$zulip_url" "$expected_email" "$expected_outgoing_email" "$admin_email" "$admin_key"; then
       failed=1
     fi
   done <<<"$realms"

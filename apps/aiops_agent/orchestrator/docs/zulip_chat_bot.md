@@ -164,7 +164,7 @@ JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ
 
 - `mess`: 送信用 Bot（n8n -> Zulip 通知など）をレルムごとに作成/取得し、`terraform.itsm.tfvars` の `zulip_mess_bot_tokens_yaml`/`zulip_mess_bot_emails_yaml`/`zulip_api_mess_base_urls_yaml` を更新。`scripts/itsm/n8n/refresh_zulip_mess_bot.sh`
 - `outgoing`: Outgoing Webhook bot（bot_type=3）の作成/更新＋`terraform.itsm.tfvars` の `zulip_outgoing_tokens_yaml`/`zulip_outgoing_bot_emails_yaml` を更新。`scripts/itsm/n8n/refresh_zulip_bot.sh`
-- `verify`: Bot 登録の検証。`apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh`
+- `verify`: Bot 登録の検証。`apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh`（`--include-outgoing` で mess/outgoing の両方）
 
 ## 3.5 Bot 再利用ポリシー（重要）
 
@@ -181,6 +181,10 @@ JWT 検証を有効化する場合は、Issuer/JWKS URL/Audience をコンテナ
 
 既存 Bot の特定は、`GET /api/v1/bots` だけでなく、必要に応じて `GET /api/v1/users?include_inactive=true` を併用して
 メールアドレスから `user_id` を解決します（無効化された Bot が存在するケースを含む）。
+
+`GET /api/v1/bots` の識別子フィールドは Zulip バージョンにより `username` または `email` です。標準 verifier は両方を解釈します。手作業の確認で `.bots[].email` のみに固定すると誤って 0 件と判定するため、標準 verifier を使用してください。
+
+Terraform output は複数レルム用の `N8N_ZULIP_API_BASE_URLS_YAML` / `N8N_ZULIP_BOT_EMAILS_YAML` / `N8N_ZULIP_BOT_TOKENS_YAML` を使用します。n8n コンテナにレルム単位で注入される単数形の環境変数とは区別してください。
 
 ## 4. 実装メモ
 

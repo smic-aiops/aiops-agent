@@ -31,11 +31,31 @@
     },
     {
       "parameters": {
-        "url": "={{ $json.webhook_base_url + '/itsm/sor/aiops/auto_enqueue' }}",
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.aiops_context (context_id, source, reply_target, actor, normalized_event, status)\nVALUES (\n  '{{ $node[\"Build Test Requests\"].json.ids.context_id }}'::uuid,\n  'oq_test',\n  '{\"source\":\"n8n\",\"workflow\":\"itsm-sor-aiops-write-test\"}'::jsonb,\n  '{\"name\":\"itsm-sor-aiops-write-test\"}'::jsonb,\n  jsonb_build_object('oq', true, 'job_id', '{{ $node[\"Build Test Requests\"].json.ids.job_id }}'),\n  'open'\n)\nON CONFLICT (context_id) DO NOTHING\nRETURNING context_id;",
+        "options": {}
+      },
+      "id": "7",
+      "name": "Create OQ Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        700,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "name": "RDS Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $node['Build Test Requests'].json.webhook_base_url + '/itsm/sor/aiops/auto_enqueue' }}",
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ $json.auto_enqueue }}",
+        "jsonBody": "={{ $node['Build Test Requests'].json.auto_enqueue }}",
         "sendHeaders": true,
         "headerParametersUi": {
           "parameter": [
@@ -134,7 +154,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ {\n  ok: $node['Build Test Requests'].json.ok === true,\n  input: $node['Build Test Requests'].json,\n  results: {\n    auto_enqueue: $node['Call SoR API (Auto-Enqueue)'].json,\n    approval_decision: $node['Call SoR API (Approval Decision)'].json,\n    approval_comment: $node['Call SoR API (Approval Comment)'].json\n  }\n} }}",
+        "responseBody": "={{ {\n  ok: $node['Build Test Requests'].json.ok === true && $node['Call SoR API (Auto-Enqueue)'].json.ok === true && $node['Call SoR API (Approval Decision)'].json.ok === true && $node['Call SoR API (Approval Comment)'].json.ok === true,\n  input: $node['Build Test Requests'].json,\n  results: {\n    auto_enqueue: $node['Call SoR API (Auto-Enqueue)'].json,\n    approval_decision: $node['Call SoR API (Approval Decision)'].json,\n    approval_comment: $node['Call SoR API (Approval Comment)'].json\n  }\n} }}",
         "options": {
           "responseCode": 200
         }
@@ -162,6 +182,17 @@
       ]
     },
     "Build Test Requests": {
+      "main": [
+        [
+          {
+            "node": "Create OQ Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create OQ Context": {
       "main": [
         [
           {

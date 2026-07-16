@@ -18,7 +18,7 @@
 * **ツール呼び出し（ジョブ実行）**：オーケストレーターが外部ツール（ジョブ実行エンジン等）を呼び出すためのインターフェース（本書では `jobs.Preview`, `jobs.enqueue` を含む）
 * **正規化イベント（NormalizedEvent）**：ソースイベントを共通スキーマに変換したもの。分類（定型/定形外、種別）、優先度、抽出パラメータ、周辺情報参照などを含む
 * **イベントコンテキスト**：返信先に必要な情報（workspace/channel/thread/user 等）
-* **コンテキストストア**：`context_id`/`job_id` を起点に返信先・正規化イベント・保留中承認・ジョブ実行状態を保存し、TTL/保持期間を管理する DB 層（参照実装は n8n の Postgres インスタンスに `aiops_*` テーブルを同居）
+* **コンテキストストア**：`context_id`/`job_id` を起点に返信先・正規化イベント・保留中承認・ジョブ実行状態を保存し、TTL/保持期間を管理する DB 層（参照実装は n8n 資格情報 `aiops-postgres` が接続する RDS アプリDBに `aiops_*` テーブルを配置し、n8n 本体DBとは分離）
 * **承認履歴/評価ストア**：過去の承認結果やユーザー評価を蓄積し、オーケストレーターの意思決定に参照するストア
 * **実行計画（job_plan）**：`jobs.Preview` で組み立てる `{workflow_id, params, summary, required_roles, risk_level, impact_scope}`。複数候補（ランキング）を返すことがある
 * **保留中承認（PendingApproval）**：実行前承認の記録。`approval_id`, `expires_at`, `token_nonce`, `approved_at`, `used_at` 等を持つ。  
@@ -479,7 +479,7 @@ Unified Decision（論理）は `tool_calls` に「次に取るべきアクシ�
 
 **参照実装（Postgres）**
 
-参照実装のスキーマは `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql` を正とし、n8n が利用する Postgres インスタンスに `aiops_*` テーブルとして同居させます。次のテーブルを利用します。
+参照実装のスキーマは `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql` を正とし、n8n 資格情報 `aiops-postgres` が接続する RDS アプリDB（`terraform output rds_postgresql.database`）に `aiops_*` テーブルを配置します。n8n 本体DB（SSM `/<name_prefix>/n8n/db/name`）には配置しません。次のテーブルを利用します。
 
 * `aiops_dedupe`：`dedupe_key` → `context_id` の対応（重複排除）
 * `aiops_context`：`context_id` を中心に `reply_target`/`actor`/`normalized_event` を保持（`status`/`closed_at` を持てるようにする）
@@ -766,11 +766,11 @@ n8n の AI ノード（OpenAI 等）の入出力を、Sulu 管理画面（`Monit
 
 * `adapter`: 受信/承認提示/結果通知
 * `orchestrator`: プレビュー/承認要否/トークン生成/ enqueue 検証
-* `context-store`: Postgres（参照実装は n8n の Postgres に `aiops_*` を同居。必要に応じて Redis を併用）
+* `context-store`: Postgres（参照実装は `aiops-postgres` 接続先のRDSアプリDBに `aiops_*` を配置。n8n 本体DBとは分離し、必要に応じて Redis を併用）
 * `AI Ops ジョブ実行エンジン（参照実装）`: n8n ワークフロー（enqueue webhook + Cron worker）+ Postgres キュー（`aiops_job_queue`）
 * `AI Ops ジョブ実行エンジン（拡張例）`: main/api（受付系）と worker（実行系）を分離してスケール
 * `redis`: （任意）Queue backend（n8n Queue Mode を採用する場合）
-* `postgres`: n8n のアプリDB/実行状態保存（参照実装では context-store と同居）
+* `postgres`: 同一RDSを利用してもDBを分ける。n8n 本体の内部状態は n8n 用DB、context-store は `aiops-postgres` 接続先のアプリDBへ保存する
 
 ## 10. コンポーネント共通: 運用ポリシー（例）
 

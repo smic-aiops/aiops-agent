@@ -12,6 +12,8 @@ Options:
 Environment variables:
   - ZULIP_STREAMS: comma-separated stream names to ensure (default: itsm-incident,itsm-oncall)
   - ZULIP_TARGET_REALM: optional realm filter when realm maps are available
+  - N8N_ZULIP_API_BASE_URLS_YAML: per-realm Zulip base URLs (current Terraform output)
+  - N8N_ZULIP_API_BASE_URL: legacy per-realm Zulip base URLs
   - ZULIP_BASE_URL: Zulip base URL (fallback mode)
   - ZULIP_ADMIN_EMAIL / ZULIP_ADMIN_API_KEY: credentials (fallback mode)
   - DRY_RUN: set to any value to enable dry-run (same as --dry-run)
@@ -264,7 +266,16 @@ ensure_streams_for_realm() {
   log "Ensured subscriptions (${realm}): ${ZULIP_STREAMS}"
 }
 
-aiops_api_urls_yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL 2>/dev/null || true)"
+aiops_api_urls_yaml="${N8N_ZULIP_API_BASE_URLS_YAML:-${N8N_ZULIP_API_BASE_URL:-}}"
+if [[ -z "${aiops_api_urls_yaml}" || "${aiops_api_urls_yaml}" == "null" ]]; then
+  aiops_api_urls_yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URLS_YAML 2>/dev/null || true)"
+fi
+if [[ -z "${aiops_api_urls_yaml}" || "${aiops_api_urls_yaml}" == "null" ]]; then
+  aiops_api_urls_yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL 2>/dev/null || true)"
+fi
+if [[ -z "${aiops_api_urls_yaml}" || "${aiops_api_urls_yaml}" == "null" ]]; then
+  aiops_api_urls_yaml="$(tf_output_raw zulip_api_mess_base_urls_yaml 2>/dev/null || true)"
+fi
 zulip_admin_api_keys_yaml="$(tf_output_raw zulip_admin_api_keys_yaml 2>/dev/null || true)"
 
 api_urls_json="$(parse_yaml_to_json "${aiops_api_urls_yaml}")"

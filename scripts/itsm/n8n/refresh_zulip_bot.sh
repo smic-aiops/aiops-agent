@@ -9,6 +9,7 @@ set -euo pipefail
 # Optional env:
 #   DRY_RUN                        : 1/true で、Zulip API 更新 / tfvars 書き込み / terraform refresh-only をスキップ
 #   ALLOW_OUTGOING_BOT_REUSE        : 1/true で、期待 bot 不在時に既存 bot_type=3 を再利用（default: false）
+#   VERIFY_AFTER                    : true で更新後に mess/outgoing bot を API 検証（default: true）
 #   REALMS_JSON                    : 対象レルムの JSON 配列を上書き（例: ["tenant-a","tenant-b"]）
 #   TFVARS_FILE                    : 更新対象 tfvars（default: terraform.itsm.tfvars）
 #   ZULIP_ADMIN_EMAIL              : Zulip 管理者メール（default: terraform output zulip_admin_email_input）
@@ -208,7 +209,7 @@ emit("AWS_PROFILE", val("aws_profile"))
 emit("AWS_REGION", val("region"))
 emit("HOSTED_ZONE_NAME", val("hosted_zone_name"))
 emit("ZULIP_REALM_URL_TEMPLATE", setup.get("zulip_realm_url_template"))
-emit("N8N_ZULIP_API_BASE_URL", val("N8N_ZULIP_API_BASE_URL"))
+emit("N8N_ZULIP_API_BASE_URL", val("N8N_ZULIP_API_BASE_URLS_YAML") or val("N8N_ZULIP_API_BASE_URL"))
 emit("ZULIP_ADMIN_API_KEYS_YAML", val("zulip_admin_api_keys_yaml"))
 PY
   )"
@@ -631,7 +632,7 @@ fi
 
 EXISTING_OUTGOING_TOKENS_YAML="${EXISTING_OUTGOING_TOKENS_YAML:-}"
 if [ -z "${EXISTING_OUTGOING_TOKENS_YAML}" ]; then
-  EXISTING_OUTGOING_TOKENS_YAML="$(tf_output_raw_first N8N_ZULIP_OUTGOING_TOKEN 2>/dev/null || true)"
+  EXISTING_OUTGOING_TOKENS_YAML="$(tf_output_raw_first N8N_ZULIP_OUTGOING_TOKENS_YAML N8N_ZULIP_OUTGOING_TOKEN 2>/dev/null || true)"
 fi
 
 DRY_RUN="$(to_bool "${DRY_RUN:-0}")"
@@ -1048,3 +1049,14 @@ PY
 
 log "Updated ${TFVARS_FILE} with outgoing webhook tokens + bot emails for ${#realms[@]} realms (created ${created}, updated_payload_url ${updated})."
 run_terraform_refresh
+
+if [[ "$(to_bool "${VERIFY_AFTER:-true}")" == "true" ]]; then
+  verify_args=(--include-outgoing)
+  if [[ "${DRY_RUN}" != "true" ]]; then
+    verify_args+=(--execute)
+    log "Verifying mess and outgoing bots via Zulip API..."
+  else
+    log "DRY_RUN: showing the mess/outgoing bot verification plan (no Zulip API call)"
+  fi
+  bash "${REPO_ROOT}/apps/aiops_agent/adapter/scripts/verify_zulip_aiops_agent_bots.sh" "${verify_args[@]}"
+fi

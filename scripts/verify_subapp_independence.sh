@@ -18,6 +18,7 @@ What this checks (per subapp under apps/*/*):
   - scripts/deploy_workflows.sh exists and is bash-parseable
   - scripts/run_oq.sh exists and is bash-parseable
   - workflows/*.json exists (at least one file) when deploy_workflows.sh exists
+    (except script-only bootstrap subapps)
   - (unless --static-only) deploy_workflows.sh runs in DRY_RUN mode without requiring tokens
   - (unless --static-only) run_oq.sh runs with --dry-run
 
@@ -39,6 +40,13 @@ FAIL_FAST=false
 
 log() { printf '[verify] %s\n' "$*"; }
 warn() { printf '[verify] [warn] %s\n' "$*" >&2; }
+
+is_script_only_subapp() {
+  case "$1" in
+    itsm_core/bootstrap) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
 contains_csv() {
   local needle="$1"
@@ -190,7 +198,7 @@ for key in "${subapps_sorted[@]}"; do
   if [[ ! -f "${deploy}" ]]; then
     warn "missing deploy script: ${deploy}"
     ok=false
-  else
+  elif ! is_script_only_subapp "${key}"; then
     bash -n "${deploy}" || ok=false
     wf_dir="${subapp_dir}/workflows"
     if [[ ! -d "${wf_dir}" ]]; then
@@ -205,6 +213,8 @@ for key in "${subapps_sorted[@]}"; do
         ok=false
       fi
     fi
+  else
+    bash -n "${deploy}" || ok=false
   fi
 
   if [[ ! -f "${oq}" ]]; then

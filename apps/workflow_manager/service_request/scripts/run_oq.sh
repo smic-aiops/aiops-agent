@@ -108,7 +108,7 @@ else
     exit 1
   fi
   GITLAB_ADMIN_TOKEN="$(terraform_output gitlab_admin_token)"
-  GITLAB_API_BASE_URL="$(terraform_output_json service_urls | python3 -c 'import json,sys; print((json.load(sys.stdin).get(\"gitlab\", \"\").rstrip(\"/\") + \"/api/v4\").rstrip(\"/\"))')"
+  GITLAB_API_BASE_URL="$(terraform_output_json service_urls | python3 -c 'import json,sys; print((json.load(sys.stdin).get("gitlab", "").rstrip("/") + "/api/v4").rstrip("/"))')"
 fi
 
 GITLAB_PROJECT_PATH="$(resolve_gitlab_project_path "${REALM}")"
@@ -145,8 +145,13 @@ request_get() {
   body_out="${response%$'\n'*}"
 
   echo "${name} status=${status} body=${body_out}"
+  if [[ ! "${status}" =~ ^2[0-9][0-9]$ ]]; then
+    return 1
+  fi
+  if python3 -c 'import json,sys; data=json.load(sys.stdin); sys.exit(0 if data.get("ok") is False else 1)' <<<"${body_out}" 2>/dev/null; then
+    return 1
+  fi
 }
 
 webhook_test_url="${N8N_BASE_URL%/}/webhook/tests/gitlab/service-catalog-sync?dry_run=true&gitlab_api_base_url=$(urlencode "${GITLAB_API_BASE_URL}")&gitlab_project_path=$(urlencode "${GITLAB_PROJECT_PATH}")&gitlab_workflow_catalog_md_path=$(urlencode "${GITLAB_WORKFLOW_CATALOG_MD_PATH}")"
 request_get "gitlab-service-catalog-sync" "${webhook_test_url}"
-

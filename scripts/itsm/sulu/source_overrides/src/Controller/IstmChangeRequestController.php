@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\IstmSor\Entity\IstmChangeRequest;
 use App\ListBuilder\IstmDoctrineListBuilderFactory;
 use App\Service\IstmSorRlsContext;
+use App\Service\IstmCoreWriter;
 use FOS\RestBundle\View\ViewHandlerInterface;
 use Sulu\Component\Rest\AbstractRestController;
 use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilder;
@@ -21,6 +22,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 final class IstmChangeRequestController extends AbstractRestController
 {
+    use IstmWritableControllerTrait;
     private const LIST_KEY = 'itsm_change_requests';
     private const SECURITY_CONTEXT = 'app.itsm.change_requests';
 
@@ -32,6 +34,7 @@ final class IstmChangeRequestController extends AbstractRestController
         private readonly RestHelperInterface $restHelper,
         private readonly SecurityCheckerInterface $securityChecker,
         private readonly IstmSorRlsContext $rlsContext,
+        private readonly IstmCoreWriter $coreWriter,
     ) {
         parent::__construct($viewHandler, $tokenStorage);
     }
@@ -90,4 +93,8 @@ final class IstmChangeRequestController extends AbstractRestController
             'updatedAt' => $changeRequest->getUpdatedAt()->format(DATE_ATOM),
         ]));
     }
+
+    public function postAction(Request $request): Response { return $this->createResource($request, 'change_request'); }
+    public function putAction(Request $request, string $id): Response { return $this->updateResource($request, 'change_request', $id); }
+    public function deleteAction(Request $request, string $id): Response { return $this->deleteResource($request, 'change_request', $id); }
 }

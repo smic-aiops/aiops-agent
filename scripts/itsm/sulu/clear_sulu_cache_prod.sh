@@ -343,13 +343,21 @@ for realm in "${REALMS_LIST[@]}"; do
 
     printf '%s\n' "${out}"
 
-    if [[ "${rc}" -eq 0 ]]; then
+    # Session Manager may return 0 even when the command inside the container
+    # failed. Do not accept a partial cache-clear success followed by a warmup
+    # exception as a successful deployment.
+    if printf '%s' "${out}" | grep -Eiq 'non-existent parameter|DefinitionErrorException|ParseError|[[:space:]]\[KO\]|\[critical\]|uncaught (error|exception)|In [^[:space:]]+ line [0-9]+'; then
+      rc=1
+    fi
+
+    if [[ "${rc}" -eq 0 ]] && printf '%s' "${out}" | grep -Eq 'Cache for the ".*" environment .* was successfully'; then
       exec_succeeded="true"
       break
     fi
 
     # Treat as success if Symfony cache clear/warmup output is present but the session wrapper exited non-zero.
-    if printf '%s' "${out}" | grep -Eq "Cache for the \".*\" environment \\(debug=.*\\) was successfully"; then
+    if ! printf '%s' "${out}" | grep -Eiq 'non-existent parameter|DefinitionErrorException|ParseError|[[:space:]]\[KO\]|\[critical\]|uncaught (error|exception)|In [^[:space:]]+ line [0-9]+' \
+      && printf '%s' "${out}" | grep -Eq "Cache for the \".*\" environment \\(debug=.*\\) was successfully"; then
       exec_succeeded="true"
       break
     fi

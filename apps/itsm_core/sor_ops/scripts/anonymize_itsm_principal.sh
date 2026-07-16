@@ -118,9 +118,9 @@ rk_sql="${REALM_KEY//\'/''}"
 pid_sql="${PRINCIPAL_ID//\'/''}"
 
 sql="$(cat <<SQL
-\\set ON_ERROR_STOP on
-\\pset format unaligned
-\\pset tuples_only on
+\set ON_ERROR_STOP on
+\pset format unaligned
+\pset tuples_only on
 SELECT itsm.anonymize_principal(itsm.get_realm_id('${rk_sql}'), '${pid_sql}', ${dry_sql})::text;
 SQL
 )"

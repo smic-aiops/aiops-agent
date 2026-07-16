@@ -140,26 +140,16 @@ setup_log_start() {
   git_commit_e="$(setup_log__json_escape "${git_commit}")"
   args_hash_e="$(setup_log__json_escape "${args_hash}")"
 
-  printf '{' >>"${SETUP_LOG_PATH}"
-  printf '"ts":"%s",' "${ts}" >>"${SETUP_LOG_PATH}"
-  printf '"event":"started",' >>"${SETUP_LOG_PATH}"
-  printf '"phase":"%s",' "${phase_e}" >>"${SETUP_LOG_PATH}"
-  printf '"action":"%s",' "${action_e}" >>"${SETUP_LOG_PATH}"
-  printf '"run_id":"%s",' "${run_id_e}" >>"${SETUP_LOG_PATH}"
-  printf '"script":"%s",' "${script_e}" >>"${SETUP_LOG_PATH}"
-  printf '"cwd":"%s",' "${cwd_e}" >>"${SETUP_LOG_PATH}"
-  printf '"pid":%s,' "${pid}" >>"${SETUP_LOG_PATH}"
-  printf '"user":"%s",' "${user_e}" >>"${SETUP_LOG_PATH}"
-  printf '"host":"%s",' "${host_e}" >>"${SETUP_LOG_PATH}"
-  printf '"git_commit":"%s",' "${git_commit_e}" >>"${SETUP_LOG_PATH}"
-  printf '"git_dirty":%s,' "${git_dirty}" >>"${SETUP_LOG_PATH}"
+  local dry_run_json=false
   if setup_log__is_truthy "${DRY_RUN:-}"; then
-    printf '"dry_run":true,' >>"${SETUP_LOG_PATH}"
-  else
-    printf '"dry_run":false,' >>"${SETUP_LOG_PATH}"
+    dry_run_json=true
   fi
-  printf '"argv_sha256":"%s"' "${args_hash_e}" >>"${SETUP_LOG_PATH}"
-  printf '}\n' >>"${SETUP_LOG_PATH}"
+  # Write one complete line per event. Multiple printf appends can interleave
+  # when workflow deploys run concurrently and corrupt the JSONL stream.
+  printf '{"ts":"%s","event":"started","phase":"%s","action":"%s","run_id":"%s","script":"%s","cwd":"%s","pid":%s,"user":"%s","host":"%s","git_commit":"%s","git_dirty":%s,"dry_run":%s,"argv_sha256":"%s"}\n' \
+    "${ts}" "${phase_e}" "${action_e}" "${run_id_e}" "${script_e}" "${cwd_e}" \
+    "${pid}" "${user_e}" "${host_e}" "${git_commit_e}" "${git_dirty}" \
+    "${dry_run_json}" "${args_hash_e}" >>"${SETUP_LOG_PATH}"
 }
 
 setup_log_finish() {
@@ -189,17 +179,9 @@ setup_log_finish() {
   script_e="$(setup_log__json_escape "${SETUP_LOG_SCRIPT}")"
   run_id_e="$(setup_log__json_escape "${SETUP_LOG_RUN_ID}")"
 
-  printf '{' >>"${SETUP_LOG_PATH}"
-  printf '"ts":"%s",' "${ts}" >>"${SETUP_LOG_PATH}"
-  printf '"event":"finished",' >>"${SETUP_LOG_PATH}"
-  printf '"phase":"%s",' "${phase_e}" >>"${SETUP_LOG_PATH}"
-  printf '"action":"%s",' "${action_e}" >>"${SETUP_LOG_PATH}"
-  printf '"run_id":"%s",' "${run_id_e}" >>"${SETUP_LOG_PATH}"
-  printf '"script":"%s",' "${script_e}" >>"${SETUP_LOG_PATH}"
-  printf '"exit_code":%s,' "${exit_code}" >>"${SETUP_LOG_PATH}"
-  printf '"status":"%s",' "${status}" >>"${SETUP_LOG_PATH}"
-  printf '"duration_sec":%s' "${duration}" >>"${SETUP_LOG_PATH}"
-  printf '}\n' >>"${SETUP_LOG_PATH}"
+  printf '{"ts":"%s","event":"finished","phase":"%s","action":"%s","run_id":"%s","script":"%s","exit_code":%s,"status":"%s","duration_sec":%s}\n' \
+    "${ts}" "${phase_e}" "${action_e}" "${run_id_e}" "${script_e}" \
+    "${exit_code}" "${status}" "${duration}" >>"${SETUP_LOG_PATH}"
 }
 
 setup_log_install_exit_trap() {

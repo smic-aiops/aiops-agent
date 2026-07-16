@@ -1,45 +1,49 @@
-# ITSM Core API（設計メモ / 予定）
+# ITSM Core API
 
-本書は、ITSM Core（SoR: `itsm.*`）に対する **将来の API（OpenAPI）** をまとめるための土台です。
+ITSM Core API は n8n Webhook と PostgreSQL の `itsm.core_api_dispatch_v2` で提供します。API の正規仕様は [OpenAPI](openapi/itsm-core-api.yaml) です。
 
-現時点の実装（MVP）は主に以下で提供されています：
+## エンドポイント
 
-- SoR の DDL/運用: `apps/itsm_core/sor_ops/sql/` / `apps/itsm_core/sor_ops/scripts/`
-- 外部連携の入口（暫定）: n8n Webhook / Public API（ワークフロー同期）
-  - SoR core workflows: `apps/itsm_core/sor_webhooks/workflows/`
-  - sub-app workflows: `apps/itsm_core/<app>/workflows/`
+- `POST /webhook/itsm/core/api`
+- 認証: `Authorization: Bearer <ITSM_CORE_API_TOKEN>` または `x-itsm-api-token`
+- realm: request body の `realm`。省略時は n8n の realm 環境設定を利用
+- 上限: `limit` は 1〜200
 
-## 1. 目的（将来）
+トークンは SSM/ECS 経由で `ITSM_CORE_API_TOKEN` に注入し、文書・workflow JSON・Git 管理対象の tfvars へ記載しません。
 
-- CRUD: Incident/Change/Request/CI/Service/Approval
-- 検索: 横断検索（realm 分離、RLS 前提）
-- 監査: `itsm.audit_event` の投入/参照
-- 承認: 承認状態の遷移、証跡リンクの固定（`external_ref`）
+## 操作
 
-## 2. 非目標（現時点）
+| action | resource_type | 用途 |
+|---|---|---|
+| `get`, `list`, `search` | API 有効 resource | ID 取得、一覧、全文検索 |
+| `create`, `update`, `delete` | `incident`, `service_request`, `problem`, `change_request`, `service`, `configuration_item` | CRUD |
+| `add_comment`, `set_tag`, `grant_acl`, `add_attachment` | 対象 resource | 共通付加情報 |
+| `sync_cmdb` | `cmdb` | Service/CI/relation の dry-run・冪等同期 |
+| `list_attachment_deletions`, `ack_attachment_deletion` | `attachment_deletion` | ストレージ実体削除キューの取得・完了/失敗記録 |
 
-- 完全な UI/API の提供は別途設計・実装対象
-- 外部サービス（GitLab/Zulip/LLM API）自体の製品バリデーション
+書き込みは DB の realm/RLS、参照整合性 trigger、状態遷移規則、必須辞書により検証されます。
 
-## 3. 次の作業（TODO）
+## 例
 
-- OpenAPI の草案（エンドポイント/スキーマ/認可）
-- 認可モデル（Keycloak / RLS / 例外 ACL）の整理
-- n8n Webhook で提供している入口の棚卸しと移行計画
+```json
+{
+  "realm": "aiops",
+  "action": "create",
+  "resource_type": "incident",
+  "payload": {
+    "title": "API疎通エラー",
+    "description": "監視から起票",
+    "priority": "high",
+    "service_number": "SVC-UNASSIGNED"
+  }
+}
+```
 
-## 4. 現時点の入口（n8n Webhook）
+## 実装・検証
 
-本リポジトリでは、当面の「外部連携の入口」を n8n Webhook として実装している。
+- workflow: `apps/itsm_core/sor_webhooks/workflows/itsm_sor_core_api.json`
+- DB API: `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`
+- OQ: `apps/itsm_core/sor_webhooks/scripts/run_oq.sh`
+- 機能 OQ/PQ: `apps/itsm_core/sor_ops/scripts/run_feature_oq_pq.sh`
 
-### HR Talent Management（GitLab 証跡 + n8n 自動化）
-
-- スキル更新申請（Issue 作成）
-  - `POST /webhook/hr/talent/skill/update/request`
-- スキル更新 反映（OQ 用）
-  - `POST /webhook/hr/talent/skill/update/apply/oq`
-- スキル更新 テスト（環境依存の健全性確認）
-  - `POST /webhook/hr/talent/skill/update/test`
-- 月次レポート生成（MR 作成）
-  - `POST /webhook/hr/talent/report/monthly/generate/request`
-- 月次レポート テスト（環境依存の健全性確認）
-  - `POST /webhook/hr/talent/report/monthly/generate/test`
+HR Talent Management など個別サブアプリ固有の Webhook は各 `apps/itsm_core/*/docs/usage/README.md` を参照してください。

@@ -22,7 +22,7 @@ apps 配下アプリの README は、CSV/CSA の最小ドキュメントセッ�
 
 **互換運用**
 
-- 既存の DB 参照を使う場合は `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql` を適用する。
+- 既存の DB 参照を使う場合は、`bash apps/aiops_agent/knowledge_store/scripts/apply_aiops_context_store_schema.sh --execute` で `aiops-postgres` 接続先のアプリDBへ適用する。n8n 本体DBへ直接適用しない。
 
 ## 2. 問題管理DB（ITSM / Postgres）
 
@@ -146,6 +146,7 @@ WHERE ke.known_error_id = ANY($1);
 ## 4. 参照実装（このリポジトリ）
 
 - DB スキーマ: `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql`
+  - 適用・検証: `apps/aiops_agent/knowledge_store/scripts/apply_aiops_context_store_schema.sh`（アプリDBとn8n本体DBの一致・取り違えを拒否）
   - n8n workflow:
     - `apps/aiops_agent/adapter/workflows/aiops_adapter_ingest.json`（受信〜正規化〜Preview、Zulip の承認/評価もここに集約。短文時の topic context は Zulip API から取得し、**HTML を除去したテキスト**として `normalized_event.zulip_topic_context.messages` に保存。LLM 入力は **現在の発言を先頭**に保ったまま、過去発言を末尾へ補助的に付与する）
     - `apps/aiops_agent/adapter/workflows/aiops_adapter_callback.json`（ジョブ完了 callback〜返信）

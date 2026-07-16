@@ -13,7 +13,7 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 cd "${REPO_ROOT}"
 
-DRY_RUN=false
+DRY_RUN="${DRY_RUN:-false}"
 FAIL_FAST=false
 COMPONENTS_FILTER=""
 pass_args=()

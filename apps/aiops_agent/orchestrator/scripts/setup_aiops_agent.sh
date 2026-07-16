@@ -3,6 +3,7 @@ set -euo pipefail
 
 DRY_RUN=1
 DO_DEPLOY=0
+DO_APPLY_CONTEXT_SCHEMA=0
 DO_TEST_INGEST=0
 DO_REDEPLOY_N8N=0
 ZULIP_TENANT=""
@@ -28,6 +29,7 @@ Usage: setup_aiops_agent.sh [options]
 Options:
   --execute               Run actions (default: dry-run)
   --deploy-workflows      Sync workflows (itsm_core -> aiops_agent) via scripts/apps/deploy_all_workflows.sh
+  --apply-context-schema  Apply and verify ContextStore schema in the aiops-postgres application DB
   --redeploy-n8n          Trigger ECS force-new-deploy for n8n after setup
   --test-ingest           Send a Zulip ingest test payload
   --zulip-tenant <tenant> Run only for this tenant/realm (default: terraform output N8N_AGENT_REALMS)
@@ -59,6 +61,10 @@ parse_args() {
         ;;
       --deploy-workflows)
         DO_DEPLOY=1
+        shift
+        ;;
+      --apply-context-schema)
+        DO_APPLY_CONTEXT_SCHEMA=1
         shift
         ;;
       --redeploy-n8n)
@@ -558,6 +564,17 @@ redeploy_n8n() {
   AWS_PROFILE="$profile" AWS_REGION="$region" bash scripts/itsm/n8n/redeploy_n8n.sh
 }
 
+apply_context_schema() {
+  local profile="$1"
+  local region="$2"
+  local script="apps/aiops_agent/knowledge_store/scripts/apply_aiops_context_store_schema.sh"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    AWS_PROFILE="$profile" AWS_REGION="$region" bash "$script" --dry-run
+  else
+    AWS_PROFILE="$profile" AWS_REGION="$region" bash "$script" --execute
+  fi
+}
+
 main() {
   parse_args "$@"
   ensure_jq
@@ -582,8 +599,14 @@ main() {
     "/${name_prefix}/n8n/api_key"
     "/${name_prefix}/aiops/workflows/token"
     "/${name_prefix}/n8n/encryption_key"
+    "/${name_prefix}/db/name"
+    "/${name_prefix}/n8n/db/name"
   )
   check_ssm_params "$profile" "$region" "${ssm_params[@]}"
+
+  if [[ "$DO_APPLY_CONTEXT_SCHEMA" == "1" ]]; then
+    apply_context_schema "$profile" "$region"
+  fi
 
   local realms
   realms="$(resolve_aiops_agent_realms)"

@@ -51,12 +51,12 @@ if [[ -z "${REALM}" ]]; then
 fi
 REALM="${REALM:-default}"
 
-if [[ -z "${N8N_BASE_URL}" && ! ${DRY_RUN} ]]; then
-  N8N_BASE_URL="$(terraform_output_json n8n_realm_urls | python3 -c 'import json,sys; realm=sys.argv[1]; data=json.load(sys.stdin); print(data.get(realm, \"\"))' "${REALM}")"
+if [[ -z "${N8N_BASE_URL}" ]] && ! ${DRY_RUN}; then
+  N8N_BASE_URL="$(terraform_output_json n8n_realm_urls | jq -r --arg realm "${REALM}" '.[$realm] // empty')"
 fi
 
-if [[ -z "${N8N_BASE_URL}" && ! ${DRY_RUN} ]]; then
-  N8N_BASE_URL="$(terraform_output_json service_urls | python3 -c 'import json,sys; print(json.load(sys.stdin).get(\"n8n\", \"\"))')"
+if [[ -z "${N8N_BASE_URL}" ]] && ! ${DRY_RUN}; then
+  N8N_BASE_URL="$(terraform_output_json service_urls | jq -r '.n8n // empty')"
 fi
 
 if [[ -z "${N8N_BASE_URL}" ]]; then
@@ -87,4 +87,9 @@ if ${DRY_RUN}; then
   exit 0
 fi
 
-curl -sS -H "Content-Type: application/json" --data "${payload}" "${url}" | jq .
+response="$(curl -sS -w '\n%{http_code}' -H "Content-Type: application/json" --data "${payload}" "${url}")"
+status="${response##*$'\n'}"
+body="${response%$'\n'*}"
+echo "status=${status} body=${body}"
+[[ "${status}" == "200" ]]
+jq -e '.ok == true' >/dev/null <<<"${body}"

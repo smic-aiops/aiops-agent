@@ -1276,6 +1276,11 @@ output "initial_credentials" {
   sensitive   = true
 }
 
+output "gitlab_oidc_ssm_parameters" {
+  description = "SSM parameter names used by the GitLab Keycloak OIDC client"
+  value       = module.stack.gitlab_oidc_ssm_parameters
+}
+
 output "service_admin_info" {
   description = "Initial admin URLs and credential pointers per service (password values are not exposed; console links point to SSM SecureString entries)"
   value       = module.stack.service_admin_info

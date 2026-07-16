@@ -103,6 +103,12 @@ request_get() {
   body_out="${response%$'\n'*}"
 
   echo "${name} status=${status} body=${body_out}"
+  if [[ ! "${status}" =~ ^2[0-9][0-9]$ ]]; then
+    return 1
+  fi
+  if python3 -c 'import json,sys; data=json.load(sys.stdin); sys.exit(0 if data.get("ok") is False else 1)' <<<"${body_out}" 2>/dev/null; then
+    return 1
+  fi
 }
 
 webhook_prod_list_url="${N8N_BASE_URL%/}/webhook/catalog/workflows/list?limit=1"
@@ -110,4 +116,3 @@ request_get "catalog-list" "${webhook_prod_list_url}"
 
 webhook_prod_get_url="${N8N_BASE_URL%/}/webhook/catalog/workflows/get?name=aiops-workflows-list"
 request_get "catalog-get" "${webhook_prod_get_url}"
-

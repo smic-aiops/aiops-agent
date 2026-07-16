@@ -40,7 +40,8 @@ Environment overrides:
 
 Notes:
   - When DB_* are not set, the script fetches values from SSM parameters.
-  - Defaults use NAME_PREFIX to resolve n8n DB parameter names.
+  - Defaults use NAME_PREFIX to resolve application DB parameter names.
+  - The n8n internal runtime DB is not a valid target.
   - If psql is missing, the script automatically falls back to ECS Exec.
 USAGE
 }
@@ -223,9 +224,9 @@ AWS_REGION="${AWS_REGION:-ap-northeast-1}"
 if [[ -n "${NAME_PREFIX:-}" ]]; then
   DB_HOST_PARAM="${DB_HOST_PARAM:-/${NAME_PREFIX}/db/host}"
   DB_PORT_PARAM="${DB_PORT_PARAM:-/${NAME_PREFIX}/db/port}"
-  DB_NAME_PARAM="${DB_NAME_PARAM:-/${NAME_PREFIX}/n8n/db/name}"
-  DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/n8n/db/username}"
-  DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"
+  DB_NAME_PARAM="${DB_NAME_PARAM:-/${NAME_PREFIX}/db/name}"
+  DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/db/username}"
+  DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/db/password}"
 fi
 
 if [[ -z "${DB_PASSWORD:-}" ]] && command -v terraform >/dev/null 2>&1; then

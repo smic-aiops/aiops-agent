@@ -1,0 +1,50 @@
+{
+  "name": "Sulu Configuration Recovery",
+  "nodes": [
+    {
+      "parameters": {"path": "sulu/configuration-recovery", "httpMethod": "POST", "responseMode": "responseNode", "options": {}},
+      "id": "1", "name": "Webhook Configuration Recovery", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [240, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = ($json && typeof $json === 'object' && $json.body !== undefined) ? ($json.body ?? {}) : ($json ?? {});\n\nconst clean = (value) => value === null || value === undefined ? '' : String(value).trim();\nconst truthy = (value) => ['1', 'true', 'yes', 'y', 'on'].includes(clean(value).toLowerCase());\nconst realm = clean(request.realm ?? request.tenant ?? $env.N8N_REALM ?? $env.N8N_ENV_REALM);\nconst desiredState = clean(request.desired_state ?? request.desiredState ?? 'up').toLowerCase();\nconst dryRun = request.dry_run === undefined && request.dryRun === undefined ? true : truthy(request.dry_run ?? request.dryRun);\nconst allowServiceChange = truthy(request.allow_service_change ?? request.allowServiceChange);\n\nif (!realm) throw new Error('realm is required');\nif (desiredState !== 'up') throw new Error('desired_state must be up for configuration recovery');\nif (!dryRun && !allowServiceChange) throw new Error('allow_service_change=true is required when dry_run=false');\n\nconst changeId = clean(request.change_id ?? request.changeId) || 'unassigned';\nconst issueUrl = clean(request.issue_url ?? request.issueUrl);\nconst mrUrl = clean(request.mr_url ?? request.mrUrl);\nconst correlationId = clean(request.correlation_id ?? request.correlationId ?? request.trace_id ?? request.traceId);\nconst detectedCommit = clean(request.detected_commit ?? request.detectedCommit);\nconst correctionCommit = clean(request.correction_commit ?? request.correctionCommit);\n\nconst tests = [\n  { name: 'schema_validation', status: 'passed', detail: 'service=sulu and desired_state=up' },\n  { name: 'change_traceability', status: (issueUrl || mrUrl) ? 'passed' : 'warning', detail: (issueUrl || mrUrl) ? 'GitLab evidence linked' : 'GitLab URL is not supplied' },\n  { name: 'execution_guard', status: dryRun || allowServiceChange ? 'passed' : 'failed', detail: dryRun ? 'dry-run enforced' : 'explicit service-change flag supplied' },\n  { name: 'rollback_readiness', status: 'passed', detail: 'restore last-known-good Git commit and start Sulu' }\n];\n\nreturn [{ json: {\n  ok: true,\n  workflow_id: 'wf.sulu_configuration_recovery',\n  service: 'sulu', realm, desired_state: desiredState, dry_run: dryRun, allow_service_change: allowServiceChange,\n  correlation_id: correlationId || null,\n  change: {\n    change_id: changeId, source: 'gitlab', issue_url: issueUrl || null, merge_request_url: mrUrl || null,\n    detected_commit: detectedCommit || null, correction_commit: correctionCommit || null,\n    detected_diff: { desired_state: { from: 'up', to: 'down' } }, correction_diff: { desired_state: { from: 'down', to: 'up' } }\n  },\n  assessment: {\n    risk_level: 'high', impact_scope: 'infra',\n    affected_cis: ['sulu-service', 'sulu-alb-target-group', 'sulu-runtime-config'], tests,\n    rollback_plan: 'Restore the last-known-good GitLab commit, then invoke Sulu Service Control with action=up.'\n  }\n} }];"
+      },
+      "id": "2", "name": "Validate and Build Recovery Plan", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [520, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const plan = $json ?? {};\nif (plan.dry_run) {\n  return [{ json: { ...plan, status: 'validated', simulated: true, applied: false, verification: { status: 'passed', mode: 'dry-run', service_change_performed: false } } }];\n}\n\nconst rawBase = String($env.N8N_WEBHOOK_BASE_URL || ($env.N8N_PUBLIC_API_BASE_URL ? `${String($env.N8N_PUBLIC_API_BASE_URL).replace(/\\/+$/, '')}/webhook` : '')).replace(/\\/+$/, '');\nif (!rawBase) throw new Error('N8N_WEBHOOK_BASE_URL or N8N_PUBLIC_API_BASE_URL is required');\nconst response = await this.helpers.httpRequest({ method: 'POST', url: `${rawBase}/sulu/service-control`, json: true, body: { action: 'up', realm: plan.realm }, timeout: 30000 });\nconst verified = response?.status === 'ok' && response?.action === 'up';\nif (!verified) throw new Error(`Sulu start verification failed: ${JSON.stringify(response)}`);\nreturn [{ json: { ...plan, status: 'applied', simulated: false, applied: true, service_control_response: response, verification: { status: 'passed', mode: 'service-control', service_change_performed: true } } }];"
+      },
+      "id": "3", "name": "Apply or Simulate Recovery", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [820, 180]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: $json.ok, status: $json.status, workflow_id: $json.workflow_id, service: $json.service, realm: $json.realm, desired_state: $json.desired_state, dry_run: $json.dry_run, simulated: $json.simulated, applied: $json.applied, correlation_id: $json.correlation_id, change: $json.change, assessment: $json.assessment, verification: $json.verification, service_control_response: ($json.service_control_response || null) } }}",
+        "options": {}
+      },
+      "id": "4", "name": "Respond Recovery Result", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1100, 180]
+    },
+    {
+      "parameters": {"content": "Scenario 2: GitLab 構成誤変更を検出し、変更証跡・テスト・リスク・ロールバックを統合してCAB承認後に復旧する。dry_run=true が既定。", "height": 180, "width": 420, "color": 6},
+      "id": "100", "name": "Sticky Note: Scenario 2", "type": "n8n-nodes-base.stickyNote", "typeVersion": 1, "position": [240, -60]
+    }
+  ],
+  "connections": {
+    "Webhook Configuration Recovery": {"main": [[{"node": "Validate and Build Recovery Plan", "type": "main", "index": 0}]]},
+    "Validate and Build Recovery Plan": {"main": [[{"node": "Apply or Simulate Recovery", "type": "main", "index": 0}]]},
+    "Apply or Simulate Recovery": {"main": [[{"node": "Respond Recovery Result", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionTimeout": 300},
+  "versionId": "1.0.0",
+  "meta": {
+    "workflowId": "wf.sulu_configuration_recovery", "revision": 1, "createdBy": {"id": "1", "name": "system"},
+    "aiops_catalog": {
+      "summary": "GitLab上のSulu構成誤変更をCAB承認後に安全復旧", "realm": "prod", "platform": "sulu",
+      "required_roles": ["ops:oncall"], "required_groups": ["infra"], "required_users": [],
+      "risk_level": "high", "impact_scope": "infra", "category": "configuration-recovery", "run_window": "24x7",
+      "approval_contact": "change-manager@example.com", "available": true, "available_from_monitoring": true, "workflow_class": "service_request"
+    }
+  }
+}

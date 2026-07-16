@@ -119,7 +119,7 @@ run_local_psql_file() {
   local sql_file="$1"
   require_cmd "psql"
   export PGPASSWORD="${DB_PASSWORD}"
-  psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" -v ON_ERROR_STOP=1 -f "${sql_file}"
+  psql -X -P pager=off -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" -v ON_ERROR_STOP=1 -f "${sql_file}"
 }
 
 run_via_ecs_exec_psql_file() {
@@ -131,7 +131,7 @@ run_via_ecs_exec_psql_file() {
 
   resolve_aws_profile_region
 
-  ECS_CONTAINER="${ECS_CONTAINER:-n8n}"
+  ECS_CONTAINER="${ECS_CONTAINER:-}"
   ECS_TASK="${ECS_TASK:-}"
 
   if [[ -z "${ECS_CLUSTER:-}" && -n "${NAME_PREFIX:-}" ]]; then
@@ -155,23 +155,47 @@ run_via_ecs_exec_psql_file() {
     echo "ERROR: No ECS task found for ${ECS_SERVICE} in ${ECS_CLUSTER}." >&2
     exit 1
   fi
+  if [[ -z "${ECS_CONTAINER}" ]]; then
+    local task_definition=""
+    task_definition="$(aws --profile "${AWS_PROFILE}" --region "${AWS_REGION}" ecs describe-tasks \
+      --cluster "${ECS_CLUSTER}" --tasks "${ECS_TASK}" --query 'tasks[0].taskDefinitionArn' --output text)"
+    ECS_CONTAINER="$(aws --profile "${AWS_PROFILE}" --region "${AWS_REGION}" ecs describe-task-definition \
+      --task-definition "${task_definition}" --output json | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+for container in data.get("taskDefinition", {}).get("containerDefinitions", []):
+    env = {item.get("name"): item.get("value") for item in container.get("environment", [])}
+    if env.get("DB_TYPE") == "postgresdb":
+        print(container.get("name", ""))
+        break
+')"
+  fi
+  if [[ -z "${ECS_CONTAINER}" ]]; then
+    echo "ERROR: n8n application container could not be resolved." >&2
+    exit 1
+  fi
 
-  local sql_b64 pw_b64
+  local sql_b64
   sql_b64="$(base64 < "${sql_file}" | tr -d '\n')"
-  pw_b64="$(printf %s "${DB_PASSWORD}" | base64 | tr -d '\n')"
+  local remote_db_password_env="${ECS_REMOTE_DB_PASSWORD_ENV:-DB_POSTGRESDB_PASSWORD}"
+  if ! [[ "${remote_db_password_env}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "ERROR: ECS_REMOTE_DB_PASSWORD_ENV must be a valid environment variable name." >&2
+    exit 1
+  fi
 
   local remote_cmd_quoted
   remote_cmd_quoted="$(
     RDS_HOST="${DB_HOST}" RDS_PORT="${DB_PORT}" RDS_USER="${DB_USER}" RDS_DB="${DB_NAME}" \
-    PW_B64="${pw_b64}" SQL_B64="${sql_b64}" python3 - <<'PY'
+    REMOTE_DB_PASSWORD_ENV="${remote_db_password_env}" SQL_B64="${sql_b64}" python3 - <<'PY'
 import os, shlex
 host = os.environ["RDS_HOST"]
 port = os.environ["RDS_PORT"]
 user = os.environ["RDS_USER"]
 db = os.environ["RDS_DB"]
-pw_b64 = os.environ["PW_B64"]
+remote_db_password_env = os.environ["REMOTE_DB_PASSWORD_ENV"]
 sql_b64 = os.environ["SQL_B64"]
-psql_base = f"PGPASSWORD=\"$(printf %s {pw_b64} | base64 -d)\" psql -h {shlex.quote(host)} -p {shlex.quote(port)} -U {shlex.quote(user)} -d {shlex.quote(db)} -v ON_ERROR_STOP=1"
+password_ref = "${" + remote_db_password_env + ":?remote DB password environment variable is not set}"
+psql_base = f"PGPASSWORD=\"{password_ref}\" psql -X -P pager=off -h {shlex.quote(host)} -p {shlex.quote(port)} -U {shlex.quote(user)} -d {shlex.quote(db)} -v ON_ERROR_STOP=1"
 cmd = "set -euo pipefail; "
 cmd += f"printf %s {shlex.quote(sql_b64)} | base64 -d > /tmp/itsm_sor_admin.sql; "
 cmd += f"{psql_base} -f /tmp/itsm_sor_admin.sql; "
@@ -224,4 +248,3 @@ run_psql_sql_auto() {
   run_psql_file_auto "${tmp}" "${local_psql}" "${ecs_exec}"
   rm -f "${tmp}"
 }
-

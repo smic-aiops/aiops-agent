@@ -12,6 +12,7 @@ use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilder;
 use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilderFactoryInterface;
 use Sulu\Component\Rest\ListBuilder\Filter\FilterTypeRegistry;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 final class IstmDoctrineListBuilderFactory implements DoctrineListBuilderFactoryInterface
@@ -21,9 +22,11 @@ final class IstmDoctrineListBuilderFactory implements DoctrineListBuilderFactory
 
     public function __construct(
         ManagerRegistry $doctrine,
+        #[Autowire(service: 'sulu_core.list_builder_filter_type_registry')]
         private readonly FilterTypeRegistry $filterTypeRegistry,
         private readonly EventDispatcherInterface $eventDispatcher,
         ParameterBagInterface $parameterBag,
+        #[Autowire(service: 'sulu_security.access_control_query_enhancer')]
         private readonly AccessControlQueryEnhancerInterface $accessControlQueryEnhancer,
     ) {
         $em = $doctrine->getManager('itsm_sor');
@@ -64,4 +67,3 @@ final class IstmDoctrineListBuilderFactory implements DoctrineListBuilderFactory
         return $this->em;
     }
 }
-
