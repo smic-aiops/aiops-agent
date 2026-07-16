@@ -3,6 +3,10 @@ set -euo pipefail
 
 DRY_RUN=1
 APPLY_SERVICE_CHANGE=0
+FULL_OQ=0
+CONFIRM_SERVICE_STOP=""
+STOP_PERFORMED=0
+RECOVERY_CONFIRMED=0
 REALM_OVERRIDE=""
 EVIDENCE_DIR=""
 PROJECT_PATH_OVERRIDE=""
@@ -19,6 +23,8 @@ Usage:
 Options:
   --execute                       Run the non-destructive OQ (default: dry-run)
   --apply-service-change          After CAB approval, invoke Sulu action=up
+  --full-oq                       Stop the real Sulu service, correlate CloudWatch/GitLab, then recover
+  --confirm-service-stop <realm>  Required with --full-oq; must equal the target realm
   --realm <realm>                 Override realm (default: terraform output default_realm)
   --project-path <group/project>  Override GitLab service-management project
   --evidence-dir <dir>            Evidence directory (required for --execute)
@@ -26,6 +32,8 @@ Options:
 
 The default execution creates only temporary GitLab branches/MR/Issue and runs the
 recovery workflow with dry_run=true. It never changes the GitLab default branch.
+--full-oq is destructive for the demo service and installs an EXIT trap that always
+attempts action=up until ECS and the public health URL recover.
 USAGE
 }
 
@@ -37,6 +45,8 @@ parse_args() {
     case "$1" in
       --execute) DRY_RUN=0; shift ;;
       --apply-service-change) APPLY_SERVICE_CHANGE=1; shift ;;
+      --full-oq) FULL_OQ=1; APPLY_SERVICE_CHANGE=1; shift ;;
+      --confirm-service-stop) CONFIRM_SERVICE_STOP="${2:-}"; shift 2 ;;
       --realm) REALM_OVERRIDE="${2:-}"; shift 2 ;;
       --project-path) PROJECT_PATH_OVERRIDE="${2:-}"; shift 2 ;;
       --evidence-dir) EVIDENCE_DIR="${2:-}"; shift 2 ;;
@@ -176,12 +186,71 @@ close_gitlab_artifacts() {
   local note="$1"
   local tmp
   tmp="$(mktemp)"
-  gitlab_request POST "/projects/${PROJECT_ENCODED}/issues/${ISSUE_IID}/notes" "${tmp}" --data-urlencode "body=${note}" || true
-  gitlab_request PUT "/projects/${PROJECT_ENCODED}/issues/${ISSUE_IID}" "${tmp}" --data 'state_event=close' || true
-  gitlab_request PUT "/projects/${PROJECT_ENCODED}/merge_requests/${MR_IID}" "${tmp}" --data 'state_event=close' || true
-  gitlab_request DELETE "/projects/${PROJECT_ENCODED}/repository/branches/$(urlencode "${fix_branch}")" "${tmp}" || true
-  gitlab_request DELETE "/projects/${PROJECT_ENCODED}/repository/branches/$(urlencode "${bad_branch}")" "${tmp}" || true
+  if [[ -n "${ISSUE_IID:-}" ]]; then
+    gitlab_request POST "/projects/${PROJECT_ENCODED}/issues/${ISSUE_IID}/notes" "${tmp}" --data-urlencode "body=${note}" || true
+    gitlab_request PUT "/projects/${PROJECT_ENCODED}/issues/${ISSUE_IID}" "${tmp}" --data 'state_event=close' || true
+  fi
+  if [[ -n "${MR_IID:-}" ]]; then
+    gitlab_request PUT "/projects/${PROJECT_ENCODED}/merge_requests/${MR_IID}" "${tmp}" --data 'state_event=close' || true
+  fi
+  if [[ -n "${fix_branch:-}" ]]; then
+    gitlab_request DELETE "/projects/${PROJECT_ENCODED}/repository/branches/$(urlencode "${fix_branch}")" "${tmp}" || true
+  fi
+  if [[ -n "${bad_branch:-}" ]]; then
+    gitlab_request DELETE "/projects/${PROJECT_ENCODED}/repository/branches/$(urlencode "${bad_branch}")" "${tmp}" || true
+  fi
   rm -f "${tmp}"
+}
+
+service_control() {
+  local action="$1"
+  local output="$2"
+  curl -fsS -X POST -H 'Content-Type: application/json' \
+    --data "$(jq -cn --arg action "${action}" --arg realm "${TARGET_REALM}" '{action:$action,realm:$realm}')" \
+    "${N8N_URL%/}/webhook/sulu/service-control" -o "${output}"
+  jq -e --arg action "${action}" '.status == "ok" and .action == $action' "${output}" >/dev/null
+}
+
+wait_sulu_ecs() {
+  local expected="$1"
+  local tries="${2:-90}"
+  local i desired running http_code
+  for ((i=1; i<=tries; i++)); do
+    read -r desired running < <(aws --profile "${AWS_PROFILE}" --region "${AWS_REGION}" ecs describe-services \
+      --cluster "${ECS_CLUSTER}" --services "${SULU_SERVICE}" \
+      --query 'services[0].[desiredCount,runningCount]' --output text)
+    http_code="$(curl -ksS -o /dev/null -w '%{http_code}' --max-time 8 "${SULU_URL}" || true)"
+    if [[ "${expected}" == 'down' && "${desired}" == '0' && "${running}" == '0' ]]; then
+      return 0
+    fi
+    if [[ "${expected}" == 'up' && "${desired}" -ge 1 && "${running}" -ge 1 && "${http_code}" == 2* ]]; then
+      return 0
+    fi
+    sleep 5
+  done
+  return 1
+}
+
+emergency_recover() {
+  local exit_code=$?
+  trap - EXIT INT TERM
+  if [[ "${STOP_PERFORMED}" == '1' && "${RECOVERY_CONFIRMED}" != '1' ]]; then
+    log 'EXIT guard: Sulu recovery is not confirmed; forcing action=up'
+    local recovery_output
+    recovery_output="${EVIDENCE_DIR:-/tmp}/emergency_sulu_recovery.json"
+    mkdir -p "$(dirname "${recovery_output}")"
+    if service_control up "${recovery_output}" && wait_sulu_ecs up 90; then
+      RECOVERY_CONFIRMED=1
+      log 'EXIT guard: Sulu recovery confirmed'
+    else
+      printf '[oq-31] [critical] EXIT guard could not confirm Sulu recovery\n' >&2
+      exit 3
+    fi
+  fi
+  if [[ "${exit_code}" != '0' && -n "${PROJECT_ENCODED:-}" && -n "${ISSUE_IID:-}" ]]; then
+    close_gitlab_artifacts "OQ aborted (exit=${exit_code}); EXIT guard recovery_confirmed=${RECOVERY_CONFIRMED}. Temporary artifacts cleaned automatically."
+  fi
+  exit "${exit_code}"
 }
 
 main() {
@@ -191,6 +260,10 @@ main() {
   local realm
   realm="${REALM_OVERRIDE:-$(tf_raw default_realm)}"
   [[ -n "${realm}" ]] || fail 'realm could not be resolved'
+  TARGET_REALM="${realm}"
+  if [[ "${FULL_OQ}" == '1' && "${CONFIRM_SERVICE_STOP}" != "${realm}" ]]; then
+    fail "--full-oq requires --confirm-service-stop ${realm}"
+  fi
   local project_path
   project_path="${PROJECT_PATH_OVERRIDE}"
   if [[ -z "${project_path}" ]]; then project_path="$(tf_json gitlab_service_projects_path | jq -r --arg realm "${realm}" '.[$realm] // empty')"; fi
@@ -205,15 +278,33 @@ main() {
   log "n8n_url=${N8N_URL}"
   log "gitlab_project=${project_path}"
   log "apply_service_change=${APPLY_SERVICE_CHANGE}"
+  log "full_oq=${FULL_OQ}"
 
   if [[ "${DRY_RUN}" == '1' ]]; then
     log 'dry-run: would create OQ-only bad/fix branches, Change Issue, and correction MR'
     log 'dry-run: would request Agent execution, approve as CAB, and verify recovery result'
+    if [[ "${FULL_OQ}" == '1' ]]; then
+      log 'dry-run: would stop Sulu, emit CloudWatch alarm, automatically correlate GitLab diff, and force recovery on EXIT'
+    fi
     log 'dry-run: no HTTP write requests were sent'
     return 0
   fi
   [[ -n "${EVIDENCE_DIR}" ]] || fail '--evidence-dir is required with --execute'
   mkdir -p "${EVIDENCE_DIR}"
+
+  if [[ "${FULL_OQ}" == '1' ]]; then
+    command -v aws >/dev/null 2>&1 || fail 'aws is required for --full-oq'
+    AWS_PROFILE="$(tf_raw aws_profile)"
+    AWS_REGION="$(tf_raw region)"
+    ECS_CLUSTER="$(tf_raw ecs_cluster_name)"
+    SULU_SERVICE="$(tf_json sulu_service_names | jq -r --arg realm "${realm}" '.[$realm] // empty')"
+    SULU_URL="$(tf_json service_urls | jq -r '.sulu // empty')"
+    export N8N_CLOUDWATCH_WEBHOOK_SECRET="$(tf_json aiops_cloudwatch_webhook_secret_by_realm | jq -r --arg realm "${realm}" '.[$realm] // empty')"
+    [[ -n "${AWS_PROFILE}" && -n "${AWS_REGION}" && -n "${ECS_CLUSTER}" && -n "${SULU_SERVICE}" && -n "${SULU_URL}" ]] || fail 'Sulu runtime context could not be resolved'
+    [[ -n "${N8N_CLOUDWATCH_WEBHOOK_SECRET}" ]] || fail 'CloudWatch webhook secret could not be resolved'
+    wait_sulu_ecs up 1 || fail 'Sulu is not healthy before the full OQ'
+    trap emergency_recover EXIT INT TERM
+  fi
 
   N8N_API_KEY="$(tf_json n8n_api_keys_by_realm | jq -r --arg realm "${realm}" '.[$realm] // empty')"
   GITLAB_TOKEN="$(tf_raw gitlab_admin_token)"
@@ -257,6 +348,39 @@ main() {
   local bad_commit
   gitlab_request GET "/projects/${PROJECT_ENCODED}/repository/branches/$(urlencode "${bad_branch}")" "${branch_file}"
   bad_commit="$(jq -r '.commit.id // empty' "${branch_file}")"
+
+  if [[ "${FULL_OQ}" == '1' ]]; then
+    local stop_result cloudwatch_dir cloudwatch_request correlation_result
+    stop_result="${EVIDENCE_DIR}/sulu_stop_result.json"
+    service_control down "${stop_result}" || fail 'Sulu stop request failed'
+    STOP_PERFORMED=1
+    wait_sulu_ecs down 90 || fail 'Sulu did not reach desiredCount=0/runningCount=0'
+    log 'Sulu stop confirmed'
+
+    cloudwatch_dir="${EVIDENCE_DIR}/cloudwatch"
+    python3 apps/aiops_agent/adapter/scripts/send_stub_event.py \
+      --base-url "${N8N_URL%/}/webhook" \
+      --source cloudwatch \
+      --scenario normal \
+      --event-id "oq_s2_cloudwatch_${suffix}" \
+      --trace-id "${trace_id}" \
+      --cloudwatch-alarm-name "Sulu Service Error - configuration drift OQ-S2 ${suffix}" \
+      --timeout-sec 30 \
+      --evidence-dir "${cloudwatch_dir}"
+    cloudwatch_request="$(find "${cloudwatch_dir}" -type f -name '*.request_1.json' -print | sort | tail -1)"
+    [[ -n "${cloudwatch_request}" ]] || fail 'CloudWatch request evidence was not created'
+    correlation_result="${EVIDENCE_DIR}/cloudwatch_gitlab_correlation.json"
+    GITLAB_TOKEN="${GITLAB_TOKEN}" python3 apps/aiops_agent/orchestrator/scripts/correlate_cloudwatch_gitlab_change.py \
+      --event-file "${cloudwatch_request}" \
+      --gitlab-api "${GITLAB_API}" \
+      --project "${project_path}" \
+      --config-path "${config_path}" \
+      --lookback-minutes 30 \
+      --output "${correlation_result}"
+    jq -e --arg commit "${bad_commit}" '.probable_cause_found == true and .selected.commit_id == $commit and .selected.desired_state.to == "down" and (.selected.desired_state.from == null or .selected.desired_state.from == "up")' "${correlation_result}" >/dev/null \
+      || fail 'CloudWatch/GitLab correlation did not identify the injected bad commit'
+    log "CloudWatch/GitLab correlation confirmed commit=${bad_commit:0:8}"
+  fi
 
   gitlab_request POST "/projects/${PROJECT_ENCODED}/repository/branches" "${branch_file}" --data-urlencode "branch=${fix_branch}" --data-urlencode "ref=${bad_branch}"
   fix_content=$'service: sulu\nrealm: '"${realm}"$'\ndesired_state: up\nauto_recovery: true\nrun_window: 24x7\n'
@@ -322,6 +446,21 @@ main() {
       and .result_payload.workflow_api_response.applied == false
       and .result_payload.workflow_api_response.simulated == true
     )' "${engine_raw}" >/dev/null || fail 'dry-run recovery assertions failed'
+  else
+    jq -e --arg trace "${trace_id}" '.. | objects | select(
+      (.result_payload?.trace_id? // "") == $trace
+      and (.result_payload?.workflow_id? // "") == "wf.sulu_configuration_recovery"
+      and .status == "success"
+      and .result_payload.workflow_api_response.status == "applied"
+      and .result_payload.workflow_api_response.dry_run == false
+      and .result_payload.workflow_api_response.applied == true
+      and .result_payload.workflow_api_response.verification.status == "passed"
+    )' "${engine_raw}" >/dev/null || fail 'applied recovery assertions failed'
+    if [[ "${FULL_OQ}" == '1' ]]; then
+      wait_sulu_ecs up 90 || fail 'Sulu recovery was not confirmed by ECS and public health URL'
+      RECOVERY_CONFIRMED=1
+      log 'Sulu recovery confirmed by ECS and public health URL'
+    fi
   fi
   jq --arg trace "${trace_id}" '[.. | objects | select(
     (.result_payload?.trace_id? // "") == $trace
@@ -336,6 +475,9 @@ main() {
   log "evidence_dir=${EVIDENCE_DIR}"
   log "GitLab Issue=${issue_url}"
   log "GitLab MR=${mr_url}"
+  if [[ "${FULL_OQ}" == '1' ]]; then
+    trap - EXIT INT TERM
+  fi
 }
 
 main "$@"

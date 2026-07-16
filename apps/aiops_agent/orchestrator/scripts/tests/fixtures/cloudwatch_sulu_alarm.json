@@ -1,0 +1,14 @@
+{
+  "version": "0",
+  "id": "oq-s2-dry-run",
+  "detail-type": "CloudWatch Alarm State Change",
+  "source": "aws.cloudwatch",
+  "time": "2026-07-16T06:02:00Z",
+  "detail": {
+    "alarmName": "Sulu Service Error - configuration drift",
+    "state": {
+      "value": "ALARM",
+      "timestamp": "2026-07-16T06:02:00Z"
+    }
+  }
+}

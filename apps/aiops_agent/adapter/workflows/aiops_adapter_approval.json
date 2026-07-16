@@ -253,28 +253,38 @@
       "parameters": {
         "url": "={{ (() => {\n  const tenant = $json.reply_target?.tenant ?? $json.reply_target?.realm ?? '';\n  const jsonRaw = $env.N8N_ZULIP_API_BASE_URL || '';\n  const yamlRaw = $env.N8N_ZULIP_API_BASE_URL || '';\n  const fallback = $env.N8N_ZULIP_API_BASE_URL || $env.ZULIP_API_BASE_URL || '';\n  const parseYaml = (text) => {\n    const map = {};\n    String(text).split(/\\r?\\n/).forEach((line) => {\n      const trimmed = line.trim();\n      if (!trimmed || trimmed.startsWith('#')) return;\n      const idx = trimmed.indexOf(':');\n      if (idx <= 0) return;\n      const key = trimmed.slice(0, idx).trim();\n      let value = trimmed.slice(idx + 1).trim();\n      if (!key) return;\n      value = value.replace(/^['\"]|['\"]$/g, '');\n      map[key] = value;\n    });\n    return map;\n  };\n  let map = {};\n  if (jsonRaw) {\n    try {\n      const parsed = JSON.parse(jsonRaw);\n      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {\n        map = parsed;\n      }\n    } catch (error) {}\n  }\n  if (!Object.keys(map).length && yamlRaw) {\n    map = parseYaml(yamlRaw);\n  }\n  const base = (tenant && map[tenant]) ? map[tenant] : (map.default || fallback);\n  const trimmed = base ? String(base).replace(/\\/+$/, '') : '';\n  if (!trimmed) return '';\n  const apiBase = trimmed.endsWith('/api/v1') ? trimmed : (trimmed + '/api/v1');\n  return apiBase + '/messages';\n})() }}",
         "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { type: 'stream', to: $json.reply_target.stream, topic: $json.reply_target.topic, content: $json.content } }}",
-        "options": {},
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
+        "contentType": "form-urlencoded",
+        "specifyBody": "keypair",
+        "bodyParameters": {
           "parameters": [
             {
-              "name": "Content-Type",
-              "value": "application/json"
+              "name": "type",
+              "value": "stream"
             },
             {
-              "name": "Authorization",
-              "value": "={{ (() => {\n  const tenant = $json.reply_target?.tenant ?? $json.reply_target?.realm ?? '';\n  const tokenJsonRaw = $env.N8N_ZULIP_BOT_TOKEN || '';\n  const tokenYamlRaw = $env.ZULIP_BOT_TOKEN || $env.N8N_ZULIP_BOT_TOKEN || '';\n  const emailJsonRaw = $env.N8N_ZULIP_BOT_EMAIL || '';\n  const emailYamlRaw = $env.N8N_ZULIP_BOT_EMAIL || '';\n  const fallbackToken = $env.N8N_ZULIP_BOT_TOKEN || $env.ZULIP_BOT_TOKEN || '';\n  const fallbackEmail = $env.N8N_ZULIP_BOT_EMAIL || $env.ZULIP_BOT_EMAIL || '';\n  const parseYaml = (text) => {\n    const map = {};\n    String(text).split(/\\r?\\n/).forEach((line) => {\n      const trimmed = line.trim();\n      if (!trimmed || trimmed.startsWith('#')) return;\n      const idx = trimmed.indexOf(':');\n      if (idx <= 0) return;\n      const key = trimmed.slice(0, idx).trim();\n      let value = trimmed.slice(idx + 1).trim();\n      if (!key) return;\n      value = value.replace(/^['\"]|['\"]$/g, '');\n      map[key] = value;\n    });\n    return map;\n  };\n  const parseMap = (jsonRaw, yamlRaw) => {\n    let map = {};\n    if (jsonRaw) {\n      try {\n        const parsed = JSON.parse(jsonRaw);\n        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {\n          map = parsed;\n        }\n      } catch (error) {}\n    }\n    if (!Object.keys(map).length && yamlRaw) {\n      map = parseYaml(yamlRaw);\n    }\n    return map;\n  };\n  const tokenMap = parseMap(tokenJsonRaw, tokenYamlRaw);\n  const emailMap = parseMap(emailJsonRaw, emailYamlRaw);\n  const token = (tenant && tokenMap[tenant]) ? tokenMap[tenant] : (tokenMap.default || fallbackToken);\n  const email = (tenant && emailMap[tenant]) ? emailMap[tenant] : (emailMap.default || fallbackEmail);\n  if (!email || !token) return '';\n  return 'Basic ' + Buffer.from(email + ':' + token).toString('base64');\n})() }}"
+              "name": "to",
+              "value": "={{ $json.reply_target.stream }}"
+            },
+            {
+              "name": "topic",
+              "value": "={{ $json.reply_target.topic }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $json.content }}"
             }
           ]
-        }
+        },
+        "options": {},
+        "sendHeaders": false
       },
       "id": "14",
       "name": "Post to Zulip",
       "type": "n8n-nodes-base.httpRequest",
+      "nodeCredentialType": "httpBasicAuth",
       "typeVersion": 4,
       "position": [
         2920,

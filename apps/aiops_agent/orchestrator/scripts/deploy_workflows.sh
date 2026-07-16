@@ -1302,6 +1302,7 @@ PY
 	            end
 	          )
 	      )
+	    | .nodes = ((.nodes // []) | map(del(.nodeCredentialType)))
 	    | with_entries(select(.value != null))
 	  ' "${file}"
 
@@ -1596,7 +1597,7 @@ ensure_zulip_basic_auth_credentials() {
   fi
 
   local password="${ZULIP_BASIC_PASSWORD}"
-  local api_key_param="${ZULIP_BOT_TOKEN_PARAM}"
+  local api_key_param="${ZULIP_BOT_TOKEN_PARAM:-}"
   if [[ -z "${api_key_param}" ]]; then
     if command -v terraform >/dev/null 2>&1; then
       api_key_param="$(terraform -chdir="${REPO_ROOT}" output -raw zulip_bot_tokens_param 2>/dev/null || true)"
@@ -1611,6 +1612,36 @@ ensure_zulip_basic_auth_credentials() {
       echo "[n8n] ZULIP_REALM is required to select the correct Zulip API key from ${api_key_param}." >&2
       echo "[n8n] skipping Zulip credential upsert/injection (missing ZULIP_REALM): ${ZULIP_BASIC_CREDENTIAL_NAME}" >&2
       return
+    fi
+    local email_mapping=""
+    email_mapping="$(terraform -chdir="${REPO_ROOT}" output -raw zulip_mess_bot_emails_yaml 2>/dev/null || true)"
+    if [[ -n "${email_mapping}" && "${email_mapping}" != "null" ]]; then
+      local mapped_username=""
+      mapped_username="$(python3 - <<'PY' "${email_mapping}" "${ZULIP_REALM}"
+import json
+import sys
+raw = sys.argv[1]
+realm = sys.argv[2]
+try:
+    value = json.loads(raw)
+except Exception:
+    value = None
+if isinstance(value, dict):
+    print(value.get(realm, "") or value.get("default", "") or "")
+else:
+    mapping = {}
+    for raw_line in raw.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or ":" not in line:
+            continue
+        key, item = line.split(":", 1)
+        mapping[key.strip()] = item.strip().strip("'\"")
+    print(mapping.get(realm, "") or mapping.get("default", "") or "")
+PY
+)"
+      if [[ -n "${mapped_username}" ]]; then
+        username="${mapped_username}"
+      fi
     fi
     local fetched=""
     fetched="$(terraform -chdir="${REPO_ROOT}" output -raw N8N_ZULIP_BOT_TOKEN 2>/dev/null || true)"
@@ -1678,20 +1709,32 @@ PY
     }')"
 
   local cred_id=""
+  if [[ -z "${ZULIP_BASIC_CREDENTIAL_ID:-}" ]] && is_truthy "${N8N_REST_CREDENTIALS_FALLBACK:-true}"; then
+    ZULIP_BASIC_CREDENTIAL_ID="$(rest_find_credential_id "${ZULIP_BASIC_CREDENTIAL_NAME}" "httpBasicAuth" || true)"
+  fi
   if [[ -n "${ZULIP_BASIC_CREDENTIAL_ID:-}" ]]; then
     api_call "PATCH" "/credentials/${ZULIP_BASIC_CREDENTIAL_ID}" "${payload}"
     if [[ "${API_STATUS}" == 2* ]]; then
       cred_id="${ZULIP_BASIC_CREDENTIAL_ID}"
     elif [[ "${API_STATUS}" == "405" ]]; then
-      echo "[n8n] PATCH /credentials not allowed; using existing Zulip credential id: ${ZULIP_BASIC_CREDENTIAL_ID}" >&2
-      cred_id="${ZULIP_BASIC_CREDENTIAL_ID}"
+      if rest_upsert_credential "${ZULIP_BASIC_CREDENTIAL_ID}" "${payload}" "${ZULIP_BASIC_CREDENTIAL_NAME}" "httpBasicAuth"; then
+        cred_id="${ZULIP_BASIC_CREDENTIAL_ID}"
+      else
+        echo "[n8n] PATCH /credentials not allowed and /rest update failed." >&2
+      fi
     else
       echo "[n8n] PATCH /credentials returned HTTP ${API_STATUS}; creating Zulip credential instead." >&2
     fi
-  else
+  fi
+  if [[ -z "${cred_id}" ]]; then
     api_call "POST" "/credentials" "${payload}"
-    expect_2xx "POST /credentials (${ZULIP_BASIC_CREDENTIAL_NAME})"
-    cred_id="$(jq -r '.data.id // .id // empty' <<<"${API_BODY}")"
+    if [[ "${API_STATUS}" == 2* ]]; then
+      cred_id="$(jq -r '.data.id // .id // empty' <<<"${API_BODY}")"
+    elif [[ "${API_STATUS}" == "405" ]] && is_truthy "${N8N_REST_CREDENTIALS_FALLBACK:-true}"; then
+      cred_id="$(rest_upsert_credential "" "${payload}" "${ZULIP_BASIC_CREDENTIAL_NAME}" "httpBasicAuth" || true)"
+    else
+      expect_2xx "POST /credentials (${ZULIP_BASIC_CREDENTIAL_NAME})"
+    fi
   fi
   require_var "credential_id" "${cred_id}"
   echo "[n8n] ensured Zulip httpBasicAuth credential: ${ZULIP_BASIC_CREDENTIAL_NAME} -> ${cred_id}"
