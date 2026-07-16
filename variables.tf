@@ -1899,13 +1899,13 @@ variable "exastro_desired_count" {
 variable "exastro_task_cpu" {
   description = "Override CPU units for Exastro task definition (null to use ecs_task_cpu)"
   type        = number
-  default     = 512
+  default     = 2048
 }
 
 variable "exastro_task_memory" {
   description = "Override memory (MB) for Exastro task definition (null to use ecs_task_memory)"
   type        = number
-  default     = 1024
+  default     = 4096
 }
 
 variable "ecr_repo_exastro_it_automation_web_server" {
@@ -1930,6 +1930,78 @@ variable "exastro_it_automation_api_admin_image_tag" {
   description = "Exastro IT Automation API admin image (repo:tag)"
   type        = string
   default     = "exastro/exastro-it-automation-api-admin:2.7.0"
+}
+
+variable "ecr_repo_exastro_it_automation_api_organization" {
+  description = "ECR repository name for Exastro IT Automation organization API"
+  type        = string
+  default     = "exastro-it-automation-api-organization"
+}
+
+variable "exastro_it_automation_api_organization_image_tag" {
+  description = "Exastro IT Automation organization API image (repo:tag)"
+  type        = string
+  default     = "exastro/exastro-it-automation-api-organization:2.7.0"
+}
+
+variable "ecr_repo_exastro_it_automation_migration" {
+  description = "ECR repository name for Exastro IT Automation migration"
+  type        = string
+  default     = "exastro-it-automation-migration"
+}
+
+variable "exastro_it_automation_migration_image_tag" {
+  description = "Exastro IT Automation migration image (repo:tag)"
+  type        = string
+  default     = "exastro/exastro-it-automation-migration:2.7.0"
+}
+
+variable "ecr_repo_exastro_it_automation_by_conductor_synchronize" {
+  description = "ECR repository name for Exastro Conductor synchronization worker"
+  type        = string
+  default     = "exastro-it-automation-by-conductor-synchronize"
+}
+
+variable "exastro_it_automation_by_conductor_synchronize_image_tag" {
+  description = "Exastro Conductor synchronization worker image (repo:tag)"
+  type        = string
+  default     = "exastro/exastro-it-automation-by-conductor-synchronize:2.7.0"
+}
+
+variable "ecr_repo_exastro_it_automation_by_conductor_regularly" {
+  description = "ECR repository name for Exastro Conductor schedule worker"
+  type        = string
+  default     = "exastro-it-automation-by-conductor-regularly"
+}
+
+variable "exastro_it_automation_by_conductor_regularly_image_tag" {
+  description = "Exastro Conductor schedule worker image (repo:tag)"
+  type        = string
+  default     = "exastro/exastro-it-automation-by-conductor-regularly:2.7.0"
+}
+
+variable "ecr_repo_exastro_it_automation_by_terraform_cli_vars_listup" {
+  description = "ECR repository name for Exastro Terraform CLI variable discovery worker"
+  type        = string
+  default     = "exastro-it-automation-by-terraform-cli-vars-listup"
+}
+
+variable "exastro_it_automation_by_terraform_cli_vars_listup_image_tag" {
+  description = "Exastro Terraform CLI variable discovery worker image (repo:tag)"
+  type        = string
+  default     = "exastro/exastro-it-automation-by-terraform-cli-vars-listup:2.7.0"
+}
+
+variable "ecr_repo_exastro_it_automation_by_terraform_cli_execute" {
+  description = "ECR repository name for Exastro Terraform CLI execution worker"
+  type        = string
+  default     = "exastro-it-automation-by-terraform-cli-execute"
+}
+
+variable "exastro_it_automation_by_terraform_cli_execute_image_tag" {
+  description = "Exastro Terraform CLI execution worker image (repo:tag)"
+  type        = string
+  default     = "exastro/exastro-it-automation-by-terraform-cli-execute:2.7.0"
 }
 
 # GitLab service

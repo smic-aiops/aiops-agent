@@ -26,43 +26,49 @@ locals {
     coalesce(var.exastro_task_memory, var.ecs_task_memory),
     coalesce(var.exastro_task_memory, var.ecs_task_memory)
   ) * 2
-  ecr_uri_n8n                 = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_n8n}:latest"
-  ecr_registry_prefix         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}"
-  ecr_uri_alpine_base         = "${local.ecr_registry_prefix}/${var.ecr_repo_alpine}"
-  alpine_image_3_19           = "${local.ecr_uri_alpine_base}:3.19"
-  alpine_image_3_20           = "${local.ecr_uri_alpine_base}:3.20"
-  redis_image                 = "${local.ecr_registry_prefix}/${var.ecr_repo_redis}:7.2-alpine"
-  memcached_image             = "${local.ecr_registry_prefix}/${var.ecr_repo_memcached}:1.6-alpine"
-  rabbitmq_image              = "${local.ecr_registry_prefix}/${var.ecr_repo_rabbitmq}:3.13-alpine"
-  mongo_image                 = "${local.ecr_registry_prefix}/${var.ecr_repo_mongo}:7.0"
-  python_image                = "${local.ecr_registry_prefix}/${var.ecr_repo_python}:3.12-alpine"
-  qdrant_image                = "${local.ecr_registry_prefix}/${var.ecr_repo_qdrant}:${var.qdrant_image_tag}"
-  ecr_uri_exastro_web         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_web_server}:latest"
-  ecr_uri_exastro_api         = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_api_admin}:latest"
-  sulu_image_tag_effective    = var.sulu_image_tag != null && var.sulu_image_tag != "" ? var.sulu_image_tag : "latest"
-  ecr_uri_sulu                = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu}:${local.sulu_image_tag_effective}"
-  ecr_uri_sulu_nginx          = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu_nginx}:${local.sulu_image_tag_effective}"
-  horilla_image_tag_effective = var.horilla_image_tag != null && var.horilla_image_tag != "" ? var.horilla_image_tag : "latest"
-  ecr_uri_horilla             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_horilla}:${local.horilla_image_tag_effective}"
-  ecr_uri_pgadmin             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_pgadmin}:latest"
-  ecr_uri_keycloak            = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_keycloak}:latest"
-  ecr_uri_odoo                = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_odoo}:latest"
-  ecr_uri_gitlab              = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab}:latest"
-  ecr_uri_gitlab_runner       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab_runner}:latest"
-  ecr_uri_grafana             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_grafana}:latest"
-  ecr_uri_zulip               = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_zulip}:latest"
-  default_realm               = local.keycloak_realm_effective
-  keycloak_issuer_url         = "https://keycloak.${local.hosted_zone_name_input}/realms/${local.default_realm}"
-  keycloak_auth_url           = "${local.keycloak_issuer_url}/protocol/openid-connect/auth"
-  keycloak_token_url          = "${local.keycloak_issuer_url}/protocol/openid-connect/token"
-  keycloak_userinfo_url       = "${local.keycloak_issuer_url}/protocol/openid-connect/userinfo"
-  odoo_oidc_issuer_url        = trim(coalesce(local.oidc_idps_issuer_url_from_yaml["odoo"], local.keycloak_issuer_url), "/")
-  odoo_oidc_scopes            = coalesce(local.oidc_idps_scope_from_yaml["odoo"], "openid profile email")
-  gitlab_oidc_issuer_url      = trim(coalesce(local.oidc_idps_issuer_url_from_yaml["gitlab"], local.keycloak_issuer_url), "/")
-  gitlab_oidc_scope_raw       = coalesce(local.oidc_idps_scope_from_yaml["gitlab"], "openid profile email")
-  gitlab_oidc_scopes          = regexall("[^\\s]+", local.gitlab_oidc_scope_raw)
-  gitlab_oidc_label           = coalesce(local.oidc_idps_display_name_from_yaml["gitlab"], "Keycloak")
-  keycloak_host_for_oidc      = "${local.service_subdomain_map["keycloak"]}.${local.hosted_zone_name_input}"
+  ecr_uri_n8n                               = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_n8n}:latest"
+  ecr_registry_prefix                       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}"
+  ecr_uri_alpine_base                       = "${local.ecr_registry_prefix}/${var.ecr_repo_alpine}"
+  alpine_image_3_19                         = "${local.ecr_uri_alpine_base}:3.19"
+  alpine_image_3_20                         = "${local.ecr_uri_alpine_base}:3.20"
+  redis_image                               = "${local.ecr_registry_prefix}/${var.ecr_repo_redis}:7.2-alpine"
+  memcached_image                           = "${local.ecr_registry_prefix}/${var.ecr_repo_memcached}:1.6-alpine"
+  rabbitmq_image                            = "${local.ecr_registry_prefix}/${var.ecr_repo_rabbitmq}:3.13-alpine"
+  mongo_image                               = "${local.ecr_registry_prefix}/${var.ecr_repo_mongo}:7.0"
+  python_image                              = "${local.ecr_registry_prefix}/${var.ecr_repo_python}:3.12-alpine"
+  qdrant_image                              = "${local.ecr_registry_prefix}/${var.ecr_repo_qdrant}:${var.qdrant_image_tag}"
+  ecr_uri_exastro_web                       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_web_server}:latest"
+  ecr_uri_exastro_api                       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_exastro_it_automation_api_admin}:latest"
+  ecr_uri_exastro_api_organization          = "${local.ecr_registry_prefix}/${var.ecr_repo_exastro_it_automation_api_organization}:latest"
+  ecr_uri_exastro_migration                 = "${local.ecr_registry_prefix}/${var.ecr_repo_exastro_it_automation_migration}:latest"
+  ecr_uri_exastro_conductor_synchronize     = "${local.ecr_registry_prefix}/${var.ecr_repo_exastro_it_automation_by_conductor_synchronize}:latest"
+  ecr_uri_exastro_conductor_regularly       = "${local.ecr_registry_prefix}/${var.ecr_repo_exastro_it_automation_by_conductor_regularly}:latest"
+  ecr_uri_exastro_terraform_cli_vars_listup = "${local.ecr_registry_prefix}/${var.ecr_repo_exastro_it_automation_by_terraform_cli_vars_listup}:latest"
+  ecr_uri_exastro_terraform_cli_execute     = "${local.ecr_registry_prefix}/${var.ecr_repo_exastro_it_automation_by_terraform_cli_execute}:latest"
+  sulu_image_tag_effective                  = var.sulu_image_tag != null && var.sulu_image_tag != "" ? var.sulu_image_tag : "latest"
+  ecr_uri_sulu                              = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu}:${local.sulu_image_tag_effective}"
+  ecr_uri_sulu_nginx                        = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_sulu_nginx}:${local.sulu_image_tag_effective}"
+  horilla_image_tag_effective               = var.horilla_image_tag != null && var.horilla_image_tag != "" ? var.horilla_image_tag : "latest"
+  ecr_uri_horilla                           = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_horilla}:${local.horilla_image_tag_effective}"
+  ecr_uri_pgadmin                           = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_pgadmin}:latest"
+  ecr_uri_keycloak                          = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_keycloak}:latest"
+  ecr_uri_odoo                              = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_odoo}:latest"
+  ecr_uri_gitlab                            = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab}:latest"
+  ecr_uri_gitlab_runner                     = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_gitlab_runner}:latest"
+  ecr_uri_grafana                           = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_grafana}:latest"
+  ecr_uri_zulip                             = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_namespace}/${var.ecr_repo_zulip}:latest"
+  default_realm                             = local.keycloak_realm_effective
+  keycloak_issuer_url                       = "https://keycloak.${local.hosted_zone_name_input}/realms/${local.default_realm}"
+  keycloak_auth_url                         = "${local.keycloak_issuer_url}/protocol/openid-connect/auth"
+  keycloak_token_url                        = "${local.keycloak_issuer_url}/protocol/openid-connect/token"
+  keycloak_userinfo_url                     = "${local.keycloak_issuer_url}/protocol/openid-connect/userinfo"
+  odoo_oidc_issuer_url                      = trim(coalesce(local.oidc_idps_issuer_url_from_yaml["odoo"], local.keycloak_issuer_url), "/")
+  odoo_oidc_scopes                          = coalesce(local.oidc_idps_scope_from_yaml["odoo"], "openid profile email")
+  gitlab_oidc_issuer_url                    = trim(coalesce(local.oidc_idps_issuer_url_from_yaml["gitlab"], local.keycloak_issuer_url), "/")
+  gitlab_oidc_scope_raw                     = coalesce(local.oidc_idps_scope_from_yaml["gitlab"], "openid profile email")
+  gitlab_oidc_scopes                        = regexall("[^\\s]+", local.gitlab_oidc_scope_raw)
+  gitlab_oidc_label                         = coalesce(local.oidc_idps_display_name_from_yaml["gitlab"], "Keycloak")
+  keycloak_host_for_oidc                    = "${local.service_subdomain_map["keycloak"]}.${local.hosted_zone_name_input}"
   grafana_oidc_issuer_url_effective_by_realm = {
     for realm in local.grafana_realms :
     realm => trim(coalesce(
@@ -186,13 +192,24 @@ locals {
     SERVICE_CONTROL_CLIENT_SECRET = local.service_control_oidc_client_secret_parameter_name
   } : {}
   default_ssm_params_exastro = {
-    DB_HOST     = local.mysql_db_host_parameter_name
-    DB_PORT     = local.mysql_db_port_parameter_name
-    DB_DATABASE = local.mysql_db_name_parameter_name
-    DB_USER     = local.mysql_db_username_parameter_name
-    DB_PASSWORD = local.mysql_db_password_parameter_name
-    ENCRYPT_KEY = local.exastro_encrypt_key_parameter_name
+    DB_HOST           = local.mysql_db_host_parameter_name
+    DB_PORT           = local.mysql_db_port_parameter_name
+    DB_DATABASE       = local.mysql_db_name_parameter_name
+    DB_USER           = local.mysql_db_username_parameter_name
+    DB_PASSWORD       = local.mysql_db_password_parameter_name
+    DB_ADMIN_USER     = local.mysql_db_username_parameter_name
+    DB_ADMIN_PASSWORD = local.mysql_db_password_parameter_name
+    ENCRYPT_KEY       = local.exastro_encrypt_key_parameter_name
   }
+
+  exastro_storage_path = "${trimsuffix(var.exastro_filesystem_path, "/")}/"
+  exastro_runtime_environment = merge(var.exastro_common_environment, {
+    LANGUAGE          = "ja"
+    DEFAULT_LANGUAGE  = "ja"
+    STORAGEPATH       = local.exastro_storage_path
+    PLATFORM_API_HOST = "127.0.0.1"
+    PLATFORM_API_PORT = "7999"
+  })
 
   default_ssm_params_horilla = {
     DB_HOST     = local.db_host_parameter_name
@@ -1288,7 +1305,7 @@ resource "aws_ecs_task_definition" "exastro" {
           hostPort      = 80
           protocol      = "tcp"
         }]
-        environment = [for k, v in merge(var.exastro_web_server_environment, local.exastro_web_keycloak_environment) : { name = k, value = v }]
+        environment = [for k, v in merge(local.exastro_runtime_environment, var.exastro_web_server_environment, local.exastro_web_keycloak_environment) : { name = k, value = v }]
         secrets = concat(
           var.exastro_web_server_secrets,
           [for k, v in local.ssm_param_arns_exastro_web : { name = k, valueFrom = v }],
@@ -1322,7 +1339,7 @@ resource "aws_ecs_task_definition" "exastro" {
           hostPort      = 8000
           protocol      = "tcp"
         }]
-        environment = [for k, v in merge(var.exastro_api_admin_environment, local.exastro_api_keycloak_environment) : { name = k, value = v }]
+        environment = [for k, v in merge(local.exastro_runtime_environment, coalesce(var.exastro_api_admin_environment, {}), local.exastro_api_keycloak_environment) : { name = k, value = v }]
         secrets = concat(
           var.exastro_api_admin_secrets,
           [for k, v in local.ssm_param_arns_exastro_api : { name = k, valueFrom = v }],
@@ -1344,6 +1361,294 @@ resource "aws_ecs_task_definition" "exastro" {
         logConfiguration = merge(local.ecs_base_container.logConfiguration, {
           options = merge(local.ecs_base_container.logConfiguration.options, {
             "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "exastro--exastro-api", aws_cloudwatch_log_group.ecs["exastro"].name)
+          })
+        })
+      }),
+      merge(local.ecs_base_container, {
+        name       = "ita-platform-api-compat"
+        image      = local.python_image
+        essential  = true
+        entryPoint = ["python3", "-u", "-c"]
+        command = [<<-PY
+          import json
+          from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+          SETTINGS = [
+              {"key": "ita.system.ansible.execution_limit", "value": "100"},
+              {"key": "ita.system.menu_export_import.buffer_size", "value": "10000"},
+          ]
+
+          class Handler(BaseHTTPRequestHandler):
+              def _write(self, status=200, data=None):
+                  payload = json.dumps({"result": "000-00000", "message": "SUCCESS", "data": data or []}).encode()
+                  self.send_response(status)
+                  self.send_header("Content-Type", "application/json")
+                  self.send_header("Content-Length", str(len(payload)))
+                  self.end_headers()
+                  self.wfile.write(payload)
+
+              def do_GET(self):
+                  if self.path.rstrip("/") == "/healthz":
+                      self._write()
+                  elif self.path.rstrip("/") == "/internal-api/platform/settings/common":
+                      self._write(data=SETTINGS)
+                  elif self.path.endswith("/workspaces"):
+                      self._write(data=[{"id": "aiops", "name": "AIOps", "informations": {"environments": []}}])
+                  elif self.path.endswith("/roles"):
+                      self._write(data=[{"id": "aiops-admin", "name": "aiops-admin"}])
+                  elif self.path.endswith("/users"):
+                      self._write(data=[{"id": "aiops-agent", "name": "AIOps Agent"}])
+                  elif self.path.rstrip("/").endswith("/platform/limits"):
+                      self._write(data=[{"organization_id": "smic", "limits": {
+                          "ita.organization.ansible.execution_limit": 100,
+                          "ita.organization.common.upload_file_size_limit": 104857600,
+                          "ita.organization.menu_export_import.buffer_size": 10000,
+                          "ita.organization.common.maintenance_records_limit": 10000,
+                      }}])
+                  else:
+                      self._write()
+
+              def do_POST(self):
+                  size = int(self.headers.get("Content-Length", "0"))
+                  if size:
+                      self.rfile.read(size)
+                  self._write()
+
+              def log_message(self, fmt, *args):
+                  print("ita-platform-api-compat:", fmt % args, flush=True)
+
+          ThreadingHTTPServer(("0.0.0.0", 7999), Handler).serve_forever()
+        PY
+        ]
+        portMappings = [{
+          containerPort = 7999
+          hostPort      = 7999
+          protocol      = "tcp"
+        }]
+        logConfiguration = merge(local.ecs_base_container.logConfiguration, {
+          options = merge(local.ecs_base_container.logConfiguration.options, {
+            "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "exastro--ita-platform-api-compat", aws_cloudwatch_log_group.ecs["exastro"].name)
+          })
+        })
+      }),
+      merge(local.ecs_base_container, {
+        name      = "ita-api-organization"
+        image     = local.ecr_uri_exastro_api_organization
+        user      = "1000:1000"
+        essential = true
+        portMappings = [{
+          containerPort = 8001
+          hostPort      = 8001
+          protocol      = "tcp"
+        }]
+        environment = [for k, v in merge(local.exastro_runtime_environment, {
+          LISTEN_PORT = "8001"
+        }) : { name = k, value = v }]
+        secrets = [for k, v in local.ssm_param_arns_exastro_api : { name = k, valueFrom = v }]
+        mountPoints = local.exastro_efs_id != null ? [{
+          sourceVolume  = "exastro-storage"
+          containerPath = var.exastro_filesystem_path
+          readOnly      = false
+        }] : []
+        dependsOn = [{
+          containerName = "ita-migration"
+          condition     = "SUCCESS"
+        }]
+        logConfiguration = merge(local.ecs_base_container.logConfiguration, {
+          options = merge(local.ecs_base_container.logConfiguration.options, {
+            "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "exastro--ita-api-organization", aws_cloudwatch_log_group.ecs["exastro"].name)
+          })
+        })
+      }),
+      merge(local.ecs_base_container, {
+        name       = "ita-migration"
+        image      = local.ecr_uri_exastro_migration
+        user       = "1000:1000"
+        essential  = false
+        entryPoint = ["bash", "-lc"]
+        command = [<<-BASH
+          python3 - <<'PY'
+          import os
+          import pymysql
+
+          connection = pymysql.connect(
+              host=os.environ["DB_HOST"],
+              port=int(os.environ["DB_PORT"]),
+              user=os.environ["DB_USER"],
+              password=os.environ["DB_PASSWORD"],
+              database=os.environ["DB_DATABASE"],
+          )
+          cursor = connection.cursor()
+          cursor.execute("SHOW TABLES LIKE 'T_COMN_ORGANIZATION_DB_INFO'")
+          if cursor.fetchone() is None:
+              cursor.execute("""
+                  CREATE TABLE T_COMN_ORGANIZATION_DB_INFO (
+                      PRIMARY_KEY VARCHAR(40),
+                      ORGANIZATION_ID VARCHAR(255),
+                      DB_HOST VARCHAR(255),
+                      DB_PORT INT,
+                      DB_DATABASE VARCHAR(255),
+                      DB_USER VARCHAR(255),
+                      DB_PASSWORD VARCHAR(255),
+                      DB_ADMIN_USER VARCHAR(255),
+                      DB_ADMIN_PASSWORD VARCHAR(255),
+                      GITLAB_USER VARCHAR(255),
+                      GITLAB_TOKEN VARCHAR(255),
+                      INITIAL_DATA_ANSIBLE_IF LONGTEXT,
+                      NOTE TEXT,
+                      DISUSE_FLAG VARCHAR(1),
+                      LAST_UPDATE_TIMESTAMP DATETIME(6),
+                      LAST_UPDATE_USER VARCHAR(40),
+                      PRIMARY KEY(PRIMARY_KEY)
+                  ) ENGINE=InnoDB, CHARSET=utf8mb4, COLLATE=utf8mb4_bin,
+                    ROW_FORMAT=COMPRESSED, KEY_BLOCK_SIZE=8
+              """)
+              cursor.execute("CREATE INDEX IND_T_COMN_ORGANIZATION_DB_INFO_01 ON T_COMN_ORGANIZATION_DB_INFO (DISUSE_FLAG)")
+              connection.commit()
+              print("Bootstrapped Exastro ITA 2.0.6 common database", flush=True)
+          connection.close()
+          PY
+          exec python3 migration_main.py
+        BASH
+        ]
+        environment = [for k, v in merge(local.exastro_runtime_environment, {
+          USER_ID                                           = "1"
+          SYSTEM_ANSIBLE_EXECUTION_LIMIT                    = "100"
+          SYSTEM_ANSIBLE_EXECUTION_LIMIT_DESCRIPTION        = "System Ansible execution limit"
+          ORG_ANSIBLE_EXECUTION_LIMIT_MAX                   = "100"
+          ORG_ANSIBLE_EXECUTION_LIMIT_DEFAULT               = "10"
+          ORG_ANSIBLE_EXECUTION_LIMIT_DESCRIPTION           = "Organization Ansible execution limit"
+          SYSTEM_MENU_EXPORT_IMPORT_BUFFER_SIZE             = "10000"
+          SYSTEM_MENU_EXPORT_IMPORT_BUFFER_SIZE_DESCRIPTION = "System menu export/import buffer size"
+          ORG_MENU_EXPORT_IMPORT_BUFFER_SIZE_MAX            = "100000"
+          ORG_MENU_EXPORT_IMPORT_BUFFER_SIZE_DEFAULT        = "10000"
+          ORG_MENU_EXPORT_IMPORT_BUFFER_SIZE_DESCRIPTION    = "Organization menu export/import buffer size"
+          ORG_COMMON_MAINTENANCE_RECORDS_LIMIT_MAX          = "100000"
+          ORG_COMMON_MAINTENANCE_RECORDS_LIMIT_DEFAULT      = "10000"
+          ORG_COMMON_MAINTENANCE_RECORDS_LIMIT_DESCRIPTION  = "Organization maintenance record limit"
+          ORG_COMMON_UPLOAD_FILE_LIMIT_MAX                  = "107374182400"
+          ORG_COMMON_UPLOAD_FILE_LIMIT_DEFAULT              = "104857600"
+          ORG_COMMON_UPLOAD_FILE_LIMIT_DESCRIPTION          = "Organization upload file limit"
+        }) : { name = k, value = v }]
+        secrets = [for k, v in local.ssm_param_arns_exastro_api : { name = k, valueFrom = v }]
+        mountPoints = local.exastro_efs_id != null ? [{
+          sourceVolume  = "exastro-storage"
+          containerPath = var.exastro_filesystem_path
+          readOnly      = false
+        }] : []
+        dependsOn = concat(
+          local.exastro_efs_id != null ? [{
+            containerName = "exastro-fs-init"
+            condition     = "COMPLETE"
+          }] : [],
+          [{
+            containerName = "ita-platform-api-compat"
+            condition     = "START"
+          }]
+        )
+        logConfiguration = merge(local.ecs_base_container.logConfiguration, {
+          options = merge(local.ecs_base_container.logConfiguration.options, {
+            "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "exastro--ita-migration", aws_cloudwatch_log_group.ecs["exastro"].name)
+          })
+        })
+      }),
+      merge(local.ecs_base_container, {
+        name      = "ita-by-conductor-synchronize"
+        image     = local.ecr_uri_exastro_conductor_synchronize
+        user      = "1000:1000"
+        essential = true
+        environment = [for k, v in merge(local.exastro_runtime_environment, {
+          EXECUTE_INTERVAL   = "1"
+          FILE_PATH_LIVENESS = "/tmp/liveness"
+        }) : { name = k, value = v }]
+        secrets = [for k, v in local.ssm_param_arns_exastro_api : { name = k, valueFrom = v }]
+        mountPoints = local.exastro_efs_id != null ? [{
+          sourceVolume  = "exastro-storage"
+          containerPath = var.exastro_filesystem_path
+          readOnly      = false
+        }] : []
+        dependsOn = [{
+          containerName = "ita-migration"
+          condition     = "SUCCESS"
+        }]
+        logConfiguration = merge(local.ecs_base_container.logConfiguration, {
+          options = merge(local.ecs_base_container.logConfiguration.options, {
+            "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "exastro--ita-by-conductor-synchronize", aws_cloudwatch_log_group.ecs["exastro"].name)
+          })
+        })
+      }),
+      merge(local.ecs_base_container, {
+        name      = "ita-by-conductor-regularly"
+        image     = local.ecr_uri_exastro_conductor_regularly
+        user      = "1000:1000"
+        essential = true
+        environment = [for k, v in merge(local.exastro_runtime_environment, {
+          EXECUTE_INTERVAL   = "1"
+          FILE_PATH_LIVENESS = "/tmp/liveness"
+        }) : { name = k, value = v }]
+        secrets = [for k, v in local.ssm_param_arns_exastro_api : { name = k, valueFrom = v }]
+        mountPoints = local.exastro_efs_id != null ? [{
+          sourceVolume  = "exastro-storage"
+          containerPath = var.exastro_filesystem_path
+          readOnly      = false
+        }] : []
+        dependsOn = [{
+          containerName = "ita-migration"
+          condition     = "SUCCESS"
+        }]
+        logConfiguration = merge(local.ecs_base_container.logConfiguration, {
+          options = merge(local.ecs_base_container.logConfiguration.options, {
+            "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "exastro--ita-by-conductor-regularly", aws_cloudwatch_log_group.ecs["exastro"].name)
+          })
+        })
+      }),
+      merge(local.ecs_base_container, {
+        name      = "ita-by-terraform-cli-vars-listup"
+        image     = local.ecr_uri_exastro_terraform_cli_vars_listup
+        user      = "1000:1000"
+        essential = true
+        environment = [for k, v in merge(local.exastro_runtime_environment, {
+          EXECUTE_INTERVAL   = "1"
+          FILE_PATH_LIVENESS = "/tmp/liveness"
+        }) : { name = k, value = v }]
+        secrets = [for k, v in local.ssm_param_arns_exastro_api : { name = k, valueFrom = v }]
+        mountPoints = local.exastro_efs_id != null ? [{
+          sourceVolume  = "exastro-storage"
+          containerPath = var.exastro_filesystem_path
+          readOnly      = false
+        }] : []
+        dependsOn = [{
+          containerName = "ita-migration"
+          condition     = "SUCCESS"
+        }]
+        logConfiguration = merge(local.ecs_base_container.logConfiguration, {
+          options = merge(local.ecs_base_container.logConfiguration.options, {
+            "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "exastro--ita-by-terraform-cli-vars-listup", aws_cloudwatch_log_group.ecs["exastro"].name)
+          })
+        })
+      }),
+      merge(local.ecs_base_container, {
+        name      = "ita-by-terraform-cli-execute"
+        image     = local.ecr_uri_exastro_terraform_cli_execute
+        user      = "1000:1000"
+        essential = true
+        environment = [for k, v in merge(local.exastro_runtime_environment, {
+          EXECUTE_INTERVAL   = "1"
+          FILE_PATH_LIVENESS = "/tmp/liveness"
+        }) : { name = k, value = v }]
+        secrets = [for k, v in local.ssm_param_arns_exastro_api : { name = k, valueFrom = v }]
+        mountPoints = local.exastro_efs_id != null ? [{
+          sourceVolume  = "exastro-storage"
+          containerPath = var.exastro_filesystem_path
+          readOnly      = false
+        }] : []
+        dependsOn = [{
+          containerName = "ita-migration"
+          condition     = "SUCCESS"
+        }]
+        logConfiguration = merge(local.ecs_base_container.logConfiguration, {
+          options = merge(local.ecs_base_container.logConfiguration.options, {
+            "awslogs-group" = lookup(local.ecs_log_group_name_by_container, "exastro--ita-by-terraform-cli-execute", aws_cloudwatch_log_group.ecs["exastro"].name)
           })
         })
       })
