@@ -39,6 +39,7 @@
   - `apps/itsm_core/sor_ops/docs/itsm_core/iq/iq.md`
   - `apps/itsm_core/sor_ops/docs/itsm_core/oq/oq.md`
   - `apps/itsm_core/sor_ops/docs/itsm_core/pq/pq.md`
+- 全サブApp統合IQ/PQ: `apps/itsm_core/scripts/run_all_iq.sh`, `apps/itsm_core/scripts/run_all_pq.sh`（共通基準: `docs/validation/apps-iq-oq-pq.md`）
 
 ---
 

@@ -32,6 +32,7 @@
     - Workflow Catalog: `apps/workflow_manager/workflow_catalog/docs/oq/oq.md`（整備: `scripts/generate_oq_md.sh`）
     - Service Request: `apps/workflow_manager/service_request/docs/oq/oq.md`（整備: `scripts/generate_oq_md.sh`）
   - OQ 実行補助: `apps/workflow_manager/scripts/run_all_oq.sh`
+  - IQ/PQ 実行補助: `apps/workflow_manager/scripts/run_all_iq.sh`, `apps/workflow_manager/scripts/run_all_pq.sh`
 
 ---
 

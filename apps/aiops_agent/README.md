@@ -98,6 +98,8 @@ flowchart LR
 | `execution_engine` | Job Engine（キュー/worker）: 実行委譲と回復（リトライ等） | `apps/aiops_agent/execution_engine/docs/app_requirements.md` | `apps/aiops_agent/execution_engine/scripts/deploy_workflows.sh` | `apps/aiops_agent/execution_engine/scripts/run_oq.sh` |
 | `knowledge_store` | ContextStore/ApprovalStore/Problem Management の読み書き・dedupe 等 | `apps/aiops_agent/knowledge_store/docs/app_requirements.md` | `apps/aiops_agent/knowledge_store/scripts/deploy_workflows.sh` | `apps/aiops_agent/knowledge_store/scripts/run_oq.sh` |
 
+全コンポーネントの統合IQ/PQは `apps/aiops_agent/scripts/run_all_iq.sh` / `apps/aiops_agent/scripts/run_all_pq.sh` を使用する。全Apps共通基準は `docs/validation/apps-iq-oq-pq.md` を正とする。
+
 ### Webhook（代表）
 n8n の Webhook ベース URL を `https://n8n.example.com/webhook` とした場合のパス。
 

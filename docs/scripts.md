@@ -499,3 +499,19 @@ Grafana は独立した ECS サービスではなく GitLab タスク内のコ�
 
 補足（AIOps Agent / Workflow 同期の credential ID など）:
 - 各 `deploy*_workflows.sh` は、必要に応じて `TFVARS_FILE`（既定: `terraform.apps.tfvars`）へ `aiops_agent_environment` を更新し、n8n 側の credential ID を保存します。
+
+## 全Apps IQ/OQ/PQ
+
+### `scripts/validation/run_all_apps_iq_oq_pq.sh`
+
+- 対象の正: `scripts/validation/apps_iq_oq_pq_manifest.tsv`
+- 既定はdry-runで、ローカルIQ、全OQ runnerのdry-run、ローカルPQを実施します。
+- `--execute` はn8nの本番workflow存在/active確認、実OQ、n8n API性能、SoR DB PQを実施します。
+- 統合手順と合格基準: `docs/validation/apps-iq-oq-pq.md`
+
+```bash
+scripts/validation/run_all_apps_iq_oq_pq.sh --phase all --dry-run
+scripts/validation/run_all_apps_iq_oq_pq.sh --phase all --execute --realm aiops
+```
+
+suite別入口は `apps/{aiops_agent,itsm_core,workflow_manager}/scripts/run_all_iq.sh` と `run_all_pq.sh` です。
