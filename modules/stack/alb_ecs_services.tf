@@ -281,11 +281,12 @@ resource "aws_lb_target_group" "zulip" {
 resource "aws_lb_target_group" "exastro_web" {
   count = var.create_ecs && local.exastro_service_enabled ? 1 : 0
 
-  name_prefix = "itaw-"
-  port        = 80
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = local.vpc_id
+  name_prefix          = "itaw-"
+  port                 = 80
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = local.vpc_id
+  deregistration_delay = 30
 
   health_check {
     path                = "/healthz"
@@ -306,11 +307,12 @@ resource "aws_lb_target_group" "exastro_web" {
 resource "aws_lb_target_group" "exastro_api_admin" {
   count = var.create_ecs && local.exastro_service_enabled ? 1 : 0
 
-  name_prefix = "itaa-"
-  port        = 8000
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = local.vpc_id
+  name_prefix          = "itaa-"
+  port                 = 8000
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = local.vpc_id
+  deregistration_delay = 30
 
   health_check {
     path                = "/internal-api/health-check/liveness"
@@ -331,11 +333,12 @@ resource "aws_lb_target_group" "exastro_api_admin" {
 resource "aws_lb_target_group" "exastro_api_organization" {
   count = var.create_ecs && local.exastro_service_enabled ? 1 : 0
 
-  name_prefix = "itao-"
-  port        = 8001
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = local.vpc_id
+  name_prefix          = "itao-"
+  port                 = 8001
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = local.vpc_id
+  deregistration_delay = 30
 
   health_check {
     path                = "/internal-api/health-check/liveness"

@@ -1398,13 +1398,20 @@ resource "aws_ecs_task_definition" "exastro" {
                       self._write(data=[{"id": "aiops-admin", "name": "aiops-admin"}])
                   elif self.path.endswith("/users"):
                       self._write(data=[{"id": "aiops-agent", "name": "AIOps Agent"}])
-                  elif self.path.rstrip("/").endswith("/platform/limits"):
+                  elif self.path.rstrip("/") == "/internal-api/platform/limits":
                       self._write(data=[{"organization_id": "smic", "limits": {
                           "ita.organization.ansible.execution_limit": 100,
                           "ita.organization.common.upload_file_size_limit": 104857600,
                           "ita.organization.menu_export_import.buffer_size": 10000,
                           "ita.organization.common.maintenance_records_limit": 10000,
                       }}])
+                  elif self.path.rstrip("/").endswith("/platform/limits"):
+                      self._write(data={
+                          "ita.organization.ansible.execution_limit": 100,
+                          "ita.organization.common.upload_file_size_limit": 104857600,
+                          "ita.organization.menu_export_import.buffer_size": 10000,
+                          "ita.organization.common.maintenance_records_limit": 10000,
+                      })
                   else:
                       self._write()
 
