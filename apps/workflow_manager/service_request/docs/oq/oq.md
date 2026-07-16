@@ -74,6 +74,7 @@ curl -sS -H "Authorization: Bearer ${TOKEN}" \
 - ライブGitLab書込み、CI、ECR push、ECS変更、状態変更は個別の明示許可を必要とする。
 - `gitlab.code_project_path`にはfix branch、commit、MR、Pipelineを作成し、`gitlab.service_project_path`にはRFC、CMDB、Incident/Problem/Change、Known Errorを作成する。ライブ経路では両プロジェクトを分離する。
 - CodeBuild実行前に、code projectの修正branchがCodeBuildの参照するソースリポジトリまたはpush mirrorへ到達し、期待するcommit SHAを取得できることを確認する。
+- `build_source.source_ref`を参照先APIで解決し、GitLabで生成したcommit IDと一致しない場合はCodeBuildを呼ばずHTTP 409で停止する。
 - サービス変更にはCAB/eCABの`decision_id`、必須テスト合格、High以外のリスク評価を必要とする。
 - セルフテストは固定フィクスチャだけを使用し、外部HTTPを呼ばない。
 
@@ -83,6 +84,13 @@ curl -sS -H "Authorization: Bearer ${TOKEN}" \
 - `aiops.recovery_candidates.v1`に3候補以上あり、第1候補が旧版へのVersion Deployである。
 - code projectのbranch／MR／CIとservice-management projectのRFC、選択テスト、テスト結果、リスクスコアを返す。
 - 応答の`artifacts.code_project_path`と`artifacts.service_project_path`が入力した別プロジェクトを示す。
+- `artifacts.tickets.records`にIncident、Emergency Change、Problem、恒久対策Change/RFCがあり、各Issueが関連URLと同一`trace_id`を保持する。
+- ECR push経路では`artifacts.source_mirror.status=verified`で、期待SHAと解決SHAが一致する。
+- CI結果とリスクスコアをRFCへ追記した後にCAB承認ノートを記録し、その後にソースmirror照合とCodeBuildを実行する。
+- 最終検証後は入力Issueと自動生成IssueのIIDを重複排除してクローズする。
+- CMDBへ現行バージョン、trace ID、RFC URL、検証ID、検証時刻を保存し、commit IDを応答へ返す。
+- Known ErrorにはIncident、Problem、RFC、MRをリンクし、SoR backfillとQdrant同期が成功した場合だけ`completed`を返す。
+- `test_and_risk.factors`の加減点合計が`test_and_risk.score`と一致する。
 - 4動画に対応する`demo_screens`がすべて`ready`である。
 - 別realmのOOM、時間窓外のOOM、`..`を含む修正パス、認証不一致を拒否する。
 

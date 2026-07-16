@@ -46,6 +46,10 @@
     "base_branch": "main",
     "fix_branch": "fix/sulu-memory-regression-demo"
   },
+  "build_source": {
+    "source_ref": "fix/sulu-memory-regression-demo",
+    "api_base_url": "https://api.github.com/repos/smic-aiops/aiops-agent"
+  },
   "approval": {
     "approved": false,
     "decision_id": null

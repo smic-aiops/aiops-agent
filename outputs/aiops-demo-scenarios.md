@@ -79,8 +79,10 @@ terraform output -raw default_realm
 - Incident、Emergency Change、Problem、恒久対策Changeの自動生成と相互リンク
 - AIOps Agentによる修正ロジック、code project上のfix branch/MR、service-management project上のRFCの自動生成
 - 生成コードの自己評価、影響分析、変更内容に応じたテストの自動選択・実行
-- テスト結果とCMDB影響範囲を統合したリスクスコア作成
-- 実行後のCMDB自動同期、関連チケットの連鎖クローズ、KEDB登録
+- テスト結果とCMDB影響範囲を統合し、加減点根拠付きのリスクスコアを作成
+- CI結果とリスク評価をRFCへ追記してからCAB証跡を記録
+- GitLab commit SHAとCodeBuild参照先／push mirrorのSHA照合
+- 実行後のCMDB証跡同期、入力・自動生成チケットの連鎖クローズ、Known Error／KEDB登録
 - 自動実行を表す `auto_enqueue`
 - 承認が必要な処理を表す `require_approval`
 - Zulipの承認リンク、approve/deny
@@ -463,7 +465,7 @@ ITIL 4上の主な流れは次のとおりとする。
 | RFC解析と新規ECRタグ作成 | 実装済み | `wf.sulu_rfc_source_analysis`を使用 |
 | ソースコード自動修正 | 実装済み | 根本原因をもとに修正ロジック、fix branch/MRを自動生成 |
 | GitLabプロジェクト責務分離 | 実装済み | code projectへbranch/MR/CI、service-management projectへRFC/CMDB/チケット/Known Errorを書込む |
-| CodeBuildソース到達確認 | フルOQ前提 | 修正branchとcommit SHAがCodeBuild参照先／push mirrorに到達してからECR pushへ進む |
+| CodeBuildソース到達確認 | 実装済み | GitLab commit SHAとCodeBuild参照先／push mirrorのSHAを自動照合し、一致した場合だけECR pushへ進む |
 | テスト最適化・リスク評価 | 実装済み | 自己評価、影響分析、選択テスト、リスクスコアをCAB資料へ統合 |
 | 連続メモリイベント＋OOM＋直近デプロイの専用相関OQ | 実装済み | 同一`trace_id`で統合シナリオを実行 |
 | Incident／Problem／Change／CMDB／KEDBの完全連鎖更新 | 実装済み | 最終検証後に自動同期・クローズ・登録 |
@@ -767,6 +769,12 @@ AIOps Agentの承認リンクを使う。承認後、同一トピックへ次の
 
 ## 14. 参照実装
 
+- `apps/workflow_manager/service_request/workflows/aiops_sulu_memory_regression_demo.json`
+- `apps/workflow_manager/service_request/workflows/test_aiops_sulu_memory_regression_demo.json`
+- `apps/workflow_manager/service_request/workflow_sources/sulu_memory_regression_demo.code.js`
+- `apps/workflow_manager/service_request/scripts/tests/test_sulu_memory_regression_demo.mjs`
+- `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_32_demo_sulu_memory_regression_full_cycle.md`
+- `apps/aiops_agent/orchestrator/scripts/run_oq_usecase_32_demo_sulu_memory_regression_full_cycle.sh`
 - `apps/aiops_agent/orchestrator/docs/oq/oq_usecase_21_demo_sulu_night_misoperation_autorecovery.md`
 - `apps/aiops_agent/orchestrator/scripts/run_oq_usecase_21_demo_sulu_night_misoperation_autorecovery.sh`
 - `apps/workflow_manager/service_request/workflows/aiops_sulu_service_control.json`

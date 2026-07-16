@@ -53,6 +53,10 @@ try {
     && candidates[0]?.rank === 1
     && response?.test_and_risk?.all_required_tests_passed === true
     && response?.test_and_risk?.level === 'medium'
+    && Array.isArray(response?.test_and_risk?.factors)
+    && response.test_and_risk.factors.reduce((sum, item) => sum + Number(item?.score_delta || 0), 0) === response.test_and_risk.score
+    && Object.keys(response?.artifacts?.tickets?.records || {}).length === 4
+    && response?.artifacts?.source_mirror?.status === 'planned'
     && screens?.video_1_correlation?.status === 'ready'
     && screens?.video_2_recovery?.status === 'ready'
     && screens?.video_3_change?.status === 'ready'

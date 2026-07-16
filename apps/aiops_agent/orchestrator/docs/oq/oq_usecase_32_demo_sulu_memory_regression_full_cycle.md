@@ -17,6 +17,7 @@ Suluの直近デプロイ後に発生したメモリ高騰2件とOutOfMemoryを�
 - CMDB同期、チケットクローズ、KEDB登録には、同一実行の`execute_fixed_deploy=true`または`post_deploy_verified=true`と`verification_id`を必須とする。
 - ライブ経路ではcode projectとservice-management projectを分離する。code projectはfix branch/MR/CI、service-management projectはRFC、CMDB、Incident/Problem/Change、Known Errorを保持する。
 - CodeBuildのソースリポジトリがGitLab code projectのpush mirrorである場合、修正branchがmirror先へ到達し、期待するcommit SHAを取得できることをECR push前に確認する。未到達またはSHA不一致の場合は停止する。
+- 統合ワークフローは`build_source.source_ref`をCodeBuildへ渡す前に参照先APIで解決し、`artifacts.commit_id`と`artifacts.source_mirror.resolved_commit_sha`を自動照合する。
 
 ## 固定フィクスチャ
 
@@ -37,10 +38,14 @@ Suluの直近デプロイ後に発生したメモリ高騰2件とOutOfMemoryを�
 4. 第1候補が`wf.sulu_version_deploy`による`V_PREVIOUS`へのロールバックである。
 5. 各候補に順位、根拠、リスク、可逆性、承認要否が含まれる。
 6. fix branch、MR、RFC、選択テスト、テスト結果、リスクスコアが返る。
-7. フルOQでは`V_FIXED`のECR作成とECSデプロイがCAB承認後にだけ行われる。
-8. 最終検証IDを保存した後にCMDBの現行バージョンを更新し、指定したIssueをクローズする。
-9. Known Error Issueを作成し、GitLab Issue backfillでSoR同期、Issue RAG syncでQdrant同期を要求する。
-10. `demo_screens.video_1_*`から`video_4_*`がすべて`ready`となる。
+7. service-management projectにIncident、Emergency Change、Problem、恒久対策Change/RFCを自動生成し、相互リンクする。
+8. フルOQでは`V_FIXED`のECR作成とECSデプロイがCAB承認後にだけ行われる。
+9. 最終検証IDを保存した後にCMDBの現行バージョンを更新し、入力Issueと自動生成Issueを重複なくクローズする。
+10. CMDBへ`last_change_trace_id`、RFC URL、`last_verification_id`、検証時刻を保存する。
+11. Known Error Issueを作成し、GitLab Issue backfillでSoR同期、Issue RAG syncでQdrant同期を完了する。
+12. `demo_screens.video_1_*`から`video_4_*`がすべて`ready`となる。
+13. フルOQでは`artifacts.source_mirror.status=verified`で、期待SHAと解決SHAが一致する。SHA不一致はHTTP 409で停止する。
+14. リスクスコアは基礎リスク、変更ファイル数、相関confidence、失敗／未完了テスト、全テスト合格の加減点根拠を返す。
 
 ## 実行
 

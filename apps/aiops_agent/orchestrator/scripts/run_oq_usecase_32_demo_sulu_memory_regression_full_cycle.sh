@@ -105,6 +105,7 @@ if ${FULL_OQ}; then
       | .gitlab.code_project_path=$code_project
       | .gitlab.service_project_path=$service_project
       | .gitlab.fix_branch=$branch
+      | .build_source.source_ref=$branch
       | .tickets=$tickets
       | .allow_gitlab_write=true
       | .allow_ci=true
@@ -181,6 +182,8 @@ jq -e '
   and (.recovery.candidates | length) >= 3
   and .recovery.candidates[0].workflow_id == "wf.sulu_version_deploy"
   and .test_and_risk.all_required_tests_passed == true
+  and ((.test_and_risk.factors | map(.score_delta) | add) == .test_and_risk.score)
+  and (.artifacts.tickets.records | keys | length) == 4
   and .demo_screens.video_1_correlation.status == "ready"
   and .demo_screens.video_2_recovery.status == "ready"
   and .demo_screens.video_3_change.status == "ready"
@@ -191,6 +194,13 @@ if ${FULL_OQ}; then
   jq -e '
     .artifacts.cmdb.status == "synced"
     and .artifacts.kedb.status == "registered"
+    and .artifacts.kedb.sor_sync == "completed"
+    and .artifacts.kedb.qdrant_sync == "completed"
+    and .artifacts.source_mirror.status == "verified"
+    and .artifacts.rfc.assessment_recorded == true
+    and .artifacts.rfc.approval_recorded == true
+    and (.artifacts.tickets.closed_iids | length) >= 4
+    and .artifacts.cmdb.verification_id != null
     and .approval.approved == true
   ' "${response_file}" >/dev/null
 fi

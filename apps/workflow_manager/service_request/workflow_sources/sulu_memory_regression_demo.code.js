@@ -212,7 +212,7 @@ const fixFiles = Array.isArray(fixInput.files) && fixInput.files.length
   ? fixInput.files
   : [{
       action: 'create',
-      file_path: 'src/AIOpsDemo/MemorySafeReportIterator.php',
+      file_path: 'scripts/itsm/sulu/source_overrides/src/AIOpsDemo/MemorySafeReportIterator.php',
       content: defaultFixContent
     }];
 for (const file of fixFiles) {
@@ -253,6 +253,9 @@ const allowServiceChange = truthy(payload.allow_service_change ?? payload.allowS
 const allowStateChange = truthy(payload.allow_state_change ?? payload.allowStateChange);
 const executeRollback = truthy(payload.execute_rollback ?? payload.executeRollback);
 const executeFixedDeploy = truthy(payload.execute_fixed_deploy ?? payload.executeFixedDeploy);
+const createTicketChain = payload.create_ticket_chain === undefined && payload.createTicketChain === undefined
+  ? true
+  : truthy(payload.create_ticket_chain ?? payload.createTicketChain);
 const postDeployVerified = truthy(payload.post_deploy_verified ?? payload.postDeployVerified);
 const verificationId = clean(payload.verification_id ?? payload.verificationId);
 if (allowStateChange && !executeFixedDeploy && !postDeployVerified) {
@@ -283,10 +286,26 @@ const artifact = {
   service_base_branch: clean(payload.gitlab?.service_base_branch ?? payload.gitlab?.serviceBaseBranch ?? 'main'),
   commit_id: dryRun ? `dry-run-${traceId.slice(0, 8)}` : null,
   mr: dryRun ? { iid: 101, web_url: 'https://gitlab.example/demo/sulu/-/merge_requests/101', state: 'opened' } : null,
-  rfc: dryRun ? { iid: 202, web_url: 'https://gitlab.example/demo/service-management/-/issues/202', state: 'opened' } : null,
+  rfc: dryRun ? { iid: 204, web_url: 'https://gitlab.example/demo/service-management/-/issues/204', state: 'opened', assessment_recorded: true, approval_recorded: false } : null,
   pipeline: dryRun ? { id: 303, status: 'success', web_url: 'https://gitlab.example/demo/sulu/-/pipelines/303' } : null,
+  source_mirror: {
+    status: dryRun ? 'planned' : 'not_checked',
+    source_ref: null,
+    expected_commit_sha: null,
+    resolved_commit_sha: null,
+    ref_api_url: null
+  },
   cmdb: { status: dryRun ? 'planned' : 'not_started', version: fixedVersion },
-  tickets: { status: dryRun ? 'planned' : 'not_started', closed_iids: [] },
+  tickets: {
+    status: dryRun ? 'planned' : 'not_started',
+    closed_iids: [],
+    records: dryRun ? {
+      incident: { iid: 201, web_url: 'https://gitlab.example/demo/service-management/-/issues/201', state: 'opened' },
+      emergency_change: { iid: 202, web_url: 'https://gitlab.example/demo/service-management/-/issues/202', state: 'opened' },
+      problem: { iid: 203, web_url: 'https://gitlab.example/demo/service-management/-/issues/203', state: 'opened' },
+      permanent_change: { iid: 204, web_url: 'https://gitlab.example/demo/service-management/-/issues/204', state: 'opened' }
+    } : {}
+  },
   kedb: dryRun ? { status: 'planned', issue_iid: 404, qdrant_sync: 'planned', sor_sync: 'planned' } : { status: 'not_started' },
   workflow_dispatch: {}
 };
@@ -298,6 +317,20 @@ let testResults = configuredResults.length
 
 const gitlabBase = clean(payload.gitlab?.api_base_url ?? payload.gitlab?.apiBaseUrl ?? env.GITLAB_API_BASE_URL).replace(/\/+$/, '');
 const gitlabToken = clean(header('x-aiops-gitlab-token') ?? env.GITLAB_ADMIN_TOKEN ?? env.GITLAB_TOKEN);
+const buildSource = payload.build_source && typeof payload.build_source === 'object' ? payload.build_source : {};
+const buildSourceRef = clean(buildSource.source_ref ?? buildSource.sourceRef) || artifact.fix_branch;
+const buildSourceApiBase = clean(
+  buildSource.api_base_url
+    ?? buildSource.apiBaseUrl
+    ?? env.SULU_IMAGE_BUILDER_SOURCE_API_BASE_URL
+    ?? 'https://api.github.com/repos/smic-aiops/aiops-agent'
+).replace(/\/+$/, '');
+const buildSourceRefApiUrl = clean(buildSource.ref_api_url ?? buildSource.refApiUrl)
+  || `${buildSourceApiBase}/branches/${encodeURIComponent(buildSourceRef)}`;
+const buildSourceToken = clean(header('x-aiops-source-token') ?? env.SULU_IMAGE_BUILDER_SOURCE_TOKEN ?? env.GITHUB_TOKEN);
+artifact.source_mirror.source_ref = buildSourceRef;
+artifact.source_mirror.expected_commit_sha = artifact.commit_id;
+artifact.source_mirror.ref_api_url = buildSourceRefApiUrl;
 const webhookOrigin = clean(env.N8N_WEBHOOK_BASE_URL ?? env.N8N_PUBLIC_API_BASE_URL)
   .replace(/\/+$/, '')
   .replace(/\/api\/v1$/, '');
@@ -365,6 +398,7 @@ if (!dryRun) {
     actions
   });
   artifact.commit_id = commit.id ?? commit.short_id ?? null;
+  artifact.source_mirror.expected_commit_sha = artifact.commit_id;
 
   let mr = await ignoreAlreadyExists(gitlabRequest.call(this, 'POST', `/projects/${projectEncoded}/merge_requests`, {
     source_branch: artifact.fix_branch,
@@ -381,6 +415,45 @@ if (!dryRun) {
   }
   artifact.mr = mr ? { iid: mr.iid, web_url: mr.web_url, state: mr.state } : null;
 
+  if (createTicketChain) {
+    const incident = await gitlabRequest.call(this, 'POST', `/projects/${serviceProjectEncoded}/issues`, {
+      title: `[INC] Sulu ${latestVersion} memory exhaustion`,
+      description: [
+        '## 事象', 'メモリ高騰2件の後にOutOfMemoryを検知。', '',
+        '## 相関', `${previousVersion}から${latestVersion}への直近デプロイ後${windowMinutes}分以内。`, '',
+        `trace_id: ${traceId}`
+      ].join('\n'),
+      labels: 'ITSM/インシデント管理,種別：インシデント,状態/In Progress,サービス：sulu'
+    });
+    artifact.tickets.records.incident = { iid: incident.iid, web_url: incident.web_url, state: incident.state };
+
+    const emergencyChange = await gitlabRequest.call(this, 'POST', `/projects/${serviceProjectEncoded}/issues`, {
+      title: `[Emergency Change] Sulu rollback to ${previousVersion}`,
+      description: [
+        '## 目的', `${latestVersion}から既知正常版${previousVersion}へロールバックする。`, '',
+        '## 関連Incident', incident.web_url || `#${incident.iid}`, '',
+        '## ロールバック', `再適用先: ${latestVersion}`, '',
+        `trace_id: ${traceId}`
+      ].join('\n'),
+      labels: 'ITSM/変更管理,種別：変更,緊急変更,状態/New,サービス：sulu'
+    });
+    artifact.tickets.records.emergency_change = { iid: emergencyChange.iid, web_url: emergencyChange.web_url, state: emergencyChange.state };
+
+    const problem = await gitlabRequest.call(this, 'POST', `/projects/${serviceProjectEncoded}/issues`, {
+      title: `[PRB] Sulu ${latestVersion} memory regression`,
+      description: [
+        '## 関連Incident', incident.web_url || `#${incident.iid}`, '',
+        '## 関連Emergency Change', emergencyChange.web_url || `#${emergencyChange.iid}`, '',
+        '## 原因仮説', `${latestVersion}への更新に起因するメモリ回帰。`, '',
+        '## 暫定回避策', `${previousVersion}を維持する。`, '',
+        `trace_id: ${traceId}`
+      ].join('\n'),
+      labels: 'ITSM/問題管理,種別：問題,状態/In Progress,サービス：sulu'
+    });
+    artifact.tickets.records.problem = { iid: problem.iid, web_url: problem.web_url, state: problem.state };
+    artifact.tickets.status = 'opened';
+  }
+
   const rfcDescription = [
     '## 対象サービス', 'Sulu', '',
     '## 現行バージョン', previousVersion, '',
@@ -391,6 +464,10 @@ if (!dryRun) {
     `- 影響CI: Sulu ECS Service / ALB target`,
     `- 選択テスト: ${selectedTests.map((test) => test.name).join(', ')}`,
     `- ロールバック先: ${previousVersion}`,
+    `- 関連Incident: ${artifact.tickets.records.incident?.web_url || 'external'}`,
+    `- 関連Emergency Change: ${artifact.tickets.records.emergency_change?.web_url || 'external'}`,
+    `- 関連Problem: ${artifact.tickets.records.problem?.web_url || 'external'}`,
+    `- code MR: ${artifact.mr?.web_url || 'not-created'}`,
     `- trace_id: ${traceId}`
   ].join('\n');
   const rfc = await gitlabRequest.call(this, 'POST', `/projects/${serviceProjectEncoded}/issues`, {
@@ -398,16 +475,19 @@ if (!dryRun) {
     description: rfcDescription,
     labels: 'ITSM/変更管理,種別：変更,状態/New'
   });
-  artifact.rfc = { iid: rfc.iid, web_url: rfc.web_url, state: rfc.state };
-  if (approved && decisionId) {
-    await gitlabRequest.call(this, 'POST', `/projects/${serviceProjectEncoded}/issues/${rfc.iid}/notes`, {
-      body: `/approve\n\nAIOps CAB decision_id: ${decisionId}\ntrace_id: ${traceId}`
+  artifact.rfc = {
+    iid: rfc.iid,
+    web_url: rfc.web_url,
+    state: rfc.state,
+    assessment_recorded: false,
+    approval_recorded: false
+  };
+  artifact.tickets.records.permanent_change = { ...artifact.rfc };
+  if (artifact.mr?.iid) {
+    await gitlabRequest.call(this, 'POST', `/projects/${projectEncoded}/merge_requests/${artifact.mr.iid}/notes`, {
+      body: `Service-management RFC: ${artifact.rfc.web_url}\ntrace_id: ${traceId}`
     });
-    const approvedIssue = await gitlabRequest.call(this, 'PUT', `/projects/${serviceProjectEncoded}/issues/${rfc.iid}`, {
-      add_labels: '状態/Approved,CAB/Approved'
-    });
-    artifact.rfc.state = approvedIssue.state ?? artifact.rfc.state;
-    artifact.rfc.approval_recorded = true;
+    artifact.mr.rfc_link_recorded = true;
   }
 
   if (allowCi) {
@@ -442,6 +522,14 @@ if (!dryRun) {
 const failedTests = testResults.filter((test) => test.status === 'failed');
 const pendingTests = testResults.filter((test) => !['passed', 'failed', 'skipped'].includes(test.status));
 const allRequiredTestsPassed = failedTests.length === 0 && pendingTests.length === 0 && testResults.length >= selectedTests.length;
+const riskFactors = [
+  { id: 'base_change_risk', score_delta: 42, rationale: 'Suluのコード変更とローリングデプロイを伴う基礎リスク' },
+  { id: 'changed_files', score_delta: Math.min(12, fixFiles.length * 3), rationale: `${fixFiles.length}ファイルの変更` },
+  { id: 'correlation_confidence', score_delta: confidence < 0.9 ? 5 : 0, rationale: `相関confidence=${confidence}` },
+  { id: 'failed_tests', score_delta: failedTests.length * 25, rationale: `${failedTests.length}件のテスト失敗` },
+  { id: 'pending_tests', score_delta: pendingTests.length ? 15 : 0, rationale: `${pendingTests.length}件のテスト未完了` },
+  { id: 'all_tests_passed', score_delta: allRequiredTestsPassed ? -12 : 0, rationale: allRequiredTestsPassed ? '全必須テスト合格' : '必須テスト未完了' }
+];
 let riskScore = 42;
 riskScore += Math.min(12, fixFiles.length * 3);
 riskScore += confidence < 0.9 ? 5 : 0;
@@ -450,8 +538,43 @@ riskScore += pendingTests.length ? 15 : 0;
 riskScore -= allRequiredTestsPassed ? 12 : 0;
 riskScore = clamp(Math.round(riskScore), 0, 100);
 const riskLevel = riskScore <= 30 ? 'low' : (riskScore <= 60 ? 'medium' : 'high');
+const executionReady = approved && Boolean(decisionId) && allRequiredTestsPassed && riskLevel !== 'high';
 
-if (!dryRun && approved && decisionId && allRequiredTestsPassed) {
+if (!dryRun && artifact.rfc?.iid) {
+  const serviceProjectEncoded = encodeURIComponent(artifact.service_project_path);
+  const assessmentNote = [
+    '## AIOps CI・リスク評価',
+    '',
+    `- trace_id: ${traceId}`,
+    `- code project: ${artifact.code_project_path}`,
+    `- merge request: ${artifact.mr?.web_url || 'not-created'}`,
+    `- pipeline: ${artifact.pipeline?.web_url || 'not-started'}`,
+    `- pipeline status: ${artifact.pipeline?.status || 'not-started'}`,
+    `- selected tests: ${selectedTests.map((test) => test.id).join(', ')}`,
+    `- required tests passed: ${allRequiredTestsPassed}`,
+    `- risk score: ${riskScore}`,
+    `- risk level: ${riskLevel}`,
+    `- risk factors: ${riskFactors.filter((factor) => factor.score_delta !== 0).map((factor) => `${factor.id}(${factor.score_delta >= 0 ? '+' : ''}${factor.score_delta})`).join(', ')}`,
+    `- source ref: ${buildSourceRef}`
+  ].join('\n');
+  await gitlabRequest.call(this, 'POST', `/projects/${serviceProjectEncoded}/issues/${artifact.rfc.iid}/notes`, {
+    body: assessmentNote
+  });
+  artifact.rfc.assessment_recorded = true;
+
+  if (executionReady) {
+    await gitlabRequest.call(this, 'POST', `/projects/${serviceProjectEncoded}/issues/${artifact.rfc.iid}/notes`, {
+      body: `/approve\n\nAIOps CAB decision_id: ${decisionId}\ntrace_id: ${traceId}\nrisk_score: ${riskScore}\npipeline: ${artifact.pipeline?.web_url || 'not-started'}`
+    });
+    const approvedIssue = await gitlabRequest.call(this, 'PUT', `/projects/${serviceProjectEncoded}/issues/${artifact.rfc.iid}`, {
+      add_labels: '状態/Approved,CAB/Approved'
+    });
+    artifact.rfc.state = approvedIssue.state ?? artifact.rfc.state;
+    artifact.rfc.approval_recorded = true;
+  }
+}
+
+if (!dryRun && executionReady) {
   const authHeaders = expectedToken ? { Authorization: `Bearer ${expectedToken}` } : {};
   if ((allowEcrPush || executeRollback || executeFixedDeploy || allowStateChange) && !webhookBase) {
     return fail(424, 'N8N_WEBHOOK_BASE_URL is required for approved execution', { trace_id: traceId });
@@ -463,6 +586,38 @@ if (!dryRun && approved && decisionId && allRequiredTestsPassed) {
     }, { headers: authHeaders, timeout: 180000 });
   }
   if (allowEcrPush) {
+    if (!artifact.commit_id) return fail(409, 'source mirror check requires the generated commit id', { trace_id: traceId });
+    const sourceHeaders = { Accept: 'application/vnd.github+json', 'User-Agent': 'smic-aiops-sulu-source-mirror-check' };
+    if (buildSourceToken) sourceHeaders.Authorization = `Bearer ${buildSourceToken}`;
+    const sourceRefResponse = await httpRequest.call(this, 'GET', buildSourceRefApiUrl, undefined, {
+      headers: sourceHeaders,
+      timeout: 30000
+    });
+    const resolvedCommitSha = clean(
+      sourceRefResponse?.commit?.sha
+        ?? sourceRefResponse?.object?.sha
+        ?? sourceRefResponse?.commit?.id
+        ?? sourceRefResponse?.id
+    );
+    artifact.source_mirror.resolved_commit_sha = resolvedCommitSha || null;
+    if (!resolvedCommitSha) {
+      artifact.source_mirror.status = 'unresolved';
+      return fail(409, 'source mirror ref did not resolve to a commit', {
+        trace_id: traceId,
+        source_ref: buildSourceRef,
+        ref_api_url: buildSourceRefApiUrl
+      });
+    }
+    if (resolvedCommitSha.toLowerCase() !== clean(artifact.commit_id).toLowerCase()) {
+      artifact.source_mirror.status = 'sha_mismatch';
+      return fail(409, 'source mirror commit does not match the generated GitLab commit', {
+        trace_id: traceId,
+        source_ref: buildSourceRef,
+        expected_commit_sha: artifact.commit_id,
+        resolved_commit_sha: resolvedCommitSha
+      });
+    }
+    artifact.source_mirror.status = 'verified';
     artifact.workflow_dispatch.rfc_analysis = await httpRequest.call(this, 'POST', `${webhookBase}/sulu/rfc-source-analysis`, {
       realm,
       rfc_project_path: artifact.service_project_path,
@@ -476,7 +631,8 @@ if (!dryRun && approved && decisionId && allRequiredTestsPassed) {
       },
       base_version: previousVersion,
       target_version: fixedVersion,
-      source_ref: artifact.fix_branch,
+      source_ref: buildSourceRef,
+      source_commit_sha: artifact.commit_id,
       push_images: true,
       allow_ecr_push: true,
       correlation_id: traceId
@@ -490,9 +646,13 @@ if (!dryRun && approved && decisionId && allRequiredTestsPassed) {
   }
   if (allowStateChange) {
     const projectEncoded = encodeURIComponent(artifact.service_project_path);
-    const ticketIids = Object.values(payload.tickets ?? {})
+    const suppliedTicketIids = Object.values(payload.tickets ?? {})
       .map((value) => Number(typeof value === 'object' ? value.iid : value))
       .filter((value) => Number.isFinite(value));
+    const generatedTicketIids = Object.values(artifact.tickets.records ?? {})
+      .map((value) => Number(value?.iid))
+      .filter((value) => Number.isFinite(value));
+    const ticketIids = [...new Set([...suppliedTicketIids, ...generatedTicketIids])];
     for (const iid of ticketIids) {
       await gitlabRequest.call(this, 'PUT', `/projects/${projectEncoded}/issues/${iid}`, { state_event: 'close' });
       artifact.tickets.closed_iids.push(iid);
@@ -514,12 +674,32 @@ if (!dryRun && approved && decisionId && allRequiredTestsPassed) {
     cmdbContent = versionPattern.test(cmdbContent)
       ? cmdbContent.replace(versionPattern, `$1$2: ${fixedVersion}`)
       : `${cmdbContent.trim()}\n\ncurrent_version: ${fixedVersion}\nlast_change_trace_id: ${traceId}\n`;
-    await gitlabRequest.call(this, 'POST', `/projects/${projectEncoded}/repository/commits`, {
+    const cmdbMetadata = {
+      last_change_trace_id: traceId,
+      last_change_rfc: artifact.rfc?.web_url || '',
+      last_verification_id: verificationId || `workflow/sulu-version-deploy/${traceId}`,
+      last_verified_at: new Date().toISOString()
+    };
+    for (const [key, value] of Object.entries(cmdbMetadata)) {
+      const pattern = new RegExp(`(^|\\n)${key}\\s*[:：]\\s*[^\\n]*`, 'i');
+      cmdbContent = pattern.test(cmdbContent)
+        ? cmdbContent.replace(pattern, `$1${key}: ${value}`)
+        : `${cmdbContent.trim()}\n${key}: ${value}\n`;
+    }
+    const cmdbCommit = await gitlabRequest.call(this, 'POST', `/projects/${projectEncoded}/repository/commits`, {
       branch: artifact.service_base_branch,
       commit_message: `Sync Sulu CMDB after ${fixedVersion} deployment (${traceId})`,
       actions: [{ action: cmdbAction, file_path: cmdbPath, content: cmdbContent, encoding: 'text' }]
     });
-    artifact.cmdb = { status: 'synced', version: fixedVersion, file_path: cmdbPath };
+    artifact.cmdb = {
+      status: 'synced',
+      version: fixedVersion,
+      file_path: cmdbPath,
+      commit_id: cmdbCommit.id ?? cmdbCommit.short_id ?? null,
+      trace_id: traceId,
+      verification_id: cmdbMetadata.last_verification_id,
+      rfc_url: artifact.rfc?.web_url || null
+    };
 
     const kedb = await gitlabRequest.call(this, 'POST', `/projects/${projectEncoded}/issues`, {
       title: `[Known Error] Sulu ${latestVersion} memory regression`,
@@ -528,6 +708,11 @@ if (!dryRun && approved && decisionId && allRequiredTestsPassed) {
         '## Cause', `Memory regression introduced after ${previousVersion} -> ${latestVersion}.`, '',
         '## Workaround', `Rollback to ${previousVersion}.`, '',
         '## Resolution', `Deploy ${fixedVersion} and verify memory regression tests.`, '',
+        '## Related records',
+        `- Incident: ${artifact.tickets.records.incident?.web_url || 'external'}`,
+        `- Problem: ${artifact.tickets.records.problem?.web_url || 'external'}`,
+        `- RFC: ${artifact.rfc?.web_url || 'external'}`,
+        `- MR: ${artifact.mr?.web_url || 'external'}`, '',
         `trace_id: ${traceId}`
       ].join('\n'),
       labels: 'ITSM/問題管理,種別：問題,既知エラー,状態/Closed,サービス：sulu'
@@ -535,18 +720,21 @@ if (!dryRun && approved && decisionId && allRequiredTestsPassed) {
     artifact.kedb = { status: 'registered', issue_iid: kedb.iid, issue_url: kedb.web_url, qdrant_sync: 'requested', sor_sync: 'requested' };
 
     if (artifact.service_project_id) {
-      await httpRequest.call(this, 'POST', `${webhookBase}/gitlab/issue/backfill/sor`, {
+      const sorSync = await httpRequest.call(this, 'POST', `${webhookBase}/gitlab/issue/backfill/sor`, {
         realm, project_ids: String(artifact.service_project_id), state: 'all', dry_run: false
       }, { headers: authHeaders, timeout: 180000 });
-      await httpRequest.call(this, 'POST', `${webhookBase}/gitlab/issue/rag/sync/oq`, {
+      if (sorSync?.ok === false) throw new Error(`SoR backfill failed: ${clean(sorSync.error) || 'unknown error'}`);
+      const qdrantSync = await httpRequest.call(this, 'POST', `${webhookBase}/gitlab/issue/rag/sync/oq`, {
         project_paths: { service: artifact.service_project_path },
         env: { N8N_GITLAB_ISSUE_RAG_FORCE_FULL_SYNC: 'true', N8N_GITLAB_ISSUE_RAG_DRY_RUN: 'false' }
       }, { headers: authHeaders, timeout: 60000 });
+      if (qdrantSync?.ok === false) throw new Error(`KEDB/Qdrant sync failed: ${clean(qdrantSync.error) || 'unknown error'}`);
+      artifact.kedb.sor_sync = 'completed';
+      artifact.kedb.qdrant_sync = 'completed';
     }
   }
 }
 
-const executionReady = approved && Boolean(decisionId) && allRequiredTestsPassed && riskLevel !== 'high';
 const output = {
   ok: true,
   status_code: 200,
@@ -581,6 +769,7 @@ const output = {
     all_required_tests_passed: allRequiredTestsPassed,
     score: riskScore,
     level: riskLevel,
+    factors: riskFactors,
     recommendation: riskLevel === 'high' ? 'reject_or_rework' : 'conditional_approval'
   },
   approval: {
@@ -606,7 +795,7 @@ const output = {
     video_3_change: {
       title: '変更要求の自動生成と影響分析',
       status: 'ready',
-      fields: ['fix_branch', 'merge_request', 'rfc', 'selected_tests', 'risk_score']
+      fields: ['fix_branch', 'merge_request', 'pipeline_url', 'rfc', 'selected_tests', 'risk_score', 'source_mirror']
     },
     video_4_closure: {
       title: 'CMDB・KEDB・プロセス連携',

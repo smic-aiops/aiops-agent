@@ -54,12 +54,18 @@ assert.equal(output.recovery.candidates[0].workflow_id, 'wf.sulu_version_deploy'
 assert.equal(output.recovery.candidates[0].rank, 1);
 assert.equal(output.test_and_risk.all_required_tests_passed, true);
 assert.equal(output.test_and_risk.level, 'medium');
+assert.equal(output.test_and_risk.factors.length, 6);
+assert.equal(output.test_and_risk.factors.reduce((sum, item) => sum + item.score_delta, 0), output.test_and_risk.score);
 assert.equal(output.demo_screens.video_1_correlation.status, 'ready');
 assert.equal(output.demo_screens.video_2_recovery.status, 'ready');
 assert.equal(output.demo_screens.video_3_change.status, 'ready');
 assert.equal(output.demo_screens.video_4_closure.status, 'ready');
 assert.equal(output.artifacts.code_project_path, 'aiops/aiops-agent');
 assert.equal(output.artifacts.service_project_path, 'aiops/service-management');
+assert.equal(output.artifacts.source_mirror.status, 'planned');
+assert.equal(output.artifacts.source_mirror.source_ref, 'fix/sulu-memory-regression-demo');
+assert.equal(output.change_automation.fix_files[0].file_path, 'scripts/itsm/sulu/source_overrides/src/AIOpsDemo/MemorySafeReportIterator.php');
+assert.deepEqual(Object.keys(output.artifacts.tickets.records), ['incident', 'emergency_change', 'problem', 'permanent_change']);
 
 const wrongRealm = structuredClone(fixture);
 wrongRealm.events[2].realm = 'another-realm';
@@ -104,26 +110,36 @@ Object.assign(liveGitLab, {
   approval: { approved: true, decision_id: 'CAB-DEMO-001' }
 });
 const calls = [];
+const generatedCommitSha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const gitlabMock = async (options) => {
   calls.push({ method: options.method, url: options.url, body: options.body });
   if (options.method === 'GET' && options.url.endsWith('/projects/aiops%2Faiops-agent')) return { id: 10 };
   if (options.method === 'GET' && options.url.endsWith('/projects/aiops%2Fservice-management')) return { id: 20 };
   if (options.url.includes('/repository/branches')) return { name: liveGitLab.gitlab.fix_branch };
-  if (options.url.includes('/repository/commits')) return { id: 'commit-demo-001' };
+  if (options.url.includes('/repository/commits')) return { id: generatedCommitSha };
   if (options.method === 'GET' && options.url.includes('/repository/files/')) {
     return { content: Buffer.from('current_version: 3.0.4\n').toString('base64') };
   }
+  if (options.url.includes('/merge_requests/101/notes')) return { id: 102 };
   if (options.url.includes('/merge_requests')) return { iid: 101, web_url: 'https://gitlab.example/code/mr/101', state: 'opened' };
   if (options.method === 'POST' && options.url.endsWith('/projects/aiops%2Fservice-management/issues')) {
-    if (String(options.body?.title || '').startsWith('[Known Error]')) {
+    const title = String(options.body?.title || '');
+    if (title.startsWith('[INC]')) return { iid: 201, web_url: 'https://gitlab.example/service/issues/201', state: 'opened' };
+    if (title.startsWith('[Emergency Change]')) return { iid: 202, web_url: 'https://gitlab.example/service/issues/202', state: 'opened' };
+    if (title.startsWith('[PRB]')) return { iid: 203, web_url: 'https://gitlab.example/service/issues/203', state: 'opened' };
+    if (title.startsWith('[Known Error]')) {
       return { iid: 404, web_url: 'https://gitlab.example/service/issues/404', state: 'closed' };
     }
-    return { iid: 202, web_url: 'https://gitlab.example/service/issues/202', state: 'opened' };
+    if (title.startsWith('[RFC]')) return { iid: 204, web_url: 'https://gitlab.example/service/issues/204', state: 'opened' };
+    throw new Error(`unexpected service issue title: ${title}`);
   }
-  if (options.url.includes('/issues/202/notes')) return { id: 301 };
-  if (options.method === 'PUT' && options.url.endsWith('/issues/202')) return { state: 'opened' };
-  if (options.method === 'PUT' && /\/issues\/(11|12|13)$/.test(options.url)) return { state: 'closed' };
+  if (options.url.includes('/issues/204/notes')) return { id: 301 };
+  if (options.method === 'PUT' && options.url.endsWith('/issues/204') && options.body?.add_labels) return { state: 'opened' };
+  if (options.method === 'PUT' && /\/issues\/(11|12|13|201|202|203|204)$/.test(options.url)) return { state: 'closed' };
   if (options.url.endsWith('/pipeline')) return { id: 303, status: 'success', web_url: 'https://gitlab.example/code/pipelines/303' };
+  if (options.url.includes('api.github.com/repos/smic-aiops/aiops-agent/branches/')) return { commit: { sha: generatedCommitSha } };
+  if (options.url === 'https://source.example/mismatch') return { commit: { sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' } };
+  if (options.url.includes('/webhook/sulu/rfc-source-analysis')) return { ok: true, status: 'built_and_pushed' };
   if (options.url.includes('/webhook/gitlab/issue/backfill/sor')) return { ok: true };
   if (options.url.includes('/webhook/gitlab/issue/rag/sync/oq')) return { ok: true };
   throw new Error(`unexpected mock request: ${options.method} ${options.url}`);
@@ -137,11 +153,77 @@ const liveOutput = (await run(
 assert.equal(liveOutput.ok, true);
 assert.equal(liveOutput.artifacts.project_id, 10);
 assert.equal(liveOutput.artifacts.service_project_id, 20);
+assert.equal(liveOutput.artifacts.tickets.records.incident.iid, 201);
+assert.equal(liveOutput.artifacts.tickets.records.emergency_change.iid, 202);
+assert.equal(liveOutput.artifacts.tickets.records.problem.iid, 203);
+assert.equal(liveOutput.artifacts.tickets.records.permanent_change.iid, 204);
+assert.equal(liveOutput.artifacts.mr.rfc_link_recorded, true);
+assert.equal(liveOutput.artifacts.rfc.assessment_recorded, true);
 assert.equal(liveOutput.artifacts.rfc.approval_recorded, true);
 assert.equal(liveOutput.test_and_risk.all_required_tests_passed, true);
 assert.equal(liveOutput.approval.execution_ready, true);
 assert.ok(calls.some((call) => call.url.includes('/projects/aiops%2Faiops-agent/merge_requests')));
 assert.ok(calls.some((call) => call.url.endsWith('/projects/aiops%2Fservice-management/issues')));
+
+const prepareOnly = structuredClone(liveGitLab);
+prepareOnly.approval = { approved: false, decision_id: null };
+const prepareCallStart = calls.length;
+const prepareOutput = (await run(
+  prepareOnly,
+  { GITLAB_API_BASE_URL: 'https://gitlab.example/api/v4', GITLAB_TOKEN: 'gitlab-token' },
+  {},
+  gitlabMock
+))[0].json;
+assert.equal(prepareOutput.artifacts.rfc.assessment_recorded, true);
+assert.equal(prepareOutput.artifacts.rfc.approval_recorded, false);
+assert.equal(prepareOutput.approval.execution_ready, false);
+const prepareCalls = calls.slice(prepareCallStart);
+assert.ok(prepareCalls.some((call) => String(call.body?.body || '').includes('AIOps CI・リスク評価')));
+assert.ok(!prepareCalls.some((call) => String(call.body?.body || '').startsWith('/approve')));
+
+const mirrorBuild = structuredClone(liveGitLab);
+mirrorBuild.allow_ecr_push = true;
+const mirrorCallStart = calls.length;
+const mirrorOutput = (await run(
+  mirrorBuild,
+  {
+    GITLAB_API_BASE_URL: 'https://gitlab.example/api/v4',
+    GITLAB_TOKEN: 'gitlab-token',
+    N8N_WEBHOOK_BASE_URL: 'https://n8n.example/webhook'
+  },
+  {},
+  gitlabMock
+))[0].json;
+assert.equal(mirrorOutput.artifacts.source_mirror.status, 'verified');
+assert.equal(mirrorOutput.artifacts.source_mirror.expected_commit_sha, generatedCommitSha);
+assert.equal(mirrorOutput.artifacts.source_mirror.resolved_commit_sha, generatedCommitSha);
+assert.equal(mirrorOutput.artifacts.workflow_dispatch.rfc_analysis.status, 'built_and_pushed');
+const mirrorCalls = calls.slice(mirrorCallStart);
+const pipelineIndex = mirrorCalls.findIndex((call) => call.url.endsWith('/pipeline'));
+const assessmentIndex = mirrorCalls.findIndex((call) => String(call.body?.body || '').includes('AIOps CI・リスク評価'));
+const approvalIndex = mirrorCalls.findIndex((call) => String(call.body?.body || '').startsWith('/approve'));
+const sourceMirrorIndex = mirrorCalls.findIndex((call) => call.url.includes('api.github.com/repos/smic-aiops/aiops-agent/branches/'));
+const buildIndex = mirrorCalls.findIndex((call) => call.url.includes('/webhook/sulu/rfc-source-analysis'));
+assert.ok(pipelineIndex >= 0 && pipelineIndex < assessmentIndex);
+assert.ok(assessmentIndex < approvalIndex);
+assert.ok(approvalIndex < sourceMirrorIndex);
+assert.ok(sourceMirrorIndex < buildIndex);
+
+const mirrorMismatch = structuredClone(mirrorBuild);
+mirrorMismatch.build_source = { ref_api_url: 'https://source.example/mismatch' };
+const mismatchOutput = (await run(
+  mirrorMismatch,
+  {
+    GITLAB_API_BASE_URL: 'https://gitlab.example/api/v4',
+    GITLAB_TOKEN: 'gitlab-token',
+    N8N_WEBHOOK_BASE_URL: 'https://n8n.example/webhook'
+  },
+  {},
+  gitlabMock
+))[0].json;
+assert.equal(mismatchOutput.status_code, 409);
+assert.equal(mismatchOutput.error, 'source mirror commit does not match the generated GitLab commit');
+assert.equal(mismatchOutput.expected_commit_sha, generatedCommitSha);
 
 const unsafeClose = structuredClone(liveGitLab);
 unsafeClose.allow_state_change = true;
@@ -165,9 +247,16 @@ const closureOutput = (await run(
   {},
   gitlabMock
 ))[0].json;
-assert.deepEqual(closureOutput.artifacts.tickets.closed_iids, [11, 12, 13]);
+assert.deepEqual(closureOutput.artifacts.tickets.closed_iids, [11, 12, 13, 201, 202, 203, 204]);
 assert.equal(closureOutput.artifacts.cmdb.status, 'synced');
+assert.equal(closureOutput.artifacts.cmdb.trace_id, fixture.trace_id);
+assert.equal(closureOutput.artifacts.cmdb.verification_id, 'healthcheck/demo-001');
+const cmdbCommitCall = calls.findLast((call) => call.url.includes('/repository/commits') && call.body?.actions?.[0]?.file_path === 'cmdb/sulu.md');
+assert.ok(cmdbCommitCall.body.actions[0].content.includes(`last_change_trace_id: ${fixture.trace_id}`));
+assert.ok(cmdbCommitCall.body.actions[0].content.includes('last_verification_id: healthcheck/demo-001'));
 assert.equal(closureOutput.artifacts.kedb.status, 'registered');
+assert.equal(closureOutput.artifacts.kedb.sor_sync, 'completed');
+assert.equal(closureOutput.artifacts.kedb.qdrant_sync, 'completed');
 assert.equal(closureOutput.approval.verification_id, 'healthcheck/demo-001');
 assert.equal(closureOutput.demo_screens.video_4_closure.status, 'ready');
 
