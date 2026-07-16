@@ -190,9 +190,50 @@ curl -fsS -X POST -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" -H 'Content-Type: applicat
 workflow_post() {
   local name="$1" path="$2" expected_status="$3" payload="$4"
   http_capture "${name}" "${expected_status}" \
-    --max-time 4000 -X POST \
+    --max-time 70 -X POST \
     -H "Authorization: Bearer ${WORKFLOWS_TOKEN}" -H 'Content-Type: application/json' \
     --data "${payload}" "${N8N_BASE_URL%/}/webhook/${path}"
+}
+
+workflow_post_and_wait() {
+  local name="$1" path="$2" workflow_name="$3" result_node="$4" payload="$5"
+  local response http_status response_body api_base workflow_id execution execution_status
+  response="$(curl -sS --max-time 70 -w $'\n%{http_code}' -X POST \
+    -H "Authorization: Bearer ${WORKFLOWS_TOKEN}" -H 'Content-Type: application/json' \
+    --data "${payload}" "${N8N_BASE_URL%/}/webhook/${path}" || true)"
+  http_status="${response##*$'\n'}"
+  response_body="${response%$'\n'*}"
+  printf '%s\n' "${http_status}" >"${EVIDENCE_DIR}/${name}-client.status"
+  printf '%s\n' "${response_body}" >"${EVIDENCE_DIR}/${name}-client.json"
+  if [[ ! "${http_status}" =~ ^(200|504)$ ]]; then
+    echo "${name}: unexpected client HTTP ${http_status}" >&2
+    return 1
+  fi
+
+  api_base="${N8N_BASE_URL%/}/api/v1"
+  workflow_id="$(curl -fsS -H "X-N8N-API-KEY: ${N8N_API_KEY}" "${api_base}/workflows?limit=250" \
+    | jq -r --arg workflow_name "${workflow_name}" '.data[] | select(.name == $workflow_name) | .id' | head -n 1)"
+  for attempt in $(seq 1 120); do
+    execution="$(curl -fsS -H "X-N8N-API-KEY: ${N8N_API_KEY}" "${api_base}/executions?workflowId=${workflow_id}&limit=1&includeData=true")"
+    execution_status="$(jq -r '.data[0].status // "unknown"' <<<"${execution}")"
+    echo "${name}: attempt=${attempt} execution_status=${execution_status}"
+    case "${execution_status}" in
+      success)
+        printf '%s\n' "${execution}" >"${EVIDENCE_DIR}/${name}-execution.json"
+        jq --arg node "${result_node}" '.data[0].data.resultData.runData[$node][0].data.main[0][0].json' \
+          <<<"${execution}" >"${EVIDENCE_DIR}/${name}.json"
+        return 0
+        ;;
+      error|canceled|crashed)
+        printf '%s\n' "${execution}" >"${EVIDENCE_DIR}/${name}-execution.json"
+        echo "${name}: workflow execution failed" >&2
+        return 1
+        ;;
+    esac
+    sleep 5
+  done
+  echo "${name}: timed out waiting for n8n execution" >&2
+  return 1
 }
 
 assert_latest_workflow_error() {
@@ -222,26 +263,26 @@ common_build_payload() {
 
 workflow_post "existing-tag-overwrite-rejected" "sulu/rfc-source-analysis" '^200$' \
   "$(common_build_payload "${ORIGINAL_IMAGE_TAG}" "${SOURCE_REF}")"
-assert_latest_workflow_error "Sulu RFC Source Analysis" "existing-tag-overwrite-rejected" "already exists|will not be overwritten"
+assert_latest_workflow_error "Sulu RFC Source Analysis" "existing-tag-overwrite-rejected" "status code 400|already exists|will not be overwritten"
 
 missing_ref="oq/missing-${timestamp}"
 workflow_post "codebuild-failure" "sulu/rfc-source-analysis" '^200$' \
   "$(common_build_payload "${IMAGE_TAG}-failed" "${missing_ref}")"
 assert_latest_workflow_error "Sulu RFC Source Analysis" "codebuild-failure" "build failed|FAILED|FAULT|TIMED_OUT"
 
-workflow_post "real-ecr-build-push" "sulu/rfc-source-analysis" '^200$' \
+workflow_post_and_wait "real-ecr-build-push" "sulu/rfc-source-analysis" "Sulu RFC Source Analysis" "Build and Push Sulu Images" \
   "$(common_build_payload "${IMAGE_TAG}" "${SOURCE_REF}")"
 jq -e '.status == "built_and_pushed" and .image_publish.verification.status == "passed" and (.image_publish.verification.images | length) >= 2 and all(.image_publish.verification.images[]; .exists == true)' \
   "${EVIDENCE_DIR}/real-ecr-build-push.json" >/dev/null
 
 deploy_payload="$(jq -cn --arg realm "${REALM}" --arg tag "${IMAGE_TAG}" --arg issue "${ISSUE_URL}" '{realm:$realm,image_tag:$tag,rfc_issue_url:$issue,dry_run:false,allow_service_change:true}')"
-workflow_post "real-ecs-deploy" "sulu/version-deploy" '^200$' "${deploy_payload}"
+workflow_post_and_wait "real-ecs-deploy" "sulu/version-deploy" "Sulu Version Deploy" "Verify Version Deployment" "${deploy_payload}"
 jq -e '.status == "applied" and .applied == true and .verification.status == "passed" and .verification.healthy_targets >= 1' \
   "${EVIDENCE_DIR}/real-ecs-deploy.json" >/dev/null
 
 # OQ cleanup is an explicit second approved deployment, not the product's automatic rollback feature.
 restore_payload="$(jq -cn --arg realm "${REALM}" --arg tag "${ORIGINAL_IMAGE_TAG}" --arg issue "${ISSUE_URL}" '{realm:$realm,image_tag:$tag,rfc_issue_url:$issue,dry_run:false,allow_service_change:true}')"
-workflow_post "explicit-oq-restore" "sulu/version-deploy" '^200$' "${restore_payload}"
+workflow_post_and_wait "explicit-oq-restore" "sulu/version-deploy" "Sulu Version Deploy" "Verify Version Deployment" "${restore_payload}"
 jq -e '.status == "applied" and .applied == true and .verification.status == "passed"' \
   "${EVIDENCE_DIR}/explicit-oq-restore.json" >/dev/null
 

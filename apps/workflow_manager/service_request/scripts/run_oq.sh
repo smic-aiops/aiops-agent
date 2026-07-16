@@ -21,7 +21,7 @@ N8N_BASE_URL=""
 DRY_RUN=false
 SULU_IMAGE_TAG=""
 SULU_BASE_VERSION="3.0.3"
-SULU_TARGET_VERSION=""
+SULU_TARGET_VERSION="3.0.4"
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
@@ -98,7 +98,7 @@ if [[ -z "${SULU_IMAGE_TAG}" ]]; then
   fi
 fi
 SULU_IMAGE_TAG="${SULU_IMAGE_TAG:-3.0.4}"
-SULU_TARGET_VERSION="${SULU_TARGET_VERSION:-${SULU_IMAGE_TAG}}"
+SULU_TARGET_VERSION="${SULU_TARGET_VERSION:-3.0.4}"
 
 if [[ -z "${N8N_BASE_URL}" ]] && ! ${DRY_RUN}; then
   N8N_BASE_URL="$(terraform_output_json n8n_realm_urls | python3 -c 'import json,sys; realm=sys.argv[1]; data=json.load(sys.stdin); print(data.get(realm, ""))' "${REALM}")"
