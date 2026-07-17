@@ -9,7 +9,7 @@ import {translate} from 'sulu-admin-bundle/utils/Translator/Translator';
 import {buildDecisionExplanation} from './decisionTrace.mjs';
 
 const DEFAULT_POLL_MS = 1500;
-const DEFAULT_LIMIT = 100;
+const DEFAULT_LIMIT = 200;
 
 const TONE_COLORS = {
     info: {border: '#52a3d9', background: '#f5fbff', accent: '#1676a7'},
@@ -53,7 +53,8 @@ export default function AiNodeMonitoring(): React$Node {
     const [limit, setLimit] = useState<number>(DEFAULT_LIMIT);
     const [pollMs, setPollMs] = useState<number>(DEFAULT_POLL_MS);
     const [viewMode, setViewMode] = useState<string>('story');
-    const [scenarioFilter, setScenarioFilter] = useState<string>('scenario2');
+    const [scenarioFilter, setScenarioFilter] = useState<string>('all');
+    const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
 
     const [events, setEvents] = useState<Array<EventRow>>([]);
     const [status, setStatus] = useState<'' | 'ok' | 'error'>('');
@@ -147,6 +148,7 @@ export default function AiNodeMonitoring(): React$Node {
         {label: '50', value: 50},
         {label: '100', value: 100},
         {label: '200', value: 200},
+        {label: '500', value: 500},
     ]), []);
 
     const viewOptions = useMemo(() => ([
@@ -155,8 +157,16 @@ export default function AiNodeMonitoring(): React$Node {
     ]), []);
 
     const scenarioOptions = useMemo(() => ([
-        {label: 'シナリオ2', value: 'scenario2'},
         {label: 'すべて', value: 'all'},
+        {label: 'シナリオ2', value: 'scenario2'},
+    ]), []);
+
+    const eventTypeOptions = useMemo(() => ([
+        {label: '全イベント', value: 'all'},
+        {label: 'AI判断', value: 'ai_decision'},
+        {label: 'Zulip通知', value: 'zulip_notification'},
+        {label: '承認', value: 'approval'},
+        {label: '実行・検証', value: 'execution'},
     ]), []);
 
     const explained = useMemo(() => events.map((event) => ({
@@ -173,9 +183,18 @@ export default function AiNodeMonitoring(): React$Node {
     }, [explained]);
 
     const filtered = useMemo(() => {
-        if (scenarioFilter !== 'scenario2') return explained;
-        return explained.filter((item) => item.explanation.isScenario2 || scenarioTraceIds.has(item.explanation.traceId));
-    }, [explained, scenarioFilter, scenarioTraceIds]);
+        const scenarioFiltered = scenarioFilter === 'scenario2'
+            ? explained.filter((item) => item.explanation.isScenario2 || scenarioTraceIds.has(item.explanation.traceId))
+            : explained;
+        if (eventTypeFilter === 'all') return scenarioFiltered;
+        return scenarioFiltered.filter((item) => item.explanation.eventType === eventTypeFilter);
+    }, [eventTypeFilter, explained, scenarioFilter, scenarioTraceIds]);
+
+    const eventCounts = useMemo(() => explained.reduce((counts, item) => {
+        const key = item.explanation.eventType;
+        counts[key] = (counts[key] || 0) + 1;
+        return counts;
+    }, {}), [explained]);
 
     const timeline = useMemo(() => [...filtered].reverse().slice(-120), [filtered]);
     const latest = timeline.length > 0 ? timeline[timeline.length - 1].explanation : undefined;
@@ -194,6 +213,9 @@ export default function AiNodeMonitoring(): React$Node {
                 </div>
                 <div style={{minWidth: 150}}>
                     <SingleSelect onChange={(v) => setScenarioFilter(String(v))} options={scenarioOptions} value={scenarioFilter} />
+                </div>
+                <div style={{minWidth: 150}}>
+                    <SingleSelect onChange={(v) => setEventTypeFilter(String(v))} options={eventTypeOptions} value={eventTypeFilter} />
                 </div>
                 <div style={{minWidth: 180}}>
                     <Input
@@ -229,6 +251,19 @@ export default function AiNodeMonitoring(): React$Node {
                     )}
                     {loading ? ` ${translate('app.monitoring.status.loading')}` : ''}
                 </div>
+            </div>
+
+            <div style={{display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14}}>
+                {[
+                    ['AI判断', eventCounts.ai_decision || 0, '#1676a7'],
+                    ['Zulip通知', eventCounts.zulip_notification || 0, '#24713d'],
+                    ['承認', eventCounts.approval || 0, '#996515'],
+                    ['実行・検証', eventCounts.execution || 0, '#6b4da2'],
+                ].map(([label, count, color]) => (
+                    <div key={String(label)} style={{padding: '8px 12px', border: `1px solid ${color}`, borderRadius: 16, color}}>
+                        {label}: <strong>{count}</strong>
+                    </div>
+                ))}
             </div>
 
             {viewMode === 'story' ? (
@@ -287,6 +322,7 @@ export default function AiNodeMonitoring(): React$Node {
                                             <div style={{display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap'}}>
                                                 <div>
                                                     <span style={{fontSize: 16, fontWeight: 700, color: palette.accent}}>{explanation.stage}</span>
+                                                    <span style={{fontSize: 11, color: '#fff', background: palette.accent, borderRadius: 10, padding: '2px 7px', marginLeft: 8}}>{explanation.eventTypeLabel}</span>
                                                     <span style={{fontSize: 12, color: '#666', marginLeft: 10}}>{explanation.node}</span>
                                                 </div>
                                                 <div style={{fontSize: 12, color: '#666'}}>

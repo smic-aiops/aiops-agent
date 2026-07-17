@@ -25,6 +25,14 @@ const RISK_LABELS = {
     critical: 'サービス停止につながる可能性があるため、特に慎重に扱います',
 };
 
+const EVENT_TYPE_LABELS = {
+    ai_decision: 'AI判断',
+    zulip_notification: 'Zulip通知',
+    approval: '承認',
+    execution: '実行・検証',
+    workflow_event: 'ワークフロー',
+};
+
 function isObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -171,6 +179,7 @@ function eventData(event) {
 
 function stageForNode(node) {
     const value = String(node || '').toLowerCase();
+    if (value.includes('zulip')) return ['Zulip通知', 'Zulipへ送る内容と送信結果を確認しました'];
     if (value.includes('classify') || value.includes('chat core')) return ['受付・分類', '届いた内容が何の話かを整理しました'];
     if (value.includes('enrichment plan')) return ['調査計画', '判断に必要な資料やログを選びました'];
     if (value.includes('context summary') || value.includes('enrichment summary')) return ['情報整理', '集めた情報を短く整理しました'];
@@ -182,6 +191,15 @@ function stageForNode(node) {
     if (value.includes('callback') || value.includes('result') || value.includes('verify')) return ['結果確認', '実行結果を確認し、記録に残しました'];
     if (value.includes('queue') || value.includes('execute') || value.includes('recovery')) return ['実行', '承認された手順を実行しました'];
     return ['処理中', 'AIノードの処理結果を受け取りました'];
+}
+
+function eventTypeForNode(node) {
+    const value = String(node || '').toLowerCase();
+    if (value.includes('openai') || value.includes('llm')) return 'ai_decision';
+    if (value.includes('zulip')) return 'zulip_notification';
+    if (value.includes('approval') || value.includes('approve') || value.includes('deny') || value.includes('cab')) return 'approval';
+    if (value.includes('execute') || value.includes('enqueue') || value.includes('queue') || value.includes('result') || value.includes('verify') || value.includes('recovery')) return 'execution';
+    return 'workflow_event';
 }
 
 function humanizeReason(rationale, requiredConfirm, risk, nextAction) {
@@ -207,6 +225,7 @@ function humanizeReason(rationale, requiredConfirm, risk, nextAction) {
 function buildDecisionExplanation(event) {
     const context = eventData(event || {});
     const [stage, action] = stageForNode(context.node);
+    const eventType = eventTypeForNode(context.node);
     const find = context.find;
 
     const nextAction = firstString(find(['next_action', 'nextAction']));
@@ -227,6 +246,8 @@ function buildDecisionExplanation(event) {
     const dryRun = toBoolean(find(['dry_run', 'dryRun']));
     const simulated = toBoolean(find(['simulated']));
     const applied = toBoolean(find(['applied']));
+    const approvalDecision = firstString(find(['approval_decision', 'approvalDecision', 'decision']));
+    const normalizedApprovalDecision = String(approvalDecision || status || '').toLowerCase();
 
     let observed = summary ? truncate(summary) : '';
     if (!observed && category) observed = `届いた内容を「${CATEGORY_LABELS[category] || category}」として読み取りました`;
@@ -234,7 +255,13 @@ function buildDecisionExplanation(event) {
     if (!observed) observed = `${context.node} の処理ログを確認しました`;
 
     let decision = '';
-    if (nextAction && NEXT_ACTION_LABELS[nextAction]) decision = NEXT_ACTION_LABELS[nextAction];
+    if (eventType === 'approval' && /approve|approved|承認/.test(normalizedApprovalDecision)) decision = '担当者が実行を承認しました';
+    else if (eventType === 'approval' && /deny|denied|reject|rejected|否認|却下/.test(normalizedApprovalDecision)) decision = '担当者が実行を否認しました';
+    else if (eventType === 'approval') decision = '担当者の承認を待っています';
+    else if (eventType === 'zulip_notification' && context.phase === 'after' && !/fail|error/.test(String(status || '').toLowerCase())) decision = 'Zulipへの通知送信処理が完了しました';
+    else if (eventType === 'zulip_notification' && /fail|error/.test(String(status || '').toLowerCase())) decision = 'Zulipへの通知送信に失敗しました';
+    else if (eventType === 'zulip_notification') decision = 'Zulipへの通知を準備しています';
+    else if (nextAction && NEXT_ACTION_LABELS[nextAction]) decision = NEXT_ACTION_LABELS[nextAction];
     else if (status === 'validated' && dryRun === true) decision = '本番を変更しないリハーサルに成功しました';
     else if (status && ['completed', 'success', 'succeeded', 'closed'].includes(status.toLowerCase())) decision = '処理は正常に完了しました';
     else if (workflowId) decision = `「${workflowId}」という手順を実行候補に選びました`;
@@ -242,7 +269,9 @@ function buildDecisionExplanation(event) {
     else decision = action;
 
     let humanAction = '今は人の操作は必要ありません';
-    if (nextAction === 'require_approval' || requiredConfirm === true) humanAction = '内容を確認し、実行してよければ承認してください';
+    if (eventType === 'approval' && /deny|denied|reject|rejected|否認|却下/.test(normalizedApprovalDecision)) humanAction = '否認理由を確認し、必要なら計画を修正してください';
+    else if (eventType === 'approval' && !/approve|approved|承認/.test(normalizedApprovalDecision)) humanAction = '内容を確認し、承認または否認してください';
+    else if (nextAction === 'require_approval' || requiredConfirm === true) humanAction = '内容を確認し、実行してよければ承認してください';
     else if (nextAction === 'ask_clarification') humanAction = '不足している情報への回答が必要です';
     else if (nextAction === 'reject') humanAction = '実行せず、運用担当者へ相談してください';
     else if (status === 'validated' && dryRun === true && applied !== true) humanAction = 'リハーサル結果を確認してから、本番実行を判断してください';
@@ -251,7 +280,9 @@ function buildDecisionExplanation(event) {
     if (workflowId) evidence.unshift(`選んだ手順: ${workflowId}`);
     if (risk && RISK_LABELS[risk]) evidence.push(`危険度: ${RISK_LABELS[risk]}`);
 
-    const confidenceText = confidence === undefined
+    const confidenceText = eventType !== 'ai_decision'
+        ? 'AIの確信度を使わない運用イベントです'
+        : confidence === undefined
         ? '確信度はログに記録されていません'
         : `確信度 ${Math.round(confidence * 100)}%${confidence >= 0.8 ? '（かなり自信あり）' : confidence >= 0.6 ? '（おおむね自信あり）' : '（慎重に確認が必要）'}`;
 
@@ -259,7 +290,10 @@ function buildDecisionExplanation(event) {
     const isScenario2 = /wf\.sulu_configuration_recovery|sulu configuration recovery|suluservicedown|desired_state|usecase[-_ ]?31|scenario[-_ ]?2|シナリオ2/.test(haystack);
 
     let tone = 'info';
-    if (nextAction === 'require_approval' || requiredConfirm === true) tone = 'approval';
+    if (eventType === 'approval' && /deny|denied|reject|rejected|否認|却下/.test(normalizedApprovalDecision)) tone = 'danger';
+    else if (eventType === 'approval' && /approve|approved|承認/.test(normalizedApprovalDecision)) tone = 'success';
+    else if (eventType === 'approval' || nextAction === 'require_approval' || requiredConfirm === true) tone = 'approval';
+    else if (eventType === 'zulip_notification' && context.phase === 'after') tone = 'success';
     else if (nextAction === 'reject' || risk === 'critical') tone = 'danger';
     else if (status === 'validated' || ['completed', 'success', 'succeeded'].includes(String(status || '').toLowerCase())) tone = 'success';
     else if (nextAction === 'ask_clarification' || risk === 'high') tone = 'warning';
@@ -288,6 +322,9 @@ function buildDecisionExplanation(event) {
         simulated,
         applied,
         isScenario2,
+        eventType,
+        eventTypeLabel: EVENT_TYPE_LABELS[eventType],
+        approvalDecision: approvalDecision || '',
         tone,
     };
 }
@@ -302,4 +339,5 @@ export {
     NEXT_ACTION_LABELS,
     CATEGORY_LABELS,
     RISK_LABELS,
+    EVENT_TYPE_LABELS,
 };

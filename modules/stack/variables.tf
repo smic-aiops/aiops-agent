@@ -2964,7 +2964,7 @@ variable "aiops_agent_environment" {
       "N8N_SMTP_HOST" : "email-smtp.ap-northeast-1.amazonaws.com",
       "N8N_SMTP_PORT" : "587",
       "N8N_SMTP_SSL" : "false",
-      "N8N_DEBUG_LOG" : "false"
+      "N8N_DEBUG_LOG" : "true"
     }
   }
 }

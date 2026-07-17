@@ -257,7 +257,7 @@ locals {
       N8N_KEYCLOAK_BASE_URL                 = trim(local.keycloak_base_url_effective, "/")
       N8N_KEYCLOAK_ADMIN_REALM              = "master"
       N8N_ZULIP_ENFORCE_KEYCLOAK_MEMBERSHIP = "true"
-      N8N_DEBUG_LOG                         = "false"
+      N8N_DEBUG_LOG                         = "true"
       N8N_SMTP_SENDER                       = local.n8n_smtp_sender_effective
       N8N_SMTP_HOST                         = "email-smtp.${var.region}.amazonaws.com"
       N8N_SMTP_PORT                         = "587"

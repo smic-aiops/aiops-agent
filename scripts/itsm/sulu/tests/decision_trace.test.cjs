@@ -172,3 +172,34 @@ test('出力が欠けても空のサマリにしない', () => {
     assert.ok(explanation.decision.length > 0);
     assert.ok(explanation.reason.length > 0);
 });
+
+test('Zulip通知の送信完了をリアルタイムイベントとして識別する', () => {
+    const explanation = buildDecisionExplanation(event('Post to Zulip', {
+        trace_id: 'zulip-notify-001',
+        status: 'success',
+        message_id: 12345,
+        summary: 'インシデント通知をZulipへ送信',
+    }));
+
+    assert.equal(explanation.eventType, 'zulip_notification');
+    assert.equal(explanation.eventTypeLabel, 'Zulip通知');
+    assert.equal(explanation.stage, 'Zulip通知');
+    assert.match(explanation.decision, /送信処理が完了/);
+    assert.equal(explanation.tone, 'success');
+});
+
+test('承認者の承認結果を運用イベントとして識別する', () => {
+    const explanation = buildDecisionExplanation(event('Record Approval Approved', {
+        trace_id: 'approval-001',
+        approval_id: 'approval-001',
+        decision: 'approve',
+        status: 'approved',
+        actor: {name: 'CAB担当者'},
+    }));
+
+    assert.equal(explanation.eventType, 'approval');
+    assert.equal(explanation.eventTypeLabel, '承認');
+    assert.match(explanation.decision, /承認しました/);
+    assert.equal(explanation.approvalDecision, 'approve');
+    assert.equal(explanation.tone, 'success');
+});
