@@ -7,9 +7,9 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const workflowPath = resolve(scriptDir, '../workflows/aiops_job_engine_queue.json');
 const workflow = JSON.parse(await readFile(workflowPath, 'utf8'));
-const node = workflow.nodes.find((item) => item.name === 'Execute Job (stub)');
+const node = workflow.nodes.find((item) => item.name === 'Execute Job');
 if (!node?.parameters?.jsCode) {
-  throw new Error('Execute Job (stub) code node was not found');
+  throw new Error('Execute Job code node was not found');
 }
 
 const marker = "  throw new Error(`unsupported workflow_id: ${workflowId}`);";

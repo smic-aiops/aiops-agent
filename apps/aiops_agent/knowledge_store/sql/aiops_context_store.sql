@@ -153,6 +153,20 @@ CREATE TABLE IF NOT EXISTS aiops_job_queue (
 CREATE INDEX IF NOT EXISTS aiops_job_queue_status_created_at_idx
   ON aiops_job_queue (status, created_at);
 
+CREATE TABLE IF NOT EXISTS aiops_execution_events (
+  event_id BIGSERIAL PRIMARY KEY,
+  trace_id TEXT NOT NULL,
+  job_id UUID NULL REFERENCES aiops_job_queue(job_id) ON DELETE CASCADE,
+  phase TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed', 'waiting')),
+  message TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS aiops_execution_events_trace_event_idx
+  ON aiops_execution_events (trace_id, event_id);
+
 CREATE TABLE IF NOT EXISTS aiops_job_results (
   job_id UUID PRIMARY KEY REFERENCES aiops_job_queue(job_id) ON DELETE CASCADE,
   status TEXT NOT NULL,

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const workflowPath = resolve(scriptDir, '../workflows/aiops_job_engine_queue.json');
 const workflow = JSON.parse(await readFile(workflowPath, 'utf8'));
-const code = workflow.nodes.find((item) => item.name === 'Execute Job (stub)')?.parameters?.jsCode || '';
+const code = workflow.nodes.find((item) => item.name === 'Execute Job')?.parameters?.jsCode || '';
 
 for (const workflowId of [
   'wf.sulu_service_control',
