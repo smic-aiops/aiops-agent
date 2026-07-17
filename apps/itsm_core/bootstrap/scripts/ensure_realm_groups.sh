@@ -353,11 +353,6 @@ main() {
       exit 1
     fi
 
-    if [[ -n "${DRY_RUN:-}" ]]; then
-      echo "[gitlab] DRY_RUN skip Keycloak admin assignments for realm ${realm}"
-      continue
-    fi
-
     admin_emails=()
     while IFS= read -r email; do
       [[ -n "${email}" ]] && admin_emails+=("${email}")
@@ -373,6 +368,14 @@ main() {
         continue
       fi
       user_id="$(gitlab_find_user_id_by_email "${email}")"
+      if [[ -n "${DRY_RUN:-}" ]]; then
+        if [[ -n "${user_id}" ]]; then
+          echo "[gitlab] DRY_RUN add/update owner user_id=${user_id} email=${email} group_id=${group_id}"
+        else
+          echo "[gitlab] DRY_RUN invite owner email=${email} group_id=${group_id}"
+        fi
+        continue
+      fi
       if [[ -n "${user_id}" ]]; then
         gitlab_update_user_locale "${user_id}" "${user_locale}" "${user_timezone}"
         gitlab_add_group_owner "${group_id}" "${user_id}"
@@ -380,6 +383,10 @@ main() {
         gitlab_invite_group_owner "${group_id}" "${email}"
       fi
     done
+
+    if [[ -n "${DRY_RUN:-}" ]]; then
+      continue
+    fi
 
     if [[ "${update_group_locales}" == "true" ]]; then
       gitlab_update_group_user_locales "${group_id}" "${user_locale}" "${user_timezone}"
