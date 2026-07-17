@@ -625,6 +625,8 @@ LIMIT 20;
 - [oq_usecase_28_approval_link_decision_history.md](oq_usecase_28_approval_link_decision_history.md)
 - [oq_usecase_29_auto_approval_as_decision.md](oq_usecase_29_auto_approval_as_decision.md)
 - [oq_usecase_30_cir_request_intake_and_notify.md](oq_usecase_30_cir_request_intake_and_notify.md)
+- [oq_usecase_31_demo_gitlab_misconfiguration_cab_recovery.md](oq_usecase_31_demo_gitlab_misconfiguration_cab_recovery.md)
+- [oq_usecase_32_demo_sulu_memory_regression_full_cycle.md](oq_usecase_32_demo_sulu_memory_regression_full_cycle.md)
 
 ---
 
@@ -1871,8 +1873,12 @@ bash apps/aiops_agent/orchestrator/scripts/run_oq_zulip_primary_hello.sh --execu
 
 #### 目的
 
-Sulu 管理画面の **Monitoring > AI Nodes（AI ノードモニタリング）** に `サマリ` 列を追加し、
-AI ノードの出力（LLM の構造化 JSON）から **判断結果を一行で要約**して確認できることを検証する。
+Sulu 管理画面の **Monitoring > AI Nodes（AI ノードモニタリング）** で、
+AI ノードの出力（LLM の構造化 JSON）から、内部のChain of Thoughtではなく、
+**入力事実・判断結果・理由・確信度・人に求める操作**をやさしい日本語で確認できることを検証する。
+
+デモシナリオ2（GitLab構成誤変更からのCAB承認付きSulu復旧）では、同じtrace IDのイベントを
+時系列の「判断実況」として表示する。
 
 #### 対象範囲
 
@@ -1895,9 +1901,18 @@ AI ノードの出力（LLM の構造化 JSON）から **判断結果を一行�
 
 - AI ノードモニタリングのテーブル列が以下の順で表示される
   - `ID	受信時刻	レルム	ワークフロー	ノード	実行	サマリ	入出力`
-- `サマリ` 列が空でなく、以下を含む形式で表示される（例）
-  - `判断: next_action=...`（preview 系）
-  - `判断: rag_mode=...`（rag_router 系）
+- `サマリ` 列が空でなく、構造化値をやさしい説明へ変換して表示する（例）
+  - `next_action=require_approval` → `影響が大きい可能性があるため、人のOKを待ちます`
+  - `dry_run=true, applied=false` → `本番を変更しないリハーサルに成功しました`
+- `やさしい判断実況` では、各イベントに次が表示される
+  - `AIがしたこと`
+  - `わかったこと`
+  - `判断`
+  - `理由`
+  - `人にお願いすること`
+  - `自信の目安`
+- `シナリオ2` フィルターで、同じtrace IDの分類・調査・承認判定・CAB承認・ドライラン・記録を追跡できる
+- `dry_run=true` / `applied=false` は「本番変更済み」と誤解されず、「リハーサル」と表示される
 - `入出力` が巨大で Sulu 側で truncation された場合でも、`サマリ` は表示できる（空にならない）
 - 管理画面の翻訳が更新されても、列見出し（`サマリ`）が欠落しない（`app.monitoring.table.summary` が解決できる）
 
@@ -1914,9 +1929,21 @@ AI ノードの出力（LLM の構造化 JSON）から **判断結果を一行�
 5. （永続反映の確認・任意）Sulu を再デプロイした後も同様に表示されることを確認する
    - 例：`scripts/itsm/sulu/redeploy_sulu.sh --realm <realm>`（運用手順に従う）
 
+##### シナリオ2の表示専用テスト
+
+```bash
+# 送信内容だけを確認（既定・外部変更なし）
+scripts/itsm/sulu/test_ai_node_decision_trace.sh --dry-run
+
+# Observerへ6件のデモログを送信（復旧処理やインフラ変更は行わない）
+scripts/itsm/sulu/test_ai_node_decision_trace.sh --execute --realm aiops
+```
+
+送信後、Suluの `Monitoring > AI Nodes` で `やさしい判断実況` と `シナリオ2` を選択する。
+
 #### 受け入れ基準
 - **合格**: 受け入れ基準をすべて満たす
-- **不合格**: `サマリ` 列が出ない / 常に空 / 既存列が崩れる / observer 送信が 4xx/5xx で失敗する
+- **不合格**: 判断実況が出ない / `サマリ` が常に空 / trace IDがつながらない / ドライランを本番変更と表示する / 既存列が崩れる / observer 送信が 4xx/5xx で失敗する
 
 #### 証跡（evidence）
 
@@ -2144,6 +2171,211 @@ AIOpsAgent が `auto_enqueue`（自動承認/自動実行）を選択した場�
 - `apps/aiops_agent/orchestrator/docs/app_requirements.md`（UC-AIOPS-OFF-016）
 - `apps/aiops_agent/orchestrator/docs/dq/dq.md`（DQ-OFF-014）
 - `apps/aiops_agent/orchestrator/docs/oq/oq.md`
+
+---
+
+### OQ-31: GitLab 構成誤変更からの CAB 承認付き Sulu 復旧（source: `oq_usecase_31_demo_gitlab_misconfiguration_cab_recovery.md`）
+
+#### 目的
+
+デモシナリオ2について、GitLab 上の構成誤変更、修正 Merge Request、変更 Issue、AIOps Agent の承認要求、CAB 承認、復旧ワークフロー実行、検証、記録・クローズまでが一連の証跡として追跡できることを確認する。
+
+#### 安全設計
+
+- 既定は `dry_run=true` であり、Sulu や Exastro ITA へ実変更を行わない。
+- GitLab の既定ブランチは変更しない。OQ 専用の誤設定ブランチと修正ブランチを作り、その間の MR を作成する。
+- 実サービス変更には `--apply-service-change` とワークフロー引数 `allow_service_change=true` の両方が必要である。
+- 実停止を含むフルOQには `--full-oq --confirm-service-stop <realm>` が必要である。
+- フルOQは `EXIT` trap を設定し、途中失敗でもSuluへ `action=up` を送り、ECSと外形HTTPの復旧を確認する。
+
+#### 対象
+
+- `Sulu Configuration Recovery`
+  - `meta.workflowId=wf.sulu_configuration_recovery`
+  - Webhook: `POST /webhook/sulu/configuration-recovery`
+- `Test Sulu Configuration Recovery`
+  - Webhook: `POST /webhook/tests/sulu/configuration-recovery`
+- `aiops-job-engine-queue`
+  - `wf.sulu_configuration_recovery` のディスパッチ
+- AIOps Adapter の明示実行・承認経路
+  - `run wf.sulu_configuration_recovery {...}`
+  - `POST /webhook/approval/confirm`
+
+#### 受入基準
+
+1. GitLab のOQ専用ブランチに `demo/sulu-runtime.yml` の `desired_state: down` が作成される。
+2. 修正ブランチで `desired_state: up` へ戻すMRと変更Issueが作成される。
+3. Agent が `next_action=require_approval` と承認トークンを発行する。
+4. CAB 承認後、ジョブエンジンが `wf.sulu_configuration_recovery` を実行する。
+5. 非破壊モードでは結果が `status=validated`, `dry_run=true`, `simulated=true`, `applied=false` となる。
+6. リスク、影響CI、テスト、ロールバック計画、GitLab Issue/MR URL が結果に含まれる。
+7. 結果がGitLab Issueへ追記され、Issueと未マージMRがクローズされる。
+8. フルOQではSuluが実際に `desiredCount=0/runningCount=0` へ遷移する。
+9. CloudWatchイベント時刻からGitLab全refの直近commit差分を検索し、`desired_state: down` のcommitを原因候補として選択する。
+10. 復旧後にSuluが `desiredCount>=1/runningCount>=1` かつ外形HTTP 2xxとなる。
+11. CAB承認後のZulip通知が成功する。
+12. Zulip通知、GitLab Issue/MR、OQレポートの人向け文言が可能な限り日本語で表示される。API互換性に必要なworkflow ID、trace ID、JSONキーは維持する。
+
+#### 実行
+
+```bash
+# 必須dry-run
+apps/aiops_agent/orchestrator/scripts/run_oq_usecase_31_demo_gitlab_misconfiguration_cab_recovery.sh
+
+# 非破壊の実環境OQ
+apps/aiops_agent/orchestrator/scripts/run_oq_usecase_31_demo_gitlab_misconfiguration_cab_recovery.sh \
+  --execute \
+  --evidence-dir outputs/oq/usecase-31-$(date +%Y%m%d-%H%M%S)
+
+# 実Sulu停止を含むフルOQ（停止許可済み時間帯のみ）
+apps/aiops_agent/orchestrator/scripts/run_oq_usecase_31_demo_gitlab_misconfiguration_cab_recovery.sh \
+  --execute \
+  --full-oq \
+  --confirm-service-stop aiops \
+  --evidence-dir outputs/oq/usecase-31-full-$(date +%Y%m%d-%H%M%S)
+```
+
+#### Exastro ITA の位置付け
+
+復旧ワークフローには `EXASTRO_ITA_DEFAULT_BACKEND=exastro` の場合にConductor実行APIを呼び、返却された `conductor_instance_id` を記録し、Service Control APIでSulu復旧を確認する経路を実装した。
+
+ただし2026-07-16時点の実環境は `exastro-web` とSystem Management APIの `exastro-api-admin` のみであり、Conductor APIを提供する `ita-api-organization`、Conductor同期ワーカー、Ansible実行ワーカーが配備されていない。実APIでConductor endpointが404となるため、今回の合格実行は `execution_backend=service-control` を使用した。Exastro適用を有効化するには、これらの公式コンポーネントに加えてorganization/workspace、Conductor、Operation、Movement、Parameter Set、n8n側の `EXASTRO_ITA_*` 環境変数を配備する必要がある。
+
+#### 現在の既知事項
+
+- CAB承認、ジョブ投入、承認履歴記録、承認後Zulip通知は成功する。
+- CAB承認後のZulip通知は「承認ID」「コンテキストID」「ジョブID」「対象ワークフロー」などの日本語ラベルを使用する。
+- 実行証跡には機械判定用JSONに加えて、日本語の `oq_usecase_31_report_ja.md` を保存する。
+- Zulipはrealm別の実Botメール/API keyで `aiops-zulip-basic` を更新し、form-urlencodedで送信する。検証実行 `35080` はmessage id `60` を返した。
+- CloudWatchイベント時刻を基準にGitLab commits APIを `all=true` で検索し、対象ファイルのdiffから原因commitを自動選択する。
+- フルOQ合格実行は `trace_id=4df35d54-d0ec-4ee4-8937-ce859a702d66`、証跡は `outputs/oq/usecase-31-full-pass-20260716-155658/` に保存した。
+
+#### 実サービス変更モードの前提
+
+`--apply-service-change` 単独は承認済み復旧として `action=up` のみを実行する。実停止からの全経路は `--full-oq --confirm-service-stop <realm>` を使用する。フルOQは実サービスへ影響するため、停止許可済み時間帯でのみ実施する。
+
+---
+
+### OQ-USECASE-32: Suluメモリ回帰の統合デモ（source: `oq_usecase_32_demo_sulu_memory_regression_full_cycle.md`）
+
+#### 目的
+
+Suluの直近デプロイ後に発生したメモリ高騰2件とOutOfMemoryを相関し、復旧候補の順位付け、CAB承認、修正branch/MR/RFC生成、テスト・リスク評価、修正版デプロイ、CMDB同期、関連チケットのクローズ、KEDB/Qdrant同期までを同一`trace_id`で追跡できることを確認する。
+
+対象ワークフローは`wf.sulu_memory_regression_demo`、Webhookは`POST /webhook/sulu/memory-regression-demo`である。
+復旧候補の契約は`apps/workflow_manager/service_request/schemas/aiops.recovery_candidates.v1.schema.json`を正とする。
+
+#### 安全設計
+
+- 既定はローカルdry-runで、n8n、GitLab、ECR、ECS、CMDBへ変更を行わない。
+- `--execute`だけではn8n上のdry-runを実行する。
+- フルOQには`--full-oq --confirm-realm <realm> --decision-id <id> --gitlab-code-project <path>`が必要である。
+- フルOQでは、GitLab書込み、CI、ECR push、サービス変更、状態更新の各ガードがすべて明示的に有効化される。
+- ワークフローはCAB/eCABの`decision_id`、全必須テストの合格、High以外のリスク評価が揃わない限り、修正版の適用準備完了と判定しない。
+- CMDB同期、チケットクローズ、KEDB登録には、同一実行の`execute_fixed_deploy=true`または`post_deploy_verified=true`と`verification_id`を必須とする。
+- ライブ経路ではcode projectとservice-management projectを分離する。code projectはfix branch/MR/CI、service-management projectはRFC、CMDB、Incident/Problem/Change、Known Errorを保持する。
+- CodeBuildのソースリポジトリがGitLab code projectのpush mirrorである場合、修正branchがmirror先へ到達し、期待するcommit SHAを取得できることをECR push前に確認する。未到達またはSHA不一致の場合は停止する。
+- 統合ワークフローは`build_source.source_ref`をCodeBuildへ渡す前に参照先APIで解決し、`artifacts.commit_id`と`artifacts.source_mirror.resolved_commit_sha`を自動照合する。
+
+#### 固定フィクスチャ
+
+`apps/aiops_agent/orchestrator/scripts/tests/fixtures/sulu_memory_regression_full_cycle.json`を使用する。
+
+- `V_PREVIOUS=3.0.3`
+- `V_LATEST=3.0.4`
+- `V_FIXED=3.0.4-smic.1`
+- メモリ92%と94%の2イベント
+- 同じrealm、service、image tagのOOMイベント
+- デプロイ後30分以内の時系列
+
+#### 受入基準
+
+1. `correlation.status=correlated`かつ`confidence>=0.9`である。
+2. 異なる2つのメモリイベント、OOM、直近デプロイが根拠として保存される。
+3. `aiops.recovery_candidates.v1`として3件以上の復旧候補が返る。
+4. 第1候補が`wf.sulu_version_deploy`による`V_PREVIOUS`へのロールバックである。
+5. 各候補に順位、根拠、リスク、可逆性、承認要否が含まれる。
+6. fix branch、MR、RFC、選択テスト、テスト結果、リスクスコアが返る。
+7. service-management projectにIncident、Emergency Change、Problem、恒久対策Change/RFCを自動生成し、相互リンクする。
+8. フルOQでは`V_FIXED`のECR作成とECSデプロイがCAB承認後にだけ行われる。
+9. 最終検証IDを保存した後にCMDBの現行バージョンを更新し、入力Issueと自動生成Issueを重複なくクローズする。
+10. CMDBへ`last_change_trace_id`、RFC URL、`last_verification_id`、検証時刻を保存する。
+11. Known Error Issueを作成し、GitLab Issue backfillでSoR同期、Issue RAG syncでQdrant同期を完了する。
+12. `demo_screens.video_1_*`から`video_4_*`がすべて`ready`となる。
+13. フルOQでは`artifacts.source_mirror.status=verified`で、期待SHAと解決SHAが一致する。SHA不一致はHTTP 409で停止する。
+14. リスクスコアは基礎リスク、変更ファイル数、相関confidence、失敗／未完了テスト、全テスト合格の加減点根拠を返す。
+
+#### 実行
+
+```bash
+# ローカルdry-run。外部通信なし
+bash apps/aiops_agent/orchestrator/scripts/run_oq_usecase_32_demo_sulu_memory_regression_full_cycle.sh
+
+# n8n上のdry-run
+bash apps/aiops_agent/orchestrator/scripts/run_oq_usecase_32_demo_sulu_memory_regression_full_cycle.sh \
+  --execute \
+  --evidence-dir outputs/oq/sulu-memory-dry-run
+
+# 実変更を含むフルOQ
+bash apps/aiops_agent/orchestrator/scripts/run_oq_usecase_32_demo_sulu_memory_regression_full_cycle.sh \
+  --full-oq \
+  --realm aiops \
+  --confirm-realm aiops \
+  --decision-id <CAB_DECISION_ID> \
+  --gitlab-code-project aiops/aiops-agent \
+  --gitlab-service-project aiops/service-management \
+  --ticket-iids <INC_IID>,<PRB_IID>,<CHG_IID> \
+  --evidence-dir outputs/oq/sulu-memory-full
+```
+
+#### 30秒録画手順
+
+録画前にブラウザタブを、Grafana／n8n、Zulip、GitLab、CMDB/KEDBの順に並べる。各動画では同じ`trace_id`を表示し、秘密情報をマスクする。
+
+##### 動画1：複数情報の相関分析（PPTX 58ページ）
+
+| 秒 | 画面 | 操作・表示 |
+| ---: | --- | --- |
+| 0–5 | Grafana | メモリ92%、94%とOOMを時系列で表示 |
+| 5–15 | n8n | `correlation.evidence`で直近デプロイ、2メトリクス、OOMを順に展開 |
+| 15–24 | n8n | 同一realm／service／image tagと30分窓のチェックを表示 |
+| 24–30 | Zulip | 原因候補、confidence、trace_idを表示 |
+
+##### 動画2：復旧策を優先順位付きで提示（PPTX 60ページ）
+
+| 秒 | 画面 | 操作・表示 |
+| ---: | --- | --- |
+| 0–8 | Zulip | 障害要約と「復旧候補を表示」を投稿 |
+| 8–20 | n8n/Zulip | 1位ロールバック、2位再起動、3位手動診断を表示 |
+| 20–26 | Zulip | 各候補の根拠、risk、reversible、requires_approvalを表示 |
+| 26–30 | Zulip | 1位を選択し、CAB承認リンクへ遷移 |
+
+##### CAB承認画面（PPTX 66ページ）
+
+既存OQ-31の承認リンク、`/decision`、Approval Historyを流用する。統合デモの`trace_id`、第1候補、テスト結果、リスクスコア、ロールバック先を承認メッセージへ含める。
+
+##### 動画3：変更要求と影響分析（PPTX 64ページ）
+
+| 秒 | 画面 | 操作・表示 |
+| ---: | --- | --- |
+| 0–8 | GitLab | 自動生成されたfix branchとMRを表示 |
+| 8–16 | GitLab | 変更ファイルとメモリ対策コードを表示 |
+| 16–23 | GitLab CI/CD | 選択テストと成功結果を表示 |
+| 23–30 | GitLab Issue | RFC、影響CI、リスクスコア、CAB判断材料を表示 |
+
+##### 動画4：CMDB・KEDB・プロセス連携（PPTX 71ページ）
+
+| 秒 | 画面 | 操作・表示 |
+| ---: | --- | --- |
+| 0–7 | Sulu/Grafana | `V_FIXED`とHTTP／メモリ正常化を表示 |
+| 7–15 | GitLab CMDB | `current_version=V_FIXED`と変更traceを表示 |
+| 15–22 | GitLab/RDS | Incident、Problem、ChangeのClosedを表示 |
+| 22–28 | GitLab/Qdrant | Known ErrorとKEDB検索結果を表示 |
+| 28–30 | n8n | `video_4_closure.status=ready`とtrace_idを表示 |
+
+#### フォールバック
+
+ライブ実行が中断した場合は、`outputs/oq/<run_id>/integrated-demo-response.json`を表示する。どの地点から保存済み証跡へ切り替えたかを明示し、未実行の処理を実行済みとして説明しない。
 
 ---
 <!-- OQ_SCENARIOS_END -->

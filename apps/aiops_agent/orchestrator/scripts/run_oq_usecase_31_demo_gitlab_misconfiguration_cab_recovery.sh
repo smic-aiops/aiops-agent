@@ -21,19 +21,19 @@ Usage:
   apps/aiops_agent/orchestrator/scripts/run_oq_usecase_31_demo_gitlab_misconfiguration_cab_recovery.sh [options]
 
 Options:
-  --execute                       Run the non-destructive OQ (default: dry-run)
-  --apply-service-change          After CAB approval, invoke Sulu action=up
-  --full-oq                       Stop the real Sulu service, correlate CloudWatch/GitLab, then recover
-  --confirm-service-stop <realm>  Required with --full-oq; must equal the target realm
-  --realm <realm>                 Override realm (default: terraform output default_realm)
-  --project-path <group/project>  Override GitLab service-management project
-  --evidence-dir <dir>            Evidence directory (required for --execute)
-  -h, --help                      Show help
+  --execute                       非破壊OQを実行（既定はドライラン）
+  --apply-service-change          CAB承認後にSuluの action=up を実行
+  --full-oq                       実Suluを停止し、CloudWatch/GitLab相関後に復旧
+  --confirm-service-stop <realm>  --full-oqで必須。対象realmと一致する必要あり
+  --realm <realm>                 realmを上書き（既定: terraform output default_realm）
+  --project-path <group/project>  GitLab service-managementプロジェクトを上書き
+  --evidence-dir <dir>            証跡ディレクトリ（--executeで必須）
+  -h, --help                      ヘルプを表示
 
-The default execution creates only temporary GitLab branches/MR/Issue and runs the
-recovery workflow with dry_run=true. It never changes the GitLab default branch.
---full-oq is destructive for the demo service and installs an EXIT trap that always
-attempts action=up until ECS and the public health URL recover.
+既定実行はGitLabに一時ブランチ・MR・Issueのみを作成し、復旧ワークフローを
+dry_run=trueで実行します。GitLabの既定ブランチは変更しません。
+--full-oqはデモサービスへ実影響があり、ECSと外形URLの復旧までaction=upを
+試行するEXITガードを設定します。
 USAGE
 }
 
@@ -248,7 +248,7 @@ emergency_recover() {
     fi
   fi
   if [[ "${exit_code}" != '0' && -n "${PROJECT_ENCODED:-}" && -n "${ISSUE_IID:-}" ]]; then
-    close_gitlab_artifacts "OQ aborted (exit=${exit_code}); EXIT guard recovery_confirmed=${RECOVERY_CONFIRMED}. Temporary artifacts cleaned automatically."
+    close_gitlab_artifacts "OQを中断しました（終了コード=${exit_code}）。EXITガード復旧確認=${RECOVERY_CONFIRMED}。一時証跡は自動削除しました。"
   fi
   exit "${exit_code}"
 }
@@ -274,19 +274,19 @@ main() {
   GITLAB_API="$(tf_raw gitlab_api_base_url)"
   [[ -n "${GITLAB_API}" ]] || fail 'GitLab API URL could not be resolved'
 
-  log "realm=${realm}"
-  log "n8n_url=${N8N_URL}"
-  log "gitlab_project=${project_path}"
-  log "apply_service_change=${APPLY_SERVICE_CHANGE}"
-  log "full_oq=${FULL_OQ}"
+  log "対象realm=${realm}"
+  log "n8n URL=${N8N_URL}"
+  log "GitLabプロジェクト=${project_path}"
+  log "実サービス変更=${APPLY_SERVICE_CHANGE}"
+  log "フルOQ=${FULL_OQ}"
 
   if [[ "${DRY_RUN}" == '1' ]]; then
-    log 'dry-run: would create OQ-only bad/fix branches, Change Issue, and correction MR'
-    log 'dry-run: would request Agent execution, approve as CAB, and verify recovery result'
+    log 'ドライラン: OQ専用の誤設定/修正ブランチ、変更Issue、修正MRを作成する予定です'
+    log 'ドライラン: Agentへ実行要求し、CAB承認後に復旧結果を検証する予定です'
     if [[ "${FULL_OQ}" == '1' ]]; then
-      log 'dry-run: would stop Sulu, emit CloudWatch alarm, automatically correlate GitLab diff, and force recovery on EXIT'
+      log 'ドライラン: Sulu停止、CloudWatchアラーム送信、GitLab差分相関、終了時強制復旧を行う予定です'
     fi
-    log 'dry-run: no HTTP write requests were sent'
+    log 'ドライラン: HTTPの書き込み要求は送信していません'
     return 0
   fi
   [[ -n "${EVIDENCE_DIR}" ]] || fail '--evidence-dir is required with --execute'
@@ -332,8 +332,8 @@ main() {
   local issue_file branch_file file_file mr_file note_file
   issue_file="$(mktemp)"; branch_file="$(mktemp)"; file_file="$(mktemp)"; mr_file="$(mktemp)"; note_file="$(mktemp)"
   local issue_title issue_description
-  issue_title="[OQ-S2] Sulu configuration recovery ${suffix}"
-  issue_description=$'## Integrated change report\n\n- Trigger: GitLab desired_state changed from up to down\n- Affected CIs: sulu-service, sulu-alb-target-group, sulu-runtime-config\n- Risk: high / impact: infra\n- Required decision: CAB approval\n- Recovery: restore desired_state=up\n- Rollback: restore last-known-good commit and start Sulu\n- Correlation ID: '"${trace_id}"
+  issue_title="[OQ-S2] Sulu構成復旧 ${suffix}"
+  issue_description=$'## 統合変更レポート\n\n- 検知契機: GitLabのdesired_stateがupからdownへ変更された\n- 影響対象CI: sulu-service、sulu-alb-target-group、sulu-runtime-config\n- リスク: 高 / 影響範囲: インフラ\n- 必要な判断: CAB承認\n- 復旧方針: desired_state=upへ戻す\n- ロールバック: 最後に正常だったGitコミットを復元し、Suluを起動する\n- 相関ID: '"${trace_id}"
   gitlab_request POST "/projects/${PROJECT_ENCODED}/issues" "${issue_file}" --data-urlencode "title=${issue_title}" --data-urlencode "description=${issue_description}" --data-urlencode 'labels=OQ,change-management'
   ISSUE_IID="$(jq -r '.iid' "${issue_file}")"
   local issue_url
@@ -344,7 +344,7 @@ main() {
   local bad_content fix_content config_path config_encoded
   config_path='demo/sulu-runtime.yml'; config_encoded="$(urlencode "${config_path}")"
   bad_content=$'service: sulu\nrealm: '"${realm}"$'\ndesired_state: down\nauto_recovery: true\nrun_window: 24x7\n'
-  gitlab_request POST "/projects/${PROJECT_ENCODED}/repository/files/${config_encoded}" "${file_file}" --data-urlencode "branch=${bad_branch}" --data-urlencode 'commit_message=OQ-S2 inject invalid desired_state down' --data-urlencode "content=${bad_content}"
+  gitlab_request POST "/projects/${PROJECT_ENCODED}/repository/files/${config_encoded}" "${file_file}" --data-urlencode "branch=${bad_branch}" --data-urlencode 'commit_message=OQ-S2 誤設定 desired_state=down を投入' --data-urlencode "content=${bad_content}"
   local bad_commit
   gitlab_request GET "/projects/${PROJECT_ENCODED}/repository/branches/$(urlencode "${bad_branch}")" "${branch_file}"
   bad_commit="$(jq -r '.commit.id // empty' "${branch_file}")"
@@ -364,7 +364,7 @@ main() {
       --scenario normal \
       --event-id "oq_s2_cloudwatch_${suffix}" \
       --trace-id "${trace_id}" \
-      --cloudwatch-alarm-name "Sulu Service Error - configuration drift OQ-S2 ${suffix}" \
+      --cloudwatch-alarm-name "Suluサービスエラー - 構成ドリフト OQ-S2 ${suffix}" \
       --timeout-sec 30 \
       --evidence-dir "${cloudwatch_dir}"
     cloudwatch_request="$(find "${cloudwatch_dir}" -type f -name '*.request_1.json' -print | sort | tail -1)"
@@ -384,17 +384,19 @@ main() {
 
   gitlab_request POST "/projects/${PROJECT_ENCODED}/repository/branches" "${branch_file}" --data-urlencode "branch=${fix_branch}" --data-urlencode "ref=${bad_branch}"
   fix_content=$'service: sulu\nrealm: '"${realm}"$'\ndesired_state: up\nauto_recovery: true\nrun_window: 24x7\n'
-  gitlab_request PUT "/projects/${PROJECT_ENCODED}/repository/files/${config_encoded}" "${file_file}" --data-urlencode "branch=${fix_branch}" --data-urlencode 'commit_message=OQ-S2 restore desired_state up' --data-urlencode "content=${fix_content}"
+  gitlab_request PUT "/projects/${PROJECT_ENCODED}/repository/files/${config_encoded}" "${file_file}" --data-urlencode "branch=${fix_branch}" --data-urlencode 'commit_message=OQ-S2 desired_state=up へ復旧' --data-urlencode "content=${fix_content}"
   local fix_commit
   gitlab_request GET "/projects/${PROJECT_ENCODED}/repository/branches/$(urlencode "${fix_branch}")" "${branch_file}"
   fix_commit="$(jq -r '.commit.id // empty' "${branch_file}")"
 
-  gitlab_request POST "/projects/${PROJECT_ENCODED}/merge_requests" "${mr_file}" --data-urlencode "source_branch=${fix_branch}" --data-urlencode "target_branch=${bad_branch}" --data-urlencode "title=OQ-S2 restore Sulu desired_state up (${suffix})" --data-urlencode "description=Closes #${ISSUE_IID}\n\nCAB approval is required before application."
+  local mr_description
+  mr_description="$(printf '#%s をクローズします。\n\n適用前にCAB承認が必要です。' "${ISSUE_IID}")"
+  gitlab_request POST "/projects/${PROJECT_ENCODED}/merge_requests" "${mr_file}" --data-urlencode "source_branch=${fix_branch}" --data-urlencode "target_branch=${bad_branch}" --data-urlencode "title=OQ-S2 Suluのdesired_stateをupへ復旧 (${suffix})" --data-urlencode "description=${mr_description}"
   MR_IID="$(jq -r '.iid' "${mr_file}")"
   local mr_url
   mr_url="$(jq -r '.web_url' "${mr_file}")"
   [[ "${MR_IID}" != 'null' && -n "${MR_IID}" ]] || fail 'GitLab MR creation failed'
-  gitlab_request POST "/projects/${PROJECT_ENCODED}/issues/${ISSUE_IID}/notes" "${note_file}" --data-urlencode "body=Correction MR: ${mr_url}"
+  gitlab_request POST "/projects/${PROJECT_ENCODED}/issues/${ISSUE_IID}/notes" "${note_file}" --data-urlencode "body=修正MR: ${mr_url}"
 
   jq -n --arg trace_id "${trace_id}" --arg project "${project_path}" --arg issue_url "${issue_url}" --arg mr_url "${mr_url}" --arg bad_branch "${bad_branch}" --arg fix_branch "${fix_branch}" --arg bad_commit "${bad_commit}" --arg fix_commit "${fix_commit}" '{trace_id:$trace_id, project:$project, issue_url:$issue_url, mr_url:$mr_url, bad_branch:$bad_branch, fix_branch:$fix_branch, bad_commit:$bad_commit, fix_commit:$fix_commit}' > "${EVIDENCE_DIR}/gitlab_change_evidence.json"
 
@@ -420,7 +422,7 @@ main() {
 
   local approval_body approval_response approval_http
   approval_body="$(mktemp)"; approval_response="$(mktemp)"
-  jq -n --arg token "${approval_token}" '{approval_token:$token,decision:"approve",actor:{name:"OQ CAB Approver",type:"human",role:"change-manager"}}' > "${approval_body}"
+  jq -n --arg token "${approval_token}" '{approval_token:$token,decision:"approve",actor:{name:"OQ CAB承認者",type:"human",role:"change-manager"}}' > "${approval_body}"
   approval_http="$(curl -sS -o "${approval_response}" -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data-binary "@${approval_body}" "${N8N_URL%/}/webhook/approval/confirm")"
   rm -f "${approval_body}"
   [[ "${approval_http}" == 2* ]] || fail "CAB approval failed: HTTP ${approval_http}"
@@ -466,15 +468,41 @@ main() {
     (.result_payload?.trace_id? // "") == $trace
     and (.result_payload?.workflow_id? // "") == "wf.sulu_configuration_recovery"
   ) | {job_id,status,result_payload,error_payload}] | unique | .[0]' "${engine_raw}" > "${EVIDENCE_DIR}/recovery_result.json"
-  jq -n --arg trace_id "${trace_id}" --arg ingest_execution_id "${ingest_exec}" --arg engine_execution_id "${engine_exec}" --arg next_action "${next_action}" --arg workflow_id 'wf.sulu_configuration_recovery' --argjson dry_run "$([[ "${APPLY_SERVICE_CHANGE}" == '0' ]] && echo true || echo false)" '{passed:true,trace_id:$trace_id,ingest_execution_id:$ingest_execution_id,engine_execution_id:$engine_execution_id,next_action:$next_action,workflow_id:$workflow_id,dry_run:$dry_run,cab_approved:true}' > "${EVIDENCE_DIR}/oq_usecase_31_facts.json"
+  jq -n --arg trace_id "${trace_id}" --arg ingest_execution_id "${ingest_exec}" --arg engine_execution_id "${engine_exec}" --arg next_action "${next_action}" --arg workflow_id 'wf.sulu_configuration_recovery' --argjson dry_run "$([[ "${APPLY_SERVICE_CHANGE}" == '0' ]] && echo true || echo false)" '{passed:true,trace_id:$trace_id,ingest_execution_id:$ingest_execution_id,engine_execution_id:$engine_execution_id,next_action:$next_action,workflow_id:$workflow_id,dry_run:$dry_run,cab_approved:true,report_ja:{scenario:"シナリオ2: GitLab構成誤変更からのCAB承認付きSulu復旧",result:"合格",approval:"CAB承認済み",execution_mode:(if $dry_run then "非破壊ドライラン" else "実サービス変更" end),recovery_workflow:$workflow_id}}' > "${EVIDENCE_DIR}/oq_usecase_31_facts.json"
   rm -f "${engine_raw}"
 
-  close_gitlab_artifacts "OQ PASS: CAB approved; workflow=wf.sulu_configuration_recovery; dry_run=$([[ "${APPLY_SERVICE_CHANGE}" == '0' ]] && echo true || echo false); trace_id=${trace_id}; n8n_execution=${engine_exec}"
+  local report_file execution_mode_ja
+  report_file="${EVIDENCE_DIR}/oq_usecase_31_report_ja.md"
+  execution_mode_ja="$([[ "${APPLY_SERVICE_CHANGE}" == '0' ]] && echo '非破壊ドライラン' || echo '実サービス変更')"
+  printf '%s\n' \
+    '# シナリオ2 外部OQ実行レポート' \
+    '' \
+    '- 総合結果: 合格' \
+    "- 実行方式: ${execution_mode_ja}" \
+    '- CAB判断: 承認' \
+    '- 復旧対象: Sulu' \
+    '- 復旧ワークフロー: wf.sulu_configuration_recovery' \
+    "- 相関ID: ${trace_id}" \
+    "- Agent受信実行ID: ${ingest_exec}" \
+    "- ジョブ実行ID: ${engine_exec}" \
+    "- GitLab Issue: ${issue_url}" \
+    "- GitLab修正MR: ${mr_url}" \
+    '' \
+    '## 結果' \
+    '' \
+    '- GitLabの誤設定ブランチと修正ブランチを作成しました。' \
+    '- AgentがCAB承認を要求し、OQ CAB承認者が承認しました。' \
+    '- Sulu構成復旧ワークフローの検証に合格しました。' \
+    '- 結果をGitLab Issueへ記録し、一時Issue・MR・ブランチをクローズまたは削除しました。' \
+    > "${report_file}"
+
+  close_gitlab_artifacts "OQ合格: CAB承認済み。復旧ワークフロー=wf.sulu_configuration_recovery、非破壊ドライラン=$([[ "${APPLY_SERVICE_CHANGE}" == '0' ]] && echo 'はい' || echo 'いいえ')、相関ID=${trace_id}、n8n実行ID=${engine_exec}"
   rm -f "${issue_file}" "${branch_file}" "${file_file}" "${mr_file}" "${note_file}"
-  log "PASS trace_id=${trace_id}"
-  log "evidence_dir=${EVIDENCE_DIR}"
+  log "合格 相関ID=${trace_id}"
+  log "証跡ディレクトリ=${EVIDENCE_DIR}"
+  log "日本語レポート=${report_file}"
   log "GitLab Issue=${issue_url}"
-  log "GitLab MR=${mr_url}"
+  log "GitLab修正MR=${mr_url}"
   if [[ "${FULL_OQ}" == '1' ]]; then
     trap - EXIT INT TERM
   fi

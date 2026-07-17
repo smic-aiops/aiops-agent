@@ -38,6 +38,7 @@
 9. CloudWatchイベント時刻からGitLab全refの直近commit差分を検索し、`desired_state: down` のcommitを原因候補として選択する。
 10. 復旧後にSuluが `desiredCount>=1/runningCount>=1` かつ外形HTTP 2xxとなる。
 11. CAB承認後のZulip通知が成功する。
+12. Zulip通知、GitLab Issue/MR、OQレポートの人向け文言が可能な限り日本語で表示される。API互換性に必要なworkflow ID、trace ID、JSONキーは維持する。
 
 ## 実行
 
@@ -67,6 +68,8 @@ apps/aiops_agent/orchestrator/scripts/run_oq_usecase_31_demo_gitlab_misconfigura
 ## 現在の既知事項
 
 - CAB承認、ジョブ投入、承認履歴記録、承認後Zulip通知は成功する。
+- CAB承認後のZulip通知は「承認ID」「コンテキストID」「ジョブID」「対象ワークフロー」などの日本語ラベルを使用する。
+- 実行証跡には機械判定用JSONに加えて、日本語の `oq_usecase_31_report_ja.md` を保存する。
 - Zulipはrealm別の実Botメール/API keyで `aiops-zulip-basic` を更新し、form-urlencodedで送信する。検証実行 `35080` はmessage id `60` を返した。
 - CloudWatchイベント時刻を基準にGitLab commits APIを `all=true` で検索し、対象ファイルのdiffから原因commitを自動選択する。
 - フルOQ合格実行は `trace_id=4df35d54-d0ec-4ee4-8937-ce859a702d66`、証跡は `outputs/oq/usecase-31-full-pass-20260716-155658/` に保存した。
