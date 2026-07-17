@@ -71,7 +71,9 @@ ADMIN_ASSETS_BUILD_IMAGE="${N8N_ADMIN_ASSETS_BUILD_IMAGE:-node:20-bookworm}"
 # 必要なら SKIP_SULU_COMPOSER_INSTALL=false で有効化できる。
 SKIP_SULU_COMPOSER_INSTALL="${SKIP_SULU_COMPOSER_INSTALL:-true}"
 COMPOSER_BIN="${COMPOSER_BIN:-composer}"
-COMPOSER_INSTALL_ARGS="${COMPOSER_INSTALL_ARGS:---no-dev --no-interaction --prefer-dist --classmap-authoritative --no-progress}"
+# This pull-stage install only prepares vendor sources for the admin asset build.
+# Validate the actual PHP platform later inside the runtime image build.
+COMPOSER_INSTALL_ARGS="${COMPOSER_INSTALL_ARGS:---no-dev --no-interaction --prefer-dist --classmap-authoritative --no-progress --no-scripts --ignore-platform-reqs}"
 COMPOSER_PHAR_URL="${COMPOSER_PHAR_URL:-https://getcomposer.org/composer-stable.phar}"
 COMPOSER_PHAR_PATH="${COMPOSER_PHAR_PATH:-${TMPDIR:-/tmp}/composer.phar}"
 COMPOSER_DOCKER_IMAGE="${COMPOSER_DOCKER_IMAGE:-composer:2}"

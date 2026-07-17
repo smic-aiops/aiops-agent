@@ -74,7 +74,7 @@
   },
   "active": false,
   "settings": {
-    "executionTimeout": 900
+    "executionTimeout": 5400
   },
   "versionId": "",
   "staticData": null,

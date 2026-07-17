@@ -112,7 +112,7 @@ Object.assign(liveGitLab, {
 const calls = [];
 const generatedCommitSha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const gitlabMock = async (options) => {
-  calls.push({ method: options.method, url: options.url, body: options.body });
+  calls.push({ method: options.method, url: options.url, body: options.body, timeout: options.timeout });
   if (options.method === 'GET' && options.url.endsWith('/projects/aiops%2Faiops-agent')) return { id: 10 };
   if (options.method === 'GET' && options.url.endsWith('/projects/aiops%2Fservice-management')) return { id: 20 };
   if (options.url.includes('/repository/branches')) return { name: liveGitLab.gitlab.fix_branch };
@@ -235,9 +235,11 @@ const fullExecutionCalls = calls.slice(fullExecutionCallStart);
 const versionDeployCalls = fullExecutionCalls.filter((call) => call.url.includes('/webhook/sulu/version-deploy'));
 assert.equal(versionDeployCalls.length, 2);
 assert.ok(versionDeployCalls.every((call) => call.body.rfc_issue_url === 'https://gitlab.example/service/issues/204'));
+assert.ok(versionDeployCalls.every((call) => call.timeout === 600000));
 const rfcAnalysisCall = fullExecutionCalls.find((call) => call.url.includes('/webhook/sulu/rfc-source-analysis'));
 assert.equal(rfcAnalysisCall.body.target_version, '3.0.4');
 assert.equal(rfcAnalysisCall.body.image_tag, '3.0.4-smic.1');
+assert.equal(rfcAnalysisCall.timeout, 3900000);
 
 const mirrorMismatch = structuredClone(mirrorBuild);
 mirrorMismatch.build_source = { ref_api_url: 'https://source.example/mismatch' };

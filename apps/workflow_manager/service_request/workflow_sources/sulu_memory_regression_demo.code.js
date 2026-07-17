@@ -596,6 +596,10 @@ if (!dryRun && artifact.rfc?.iid) {
 
 if (!dryRun && executionReady) {
   const authHeaders = expectedToken ? { Authorization: `Bearer ${expectedToken}` } : {};
+  // ECS rolling deployments normally exceed three minutes, and the image build
+  // workflow can legitimately run for up to 65 minutes while it polls CodeBuild.
+  const suluDeployTimeoutMs = 600000;
+  const suluBuildTimeoutMs = 3900000;
   if ((allowEcrPush || executeRollback || executeFixedDeploy || allowStateChange) && !webhookBase) {
     return fail(424, 'N8N_WEBHOOK_BASE_URL is required for approved execution', { trace_id: traceId });
   }
@@ -608,7 +612,7 @@ if (!dryRun && executionReady) {
       dry_run: false,
       allow_service_change: true,
       correlation_id: traceId
-    }, { headers: authHeaders, timeout: 180000 });
+    }, { headers: authHeaders, timeout: suluDeployTimeoutMs });
     if (!artifact.workflow_dispatch.rollback || artifact.workflow_dispatch.rollback.ok !== true || artifact.workflow_dispatch.rollback.applied !== true) {
       return fail(502, 'rollback dispatch did not confirm an applied deployment', {
         trace_id: traceId,
@@ -691,7 +695,7 @@ if (!dryRun && executionReady) {
       push_images: true,
       allow_ecr_push: true,
       correlation_id: traceId
-    }, { headers: authHeaders, timeout: 600000 });
+    }, { headers: authHeaders, timeout: suluBuildTimeoutMs });
     if (!artifact.workflow_dispatch.rfc_analysis || artifact.workflow_dispatch.rfc_analysis.ok !== true || artifact.workflow_dispatch.rfc_analysis.status !== 'built_and_pushed') {
       return fail(502, 'RFC analysis dispatch did not confirm an ECR build', {
         trace_id: traceId,
@@ -708,7 +712,7 @@ if (!dryRun && executionReady) {
       dry_run: false,
       allow_service_change: true,
       correlation_id: traceId
-    }, { headers: authHeaders, timeout: 180000 });
+    }, { headers: authHeaders, timeout: suluDeployTimeoutMs });
     if (!artifact.workflow_dispatch.fixed_deploy || artifact.workflow_dispatch.fixed_deploy.ok !== true || artifact.workflow_dispatch.fixed_deploy.applied !== true) {
       return fail(502, 'fixed deployment dispatch did not confirm an applied deployment', {
         trace_id: traceId,

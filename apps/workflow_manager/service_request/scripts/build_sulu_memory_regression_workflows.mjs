@@ -66,7 +66,7 @@ function buildWorkflow({ name, workflowId, webhookName, webhookPath, codeName, c
       [codeName]: { main: [[{ node: responseName, type: 'main', index: 0 }]] }
     },
     active: false,
-    settings: { executionTimeout: 900 },
+    settings: { executionTimeout: 5400 },
     versionId: '',
     staticData: null,
     meta: {
