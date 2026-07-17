@@ -1390,6 +1390,14 @@ resource "aws_ecs_task_definition" "exastro" {
                       self._write()
                   elif self.path.rstrip("/") == "/internal-api/platform/settings/common":
                       self._write(data=SETTINGS)
+                  elif self.path.rstrip("/") == "/internal-api/platform/maintenance-mode-setting":
+                      # Exastro backyard workers expect data to be an object and
+                      # access data_update_stop directly. The generic [] response
+                      # makes every worker fail before processing any jobs.
+                      self._write(data={
+                          "data_update_stop": "0",
+                          "backyard_execute_stop": "0",
+                      })
                   elif self.path.endswith("/workspaces"):
                       self._write(data=[{"id": "aiops", "name": "AIOps", "informations": {"environments": []}}])
                   elif self.path.endswith("/roles"):
