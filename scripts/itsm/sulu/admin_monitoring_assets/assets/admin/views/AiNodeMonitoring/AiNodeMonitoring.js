@@ -167,6 +167,7 @@ export default function AiNodeMonitoring(): React$Node {
         {label: 'Zulip通知', value: 'zulip_notification'},
         {label: '承認', value: 'approval'},
         {label: '実行・検証', value: 'execution'},
+        {label: 'その他の運用イベント', value: 'workflow_event'},
     ]), []);
 
     const explained = useMemo(() => events.map((event) => ({
@@ -259,6 +260,7 @@ export default function AiNodeMonitoring(): React$Node {
                     ['Zulip通知', eventCounts.zulip_notification || 0, '#24713d'],
                     ['承認', eventCounts.approval || 0, '#996515'],
                     ['実行・検証', eventCounts.execution || 0, '#6b4da2'],
+                    ['その他', eventCounts.workflow_event || 0, '#52616b'],
                 ].map(([label, count, color]) => (
                     <div key={String(label)} style={{padding: '8px 12px', border: `1px solid ${color}`, borderRadius: 16, color}}>
                         {label}: <strong>{count}</strong>
@@ -287,7 +289,7 @@ export default function AiNodeMonitoring(): React$Node {
 
                     {timeline.length === 0 ? (
                         <div style={{padding: 28, border: '1px dashed #b8c2cc', borderRadius: 8, color: '#555'}}>
-                            シナリオ2の判断ログを待っています。デモを開始すると、ここへ時系列で表示されます。
+                            選択した条件に一致する判断・通知・承認ログを待っています。イベントが届くと、ここへ時系列で表示されます。
                         </div>
                     ) : (
                         <div>

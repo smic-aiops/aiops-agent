@@ -15,8 +15,8 @@ Usage:
     [--realm <realm>] [--trace-id <id>] [--delay <seconds>]
 
 Options:
-  --dry-run          Print the six observer events without sending them (default).
-  --execute          POST the six events to the Sulu observer endpoint.
+  --dry-run          Print the seven observer events without sending them (default).
+  --execute          POST the seven events to the Sulu observer endpoint.
   --realm            Realm shown in Sulu (default: aiops).
   --trace-id         Correlation ID (default: demo-scenario-2-<UTC timestamp>).
   --delay            Delay between events for live demo (default: 0.8 seconds).
@@ -168,7 +168,7 @@ post_event() {
       }
     }')"
 
-  echo "[scenario2] ${step}/6 ${node}"
+  echo "[scenario2] ${step}/7 ${node}"
   if [[ "${DRY_RUN}" == "true" ]]; then
     jq . <<<"${payload}"
     return 0
@@ -235,7 +235,15 @@ post_event 4 'CAB Approval' "$(jq -cn --arg trace "${TRACE_ID}" '{
   summary: "CAB担当者が復旧手順のリハーサルを承認しました"
 }')"
 
-post_event 5 'Sulu Configuration Recovery Result' "$(jq -cn --arg trace "${TRACE_ID}" '{
+post_event 5 'Post to Zulip (Ingest)' "$(jq -cn --arg trace "${TRACE_ID}" '{
+  demo_fixture: true,
+  trace_id: $trace,
+  status: "completed",
+  source: "zulip",
+  summary: "CAB承認と復旧手順の検証開始をZulipへ通知しました"
+}')"
+
+post_event 6 'Sulu Configuration Recovery Result' "$(jq -cn --arg trace "${TRACE_ID}" '{
   demo_fixture: true,
   trace_id: $trace,
   workflow_id: "wf.sulu_configuration_recovery",
@@ -246,7 +254,7 @@ post_event 5 'Sulu Configuration Recovery Result' "$(jq -cn --arg trace "${TRACE
   summary: "復旧手順の事前検証に成功しました。まだ本番環境は変更していません。"
 }')"
 
-post_event 6 'Decision Record Callback' "$(jq -cn --arg trace "${TRACE_ID}" '{
+post_event 7 'Decision Record Callback' "$(jq -cn --arg trace "${TRACE_ID}" '{
   demo_fixture: true,
   trace_id: $trace,
   status: "completed",
