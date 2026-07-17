@@ -136,6 +136,16 @@ if [[ -z "${N8N_BASE_URL}" ]]; then
   exit 1
 fi
 
+if ${FULL_OQ}; then
+  n8n_host="$(sed -E 's#^https?://([^/:]+).*#\1#' <<<"${N8N_BASE_URL}")"
+  if [[ -z "${n8n_host}" || "${n8n_host}" == "${N8N_BASE_URL}" ]]; then
+    echo "Failed to derive n8n internal host from ${N8N_BASE_URL}" >&2
+    exit 1
+  fi
+  N8N_BASE_URL="${N8N_FULL_OQ_BASE_URL:-http://${n8n_host}:5678}"
+  payload="$(jq --arg webhook_base "${N8N_BASE_URL%/}/webhook" '.webhook_base_url=$webhook_base' <<<"${payload}")"
+fi
+
 N8N_WORKFLOWS_TOKEN="${N8N_WORKFLOWS_TOKEN:-$(terraform_output N8N_WORKFLOWS_TOKEN)}"
 if [[ -z "${N8N_WORKFLOWS_TOKEN}" ]]; then
   echo "Failed to resolve N8N_WORKFLOWS_TOKEN" >&2
@@ -197,6 +207,12 @@ if ${FULL_OQ}; then
     and .artifacts.kedb.sor_sync == "completed"
     and .artifacts.kedb.qdrant_sync == "completed"
     and .artifacts.source_mirror.status == "verified"
+    and .artifacts.workflow_dispatch.rollback.ok == true
+    and .artifacts.workflow_dispatch.rollback.applied == true
+    and .artifacts.workflow_dispatch.rfc_analysis.ok == true
+    and .artifacts.workflow_dispatch.rfc_analysis.status == "built_and_pushed"
+    and .artifacts.workflow_dispatch.fixed_deploy.ok == true
+    and .artifacts.workflow_dispatch.fixed_deploy.applied == true
     and .artifacts.rfc.assessment_recorded == true
     and .artifacts.rfc.approval_recorded == true
     and (.artifacts.tickets.closed_iids | length) >= 4

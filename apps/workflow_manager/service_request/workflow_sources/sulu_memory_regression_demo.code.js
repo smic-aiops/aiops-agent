@@ -325,13 +325,22 @@ const buildSourceApiBase = clean(
     ?? env.SULU_IMAGE_BUILDER_SOURCE_API_BASE_URL
     ?? 'https://api.github.com/repos/smic-aiops/aiops-agent'
 ).replace(/\/+$/, '');
+const encodedBuildSourceRefPath = buildSourceRef
+  .split('/')
+  .map((segment) => encodeURIComponent(segment))
+  .join('/');
 const buildSourceRefApiUrl = clean(buildSource.ref_api_url ?? buildSource.refApiUrl)
-  || `${buildSourceApiBase}/branches/${encodeURIComponent(buildSourceRef)}`;
+  || `${buildSourceApiBase}/git/ref/heads/${encodedBuildSourceRefPath}`;
 const buildSourceToken = clean(header('x-aiops-source-token') ?? env.SULU_IMAGE_BUILDER_SOURCE_TOKEN ?? env.GITHUB_TOKEN);
 artifact.source_mirror.source_ref = buildSourceRef;
 artifact.source_mirror.expected_commit_sha = artifact.commit_id;
 artifact.source_mirror.ref_api_url = buildSourceRefApiUrl;
-const webhookOrigin = clean(env.N8N_WEBHOOK_BASE_URL ?? env.N8N_PUBLIC_API_BASE_URL)
+const webhookOrigin = clean(
+  payload.webhook_base_url
+    ?? payload.webhookBaseUrl
+    ?? env.N8N_WEBHOOK_BASE_URL
+    ?? env.N8N_PUBLIC_API_BASE_URL
+)
   .replace(/\/+$/, '')
   .replace(/\/api\/v1$/, '');
 const webhookBase = webhookOrigin
@@ -347,10 +356,20 @@ async function httpRequest(method, url, body = undefined, extra = {}) {
 }
 
 async function gitlabRequest(method, suffix, body = undefined, qs = undefined) {
-  return await httpRequest.call(this, method, `${gitlabBase}${suffix}`, body, {
-    qs,
-    headers: { 'PRIVATE-TOKEN': gitlabToken, 'Content-Type': 'application/json' }
-  });
+  const attempts = method === 'GET' ? 4 : 1;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await httpRequest.call(this, method, `${gitlabBase}${suffix}`, body, {
+        qs,
+        headers: { 'PRIVATE-TOKEN': gitlabToken, 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      const status = Number(error?.statusCode ?? error?.response?.statusCode ?? error?.response?.status);
+      if (![429, 502, 503, 504].includes(status) || attempt + 1 >= attempts) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
+  }
+  throw new Error(`GitLab request failed after retries: ${method} ${suffix}`);
 }
 
 async function ignoreAlreadyExists(promise) {
@@ -457,7 +476,8 @@ if (!dryRun) {
   const rfcDescription = [
     '## 対象サービス', 'Sulu', '',
     '## 現行バージョン', previousVersion, '',
-    '## 修正対象バージョン', fixedVersion, '',
+    '## 修正対象バージョン', latestVersion, '',
+    '## 修正イメージタグ', fixedVersion, '',
     '## 修正ソースref', artifact.fix_branch, '',
     '## 原因仮説', `${latestVersion}の更新に起因するメモリ回帰`, '',
     '## 影響・テスト・リスク',
@@ -564,7 +584,7 @@ if (!dryRun && artifact.rfc?.iid) {
 
   if (executionReady) {
     await gitlabRequest.call(this, 'POST', `/projects/${serviceProjectEncoded}/issues/${artifact.rfc.iid}/notes`, {
-      body: `/approve\n\nAIOps CAB decision_id: ${decisionId}\ntrace_id: ${traceId}\nrisk_score: ${riskScore}\npipeline: ${artifact.pipeline?.web_url || 'not-started'}`
+      body: `/approve\n\nCAB approved\nAIOps CAB decision_id: ${decisionId}\ntrace_id: ${traceId}\nrisk_score: ${riskScore}\npipeline: ${artifact.pipeline?.web_url || 'not-started'}`
     });
     const approvedIssue = await gitlabRequest.call(this, 'PUT', `/projects/${serviceProjectEncoded}/issues/${artifact.rfc.iid}`, {
       add_labels: '状態/Approved,CAB/Approved'
@@ -582,17 +602,51 @@ if (!dryRun && executionReady) {
   if (executeRollback) {
     if (!allowServiceChange) return fail(403, 'allow_service_change=true is required for rollback');
     artifact.workflow_dispatch.rollback = await httpRequest.call(this, 'POST', `${webhookBase}/sulu/version-deploy`, {
-      realm, image_tag: previousVersion, dry_run: false, allow_service_change: true, correlation_id: traceId
+      realm,
+      image_tag: previousVersion,
+      rfc_issue_url: artifact.rfc?.web_url,
+      dry_run: false,
+      allow_service_change: true,
+      correlation_id: traceId
     }, { headers: authHeaders, timeout: 180000 });
+    if (!artifact.workflow_dispatch.rollback || artifact.workflow_dispatch.rollback.ok !== true || artifact.workflow_dispatch.rollback.applied !== true) {
+      return fail(502, 'rollback dispatch did not confirm an applied deployment', {
+        trace_id: traceId,
+        dispatch_response: artifact.workflow_dispatch.rollback || null
+      });
+    }
   }
   if (allowEcrPush) {
     if (!artifact.commit_id) return fail(409, 'source mirror check requires the generated commit id', { trace_id: traceId });
     const sourceHeaders = { Accept: 'application/vnd.github+json', 'User-Agent': 'smic-aiops-sulu-source-mirror-check' };
     if (buildSourceToken) sourceHeaders.Authorization = `Bearer ${buildSourceToken}`;
-    const sourceRefResponse = await httpRequest.call(this, 'GET', buildSourceRefApiUrl, undefined, {
-      headers: sourceHeaders,
-      timeout: 30000
-    });
+    const sourceMirrorAttempts = clamp(Number(payload.source_mirror_poll_attempts ?? 60), 1, 150);
+    const sourceMirrorIntervalMs = clamp(Number(payload.source_mirror_poll_interval_ms ?? 2000), 250, 10000);
+    let sourceRefResponse = null;
+    for (let attempt = 0; attempt < sourceMirrorAttempts; attempt += 1) {
+      try {
+        sourceRefResponse = await httpRequest.call(this, 'GET', buildSourceRefApiUrl, undefined, {
+          headers: sourceHeaders,
+          timeout: 30000
+        });
+        break;
+      } catch (error) {
+        const status = Number(error?.statusCode ?? error?.response?.statusCode ?? error?.response?.status);
+        if (status !== 404) throw error;
+        if (attempt + 1 < sourceMirrorAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, sourceMirrorIntervalMs));
+        }
+      }
+    }
+    if (!sourceRefResponse) {
+      artifact.source_mirror.status = 'unresolved';
+      return fail(409, 'source mirror ref did not resolve before timeout', {
+        trace_id: traceId,
+        source_ref: buildSourceRef,
+        ref_api_url: buildSourceRefApiUrl,
+        attempts: sourceMirrorAttempts
+      });
+    }
     const resolvedCommitSha = clean(
       sourceRefResponse?.commit?.sha
         ?? sourceRefResponse?.object?.sha
@@ -627,22 +681,40 @@ if (!dryRun && executionReady) {
         web_url: artifact.rfc?.web_url,
         title: `[RFC] Sulu ${fixedVersion} memory regression fix`,
         labels: ['RFC', '種別：変更', '状態/Approved'],
-        description: `対象サービス: Sulu\n現行バージョン: ${previousVersion}\n修正対象バージョン: ${fixedVersion}\n修正ソースref: ${artifact.fix_branch}`
+        description: `対象サービス: Sulu\n現行バージョン: ${previousVersion}\n修正対象バージョン: ${latestVersion}\n修正イメージタグ: ${fixedVersion}\n修正ソースref: ${artifact.fix_branch}`
       },
       base_version: previousVersion,
-      target_version: fixedVersion,
+      target_version: latestVersion,
+      image_tag: fixedVersion,
       source_ref: buildSourceRef,
       source_commit_sha: artifact.commit_id,
       push_images: true,
       allow_ecr_push: true,
       correlation_id: traceId
     }, { headers: authHeaders, timeout: 600000 });
+    if (!artifact.workflow_dispatch.rfc_analysis || artifact.workflow_dispatch.rfc_analysis.ok !== true || artifact.workflow_dispatch.rfc_analysis.status !== 'built_and_pushed') {
+      return fail(502, 'RFC analysis dispatch did not confirm an ECR build', {
+        trace_id: traceId,
+        dispatch_response: artifact.workflow_dispatch.rfc_analysis || null
+      });
+    }
   }
   if (executeFixedDeploy) {
     if (!allowServiceChange) return fail(403, 'allow_service_change=true is required for fixed deployment');
     artifact.workflow_dispatch.fixed_deploy = await httpRequest.call(this, 'POST', `${webhookBase}/sulu/version-deploy`, {
-      realm, image_tag: fixedVersion, dry_run: false, allow_service_change: true, correlation_id: traceId
+      realm,
+      image_tag: fixedVersion,
+      rfc_issue_url: artifact.rfc?.web_url,
+      dry_run: false,
+      allow_service_change: true,
+      correlation_id: traceId
     }, { headers: authHeaders, timeout: 180000 });
+    if (!artifact.workflow_dispatch.fixed_deploy || artifact.workflow_dispatch.fixed_deploy.ok !== true || artifact.workflow_dispatch.fixed_deploy.applied !== true) {
+      return fail(502, 'fixed deployment dispatch did not confirm an applied deployment', {
+        trace_id: traceId,
+        dispatch_response: artifact.workflow_dispatch.fixed_deploy || null
+      });
+    }
   }
   if (allowStateChange) {
     const projectEncoded = encodeURIComponent(artifact.service_project_path);

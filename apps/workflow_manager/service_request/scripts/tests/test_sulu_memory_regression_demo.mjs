@@ -137,8 +137,9 @@ const gitlabMock = async (options) => {
   if (options.method === 'PUT' && options.url.endsWith('/issues/204') && options.body?.add_labels) return { state: 'opened' };
   if (options.method === 'PUT' && /\/issues\/(11|12|13|201|202|203|204)$/.test(options.url)) return { state: 'closed' };
   if (options.url.endsWith('/pipeline')) return { id: 303, status: 'success', web_url: 'https://gitlab.example/code/pipelines/303' };
-  if (options.url.includes('api.github.com/repos/smic-aiops/aiops-agent/branches/')) return { commit: { sha: generatedCommitSha } };
+  if (options.url.includes('api.github.com/repos/smic-aiops/aiops-agent/git/ref/heads/')) return { object: { sha: generatedCommitSha } };
   if (options.url === 'https://source.example/mismatch') return { commit: { sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' } };
+  if (options.url.includes('/webhook/sulu/version-deploy')) return { ok: true, status: 'deployed', applied: true };
   if (options.url.includes('/webhook/sulu/rfc-source-analysis')) return { ok: true, status: 'built_and_pushed' };
   if (options.url.includes('/webhook/gitlab/issue/backfill/sor')) return { ok: true };
   if (options.url.includes('/webhook/gitlab/issue/rag/sync/oq')) return { ok: true };
@@ -180,6 +181,7 @@ assert.equal(prepareOutput.approval.execution_ready, false);
 const prepareCalls = calls.slice(prepareCallStart);
 assert.ok(prepareCalls.some((call) => String(call.body?.body || '').includes('AIOps CI・リスク評価')));
 assert.ok(!prepareCalls.some((call) => String(call.body?.body || '').startsWith('/approve')));
+assert.ok(calls.some((call) => String(call.body?.body || '').includes('CAB approved')));
 
 const mirrorBuild = structuredClone(liveGitLab);
 mirrorBuild.allow_ecr_push = true;
@@ -202,12 +204,40 @@ const mirrorCalls = calls.slice(mirrorCallStart);
 const pipelineIndex = mirrorCalls.findIndex((call) => call.url.endsWith('/pipeline'));
 const assessmentIndex = mirrorCalls.findIndex((call) => String(call.body?.body || '').includes('AIOps CI・リスク評価'));
 const approvalIndex = mirrorCalls.findIndex((call) => String(call.body?.body || '').startsWith('/approve'));
-const sourceMirrorIndex = mirrorCalls.findIndex((call) => call.url.includes('api.github.com/repos/smic-aiops/aiops-agent/branches/'));
+const sourceMirrorIndex = mirrorCalls.findIndex((call) => call.url.includes('api.github.com/repos/smic-aiops/aiops-agent/git/ref/heads/'));
 const buildIndex = mirrorCalls.findIndex((call) => call.url.includes('/webhook/sulu/rfc-source-analysis'));
 assert.ok(pipelineIndex >= 0 && pipelineIndex < assessmentIndex);
 assert.ok(assessmentIndex < approvalIndex);
 assert.ok(approvalIndex < sourceMirrorIndex);
 assert.ok(sourceMirrorIndex < buildIndex);
+
+const fullExecution = structuredClone(mirrorBuild);
+Object.assign(fullExecution, {
+  execute_rollback: true,
+  execute_fixed_deploy: true,
+  allow_service_change: true
+});
+const fullExecutionCallStart = calls.length;
+const fullExecutionOutput = (await run(
+  fullExecution,
+  {
+    GITLAB_API_BASE_URL: 'https://gitlab.example/api/v4',
+    GITLAB_TOKEN: 'gitlab-token',
+    N8N_WEBHOOK_BASE_URL: 'https://n8n.example/webhook'
+  },
+  {},
+  gitlabMock
+))[0].json;
+assert.equal(fullExecutionOutput.artifacts.workflow_dispatch.rollback.applied, true);
+assert.equal(fullExecutionOutput.artifacts.workflow_dispatch.rfc_analysis.status, 'built_and_pushed');
+assert.equal(fullExecutionOutput.artifacts.workflow_dispatch.fixed_deploy.applied, true);
+const fullExecutionCalls = calls.slice(fullExecutionCallStart);
+const versionDeployCalls = fullExecutionCalls.filter((call) => call.url.includes('/webhook/sulu/version-deploy'));
+assert.equal(versionDeployCalls.length, 2);
+assert.ok(versionDeployCalls.every((call) => call.body.rfc_issue_url === 'https://gitlab.example/service/issues/204'));
+const rfcAnalysisCall = fullExecutionCalls.find((call) => call.url.includes('/webhook/sulu/rfc-source-analysis'));
+assert.equal(rfcAnalysisCall.body.target_version, '3.0.4');
+assert.equal(rfcAnalysisCall.body.image_tag, '3.0.4-smic.1');
 
 const mirrorMismatch = structuredClone(mirrorBuild);
 mirrorMismatch.build_source = { ref_api_url: 'https://source.example/mismatch' };
