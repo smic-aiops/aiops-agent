@@ -508,6 +508,20 @@
     },
     {
       "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all(); const observerUrl=$env.N8N_OBSERVER_URL; const observerToken=$env.N8N_OBSERVER_TOKEN; if(observerUrl&&observerToken){try{await this.helpers.httpRequest({method:'POST',url:observerUrl,json:true,headers:{'X-Observer-Token':observerToken},body:{kind:'n8n.channel_message',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'before',source:'Respond Deferred (Zulip)',target:'Zulip Deferred Reply',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}} return items;"
+      },
+      "id": "emit-zulip-deferred-observer",
+      "name": "Emit Deferred Reply Event (Zulip)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
+        40
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "WITH upsert_dedupe AS (\n  INSERT INTO aiops_dedupe (dedupe_key, context_id, seen_count, last_seen_at)\n  VALUES (\n    '{{ String($json.dedupe_key ?? '').replace(/'/g, \"''\") }}',\n    '{{ String($json.context_id ?? '') }}'::uuid,\n    1,\n    NOW()\n  )\n  ON CONFLICT (dedupe_key) DO UPDATE\n    SET last_seen_at = NOW(),\n        seen_count = aiops_dedupe.seen_count + 1\n  RETURNING\n    context_id,\n    first_seen_at,\n    last_seen_at,\n    seen_count,\n    (xmax = 0) AS inserted\n),\ninsert_context AS (\n  INSERT INTO aiops_context (context_id, source, reply_target, actor, normalized_event)\n  SELECT\n    (SELECT context_id FROM upsert_dedupe),\n    '{{ String($json.source ?? '').replace(/'/g, \"''\") }}',\n    '{{ JSON.stringify($json.reply_target ?? {}).replace(/'/g, \"''\") }}'::jsonb,\n    '{{ JSON.stringify($json.actor ?? {}).replace(/'/g, \"''\") }}'::jsonb,\n    '{{ JSON.stringify($json.normalized_event ?? {}).replace(/'/g, \"''\") }}'::jsonb\n  WHERE EXISTS (SELECT 1 FROM upsert_dedupe WHERE inserted)\n  ON CONFLICT (context_id) DO NOTHING\n)\nSELECT\n  (SELECT context_id FROM upsert_dedupe) AS context_id,\n  '{{ String($json.source ?? '').replace(/'/g, \"''\") }}' AS source,\n  '{{ JSON.stringify($json.reply_target ?? {}).replace(/'/g, \"''\") }}'::jsonb AS reply_target,\n  '{{ JSON.stringify($json.actor ?? {}).replace(/'/g, \"''\") }}'::jsonb AS actor,\n  '{{ JSON.stringify($json.normalized_event ?? {}).replace(/'/g, \"''\") }}'::jsonb AS normalized_event,\n  '{{ String($json.dedupe_key ?? '').replace(/'/g, \"''\") }}' AS dedupe_key,\n  (SELECT first_seen_at FROM upsert_dedupe) AS dedupe_first_seen_at,\n  (SELECT last_seen_at FROM upsert_dedupe) AS dedupe_last_seen_at,\n  (SELECT seen_count FROM upsert_dedupe) AS dedupe_seen_count,\n  CASE WHEN EXISTS (SELECT 1 FROM upsert_dedupe WHERE inserted) THEN false ELSE true END AS is_duplicate;"
       },
@@ -6757,6 +6771,50 @@
         1960,
         200
       ]
+    },
+    {
+      "id": "monitor-before-openai-enrichment-plan",
+      "name": "AI Monitor Before: OpenAI Enrichment Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3660,620],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all();const url=$env.N8N_OBSERVER_URL,token=$env.N8N_OBSERVER_TOKEN;if(url&&token){try{await this.helpers.httpRequest({method:'POST',url,json:true,headers:{'X-Observer-Token':token},body:{kind:'n8n.debug_log',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'before',source:'Record Prompt History (Enrichment Plan)',target:'OpenAI Enrichment Plan',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}}return items;"
+      }
+    },
+    {
+      "id": "monitor-after-openai-enrichment-plan",
+      "name": "AI Monitor After: OpenAI Enrichment Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3660,740],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all();const url=$env.N8N_OBSERVER_URL,token=$env.N8N_OBSERVER_TOKEN;if(url&&token){try{await this.helpers.httpRequest({method:'POST',url,json:true,headers:{'X-Observer-Token':token},body:{kind:'n8n.debug_log',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'after',source:'OpenAI Enrichment Plan',target:'Parse Enrichment Plan Response',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}}return items;"
+      }
+    },
+    {
+      "id": "monitor-before-openai-enrichment-summary",
+      "name": "AI Monitor Before: OpenAI Enrichment Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3660,1940],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all();const url=$env.N8N_OBSERVER_URL,token=$env.N8N_OBSERVER_TOKEN;if(url&&token){try{await this.helpers.httpRequest({method:'POST',url,json:true,headers:{'X-Observer-Token':token},body:{kind:'n8n.debug_log',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'before',source:'Record Prompt History (Enrichment Summary)',target:'OpenAI Enrichment Summary',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}}return items;"
+      }
+    },
+    {
+      "id": "monitor-after-openai-enrichment-summary",
+      "name": "AI Monitor After: OpenAI Enrichment Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3660,2060],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all();const url=$env.N8N_OBSERVER_URL,token=$env.N8N_OBSERVER_TOKEN;if(url&&token){try{await this.helpers.httpRequest({method:'POST',url,json:true,headers:{'X-Observer-Token':token},body:{kind:'n8n.debug_log',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'after',source:'OpenAI Enrichment Summary',target:'Parse Enrichment Summary Response',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}}return items;"
+      }
     }
   ],
   "connections": {
@@ -9130,6 +9188,17 @@
       ]
     },
     "Respond Deferred (Zulip)": {
+      "main": [
+        [
+          {
+            "node": "Emit Deferred Reply Event (Zulip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Emit Deferred Reply Event (Zulip)": {
       "main": [
         [
           {
@@ -11521,7 +11590,7 @@
       "main": [
         [
           {
-            "node": "OpenAI Enrichment Plan",
+            "node": "AI Monitor Before: OpenAI Enrichment Plan",
             "type": "main",
             "index": 0
           }
@@ -11532,17 +11601,18 @@
       "main": [
         [
           {
-            "node": "Parse Enrichment Plan Response",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Build Sulu Monitoring Payload (After: OpenAI Enrichment Plan)",
+            "node": "AI Monitor After: OpenAI Enrichment Plan",
             "type": "main",
             "index": 0
           }
         ]
       ]
+    },
+    "AI Monitor Before: OpenAI Enrichment Plan": {
+      "main": [[{"node":"OpenAI Enrichment Plan","type":"main","index":0}]]
+    },
+    "AI Monitor After: OpenAI Enrichment Plan": {
+      "main": [[{"node":"Parse Enrichment Plan Response","type":"main","index":0},{"node":"Build Sulu Monitoring Payload (After: OpenAI Enrichment Plan)","type":"main","index":0}]]
     },
     "Parse Enrichment Plan Response": {
       "main": [
@@ -11647,7 +11717,7 @@
       "main": [
         [
           {
-            "node": "OpenAI Enrichment Summary",
+            "node": "AI Monitor Before: OpenAI Enrichment Summary",
             "type": "main",
             "index": 0
           }
@@ -11658,17 +11728,18 @@
       "main": [
         [
           {
-            "node": "Parse Enrichment Summary Response",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Build Sulu Monitoring Payload (After: OpenAI Enrichment Summary)",
+            "node": "AI Monitor After: OpenAI Enrichment Summary",
             "type": "main",
             "index": 0
           }
         ]
       ]
+    },
+    "AI Monitor Before: OpenAI Enrichment Summary": {
+      "main": [[{"node":"OpenAI Enrichment Summary","type":"main","index":0}]]
+    },
+    "AI Monitor After: OpenAI Enrichment Summary": {
+      "main": [[{"node":"Parse Enrichment Summary Response","type":"main","index":0},{"node":"Build Sulu Monitoring Payload (After: OpenAI Enrichment Summary)","type":"main","index":0}]]
     },
     "Parse Enrichment Summary Response": {
       "main": [

@@ -1134,12 +1134,10 @@ resource "aws_ecs_task_definition" "n8n" {
             N8N_EDITOR_BASE_URL     = "https://${local.n8n_realm_hosts[realm]}/"
             N8N_PUBLIC_API_BASE_URL = "https://${local.n8n_realm_hosts[realm]}/"
             N8N_USER_FOLDER         = local.n8n_realm_paths[realm]
+            N8N_OBSERVER_URL        = "https://${local.n8n_realm_hosts[realm]}/webhook/aiops/ui/node-event"
             N8N_OBSERVER_REALM      = realm
             N8N_OBSERVER_MAX_CHARS  = "4000"
           },
-          var.create_sulu ? {
-            N8N_OBSERVER_URL = "https://${local.sulu_realm_hosts[realm]}/api/n8n/observer/events"
-          } : {},
           local.n8n_gitlab_token_env_by_realm[realm],
           (local.n8n_qdrant_enabled && local.n8n_has_efs_effective) ? {
             QDRANT_URL      = "http://127.0.0.1:${local.qdrant_realm_http_ports[realm]}"

@@ -81,6 +81,53 @@ def run_aiops(args, progress_token):
         time.sleep(1)
     return {"trace_id":trace,"status":"timeout","events":events,"timeout_seconds":timeout_seconds}
 
+def monitor_aiops(args, progress_token):
+    duration_seconds=max(0,int(args.get("duration_seconds",600)))
+    replay_seconds=min(max(0,int(args.get("replay_seconds",60))),3600)
+    heartbeat_seconds=min(max(int(args.get("heartbeat_seconds",15)),5),60)
+    deadline=time.monotonic()+duration_seconds if duration_seconds else None
+    next_heartbeat=time.monotonic()+heartbeat_seconds
+    after=max(0,int(args.get("after",0)))
+    events=[]
+    progress_value=after
+    transient_errors=0
+    progress(progress_token,progress_value,"全AIノードとチャネル会話の監視を開始しました")
+    while deadline is None or time.monotonic()<deadline:
+        try:
+            initial_replay=replay_seconds>0
+            state=call("GET","aiops/ui/events",query={"scope":"all","after":after,"since_seconds":replay_seconds})
+            batch=state.get("events",[])
+            cursor=int(state.get("cursor",after) or after)
+            latest_cursor=int(state.get("latest_cursor",cursor) or cursor)
+            after=max(after,latest_cursor if initial_replay and not batch else cursor)
+            replay_seconds=0
+            for event in batch:
+                if event.get("phase") not in ("ai_node","channel_message","workflow_error"):
+                    continue
+                events.append(event); progress_value=max(progress_value+1,int(event.get("event_id",0) or 0))
+                progress(progress_token,progress_value,event.get("message") or "AIOpsイベント")
+            transient_errors=0
+        except Exception as exc:
+            transient_errors+=1; progress_value+=1
+            progress(progress_token,progress_value,f"監視イベントの取得エラーです。再試行します ({transient_errors}/10): {exc}")
+            if transient_errors>=10:
+                return {"status":"error","events":events,"cursor":after,"error":f"monitor polling failed after 10 retries: {exc}"}
+            time.sleep(min(transient_errors,5))
+            continue
+        now=time.monotonic()
+        if now>=next_heartbeat:
+            progress_value+=1
+            progress(progress_token,progress_value,f"AIOps監視は継続中です（取得イベント {len(events)} 件）")
+            next_heartbeat=now+heartbeat_seconds
+        time.sleep(1)
+    return {"status":"completed","events":events,"cursor":after,"duration_seconds":duration_seconds}
+
+def tool_definitions():
+    return [
+        {"name":"run_aiops","description":"Run n8n AIOps and stream auditable progress events to Codex. By default it waits until a terminal result without a time limit; pass trace_id to resume monitoring an existing run.","inputSchema":{"type":"object","properties":{"request":{"type":"string","description":"AIOps request. Required when starting a new trace."},"realm":{"type":"string","default":"aiops"},"trace_id":{"type":"string","description":"Existing trace to resume without starting a duplicate run."},"after":{"type":"integer","default":0,"minimum":0},"timeout_seconds":{"type":"integer","default":0,"minimum":0,"maximum":86400,"description":"0 waits indefinitely; a positive value enables an explicit timeout."},"heartbeat_seconds":{"type":"integer","default":15,"minimum":5,"maximum":60}},"anyOf":[{"required":["request"]},{"required":["trace_id"]}]}},
+        {"name":"monitor_aiops","description":"Monitor all n8n AI nodes and external channel messages without starting a new AIOps run.","inputSchema":{"type":"object","properties":{"duration_seconds":{"type":"integer","default":600,"minimum":0,"maximum":86400,"description":"Monitoring duration; 0 waits indefinitely."},"replay_seconds":{"type":"integer","default":60,"minimum":0,"maximum":3600,"description":"Replay recent events when monitoring starts."},"after":{"type":"integer","default":0,"minimum":0},"heartbeat_seconds":{"type":"integer","default":15,"minimum":5,"maximum":60}}}},
+    ]
+
 def main():
     while True:
         line=sys.stdin.buffer.readline()
@@ -89,9 +136,12 @@ def main():
         length=int(line.split(b":",1)[1]); sys.stdin.buffer.readline(); msg=json.loads(sys.stdin.buffer.read(length)); method=msg.get("method"); rid=msg.get("id")
         try:
             if method=="initialize": result(rid,{"protocolVersion":"2025-03-26","capabilities":{"tools":{}},"serverInfo":{"name":"aiops-live","version":"0.1.0"}})
-            elif method=="tools/list": result(rid,{"tools":[{"name":"run_aiops","description":"Run n8n AIOps and stream auditable progress events to Codex. By default it waits until a terminal result without a time limit; pass trace_id to resume monitoring an existing run.","inputSchema":{"type":"object","properties":{"request":{"type":"string","description":"AIOps request. Required when starting a new trace."},"realm":{"type":"string","default":"aiops"},"trace_id":{"type":"string","description":"Existing trace to resume without starting a duplicate run."},"after":{"type":"integer","default":0,"minimum":0},"timeout_seconds":{"type":"integer","default":0,"minimum":0,"maximum":86400,"description":"0 waits indefinitely; a positive value enables an explicit timeout."},"heartbeat_seconds":{"type":"integer","default":15,"minimum":5,"maximum":60}},"anyOf":[{"required":["request"]},{"required":["trace_id"]}]}}]})
+            elif method=="tools/list": result(rid,{"tools":tool_definitions()})
             elif method=="tools/call":
-                p=msg.get("params",{}); value=run_aiops(p.get("arguments",{}),(p.get("_meta") or {}).get("progressToken")); result(rid,{"content":[{"type":"text","text":json.dumps(value,ensure_ascii=False)}],"isError":value.get("status") in ("failed","error","timeout","cancelled","canceled")})
+                p=msg.get("params",{}); name=p.get("name"); args=p.get("arguments",{}); token_value=(p.get("_meta") or {}).get("progressToken")
+                if name=="monitor_aiops": value=monitor_aiops(args,token_value)
+                else: value=run_aiops(args,token_value)
+                result(rid,{"content":[{"type":"text","text":json.dumps(value,ensure_ascii=False)}],"isError":value.get("status") in ("failed","error","timeout","cancelled","canceled")})
             elif rid is not None: result(rid,{})
         except Exception as exc:
             send({"jsonrpc":"2.0","id":rid,"error":{"code":-32000,"message":str(exc)}})
@@ -105,6 +155,7 @@ def dry_run():
         "default_timeout_seconds": 0,
         "heartbeat_seconds": 15,
         "resume_by_trace_id": True,
+        "monitor_all_ai_nodes": True,
         "network_requested": False,
     }, ensure_ascii=False))
 
