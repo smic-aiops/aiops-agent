@@ -4,6 +4,7 @@ import json, os, subprocess, sys, time, urllib.parse, urllib.request
 REPO = os.environ.get("AIOPS_REPO", "/Users/goro-asahina/smic/smic-aiops/aiops-agent")
 BASE = os.environ.get("AIOPS_N8N_URL", "https://aiops.n8n.smic-aiops.jp").rstrip("/")
 _TOKEN_CACHE = None
+_TRANSPORT = "jsonl"
 
 def token():
     global _TOKEN_CACHE
@@ -30,7 +31,12 @@ def call(method, path, body=None, query=None):
             raise RuntimeError(f"n8n returned non-JSON HTTP {response.status}: {preview!r}") from exc
 
 def send(obj):
-    raw=json.dumps(obj, ensure_ascii=False).encode(); sys.stdout.buffer.write(f"Content-Length: {len(raw)}\r\n\r\n".encode()+raw); sys.stdout.buffer.flush()
+    raw=json.dumps(obj, ensure_ascii=False).encode()
+    if _TRANSPORT == "content-length":
+        sys.stdout.buffer.write(f"Content-Length: {len(raw)}\r\n\r\n".encode()+raw)
+    else:
+        sys.stdout.buffer.write(raw+b"\n")
+    sys.stdout.buffer.flush()
 
 def result(req_id, value): send({"jsonrpc":"2.0","id":req_id,"result":value})
 
@@ -129,11 +135,18 @@ def tool_definitions():
     ]
 
 def main():
+    global _TRANSPORT
     while True:
         line=sys.stdin.buffer.readline()
         if not line: break
-        if not line.lower().startswith(b"content-length:"): continue
-        length=int(line.split(b":",1)[1]); sys.stdin.buffer.readline(); msg=json.loads(sys.stdin.buffer.read(length)); method=msg.get("method"); rid=msg.get("id")
+        if line.lower().startswith(b"content-length:"):
+            _TRANSPORT="content-length"
+            length=int(line.split(b":",1)[1]); sys.stdin.buffer.readline(); msg=json.loads(sys.stdin.buffer.read(length))
+        else:
+            _TRANSPORT="jsonl"
+            if not line.strip(): continue
+            msg=json.loads(line)
+        method=msg.get("method"); rid=msg.get("id")
         try:
             if method=="initialize": result(rid,{"protocolVersion":"2025-03-26","capabilities":{"tools":{}},"serverInfo":{"name":"aiops-live","version":"0.1.0"}})
             elif method=="tools/list": result(rid,{"tools":tool_definitions()})
