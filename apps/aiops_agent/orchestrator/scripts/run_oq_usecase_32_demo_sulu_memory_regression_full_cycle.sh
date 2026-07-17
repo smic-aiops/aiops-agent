@@ -176,6 +176,21 @@ mkdir -p "${EVIDENCE_DIR}"
 
 ZULIP_EVIDENCE_SCRIPT="${SCRIPT_DIR}/record_oq_zulip_evidence.sh"
 if ${FULL_OQ}; then
+  change_issue_lines=""
+  if [[ -n "${TICKET_IIDS}" ]]; then
+    gitlab_api_base="$(terraform_output gitlab_api_base_url)"
+    encoded_service_project="$(jq -rn --arg value "${GITLAB_SERVICE_PROJECT}" '$value | @uri')"
+    IFS=',' read -r -a supplied_ticket_iids <<<"${TICKET_IIDS}"
+    for supplied_iid in "${supplied_ticket_iids[@]}"; do
+      supplied_iid="$(xargs <<<"${supplied_iid}")"
+      [[ "${supplied_iid}" =~ ^[0-9]+$ ]] || continue
+      issue_response="$(curl -fsS -H "PRIVATE-TOKEN: ${GITLAB_ADMIN_TOKEN}" \
+        "${gitlab_api_base%/}/projects/${encoded_service_project}/issues/${supplied_iid}" 2>/dev/null || true)"
+      if jq -e '.labels | index("ITSM/変更管理") != null' <<<"${issue_response}" >/dev/null 2>&1; then
+        change_issue_lines+="$(jq -r '"- 変更管理Issue #\(.iid): \(.web_url)"' <<<"${issue_response}")"$'\n'
+      fi
+    done
+  fi
   approval_message="$(printf '%s\n' \
     '【シナリオ2 CAB承認依頼】' \
     "- 対象realm: ${REALM}" \
@@ -184,6 +199,7 @@ if ${FULL_OQ}; then
     "- ロールバック先: $(jq -r '.deployment.previous_version' <<<"${payload}")" \
     "- 修正版タグ: $(jq -r '.fixed_version' <<<"${payload}")" \
     '- 変更範囲: GitLab、CI、ECR、ECS、CMDB、KEDB' \
+    "${change_issue_lines%$'\n'}" \
     '- 承認状態: 承認済み。フルOQを開始します。')"
   bash "${ZULIP_EVIDENCE_SCRIPT}" \
     --execute \
@@ -257,6 +273,8 @@ if ${FULL_OQ}; then
       "- CAB決定ID: " + (.approval.decision_id // "未記録"),
       "- GitLab MR: " + (.artifacts.mr.web_url // "未作成"),
       "- RFC: " + (.artifacts.rfc.web_url // "未作成"),
+      "- Emergency Change: " + (.artifacts.tickets.records.emergency_change.web_url // "未作成"),
+      "- 恒久変更Issue: " + (.artifacts.tickets.records.permanent_change.web_url // .artifacts.rfc.web_url // "未作成"),
       "- Pipeline: " + (.artifacts.pipeline.web_url // "未作成"),
       "- ロールバック: " + (if .artifacts.workflow_dispatch.rollback.applied then "適用済み" else "未適用" end),
       "- 修正版デプロイ: " + (if .artifacts.workflow_dispatch.fixed_deploy.applied then "適用済み" else "未適用" end),

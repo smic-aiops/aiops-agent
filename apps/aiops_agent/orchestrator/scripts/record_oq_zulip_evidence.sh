@@ -98,5 +98,8 @@ response="$(${RESOLVER} --realm "${REALM}" --exec bash -c '
     "{ok:true,message_id:(\$message_id|tonumber),stream_id:(\$stream_id|tonumber),stream:\$stream,topic:\$topic,content:\$content,message_url:\$message_url,api_response:\$api_response}"
 ' _ "${STREAM_NAME}" "${TOPIC_NAME}" "${CONTENT}")"
 
-printf '%s\n' "${response}" | jq '.' >"${OUTPUT_PATH}"
+printf '%s\n' "${response}" | jq '
+  .referenced_urls = ([.content | scan("https?://[^[:space:]<>()]+") | rtrimstr(",") | rtrimstr("。")] | unique)
+  | .change_issue_urls = ([.referenced_urls[] | select(test("/issues/[0-9]+([/?#]|$)"))] | unique)
+' >"${OUTPUT_PATH}"
 jq -r '"ZULIP_MESSAGE_ID=\(.message_id)\nZULIP_MESSAGE_URL=\(.message_url)"' "${OUTPUT_PATH}"
