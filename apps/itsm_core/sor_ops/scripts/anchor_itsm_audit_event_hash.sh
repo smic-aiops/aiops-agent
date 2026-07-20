@@ -396,7 +396,7 @@ SQL
 query_local_psql() {
   require_cmd "psql"
   export PGPASSWORD="${DB_PASSWORD}"
-  psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" \
+  psql -X -P pager=off -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" \
     -v ON_ERROR_STOP=1 -v "realm_key=${REALM_KEY}" \
     -At -F $'\t' -c "${SQL_QUERY}"
 }
@@ -432,24 +432,29 @@ query_via_ecs_exec() {
   fi
 
   SQL_B64="$(printf %s "${SQL_QUERY}" | base64 | tr -d '\n')"
-  PW_B64="$(printf %s "${DB_PASSWORD}" | base64 | tr -d '\n')"
+  local remote_db_password_env="${ECS_REMOTE_DB_PASSWORD_ENV:-DB_POSTGRESDB_PASSWORD}"
+  if ! [[ "${remote_db_password_env}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "ERROR: ECS_REMOTE_DB_PASSWORD_ENV must be a valid environment variable name." >&2
+    exit 1
+  fi
 
   REMOTE_CMD_QUOTED="$(
     RDS_HOST="${DB_HOST}" RDS_PORT="${DB_PORT}" RDS_USER="${DB_USER}" RDS_DB="${DB_NAME}" \
-    PW_B64="${PW_B64}" SQL_B64="${SQL_B64}" REALM_KEY="${REALM_KEY}" python3 - <<'PY'
+    REMOTE_DB_PASSWORD_ENV="${remote_db_password_env}" SQL_B64="${SQL_B64}" REALM_KEY="${REALM_KEY}" python3 - <<'PY'
 import os, shlex
 
 host = os.environ["RDS_HOST"]
 port = os.environ["RDS_PORT"]
 user = os.environ["RDS_USER"]
 db = os.environ["RDS_DB"]
-pw_b64 = os.environ["PW_B64"]
+remote_db_password_env = os.environ["REMOTE_DB_PASSWORD_ENV"]
 sql_b64 = os.environ["SQL_B64"]
 realm_key = os.environ["REALM_KEY"]
 
+password_ref = "${" + remote_db_password_env + ":?remote DB password environment variable is not set}"
 psql_base = (
-    f"PGPASSWORD=\"$(printf %s {pw_b64} | base64 -d)\" "
-    f"psql -h {shlex.quote(host)} -p {shlex.quote(port)} "
+    f"PGPASSWORD=\"{password_ref}\" "
+    f"psql -X -P pager=off -h {shlex.quote(host)} -p {shlex.quote(port)} "
     f"-U {shlex.quote(user)} -d {shlex.quote(db)} -v ON_ERROR_STOP=1 "
     f"-v realm_key={shlex.quote(realm_key)} -At -F $'\\t'"
 )

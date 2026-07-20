@@ -65,12 +65,32 @@ final class N8nObserverController
 
         $event = $decoded['event'] ?? null;
         $eventObj = is_array($event) ? $event : [];
-        $node = $this->normalizeFilter($eventObj['target'] ?? null)
-            ?? $this->normalizeFilter($eventObj['source'] ?? null);
+        $phase = $this->normalizeFilter($decoded['phase'] ?? null)
+            ?? $this->normalizeFilter($eventObj['phase'] ?? null);
 
-        $phase = $this->normalizeFilter($eventObj['phase'] ?? null);
+        // The regular n8n debug event records the node before/after a connection.
+        // For an "after" event the source is the node that produced the output;
+        // for a "before" event the target is the node about to run.
+        $node = $this->normalizeFilter($decoded['ai_node'] ?? null);
+        if ($node === null && $phase === 'after') {
+            $node = $this->normalizeFilter($eventObj['source'] ?? null)
+                ?? $this->normalizeFilter($eventObj['target'] ?? null);
+        }
+        if ($node === null) {
+            $node = $this->normalizeFilter($eventObj['target'] ?? null)
+                ?? $this->normalizeFilter($eventObj['source'] ?? null);
+        }
+
         $items = $eventObj['items'] ?? null;
         $itemsList = is_array($items) ? $items : [];
+        if ($itemsList === [] && array_key_exists('payload', $decoded)) {
+            $itemsList = [$decoded['payload']];
+        }
+
+        $traceId = $this->normalizeFilter($decoded['trace_id'] ?? null)
+            ?? $this->findNestedString($itemsList, ['trace_id', 'traceId']);
+        $contextId = $this->normalizeFilter($decoded['context_id'] ?? null)
+            ?? $this->findNestedString($itemsList, ['context_id', 'contextId']);
 
         $normalizedPayload = [
             'kind' => $this->normalizeFilter($decoded['kind'] ?? null),
@@ -80,6 +100,8 @@ final class N8nObserverController
             'execution_id' => $executionId,
             'phase' => $phase,
             'sent_at' => $this->normalizeFilter($decoded['sent_at'] ?? null),
+            'trace_id' => $traceId,
+            'context_id' => $contextId,
             'input' => $phase === 'before' ? $itemsList : null,
             'output' => $phase === 'after' ? $itemsList : null,
             'raw' => $decoded,
@@ -110,5 +132,37 @@ final class N8nObserverController
         }
         $token = trim($token);
         return $token === '' ? null : $token;
+    }
+
+    /**
+     * @param array<mixed> $value
+     * @param array<int, string> $keys
+     */
+    private function findNestedString(array $value, array $keys, int $depth = 0): ?string
+    {
+        if ($depth > 6) {
+            return null;
+        }
+
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $value)) {
+                $normalized = $this->normalizeFilter($value[$key]);
+                if ($normalized !== null) {
+                    return $normalized;
+                }
+            }
+        }
+
+        foreach ($value as $child) {
+            if (!is_array($child)) {
+                continue;
+            }
+            $found = $this->findNestedString($child, $keys, $depth + 1);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        return null;
     }
 }

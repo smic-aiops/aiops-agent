@@ -455,23 +455,6 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { response_not_required: true } }}",
-        "options": {
-          "responseCode": "={{200}}"
-        }
-      },
-      "id": "respond-zulip-ack",
-      "name": "Respond Ack (Zulip Webhook)",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [
-        920,
-        120
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
         "responseBody": "={{ (() => { const content = (typeof $json.content === 'string' ? $json.content : '').trim(); if (content) return { content }; return { response_not_required: true }; })() }}",
         "options": {
           "responseCode": "={{200}}"
@@ -491,7 +474,7 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ ['1','true','yes','y','on'].includes(String($env.N8N_ZULIP_DEFER_SLOW_RESPONSE || '').toLowerCase()) }}",
+              "value1": "={{ (() => { const configured = ['1','true','yes','y','on'].includes(String($env.N8N_ZULIP_DEFER_SLOW_RESPONSE || '').toLowerCase()); if (configured) return true; let base = {}; try { base = $node[\"Build IAM & Policy Context\"].json || {}; } catch (e) {} const normalized = (base.normalized_event && typeof base.normalized_event === 'object') ? base.normalized_event : {}; const raw = normalized.original_text || normalized.raw_body?.data || normalized.raw_body?.message?.content || normalized.text || ''; return /(Web検索|ウェブ検索|最新.*(?:AWS|障害|情報)|検索して)/i.test(String(raw)); })() }}",
               "value2": true
             }
           ]
@@ -520,6 +503,20 @@
       "typeVersion": 1,
       "position": [
         2000,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all(); const observerUrl=$env.N8N_OBSERVER_URL; const observerToken=$env.N8N_OBSERVER_TOKEN; if(observerUrl&&observerToken){try{await this.helpers.httpRequest({method:'POST',url:observerUrl,json:true,headers:{'X-Observer-Token':observerToken},body:{kind:'n8n.channel_message',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'before',source:'Respond Deferred (Zulip)',target:'Zulip Deferred Reply',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}} return items;"
+      },
+      "id": "emit-zulip-deferred-observer",
+      "name": "Emit Deferred Reply Event (Zulip)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2220,
         40
       ]
     },
@@ -587,19 +584,30 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{$json.source}}",
-              "value2": "cloudwatch",
-              "operation": "equal"
+              "id": "source-is-cloudwatch",
+              "leftValue": "={{String($json.source || $json.normalized_event?.source || '').trim()}}",
+              "rightValue": "cloudwatch",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "if-cloudwatch-direct-preview",
       "name": "IF CloudWatch Source (Direct Preview)",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         1760,
         340
@@ -628,18 +636,31 @@
     {
       "parameters": {
         "conditions": {
-          "boolean": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{(() => {\n  let base = {};\n  try { base = $node[\"Build IAM & Policy Context\"].json; } catch (e) {}\n  if (!base || typeof base !== 'object' || Array.isArray(base)) base = {};\n  if (!base.normalized_event) {\n    try { base = $node[\"Normalize Duplicate Flag\"].json; } catch (e) {}\n  }\n  if (!base || typeof base !== 'object' || Array.isArray(base)) base = ($json || {});\n\n  const replyTarget = (base.reply_target && typeof base.reply_target === 'object') ? base.reply_target : {};\n  const normalized = (base.normalized_event && typeof base.normalized_event === 'object') ? base.normalized_event : {};\n  const source = normalized.source || base.source || replyTarget.source || 'unknown';\n  if (source !== 'zulip') return false;\n\n  let raw = '';\n  if (normalized.raw_body && typeof normalized.raw_body === 'object') {\n    raw = normalized.raw_body.data || (normalized.raw_body.message && normalized.raw_body.message.content) || '';\n  }\n  if (!raw) raw = normalized.text || '';\n\n  const stripHtml = (t) => String(t || '')\n    .replace(/<style[\\s\\S]*?>[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/\\s+/g, ' ')\n    .trim();\n\n  const stripMention = (t) => String(t || '')\n    .replace(/^@\\*\\*[^*]+\\*\\*\\s*/, '')\n    .replace(/^@\\S+\\s*/, '');\n  const stripOqSuffix = (t) => String(t || '').replace(/\\s*\\(OQ-HELLO-[^)]+\\)\\s*$/i, '').trim();\n\n  const rawText = stripHtml(raw);\n  const text = stripOqSuffix(stripMention(String(rawText))).split(/\\r?\\n/)[0].trim();\n\n  const stream = replyTarget.stream || normalized.raw_body?.message?.display_recipient || normalized.raw_body?.display_recipient || '';\n  const topic = replyTarget.topic || normalized.raw_body?.message?.subject || normalized.raw_body?.subject || '';\n  const isOq = /^oq-/i.test(String(topic || '')) || String(stream || '') === '0perational Qualification' || /\\(OQ-HELLO-/i.test(rawText);\n\n  const isGreeting = (t) => /^\\s*(こんにちは|こんばんは|おはよう|hello|hi|やあ|はじめまして)(\\s|$)/i.test(t);\n  const isSmalltalk = (t) => /(雑談|世間話|元気|調子どう|眠い|寒い|暑い|ランチ|おすすめ)/.test(t);\n  const isRun = (t) => /^\\s*(run|request|execute)\\s+([A-Za-z0-9_.-]+)/i.test(t);\n\n  return (isOq || isGreeting(text) || isSmalltalk(text) || isRun(text));\n})()}}",
-              "value2": true
+              "id": "zulip-is-fast-response",
+              "leftValue": "={{(() => {\n  let base = {};\n  try { base = $node[\"Build IAM & Policy Context\"].json; } catch (e) {}\n  if (!base || typeof base !== 'object' || Array.isArray(base)) base = {};\n  if (!base.normalized_event) {\n    try { base = $node[\"Normalize Duplicate Flag\"].json; } catch (e) {}\n  }\n  if (!base || typeof base !== 'object' || Array.isArray(base)) base = ($json || {});\n\n  const replyTarget = (base.reply_target && typeof base.reply_target === 'object') ? base.reply_target : {};\n  const normalized = (base.normalized_event && typeof base.normalized_event === 'object') ? base.normalized_event : {};\n  const source = normalized.source || base.source || replyTarget.source || 'unknown';\n  if (source !== 'zulip') return false;\n\n  let raw = normalized.original_text || '';\n  if (!raw && normalized.raw_body && typeof normalized.raw_body === 'object') {\n    raw = normalized.raw_body.data || (normalized.raw_body.message && normalized.raw_body.message.content) || '';\n  }\n  if (!raw) raw = normalized.text || '';\n\n  const stripHtml = (t) => String(t || '')\n    .replace(/<style[\\s\\S]*?>[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/\\s+/g, ' ')\n    .trim();\n\n  const stripMention = (t) => String(t || '')\n    .replace(/^@\\*\\*[^*]+\\*\\*\\s*/, '')\n    .replace(/^@\\S+\\s*/, '');\n  const stripOqSuffix = (t) => String(t || '').replace(/\\s*\\(OQ-HELLO-[^)]+\\)\\s*$/i, '').trim();\n\n  const rawText = stripHtml(raw);\n  const text = stripOqSuffix(stripMention(String(rawText))).split(/\\r?\\n/)[0].trim();\n\n  const stream = replyTarget.stream || normalized.raw_body?.message?.display_recipient || normalized.raw_body?.display_recipient || '';\n  const topic = replyTarget.topic || normalized.raw_body?.message?.subject || normalized.raw_body?.subject || '';\n  const isOq = /^oq-/i.test(String(topic || '')) || String(stream || '') === '0perational Qualification' || /\\(OQ-HELLO-/i.test(rawText);\n\n  const isGreeting = (t) => /^\\s*(こんにちは|こんばんは|おはよう|hello|hi|やあ|はじめまして)(\\s|$)/i.test(t);\n  const isSmalltalk = (t) => /(雑談|世間話|元気|調子どう|眠い|寒い|暑い|ランチ|おすすめ)/.test(t);\n  const isRun = (t) => /^\\s*(run|request|execute)\\s+([A-Za-z0-9_.-]+)/i.test(t);\n\n  const needsSlow = /(Web検索|ウェブ検索|最新.*(?:AWS|障害|情報)|検索して)/i.test(text);\n  if (needsSlow) return false;\n\n  return (isOq || isGreeting(text) || isSmalltalk(text) || isRun(text));\n})()}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "if-zulip-response-mode",
       "name": "IF Zulip Response Mode (Fast)",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         1880,
         80
@@ -667,7 +688,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const base = $node['Build IAM & Policy Context']?.json ?? $node['Normalize Duplicate Flag']?.json ?? {};\nconst preview = $json ?? {};\n\nconst normalized = base.normalized_event ?? {};\nconst text = String(normalized.text ?? '').trim();\n\nconst nextAction = String(preview.next_action ?? base.next_action ?? '').trim();\nconst approvalToken = String(preview.approval_token ?? '').trim();\nconst expiresAt = String(preview.expires_at ?? '').trim();\nconst jobPlan = preview.job_plan ?? {};\nconst candidates = Array.isArray(preview.candidates) ? preview.candidates : [];\nconst questions = Array.isArray(preview.clarifying_questions) ? preview.clarifying_questions.map((v) => String(v ?? '').trim()).filter(Boolean) : [];\n\nconst isDuplicate = Boolean(base.is_duplicate);\nif (isDuplicate) {\n  return [{ json: { ...base, ...preview, content: '' } }];\n}\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nconst templates = interactionGrammar?.approval?.templates ?? {};\nconst approveCmd = approvalToken ? `approve ${approvalToken}` : (templates.approve ?? 'approve <token>');\nconst denyCmd = approvalToken ? `deny ${approvalToken}` : (templates.deny ?? 'deny <token>');\n\nconst greeting = () => {\n  if (/こんばんは/.test(text)) return 'こんばんは！';\n  if (/おはよう/.test(text)) return 'おはようございます！';\n  return 'こんにちは！';\n};\n\nlet content = '';\nif (nextAction === 'reply_only') {\n  content = `${greeting()} 何かお手伝いできることがあれば教えてください。`;\n} else if (nextAction === 'require_approval') {\n  const workflowId = String(jobPlan.workflow_id ?? candidates?.[0]?.workflow_id ?? '').trim();\n  const summary = String(jobPlan.summary ?? candidates?.[0]?.summary ?? '').trim();\n  const header = workflowId ? `実行候補: ${workflowId}` : '実行候補を確認しました';\n  const summaryLine = summary ? `\\n概要: ${summary}` : '';\n  const expLine = expiresAt ? `\\n有効期限: ${expiresAt}` : '';\n  content = `${header}${summaryLine}\\n\\n承認が必要です。次のいずれかを実行してください:\\n${approveCmd}\\n${denyCmd}${expLine}`;\n} else if (nextAction === 'ask_clarification') {\n  const qs = questions.length ? questions.slice(0, 2) : ['実行したい内容（ワークフローIDとパラメータ）を教えてください。'];\n  const firstLine = text.split(/\\r?\\n/)[0].trim();\n  const known = firstLine ? `- 依頼: ${firstLine}` : '- （情報が不足しています）';\n  content = `今わかっていること\\n${known}\\n\\n不明点\\n- ${qs.join('\\n- ')}`;\n} else if (nextAction === 'reject') {\n  content = 'この依頼は受理できませんでした（ポリシーにより拒否）。';\n} else {\n  content = `受け付けました（next_action=${nextAction || 'unknown'}）。`;\n}\n\nreturn [{ json: { ...base, ...preview, content } }];\n"
+        "jsCode": "const base = $node['Build IAM & Policy Context']?.json ?? $node['Normalize Duplicate Flag']?.json ?? {};\nconst preview = $json ?? {};\n\nconst normalized = base.normalized_event ?? {};\nconst text = String(normalized.text ?? '').trim();\n\nconst nextAction = String(preview.next_action ?? base.next_action ?? '').trim();\nconst approvalToken = String(preview.approval_token ?? '').trim();\nconst expiresAt = String(preview.expires_at ?? '').trim();\nconst jobPlan = preview.job_plan ?? {};\nconst candidates = Array.isArray(preview.candidates) ? preview.candidates : [];\nconst questions = Array.isArray(preview.clarifying_questions) ? preview.clarifying_questions.map((v) => String(v ?? '').trim()).filter(Boolean) : [];\n\nconst isDuplicate = Boolean(base.is_duplicate);\nif (isDuplicate) {\n  return [{ json: { ...base, ...preview, content: '同じメッセージを受信済みです。処理結果を確認しています。' } }];\n}\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nconst templates = interactionGrammar?.approval?.templates ?? {};\nconst approveCmd = approvalToken ? `approve ${approvalToken}` : (templates.approve ?? 'approve <token>');\nconst denyCmd = approvalToken ? `deny ${approvalToken}` : (templates.deny ?? 'deny <token>');\n\nconst greeting = () => {\n  if (/こんばんは/.test(text)) return 'こんばんは！';\n  if (/おはよう/.test(text)) return 'おはようございます！';\n  return 'こんにちは！';\n};\n\nlet content = '';\nif (nextAction === 'reply_only') {\n  content = `${greeting()} 何かお手伝いできることがあれば教えてください。`;\n} else if (nextAction === 'require_approval') {\n  const workflowId = String(jobPlan.workflow_id ?? candidates?.[0]?.workflow_id ?? '').trim();\n  const summary = String(jobPlan.summary ?? candidates?.[0]?.summary ?? '').trim();\n  const header = workflowId ? `実行候補: ${workflowId}` : '実行候補を確認しました';\n  const summaryLine = summary ? `\\n概要: ${summary}` : '';\n  const expLine = expiresAt ? `\\n有効期限: ${expiresAt}` : '';\n  content = `${header}${summaryLine}\\n\\n承認が必要です。次のいずれかを実行してください:\\n${approveCmd}\\n${denyCmd}${expLine}`;\n} else if (nextAction === 'ask_clarification') {\n  const qs = questions.length ? questions.slice(0, 2) : ['実行したい内容（ワークフローIDとパラメータ）を教えてください。'];\n  const firstLine = text.split(/\\r?\\n/)[0].trim();\n  const known = firstLine ? `- 依頼: ${firstLine}` : '- （情報が不足しています）';\n  content = `今わかっていること\\n${known}\\n\\n不明点\\n- ${qs.join('\\n- ')}`;\n} else if (nextAction === 'reject') {\n  content = 'この依頼は受理できませんでした（ポリシーにより拒否）。';\n} else {\n  content = `受け付けました（next_action=${nextAction || 'unknown'}）。`;\n}\n\nreturn [{ json: { ...base, ...preview, content } }];\n"
       },
       "id": "build-zulip-response-content-fast",
       "name": "Build Zulip Response Content (Fast)",
@@ -680,7 +701,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\n\nconst base = $node['Build IAM & Policy Context']?.json ?? $node['Normalize Duplicate Flag']?.json ?? $json ?? {};\nconst normalized = base.normalized_event ?? {};\nconst policy = base.policy_context ?? {};\n\nconst textRaw = String(normalized.raw_body?.data ?? normalized.raw_body?.message?.content ?? normalized.text ?? '').trim();\n\nconst stripHtml = (t) => String(t ?? '')\n  .replace(/<style[\\s\\S]*?>[\\s\\S]*?<\\/style>/gi, ' ')\n  .replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, ' ')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/&nbsp;/gi, ' ')\n  .replace(/&amp;/gi, '&')\n  .replace(/&lt;/gi, '<')\n  .replace(/&gt;/gi, '>')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst textPlain = stripHtml(textRaw);\nconst contextId = String(base.context_id ?? '').trim();\nconst actor = base.actor ?? {};\n\nconst stripMention = (t) => String(t ?? '')\n  .replace(/^@\\*\\*[^*]+\\*\\*\\s*/, '')\n  .replace(/^@\\S+\\s*/, '');\n\nconst stripOqSuffix = (t) => String(t ?? '').replace(/\\s*\\(OQ-HELLO-[^)]+\\)\\s*$/i, '').trim();\n\nconst textWithContext = stripOqSuffix(stripMention(textPlain));\nconst text = String(textWithContext).split(/\\r?\\n/)[0].trim();\n\nconst isDuplicate = Boolean(base.is_duplicate);\nif (isDuplicate) {\n  return [{ json: { ...base, candidates: [], job_plan: {}, next_action: 'reply_only', required_confirm: false, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, content: '' } }];\n}\n\nconst defaults = policy?.defaults?.jobs_preview ?? {};\nconst approvalDoc = policy?.approval_policy_doc ?? {};\n\nconst ttlSecondsRaw = approvalDoc?.token?.ttl_seconds ?? $env.N8N_APPROVAL_TOKEN_TTL_SECONDS ?? 900;\nconst ttlSeconds = (typeof ttlSecondsRaw === 'number' && Number.isFinite(ttlSecondsRaw))\n  ? Math.max(1, Math.floor(ttlSecondsRaw))\n  : Math.max(1, Math.floor(Number(ttlSecondsRaw) || 900));\n\nconst isGreeting = (t) => /^\\s*(こんにちは|こんばんは|おはよう|hello|hi|やあ|はじめまして)(\\s|$)/i.test(t);\nconst isSmalltalk = (t) => /(雑談|世間話|元気|調子どう|眠い|寒い|暑い|ランチ|おすすめ)/.test(t);\n\nconst parseRun = (t) => {\n  const trimmed = String(t ?? '').trim();\n  const m = trimmed.match(/^\\s*(run|request|execute)\\s+([A-Za-z0-9_.-]+)(?:\\s+(.*))?$/i);\n  if (!m) return null;\n  const workflowId = m[2];\n  const rest = String(m[3] ?? '').trim();\n  let params = {};\n  if (rest) {\n    const idx = rest.indexOf('{');\n    if (idx >= 0) {\n      try {\n        const parsed = JSON.parse(rest.slice(idx));\n        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {\n          params = parsed;\n        }\n      } catch (error) {\n        // ignore\n      }\n    }\n  }\n  return { workflow_id: workflowId, params };\n};\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nconst templates = interactionGrammar?.approval?.templates ?? {};\n\nconst greeting = () => {\n  if (/こんばんは/.test(text)) return 'こんばんは！';\n  if (/おはよう/.test(text)) return 'おはようございます！';\n  return 'こんにちは！';\n};\n\nif (!text || isGreeting(text) || isSmalltalk(text)) {\n  const content = `${greeting()} 何かお手伝いできることがあれば教えてください。`;\n  return [{ json: { ...base, candidates: [], job_plan: {}, next_action: 'reply_only', required_confirm: false, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, content } }];\n}\n\nconst run = parseRun(text);\nif (!run || !run.workflow_id) {\n  const content = 'API の件ですね。まず状況整理から始めます。\\n- 発生し始めた時刻/直前の変更（デプロイ/設定/DB 等）\\n- 影響範囲（全ユーザー/一部）\\n- 502 の発生箇所（ALB/アプリ/上流）\\n- 関連ログ/メトリクス（5xx, latency, upstream health）\\n分かる範囲で教えてください。';\n  return [{ json: { ...base, candidates: [], job_plan: {}, next_action: 'reply_only', required_confirm: false, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, content } }];\n}\n\nconst secret = $env.N8N_APPROVAL_HMAC_SECRET_NAME;\nif (!secret) {\n  const content = '承認トークンを発行できませんでした（N8N_APPROVAL_HMAC_SECRET_NAME 未設定）。';\n  return [{ json: { ...base, candidates: [], job_plan: {}, next_action: 'ask_clarification', required_confirm: true, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, clarifying_questions: ['実行環境の設定を確認してください'], content } }];\n}\n\nconst approvalId = crypto.randomUUID();\nconst tokenNonce = crypto.randomBytes(16).toString('hex');\nconst expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();\n\nconst jobPlan = {\n  workflow_id: run.workflow_id,\n  params: run.params ?? {},\n  trace_id: normalized.trace_id ?? null,\n  summary: `workflow=${run.workflow_id}`,\n  required_roles: [],\n  required_groups: [],\n  risk_level: defaults.risk_level ?? 'medium',\n  impact_scope: defaults.impact_scope ?? 'service',\n  missing_params: []\n};\n\nconst tokenPayload = {\n  approval_id: approvalId,\n  context_id: contextId,\n  workflow_id: jobPlan.workflow_id,\n  params: jobPlan.params ?? {},\n  actor,\n  token_nonce: tokenNonce,\n  expires_at: expiresAt\n};\n\nconst signature = crypto.createHmac('sha256', secret)\n  .update(JSON.stringify(tokenPayload))\n  .digest('hex');\n\nconst approvalToken = Buffer.from(JSON.stringify({ ...tokenPayload, signature })).toString('base64url');\n\nconst approveCmd = `approve ${approvalToken}`;\nconst denyCmd = `deny ${approvalToken}`;\n\nconst approvalWebhookBase = (() => {\n  const baseRaw = String($env.N8N_APPROVAL_BASE_URL || $env.N8N_ADAPTER_BASE_URL || '').trim().replace(/\\/+$/, '');\n  if (!baseRaw) return '';\n  const idx = baseRaw.indexOf('/webhook');\n  const base = idx >= 0 ? (baseRaw.slice(0, idx) + '/webhook') : (baseRaw + '/webhook');\n  return base.replace(/\\/+$/, '');\n})();\n\nconst approveUrl = approvalWebhookBase\n  ? `${approvalWebhookBase}/approval/click?decision=approve&token=${encodeURIComponent(approvalToken)}`\n  : '';\nconst denyUrl = approvalWebhookBase\n  ? `${approvalWebhookBase}/approval/click?decision=deny&token=${encodeURIComponent(approvalToken)}`\n  : '';\n\nconst linkBlock = (approveUrl && denyUrl)\n  ? `\n\n承認リンク（クリック）:\n${approveUrl}\n${denyUrl}`\n  : '';\n\nconst content = `実行候補: ${jobPlan.workflow_id}\n\n承認が必要です。次のいずれかを実行してください:\n${approveCmd}\n${denyCmd}\n有効期限: ${expiresAt}` + linkBlock;\n\nreturn [{\n  json: {\n    ...base,\n    candidates: [{\n      workflow_id: jobPlan.workflow_id,\n      params: jobPlan.params,\n      summary: jobPlan.summary,\n      required_roles: [],\n      required_groups: [],\n      risk_level: jobPlan.risk_level,\n      impact_scope: jobPlan.impact_scope,\n      ambiguity_score: 0\n    }],\n    preview_facts: {},\n    job_plan: jobPlan,\n    next_action: 'require_approval',\n    required_confirm: true,\n    approval_id: approvalId,\n    approval_token: approvalToken,\n    token_nonce: tokenNonce,\n    expires_at: expiresAt,\n    approval: { approval_id: approvalId, expires_at: expiresAt, token: approvalToken },\n    content\n  }\n}];\n"
+        "jsCode": "const crypto = require('crypto');\n\nconst base = $node['Build IAM & Policy Context']?.json ?? $node['Normalize Duplicate Flag']?.json ?? $json ?? {};\nconst normalized = base.normalized_event ?? {};\nconst policy = base.policy_context ?? {};\n\nconst textRaw = String(normalized.original_text ?? normalized.raw_body?.data ?? normalized.raw_body?.message?.content ?? normalized.text ?? '').trim();\n\nconst stripHtml = (t) => String(t ?? '')\n  .replace(/<style[\\s\\S]*?>[\\s\\S]*?<\\/style>/gi, ' ')\n  .replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, ' ')\n  .replace(/<[^>]+>/g, ' ')\n  .replace(/&nbsp;/gi, ' ')\n  .replace(/&amp;/gi, '&')\n  .replace(/&lt;/gi, '<')\n  .replace(/&gt;/gi, '>')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst textPlain = stripHtml(textRaw);\nconst contextId = String(base.context_id ?? '').trim();\nconst actor = base.actor ?? {};\n\nconst stripMention = (t) => String(t ?? '')\n  .replace(/^@\\*\\*[^*]+\\*\\*\\s*/, '')\n  .replace(/^@\\S+\\s*/, '');\n\nconst stripOqSuffix = (t) => String(t ?? '').replace(/\\s*\\(OQ-HELLO-[^)]+\\)\\s*$/i, '').trim();\n\nconst textWithContext = stripOqSuffix(stripMention(textPlain));\nconst text = String(textWithContext).split(/\\r?\\n/)[0].trim();\n\nconst isDuplicate = Boolean(base.is_duplicate);\nif (isDuplicate) {\n  return [{ json: { ...base, candidates: [], job_plan: {}, next_action: 'reply_only', required_confirm: false, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, content: '同じメッセージを受信済みです。処理結果を確認しています。' } }];\n}\n\nconst defaults = policy?.defaults?.jobs_preview ?? {};\nconst approvalDoc = policy?.approval_policy_doc ?? {};\n\nconst ttlSecondsRaw = approvalDoc?.token?.ttl_seconds ?? $env.N8N_APPROVAL_TOKEN_TTL_SECONDS ?? 900;\nconst ttlSeconds = (typeof ttlSecondsRaw === 'number' && Number.isFinite(ttlSecondsRaw))\n  ? Math.max(1, Math.floor(ttlSecondsRaw))\n  : Math.max(1, Math.floor(Number(ttlSecondsRaw) || 900));\n\nconst isGreeting = (t) => /^\\s*(こんにちは|こんばんは|おはよう|hello|hi|やあ|はじめまして)(\\s|$)/i.test(t);\nconst isSmalltalk = (t) => /(雑談|世間話|元気|調子どう|眠い|寒い|暑い|ランチ|おすすめ)/.test(t);\n\nconst parseRun = (t) => {\n  const trimmed = String(t ?? '').trim();\n  const m = trimmed.match(/^\\s*(run|request|execute)\\s+([A-Za-z0-9_.-]+)(?:\\s+(.*))?$/i);\n  if (!m) return null;\n  const workflowId = m[2];\n  const rest = String(m[3] ?? '').trim();\n  let params = {};\n  if (rest) {\n    const idx = rest.indexOf('{');\n    if (idx >= 0) {\n      try {\n        const parsed = JSON.parse(rest.slice(idx));\n        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {\n          params = parsed;\n        }\n      } catch (error) {\n        // ignore\n      }\n    }\n  }\n  return { workflow_id: workflowId, params };\n};\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nconst templates = interactionGrammar?.approval?.templates ?? {};\n\nconst greeting = () => {\n  if (/こんばんは/.test(text)) return 'こんばんは！';\n  if (/おはよう/.test(text)) return 'おはようございます！';\n  return 'こんにちは！';\n};\n\nif (!text || isGreeting(text) || isSmalltalk(text)) {\n  const content = `${greeting()} 何かお手伝いできることがあれば教えてください。`;\n  return [{ json: { ...base, candidates: [], job_plan: {}, next_action: 'reply_only', required_confirm: false, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, content } }];\n}\n\nconst finishReply = (content, nextAction = 'reply_only', extra = {}) => [{ json: { ...base, candidates: [], job_plan: {}, next_action: nextAction, required_confirm: false, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, content, ...extra } }];\n\nif (/(アクセスキー|AKIA[0-9A-Z]{8,}|secret|password)/i.test(text)) {\n  return finishReply('機密情報は返信へ表示せずマスクしました。アクセスキーやパスワードはチャットへ貼らないでください。SSM Parameter Store または Secrets Manager で管理し、漏えいの可能性がある場合は直ちに無効化・ローテーションしてください。');\n}\n\nif (/\\bSLO\\b/i.test(text) && /(意味|とは|どういう)/.test(text)) {\n  return finishReply('SLO は Service Level Objective（サービスレベル目標）です。可用性や応答時間などの指標について、一定期間に達成すべき目標値を定めます。SLO低下時は、対応するSLIとエラーバジェットを確認します。');\n}\n\nif (/(デプロイ|deploy)/i.test(text) && /(手順|教えて|確認)/.test(text)) {\n  return finishReply('デプロイ手順を確認します。対象サービスと環境、変更内容、ロールバック方法を確認し、承認済みのRunbookに従って、事前確認、デプロイ、ヘルスチェック、結果記録の順で進めてください。');\n}\n\nif (/(本番|production)/i.test(text) && /(DB|データベース)/i.test(text) && /(再起動|restart|停止|削除)/i.test(text)) {\n  return finishReply('本番DBへの変更は高リスクのため、まだ実行しません。影響範囲、冗長化・フェイルオーバー、バックアップ、実施時間、ロールバック手順をプレビューし、権限者の承認後に実行候補を確定します。', 'require_approval', { required_confirm: true, clarifying_questions: ['対象DBと希望実施時間を教えてください。'] });\n}\n\nif (/(遅い|遅延|latency)/i.test(text) && /(原因|なぜ|わかり)/.test(text)) {\n  return finishReply('現時点の情報だけでは原因を断定できません。可能性として、アプリ処理、DB、外部API、ネットワーク、直前の変更が考えられます。次に確認するため、発生時刻と影響範囲、レイテンシ・エラー率のメトリクス、関連ログ、直前のデプロイや設定変更を教えてください。');\n}\n\nconst isAmbiguousRepair = (t) => /(止まって|動かない|直して|復旧して)/.test(t) && !/(sulu|api|gitlab|n8n|zulip|odoo|サービス名|workflow)/i.test(t);\nif (isAmbiguousRepair(text)) {\n  const questions = ['対象のサービス名またはワークフローIDを教えてください。', '発生し始めた時刻と影響範囲を教えてください。'];\n  const content = `今わかっていること\n- サービスが停止しており、復旧を希望しています。\n\n不明点\n- ${questions.join('\\n- ')}`;\n  return [{ json: { ...base, candidates: [], job_plan: {}, next_action: 'ask_clarification', required_confirm: false, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, clarifying_questions: questions, initial_reply_clarifying_questions: questions, initial_reply_needs_clarification: true, content } }];\n}\n\nconst run = parseRun(text);\nif (!run || !run.workflow_id) {\n  const content = 'API の件ですね。まず状況整理から始めます。\\n- 発生し始めた時刻/直前の変更（デプロイ/設定/DB 等）\\n- 影響範囲（全ユーザー/一部）\\n- 502 の発生箇所（ALB/アプリ/上流）\\n- 関連ログ/メトリクス（5xx, latency, upstream health）\\n分かる範囲で教えてください。';\n  return [{ json: { ...base, candidates: [], job_plan: {}, next_action: 'reply_only', required_confirm: false, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, content } }];\n}\n\nconst secret = $env.N8N_APPROVAL_HMAC_SECRET_NAME;\nif (!secret) {\n  const content = '承認トークンを発行できませんでした（N8N_APPROVAL_HMAC_SECRET_NAME 未設定）。';\n  return [{ json: { ...base, candidates: [], job_plan: {}, next_action: 'ask_clarification', required_confirm: true, approval_id: null, approval_token: null, token_nonce: null, expires_at: null, preview_facts: {}, clarifying_questions: ['実行環境の設定を確認してください'], content } }];\n}\n\nconst approvalId = crypto.randomUUID();\nconst tokenNonce = crypto.randomBytes(16).toString('hex');\nconst expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();\n\nconst jobPlan = {\n  workflow_id: run.workflow_id,\n  params: run.params ?? {},\n  trace_id: normalized.trace_id ?? null,\n  summary: `workflow=${run.workflow_id}`,\n  required_roles: [],\n  required_groups: [],\n  risk_level: defaults.risk_level ?? 'medium',\n  impact_scope: defaults.impact_scope ?? 'service',\n  missing_params: []\n};\n\nconst tokenPayload = {\n  approval_id: approvalId,\n  context_id: contextId,\n  workflow_id: jobPlan.workflow_id,\n  params: jobPlan.params ?? {},\n  actor,\n  token_nonce: tokenNonce,\n  expires_at: expiresAt\n};\n\nconst signature = crypto.createHmac('sha256', secret)\n  .update(JSON.stringify(tokenPayload))\n  .digest('hex');\n\nconst approvalToken = Buffer.from(JSON.stringify({ ...tokenPayload, signature })).toString('base64url');\n\nconst approveCmd = `approve ${approvalToken}`;\nconst denyCmd = `deny ${approvalToken}`;\n\nconst approvalWebhookBase = (() => {\n  const baseRaw = String($env.N8N_APPROVAL_BASE_URL || $env.N8N_ADAPTER_BASE_URL || '').trim().replace(/\\/+$/, '');\n  if (!baseRaw) return '';\n  const idx = baseRaw.indexOf('/webhook');\n  const base = idx >= 0 ? (baseRaw.slice(0, idx) + '/webhook') : (baseRaw + '/webhook');\n  return base.replace(/\\/+$/, '');\n})();\n\nconst approveUrl = approvalWebhookBase\n  ? `${approvalWebhookBase}/approval/click?decision=approve&token=${encodeURIComponent(approvalToken)}`\n  : '';\nconst denyUrl = approvalWebhookBase\n  ? `${approvalWebhookBase}/approval/click?decision=deny&token=${encodeURIComponent(approvalToken)}`\n  : '';\n\nconst linkBlock = (approveUrl && denyUrl)\n  ? `\n\n承認リンク（クリック）:\n${approveUrl}\n${denyUrl}`\n  : '';\n\nconst content = `実行候補: ${jobPlan.workflow_id}\n\n承認が必要です。次のいずれかを実行してください:\n${approveCmd}\n${denyCmd}\n有効期限: ${expiresAt}` + linkBlock;\n\nreturn [{\n  json: {\n    ...base,\n    candidates: [{\n      workflow_id: jobPlan.workflow_id,\n      params: jobPlan.params,\n      summary: jobPlan.summary,\n      required_roles: [],\n      required_groups: [],\n      risk_level: jobPlan.risk_level,\n      impact_scope: jobPlan.impact_scope,\n      ambiguity_score: 0\n    }],\n    preview_facts: {},\n    job_plan: jobPlan,\n    next_action: 'require_approval',\n    required_confirm: true,\n    approval_id: approvalId,\n    approval_token: approvalToken,\n    token_nonce: tokenNonce,\n    expires_at: expiresAt,\n    approval: { approval_id: approvalId, expires_at: expiresAt, token: approvalToken },\n    content\n  }\n}];\n"
       },
       "id": "fast-zulip-response-build",
       "name": "Fast Zulip Response (Build)",
@@ -2274,7 +2295,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const preview = $json ?? {};\n\nconst tryGetNodeJson = (name) => {\n  try {\n    const v = $node[name]?.json;\n    return (v && typeof v === 'object') ? v : null;\n  } catch (error) {\n    return null;\n  }\n};\n\nconst base =\n  tryGetNodeJson('Build IAM & Policy Context')\n  || tryGetNodeJson('Normalize Duplicate Flag')\n  || tryGetNodeJson('Context Store (Insert)')\n  || tryGetNodeJson('Guard Valid (Ingest)')\n  || {};\n\nlet chatCore = {};\ntry {\n  chatCore = $node['Parse Chat Core Response'].json ?? {};\n} catch (error) {\n  chatCore = {};\n}\n\nconst merged = {\n  ...base,\n  ...preview,\n  ...chatCore\n};\n\nmerged.job_plan = preview.job_plan ?? chatCore.job_plan ?? merged.job_plan ?? {};\nmerged.required_confirm = preview.required_confirm ?? chatCore.required_confirm ?? merged.required_confirm ?? null;\nmerged.next_action = preview.next_action ?? chatCore.next_action ?? merged.next_action ?? null;\n\nreturn [{ json: merged }];\n"
+        "jsCode": "const preview = $json ?? {};\n\nconst tryGetNodeJson = (name) => {\n  try {\n    const v = $node[name]?.json;\n    return (v && typeof v === 'object') ? v : null;\n  } catch (error) {\n    return null;\n  }\n};\n\nconst base =\n  tryGetNodeJson('Build IAM & Policy Context')\n  || tryGetNodeJson('Normalize Duplicate Flag')\n  || tryGetNodeJson('Context Store (Insert)')\n  || tryGetNodeJson('Guard Valid (Ingest)')\n  || {};\n\nlet chatCore = {};\ntry {\n  chatCore = $node['Parse Chat Core Response'].json ?? {};\n} catch (error) {\n  chatCore = {};\n}\n\nconst merged = {\n  ...base,\n  ...preview,\n  ...chatCore\n};\n\nmerged.job_plan = preview.job_plan ?? chatCore.job_plan ?? merged.job_plan ?? {};\nmerged.required_confirm = preview.required_confirm ?? chatCore.required_confirm ?? merged.required_confirm ?? null;\nmerged.next_action = preview.next_action ?? chatCore.next_action ?? merged.next_action ?? null;\n\n// Safety invariant: do not execute a service-specific chat candidate unless\n// the target was grounded by CMDB/RAG extraction.\nconst source = String(merged.source ?? merged.normalized_event?.source ?? \"\").toLowerCase();\nconst filters = merged.preview_facts?.rag_context?.filters ?? {};\nconst targetGrounded = Boolean(filters.service_name || filters.ci_ref);\nconst actionNeedsTarget = [\"auto_enqueue\", \"require_approval\"].includes(String(merged.next_action ?? \"\"));\nif (source === \"zulip\" && actionNeedsTarget && !targetGrounded) {\n  merged.next_action = \"ask_clarification\";\n  merged.required_confirm = true;\n  merged.missing_params = Array.from(new Set([...(Array.isArray(merged.missing_params) ? merged.missing_params : []), \"service_name_or_ci\"]));\n  merged.clarifying_questions = [\"どのサービスまたはCIが停止していますか？\", \"対象環境と影響範囲を教えてください。\"];\n  merged.confirmation_summary = \"\";\n  merged.job_plan = {};\n  merged.approval = { approval_id: null, expires_at: null, token: null };\n  merged.approval_id = null;\n  merged.approval_token = null;\n  merged.token_nonce = null;\n  merged.expires_at = null;\n  merged.rationale = \"target_not_grounded\";\n}\n\nreturn [{ json: merged }];\n"
       },
       "id": "200",
       "name": "Merge Preview with Chat Core",
@@ -6579,18 +6600,31 @@
     {
       "parameters": {
         "conditions": {
-          "boolean": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{(() => {\n  const base = ($json && typeof $json === 'object') ? $json : {};\n  const normalized = (base.normalized_event && typeof base.normalized_event === 'object') ? base.normalized_event : {};\n  const replyTarget = (base.reply_target && typeof base.reply_target === 'object') ? base.reply_target : {};\n  const source = normalized.source || base.source || replyTarget.source || 'unknown';\n  if (String(source) !== 'zulip') return false;\n\n  const text = String(normalized.text || '').trim();\n  const first = text.split(/\\r?\\n/)[0].trim();\n  if (!first) return false;\n\n  // Commands\n  if (/^\\/decisions(\\s|$)/i.test(first)) return true;\n  if (/^\\/decision-history(\\s|$)/i.test(first)) return true;\n  if (/^決定(事項|履歴|サマリ)/.test(first)) return true;\n  if (/^決定一覧/.test(first)) return true;\n  return false;\n})()}}",
-              "value2": true
+              "id": "zulip-is-decisions-command",
+              "leftValue": "={{(() => {\n  const base = ($json && typeof $json === 'object') ? $json : {};\n  const normalized = (base.normalized_event && typeof base.normalized_event === 'object') ? base.normalized_event : {};\n  const replyTarget = (base.reply_target && typeof base.reply_target === 'object') ? base.reply_target : {};\n  const source = normalized.source || base.source || replyTarget.source || 'unknown';\n  if (String(source) !== 'zulip') return false;\n\n  const text = String(normalized.text || '').trim();\n  const first = text.split(/\\r?\\n/)[0].trim();\n  if (!first) return false;\n\n  // Commands\n  if (/^\\/decisions(\\s|$)/i.test(first)) return true;\n  if (/^\\/decision-history(\\s|$)/i.test(first)) return true;\n  if (/^決定(事項|履歴|サマリ)/.test(first)) return true;\n  if (/^決定一覧/.test(first)) return true;\n  return false;\n})()}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "if-zulip-decisions-command",
       "name": "IF Zulip Decisions Command",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         2520,
         520
@@ -6647,7 +6681,7 @@
       ],
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH v AS (\\n  SELECT\\n    CASE\\n      WHEN '{{ $json.auto_decision_history_id }}' IS NULL OR '{{ $json.auto_decision_history_id }}' = '' OR '{{ $json.auto_decision_history_id }}' = 'undefined'\\n        THEN NULL\\n      ELSE NULLIF(NULLIF('{{ $json.auto_decision_history_id }}',''), 'undefined')::uuid\\n    END AS approval_history_id,\\n    NULLIF(NULLIF('{{ $json.context_id }}',''), 'undefined')::uuid AS context_id,\\n    COALESCE(NULLIF('{{ JSON.stringify($json.auto_decision_actor || {}) }}','undefined')::jsonb, '{}'::jsonb) AS actor,\\n    COALESCE(NULLIF('{{ JSON.stringify($json.job_plan || {}) }}','undefined')::jsonb, '{}'::jsonb) AS job_plan,\\n    NULLIF(({{ JSON.stringify($json.content || '') }}::jsonb #>> '{}'), '') AS comment\\n), ins AS (\\n  INSERT INTO aiops_approval_history (approval_history_id, context_id, approval_id, actor, decision, job_plan, comment)\\n  SELECT v.approval_history_id, v.context_id, NULL, v.actor, 'approved', v.job_plan, v.comment\\n  FROM v\\n  WHERE v.approval_history_id IS NOT NULL\\n  ON CONFLICT (approval_history_id) DO NOTHING\\n  RETURNING approval_history_id\\n)\\nSELECT (SELECT COUNT(*) FROM ins) AS inserted;"
+        "query": "WITH v AS (\n  SELECT\n    CASE\n      WHEN '{{ $json.auto_decision_history_id }}' IS NULL OR '{{ $json.auto_decision_history_id }}' = '' OR '{{ $json.auto_decision_history_id }}' = 'undefined'\n        THEN NULL\n      ELSE NULLIF(NULLIF('{{ $json.auto_decision_history_id }}',''), 'undefined')::uuid\n    END AS approval_history_id,\n    NULLIF(NULLIF('{{ $json.context_id }}',''), 'undefined')::uuid AS context_id,\n    COALESCE(NULLIF('{{ JSON.stringify($json.auto_decision_actor || {}) }}','undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($json.job_plan || {}) }}','undefined')::jsonb, '{}'::jsonb) AS job_plan,\n    NULLIF(('{{ JSON.stringify($json.content || '').replace(/'/g, \"''\") }}'::jsonb #>> '{}'), '') AS comment\n), ins AS (\n  INSERT INTO aiops_approval_history (approval_history_id, context_id, approval_id, actor, decision, job_plan, comment)\n  SELECT v.approval_history_id, v.context_id, NULL, v.actor, 'approved', v.job_plan, v.comment\n  FROM v\n  WHERE v.approval_history_id IS NOT NULL\n  ON CONFLICT (approval_history_id) DO NOTHING\n  RETURNING approval_history_id\n)\nSELECT (SELECT COUNT(*) FROM ins) AS inserted;"
       }
     },
     {
@@ -6675,7 +6709,7 @@
         240
       ],
       "parameters": {
-        "jsCode": "return $items('Mark Auto-Enqueue As Decision (Zulip)');\\n"
+        "jsCode": "return $items('Mark Auto-Enqueue As Decision (Zulip)');\n"
       }
     },
     {
@@ -6693,7 +6727,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto'); const base = $json ?? {}; const normalized = (base.normalized_event && typeof base.normalized_event === 'object') ? base.normalized_event : {}; const replyTarget = (base.reply_target && typeof base.reply_target === 'object') ? base.reply_target : {}; const source = String(normalized.source ?? base.source ?? replyTarget.source ?? 'unknown'); const isDuplicate = Boolean(base.is_duplicate) || String(base.is_duplicate_flag ?? '') === 'true'; const NL = String.fromCharCode(10); const CR = String.fromCharCode(13); function truthy(v) { const raw = String(v ?? '').trim().toLowerCase(); return ['1', 'true', 'yes', 'y', 'on'].includes(raw); } function trimSlash(v) { return String(v ?? '').replace(/\\/+$/, ''); } function pickEnv(...keys) { for (const k of keys) { const v = $env?.[k]; if (v !== undefined && v !== null && String(v).trim() !== '') return String(v); } return ''; } function stripHtml(t) { return String(t ?? '').replace(/<style[\\s\\S]*?>[\\s\\S]*?<\\/style>/gi, ' ').replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/\\s+/g, ' ').trim(); } function stripMention(t) { return String(t ?? '').replace(/^@\\*\\*[^*]+\\*\\*\\s*/, '').replace(/^@\\S+\\s*/, ''); } function firstLine(t) { const s = String(t ?? '').split(CR).join('').split(NL).map((l) => l.trim()).find(Boolean); return s || ''; } function normalizeText(t) { return String(t ?? '').normalize('NFKC').toLowerCase().replace(/\\s+/g, ' ').trim(); } function safeTruncate(s, max) { const str = String(s ?? ''); if (!max || max <= 0) return str; return str.length > max ? `${str.slice(0, Math.max(0, max - 1))}…` : str; } if (source !== 'zulip' || isDuplicate) { return [{ json: { ...base, cir_intake_handled_flag: '', cir_intake: { handled: false, skipped: true, reason: source !== 'zulip' ? 'not_zulip' : 'duplicate_event' } } }]; } let raw = ''; if (typeof normalized.original_text === 'string' && normalized.original_text.trim()) raw = normalized.original_text; if (!raw && typeof normalized.text === 'string') raw = normalized.text; const rawBody = (normalized.raw_body && typeof normalized.raw_body === 'object') ? normalized.raw_body : {}; if (rawBody?.message && typeof rawBody.message === 'object' && typeof rawBody.message.content === 'string' && rawBody.message.content.trim()) raw = rawBody.message.content; const plain = stripMention(stripHtml(raw)); const line = firstLine(plain); const lineNorm = normalizeText(line); const fullNorm = normalizeText(plain); const isCommand = /^\\s*(\\/\\w+|approve\\s|deny\\s|run\\s|request\\s|execute\\s)/i.test(lineNorm); if (isCommand) { return [{ json: { ...base, cir_intake_handled_flag: '', cir_intake: { handled: false, skipped: true, reason: 'command' } } }]; } const polite = /(ください|お願いします|してほしい|したい|お願い)/.test(fullNorm); const hasImproveToken = /(できるようになって|できるようにして|改善|要望|追加して|実装して|対応して|対応できるように)/.test(fullNorm); const isImproveRequest = (polite && hasImproveToken) || /できるようになってください/.test(fullNorm); if (!isImproveRequest) { return [{ json: { ...base, cir_intake_handled_flag: '', cir_intake: { handled: false, skipped: true, reason: 'not_improvement_request' } } }]; } const realm = String(base.iam_context?.realm ?? replyTarget.realm ?? replyTarget.tenant ?? 'default').trim() || 'default'; const actor = (base.actor && typeof base.actor === 'object') ? base.actor : {}; const requester = String(actor.email ?? replyTarget.sender_email ?? actor.name ?? actor.full_name ?? actor.username ?? 'unknown').trim() || 'unknown'; const date = new Date().toISOString().slice(0, 10); const fingerprintBase = (lineNorm || fullNorm || '').replace(/[\\s\\u3000]+/g, ' ').trim().replace(/[\\s\\u3000、。・（）()［］\\[\\]「」『』【】{}<>＜＞…‥]/g, ''); const hash = crypto.createHash('sha256').update(fingerprintBase, 'utf8').digest('hex'); const dedupeKey = `CIR-AIOPS-REQ:${hash}`; const cirLabel = String(pickEnv('ITSM_CIR_LABEL', 'AIOPS_CIR_LABEL') || 'ITSM/継続的改善').trim() || 'ITSM/継続的改善'; const statusNewLabel = String(pickEnv('ITSM_CIR_STATUS_NEW_LABEL', 'AIOPS_CIR_STATUS_NEW_LABEL') || '状態/New').trim() || '状態/New'; const dryRun = truthy(pickEnv('AIOPS_CIR_DRY_RUN', 'ITSM_CIR_DRY_RUN') || 'false'); let gitlabBaseUrl = trimSlash(pickEnv('N8N_GITLAB_BASE_URL', 'GITLAB_BASE_URL', 'GITLAB_URL', 'SERVICE_URL_GITLAB')); let apiBase = trimSlash(pickEnv('N8N_GITLAB_API_BASE_URL', 'GITLAB_API_BASE_URL')); if (!apiBase && gitlabBaseUrl) apiBase = `${gitlabBaseUrl}/api/v4`; apiBase = trimSlash(apiBase); if (apiBase && !/\\/api\\/v4$/.test(apiBase) && !/\\/api\\/v4(\\/|$)/.test(apiBase)) apiBase = trimSlash(`${apiBase}/api/v4`); const token = String(pickEnv('N8N_GITLAB_TOKEN', 'GITLAB_TOKEN', 'GITLAB_ADMIN_TOKEN')).trim(); const groupFullPath = String(pickEnv('N8N_GITLAB_GROUP_FULL_PATH', 'GITLAB_GROUP_FULL_PATH', 'GROUP_FULL_PATH') || '').trim(); const defaultProjectPath = groupFullPath ? `${groupFullPath}/general-management` : `${realm}/general-management`; const projectRef = String(pickEnv('N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_ID', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_ID', 'N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH', 'N8N_GITLAB_PROJECT_ID', 'GITLAB_PROJECT_ID', 'N8N_GITLAB_PROJECT_PATH', 'GITLAB_PROJECT_PATH') || defaultProjectPath).trim(); const webBase = trimSlash(pickEnv('N8N_GITLAB_WEB_BASE_URL', 'GITLAB_WEB_BASE_URL') || (apiBase ? apiBase.replace(/\\/api\\/v4$/, '') : gitlabBaseUrl)); const titlePrefix = String(pickEnv('AIOPS_CIR_TITLE_PREFIX', 'ITSM_CIR_TITLE_PREFIX') || 'CIR: 改善要望 - ').trim() || 'CIR: 改善要望 - '; const title = safeTruncate(`${titlePrefix}${line || plain || '改善要望'}`, 200); const zulipUrl = String(replyTarget.url ?? replyTarget.message_url ?? '').trim(); const description = [ '## 種別', '改善要望', '', '## 状態（SSoT）', '- Status/State: New', `- 推奨ラベル: \\`${cirLabel}\\`, \\`${statusNewLabel}\\``, '', '## 台帳項目（MVP）', '', '| 項目 | 値 |', '| --- | --- |', '| 起票日 | ' + date + ' |', '| 起票者 | ' + requester + ' |', '| 短い件名 | ' + (line || '') + ' |', '| 詳細説明 | ' + (plain || '') + ' |', '| 対象サービス |  |', '| 関与チーム |  |', '| 優先度 | P1/P2/P3/P4 |', '| 期限/タイムライン |  |', '| 担当者/オーナー |  |', '', '## 連携・トレーサビリティ（推奨）', '', '| 項目 | 値 |', '| --- | --- |', '| 起点 | ユーザ要望（Zulip） |', '| 関連レコードリンク | ' + (zulipUrl || '') + ' |', '', '---', '', `dedupe_key: ${dedupeKey}` ].join(NL); const baseAck = '承りました。できるかどうか検討し、別途お知らせします。'; if (!apiBase || !token || !projectRef) { const content = [ baseAck, '（CIR自動起票: GitLab設定未検出のためスキップ）' ].join(NL); return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'skipped_missing_gitlab_config', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase || null, project_ref: projectRef || null }, requester, title } } }]; } const projectEnc = encodeURIComponent(projectRef); const issueUrlFromIid = (iid) => { if (!iid) return ''; if (!webBase) return ''; const projectPart = String(projectRef); return `${webBase}/${projectPart}/-/issues/${String(iid)}`; }; if (dryRun) { const content = [ baseAck, `（CIR自動起票: dry-run、dedupe_key=${dedupeKey}）` ].join(NL); return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'dry_run', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase, project_ref: projectRef }, requester, title } } }]; } let found = null; let searchError = null; try { const params = new URLSearchParams({ state: 'opened', labels: cirLabel, search: dedupeKey, per_page: '20' }); const searchUrl = `${apiBase}/projects/${projectEnc}/issues?${params.toString()}`; const res = await this.helpers.httpRequest({ method: 'GET', url: searchUrl, headers: { 'PRIVATE-TOKEN': token }, json: true }); const issues = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []); if (issues.length > 0) found = issues[0]; } catch (error) { searchError = error?.message ? String(error.message) : String(error); } if (searchError) { const content = [ baseAck, '（CIR自動起票: GitLab検索でエラーのためスキップ）' ].join(NL); return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'skipped_search_error', realm, dedupe_key: dedupeKey, error: searchError, gitlab: { api_base_url: apiBase, project_ref: projectRef }, requester, title } } }]; } if (found) { const iid = found.iid ?? found.internal_id ?? null; const webUrl = String(found.web_url ?? '').trim() || issueUrlFromIid(iid); const noteBody = [ '改善要望（重複）を受領しました。', '', `- at: ${new Date().toISOString()}`, `- requester: ${requester}`, zulipUrl ? `- zulip: ${zulipUrl}` : null, `- dedupe_key: ${dedupeKey}`, '', '---', '', plain ? `request: ${plain}` : '' ].filter((v) => v !== null && String(v).trim() !== '').join(NL); try { if (iid) { const noteUrl = `${apiBase}/projects/${projectEnc}/issues/${encodeURIComponent(String(iid))}/notes`; await this.helpers.httpRequest({ method: 'POST', url: noteUrl, headers: { 'PRIVATE-TOKEN': token }, json: true, body: { body: noteBody } }); } } catch (error) { /* swallow */ } const content = webUrl ? [ `${baseAck}（既存CIRに追記しました）`, `CIR: ${webUrl}` ].join(NL) : `${baseAck}（既存CIRに追記しました）`; return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'append_existing', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase, project_ref: projectRef, issue_iid: iid, issue_url: webUrl || null }, requester, title } } }]; } let created = null; let createError = null; try { const createUrl = `${apiBase}/projects/${projectEnc}/issues`; const payload = { title, description, labels: [cirLabel, statusNewLabel].filter(Boolean).join(',') }; created = await this.helpers.httpRequest({ method: 'POST', url: createUrl, headers: { 'PRIVATE-TOKEN': token }, json: true, body: payload }); } catch (error) { createError = error?.message ? String(error.message) : String(error); } if (createError || !created) { const content = [ baseAck, '（CIR自動起票: GitLab作成でエラーのためスキップ）' ].join(NL); return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'skipped_create_error', realm, dedupe_key: dedupeKey, error: createError || 'create_failed', gitlab: { api_base_url: apiBase, project_ref: projectRef }, requester, title } } }]; } const createdIid = created.iid ?? created.internal_id ?? null; const createdWebUrl = String(created.web_url ?? '').trim() || issueUrlFromIid(createdIid); const content = createdWebUrl ? [ baseAck, `CIR: ${createdWebUrl}` ].join(NL) : baseAck; return [{ json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'created', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase, project_ref: projectRef, issue_iid: createdIid, issue_url: createdWebUrl || null }, requester, title } } }];",
+        "jsCode": "const crypto = require('crypto'); const base = $json ?? {}; const normalized = (base.normalized_event && typeof base.normalized_event === 'object') ? base.normalized_event : {}; const replyTarget = (base.reply_target && typeof base.reply_target === 'object') ? base.reply_target : {}; const source = String(normalized.source ?? base.source ?? replyTarget.source ?? 'unknown'); const isDuplicate = Boolean(base.is_duplicate) || String(base.is_duplicate_flag ?? '') === 'true'; const NL = String.fromCharCode(10); const CR = String.fromCharCode(13); function truthy(v) { const raw = String(v ?? '').trim().toLowerCase(); return ['1', 'true', 'yes', 'y', 'on'].includes(raw); } function trimSlash(v) { return String(v ?? '').replace(/\\/+$/, ''); } function pickEnv(...keys) { for (const k of keys) { const v = $env?.[k]; if (v !== undefined && v !== null && String(v).trim() !== '') return String(v); } return ''; } function stripHtml(t) { return String(t ?? '').replace(/<style[\\s\\S]*?>[\\s\\S]*?<\\/style>/gi, ' ').replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/\\s+/g, ' ').trim(); } function stripMention(t) { return String(t ?? '').replace(/^@\\*\\*[^*]+\\*\\*\\s*/, '').replace(/^@\\S+\\s*/, ''); } function firstLine(t) { const s = String(t ?? '').split(CR).join('').split(NL).map((l) => l.trim()).find(Boolean); return s || ''; } function normalizeText(t) { return String(t ?? '').normalize('NFKC').toLowerCase().replace(/\\s+/g, ' ').trim(); } function safeTruncate(s, max) { const str = String(s ?? ''); if (!max || max <= 0) return str; return str.length > max ? `${str.slice(0, Math.max(0, max - 1))}…` : str; } if (source !== 'zulip' || isDuplicate) { return { json: { ...base, cir_intake_handled_flag: '', cir_intake: { handled: false, skipped: true, reason: source !== 'zulip' ? 'not_zulip' : 'duplicate_event' } } }; } let raw = ''; if (typeof normalized.original_text === 'string' && normalized.original_text.trim()) raw = normalized.original_text; if (!raw && typeof normalized.text === 'string') raw = normalized.text; const rawBody = (normalized.raw_body && typeof normalized.raw_body === 'object') ? normalized.raw_body : {}; if (rawBody?.message && typeof rawBody.message === 'object' && typeof rawBody.message.content === 'string' && rawBody.message.content.trim()) raw = rawBody.message.content; const plain = stripMention(stripHtml(raw)); const line = firstLine(plain); const lineNorm = normalizeText(line); const fullNorm = normalizeText(plain); const isCommand = /^\\s*(\\/\\w+|approve\\s|deny\\s|run\\s|request\\s|execute\\s)/i.test(lineNorm); if (isCommand) { return { json: { ...base, cir_intake_handled_flag: '', cir_intake: { handled: false, skipped: true, reason: 'command' } } }; } const polite = /(ください|お願いします|してほしい|したい|お願い)/.test(fullNorm); const hasImproveToken = /(できるようになって|できるようにして|改善|要望|追加して|実装して|対応して|対応できるように)/.test(fullNorm); const isImproveRequest = (polite && hasImproveToken) || /できるようになってください/.test(fullNorm); if (!isImproveRequest) { return { json: { ...base, cir_intake_handled_flag: '', cir_intake: { handled: false, skipped: true, reason: 'not_improvement_request' } } }; } const realm = String(base.iam_context?.realm ?? replyTarget.realm ?? replyTarget.tenant ?? 'default').trim() || 'default'; const actor = (base.actor && typeof base.actor === 'object') ? base.actor : {}; const requester = String(actor.email ?? replyTarget.sender_email ?? actor.name ?? actor.full_name ?? actor.username ?? 'unknown').trim() || 'unknown'; const date = new Date().toISOString().slice(0, 10); const fingerprintBase = (lineNorm || fullNorm || '').replace(/[\\s\\u3000]+/g, ' ').trim().replace(/[\\s\\u3000、。・（）()［］\\[\\]「」『』【】{}<>＜＞…‥]/g, ''); const hash = crypto.createHash('sha256').update(fingerprintBase, 'utf8').digest('hex'); const dedupeKey = `CIR-AIOPS-REQ:${hash}`; const cirLabel = String(pickEnv('ITSM_CIR_LABEL', 'AIOPS_CIR_LABEL') || 'ITSM/継続的改善').trim() || 'ITSM/継続的改善'; const statusNewLabel = String(pickEnv('ITSM_CIR_STATUS_NEW_LABEL', 'AIOPS_CIR_STATUS_NEW_LABEL') || '状態/New').trim() || '状態/New'; const dryRun = truthy(pickEnv('AIOPS_CIR_DRY_RUN', 'ITSM_CIR_DRY_RUN') || 'false'); let gitlabBaseUrl = trimSlash(pickEnv('N8N_GITLAB_BASE_URL', 'GITLAB_BASE_URL', 'GITLAB_URL', 'SERVICE_URL_GITLAB')); let apiBase = trimSlash(pickEnv('N8N_GITLAB_API_BASE_URL', 'GITLAB_API_BASE_URL')); if (!apiBase && gitlabBaseUrl) apiBase = `${gitlabBaseUrl}/api/v4`; apiBase = trimSlash(apiBase); if (apiBase && !/\\/api\\/v4$/.test(apiBase) && !/\\/api\\/v4(\\/|$)/.test(apiBase)) apiBase = trimSlash(`${apiBase}/api/v4`); const token = String(pickEnv('N8N_GITLAB_TOKEN', 'GITLAB_TOKEN', 'GITLAB_ADMIN_TOKEN')).trim(); const groupFullPath = String(pickEnv('N8N_GITLAB_GROUP_FULL_PATH', 'GITLAB_GROUP_FULL_PATH', 'GROUP_FULL_PATH') || '').trim(); const defaultProjectPath = groupFullPath ? `${groupFullPath}/general-management` : `${realm}/general-management`; const projectRef = String(pickEnv('N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_ID', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_ID', 'N8N_GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH', 'GITLAB_GENERAL_MANAGEMENT_PROJECT_PATH', 'N8N_GITLAB_PROJECT_ID', 'GITLAB_PROJECT_ID', 'N8N_GITLAB_PROJECT_PATH', 'GITLAB_PROJECT_PATH') || defaultProjectPath).trim(); const webBase = trimSlash(pickEnv('N8N_GITLAB_WEB_BASE_URL', 'GITLAB_WEB_BASE_URL') || (apiBase ? apiBase.replace(/\\/api\\/v4$/, '') : gitlabBaseUrl)); const titlePrefix = String(pickEnv('AIOPS_CIR_TITLE_PREFIX', 'ITSM_CIR_TITLE_PREFIX') || 'CIR: 改善要望 - ').trim() || 'CIR: 改善要望 - '; const title = safeTruncate(`${titlePrefix}${line || plain || '改善要望'}`, 200); const zulipUrl = String(replyTarget.url ?? replyTarget.message_url ?? '').trim(); const description = [ '## 種別', '改善要望', '', '## 状態（SSoT）', '- Status/State: New', `- 推奨ラベル: \\`${cirLabel}\\`, \\`${statusNewLabel}\\``, '', '## 台帳項目（MVP）', '', '| 項目 | 値 |', '| --- | --- |', '| 起票日 | ' + date + ' |', '| 起票者 | ' + requester + ' |', '| 短い件名 | ' + (line || '') + ' |', '| 詳細説明 | ' + (plain || '') + ' |', '| 対象サービス |  |', '| 関与チーム |  |', '| 優先度 | P1/P2/P3/P4 |', '| 期限/タイムライン |  |', '| 担当者/オーナー |  |', '', '## 連携・トレーサビリティ（推奨）', '', '| 項目 | 値 |', '| --- | --- |', '| 起点 | ユーザ要望（Zulip） |', '| 関連レコードリンク | ' + (zulipUrl || '') + ' |', '', '---', '', `dedupe_key: ${dedupeKey}` ].join(NL); const baseAck = '承りました。できるかどうか検討し、別途お知らせします。'; if (!apiBase || !token || !projectRef) { const content = [ baseAck, '（CIR自動起票: GitLab設定未検出のためスキップ）' ].join(NL); return { json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'skipped_missing_gitlab_config', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase || null, project_ref: projectRef || null }, requester, title } } }; } const projectEnc = encodeURIComponent(projectRef); const issueUrlFromIid = (iid) => { if (!iid) return ''; if (!webBase) return ''; const projectPart = String(projectRef); return `${webBase}/${projectPart}/-/issues/${String(iid)}`; }; if (dryRun) { const content = [ baseAck, `（CIR自動起票: dry-run、dedupe_key=${dedupeKey}）` ].join(NL); return { json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'dry_run', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase, project_ref: projectRef }, requester, title } } }; } let found = null; let searchError = null; try { const params = new URLSearchParams({ state: 'opened', labels: cirLabel, search: dedupeKey, per_page: '20' }); const searchUrl = `${apiBase}/projects/${projectEnc}/issues?${params.toString()}`; const res = await this.helpers.httpRequest({ method: 'GET', url: searchUrl, headers: { 'PRIVATE-TOKEN': token }, json: true }); const issues = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []); if (issues.length > 0) found = issues[0]; } catch (error) { searchError = error?.message ? String(error.message) : String(error); } if (searchError) { const content = [ baseAck, '（CIR自動起票: GitLab検索でエラーのためスキップ）' ].join(NL); return { json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'skipped_search_error', realm, dedupe_key: dedupeKey, error: searchError, gitlab: { api_base_url: apiBase, project_ref: projectRef }, requester, title } } }; } if (found) { const iid = found.iid ?? found.internal_id ?? null; const webUrl = String(found.web_url ?? '').trim() || issueUrlFromIid(iid); const noteBody = [ '改善要望（重複）を受領しました。', '', `- at: ${new Date().toISOString()}`, `- requester: ${requester}`, zulipUrl ? `- zulip: ${zulipUrl}` : null, `- dedupe_key: ${dedupeKey}`, '', '---', '', plain ? `request: ${plain}` : '' ].filter((v) => v !== null && String(v).trim() !== '').join(NL); try { if (iid) { const noteUrl = `${apiBase}/projects/${projectEnc}/issues/${encodeURIComponent(String(iid))}/notes`; await this.helpers.httpRequest({ method: 'POST', url: noteUrl, headers: { 'PRIVATE-TOKEN': token }, json: true, body: { body: noteBody } }); } } catch (error) { /* swallow */ } const content = webUrl ? [ `${baseAck}（既存CIRに追記しました）`, `CIR: ${webUrl}` ].join(NL) : `${baseAck}（既存CIRに追記しました）`; return { json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'append_existing', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase, project_ref: projectRef, issue_iid: iid, issue_url: webUrl || null }, requester, title } } }; } let created = null; let createError = null; try { const createUrl = `${apiBase}/projects/${projectEnc}/issues`; const payload = { title, description, labels: [cirLabel, statusNewLabel].filter(Boolean).join(',') }; created = await this.helpers.httpRequest({ method: 'POST', url: createUrl, headers: { 'PRIVATE-TOKEN': token }, json: true, body: payload }); } catch (error) { createError = error?.message ? String(error.message) : String(error); } if (createError || !created) { const content = [ baseAck, '（CIR自動起票: GitLab作成でエラーのためスキップ）' ].join(NL); return { json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'skipped_create_error', realm, dedupe_key: dedupeKey, error: createError || 'create_failed', gitlab: { api_base_url: apiBase, project_ref: projectRef }, requester, title } } }; } const createdIid = created.iid ?? created.internal_id ?? null; const createdWebUrl = String(created.web_url ?? '').trim() || issueUrlFromIid(createdIid); const content = createdWebUrl ? [ baseAck, `CIR: ${createdWebUrl}` ].join(NL) : baseAck; return { json: { ...base, content, cir_intake_handled_flag: 'true', cir_intake: { handled: true, action: 'created', realm, dedupe_key: dedupeKey, gitlab: { api_base_url: apiBase, project_ref: projectRef, issue_iid: createdIid, issue_url: createdWebUrl || null }, requester, title } } };",
         "mode": "runOnceForEachItem"
       },
       "id": "9930",
@@ -6708,23 +6742,79 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{$json.cir_intake_handled_flag}}",
-              "value2": "true",
-              "operation": "equal"
+              "id": "cir-intake-handled-equals",
+              "leftValue": "={{ $json.cir_intake_handled_flag }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
       "id": "9931",
       "name": "IF CIR Intake Handled",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         1960,
         200
       ]
+    },
+    {
+      "id": "monitor-before-openai-enrichment-plan",
+      "name": "AI Monitor Before: OpenAI Enrichment Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3660,620],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all();const url=$env.N8N_OBSERVER_URL,token=$env.N8N_OBSERVER_TOKEN;if(url&&token){try{await this.helpers.httpRequest({method:'POST',url,json:true,headers:{'X-Observer-Token':token},body:{kind:'n8n.debug_log',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'before',source:'Record Prompt History (Enrichment Plan)',target:'OpenAI Enrichment Plan',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}}return items;"
+      }
+    },
+    {
+      "id": "monitor-after-openai-enrichment-plan",
+      "name": "AI Monitor After: OpenAI Enrichment Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3660,740],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all();const url=$env.N8N_OBSERVER_URL,token=$env.N8N_OBSERVER_TOKEN;if(url&&token){try{await this.helpers.httpRequest({method:'POST',url,json:true,headers:{'X-Observer-Token':token},body:{kind:'n8n.debug_log',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'after',source:'OpenAI Enrichment Plan',target:'Parse Enrichment Plan Response',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}}return items;"
+      }
+    },
+    {
+      "id": "monitor-before-openai-enrichment-summary",
+      "name": "AI Monitor Before: OpenAI Enrichment Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3660,1940],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all();const url=$env.N8N_OBSERVER_URL,token=$env.N8N_OBSERVER_TOKEN;if(url&&token){try{await this.helpers.httpRequest({method:'POST',url,json:true,headers:{'X-Observer-Token':token},body:{kind:'n8n.debug_log',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'before',source:'Record Prompt History (Enrichment Summary)',target:'OpenAI Enrichment Summary',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}}return items;"
+      }
+    },
+    {
+      "id": "monitor-after-openai-enrichment-summary",
+      "name": "AI Monitor After: OpenAI Enrichment Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3660,2060],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items=$input.all();const url=$env.N8N_OBSERVER_URL,token=$env.N8N_OBSERVER_TOKEN;if(url&&token){try{await this.helpers.httpRequest({method:'POST',url,json:true,headers:{'X-Observer-Token':token},body:{kind:'n8n.debug_log',realm:$env.N8N_OBSERVER_REALM??null,workflow:$workflow.name,execution_id:$execution.id,sent_at:new Date().toISOString(),event:{phase:'after',source:'OpenAI Enrichment Summary',target:'Parse Enrichment Summary Response',items:items.map(item=>item.json??{})}},timeout:5000});}catch(error){}}return items;"
+      }
     }
   ],
   "connections": {
@@ -8450,17 +8540,6 @@
       "main": [
         [
           {
-            "node": "Respond Ack (Zulip Webhook)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Respond Ack (Zulip Webhook)": {
-      "main": [
-        [
-          {
             "node": "Debug Log Before: IF Zulip Valid <- Validate Zulip",
             "type": "main",
             "index": 0
@@ -9109,6 +9188,17 @@
       ]
     },
     "Respond Deferred (Zulip)": {
+      "main": [
+        [
+          {
+            "node": "Emit Deferred Reply Event (Zulip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Emit Deferred Reply Event (Zulip)": {
       "main": [
         [
           {
@@ -11500,7 +11590,7 @@
       "main": [
         [
           {
-            "node": "OpenAI Enrichment Plan",
+            "node": "AI Monitor Before: OpenAI Enrichment Plan",
             "type": "main",
             "index": 0
           }
@@ -11511,17 +11601,18 @@
       "main": [
         [
           {
-            "node": "Parse Enrichment Plan Response",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Build Sulu Monitoring Payload (After: OpenAI Enrichment Plan)",
+            "node": "AI Monitor After: OpenAI Enrichment Plan",
             "type": "main",
             "index": 0
           }
         ]
       ]
+    },
+    "AI Monitor Before: OpenAI Enrichment Plan": {
+      "main": [[{"node":"OpenAI Enrichment Plan","type":"main","index":0}]]
+    },
+    "AI Monitor After: OpenAI Enrichment Plan": {
+      "main": [[{"node":"Parse Enrichment Plan Response","type":"main","index":0},{"node":"Build Sulu Monitoring Payload (After: OpenAI Enrichment Plan)","type":"main","index":0}]]
     },
     "Parse Enrichment Plan Response": {
       "main": [
@@ -11626,7 +11717,7 @@
       "main": [
         [
           {
-            "node": "OpenAI Enrichment Summary",
+            "node": "AI Monitor Before: OpenAI Enrichment Summary",
             "type": "main",
             "index": 0
           }
@@ -11637,17 +11728,18 @@
       "main": [
         [
           {
-            "node": "Parse Enrichment Summary Response",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Build Sulu Monitoring Payload (After: OpenAI Enrichment Summary)",
+            "node": "AI Monitor After: OpenAI Enrichment Summary",
             "type": "main",
             "index": 0
           }
         ]
       ]
+    },
+    "AI Monitor Before: OpenAI Enrichment Summary": {
+      "main": [[{"node":"OpenAI Enrichment Summary","type":"main","index":0}]]
+    },
+    "AI Monitor After: OpenAI Enrichment Summary": {
+      "main": [[{"node":"Parse Enrichment Summary Response","type":"main","index":0},{"node":"Build Sulu Monitoring Payload (After: OpenAI Enrichment Summary)","type":"main","index":0}]]
     },
     "Parse Enrichment Summary Response": {
       "main": [

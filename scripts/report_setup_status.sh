@@ -136,8 +136,10 @@ latest_action_status_json() {
     return
   fi
   read_log_tail \
-    | jq -s -c --arg a "${action}" '
-        map(select(.action == $a))
+    | jq -R -s -c --arg a "${action}" '
+        split("\n")
+        | map(fromjson? // empty)
+        | map(select(.action == $a))
         | map(select(.event == "finished")) as $fin
         | if ($fin|length) > 0 then ($fin|last) else empty end
       ' 2>/dev/null || true
@@ -277,8 +279,8 @@ echo
 
 emit_text_header "フェーズ: AIOps エージェント セットアップ"
 emit_text_kv "aiops_agent workflows (all)" "count=$(find "${REPO_ROOT}/apps/aiops_agent" -type f -name '*.json' -path '*/workflows/*' 2>/dev/null | wc -l | tr -d ' ')"
-emit_text_kv "aiops_agent workflows (deploy)" "count=$(find \"${REPO_ROOT}/apps/aiops_agent\" -type f -name '*.json' -path '*/workflows/*' ! -name '*_test.json' 2>/dev/null | wc -l | tr -d ' ')"
-emit_text_kv "aiops_agent realm data (default)" "prompt=$([[ -d \"${REPO_ROOT}/apps/aiops_agent/orchestrator/data/default/prompt\" ]] && echo exists || echo missing) policy=$([[ -d \"${REPO_ROOT}/apps/aiops_agent/orchestrator/data/default/policy\" ]] && echo exists || echo missing)"
+emit_text_kv "aiops_agent workflows (deploy)" "count=$(find "${REPO_ROOT}/apps/aiops_agent" -type f -name '*.json' -path '*/workflows/*' ! -name '*_test.json' 2>/dev/null | wc -l | tr -d ' ')"
+emit_text_kv "aiops_agent realm data (default)" "prompt=$([[ -d "${REPO_ROOT}/apps/aiops_agent/orchestrator/data/default/prompt" ]] && echo exists || echo missing) policy=$([[ -d "${REPO_ROOT}/apps/aiops_agent/orchestrator/data/default/policy" ]] && echo exists || echo missing)"
 echo "実行ログ:"
 emit_action_line "aiops_agent_setup" "setup_aiops_agent" "apps/aiops_agent/orchestrator/scripts/setup_aiops_agent.sh"
 emit_action_line "aiops_agent_deploy_workflows" "aiops_agent deploy workflows" "apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh"

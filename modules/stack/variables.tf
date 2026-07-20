@@ -301,7 +301,7 @@ variable "rds_max_allocated_storage" {
 variable "rds_engine_version" {
   description = "PostgreSQL engine version"
   type        = string
-  default     = "15.15"
+  default     = "15.17"
 }
 
 variable "rds_max_locks_per_transaction" {
@@ -1855,6 +1855,42 @@ variable "ecr_repo_exastro_it_automation_api_admin" {
   default     = null
 }
 
+variable "ecr_repo_exastro_it_automation_api_organization" {
+  description = "ECR repository name for Exastro IT Automation organization API"
+  type        = string
+  default     = null
+}
+
+variable "ecr_repo_exastro_it_automation_migration" {
+  description = "ECR repository name for Exastro IT Automation migration"
+  type        = string
+  default     = null
+}
+
+variable "ecr_repo_exastro_it_automation_by_conductor_synchronize" {
+  description = "ECR repository name for Exastro Conductor synchronization worker"
+  type        = string
+  default     = null
+}
+
+variable "ecr_repo_exastro_it_automation_by_conductor_regularly" {
+  description = "ECR repository name for Exastro Conductor schedule worker"
+  type        = string
+  default     = null
+}
+
+variable "ecr_repo_exastro_it_automation_by_terraform_cli_vars_listup" {
+  description = "ECR repository name for Exastro Terraform CLI variable discovery worker"
+  type        = string
+  default     = null
+}
+
+variable "ecr_repo_exastro_it_automation_by_terraform_cli_execute" {
+  description = "ECR repository name for Exastro Terraform CLI execution worker"
+  type        = string
+  default     = null
+}
+
 variable "ecr_repo_odoo" {
   description = "ECR repository name for Odoo"
   type        = string
@@ -2928,7 +2964,7 @@ variable "aiops_agent_environment" {
       "N8N_SMTP_HOST" : "email-smtp.ap-northeast-1.amazonaws.com",
       "N8N_SMTP_PORT" : "587",
       "N8N_SMTP_SSL" : "false",
-      "N8N_DEBUG_LOG" : "false"
+      "N8N_DEBUG_LOG" : "true"
     }
   }
 }

@@ -40,6 +40,8 @@ Environment overrides:
   SCHEMA_FILE
   DRY_RUN
   ECS_EXEC, ECS_CLUSTER, ECS_SERVICE, ECS_CONTAINER, ECS_TASK
+  ECS_REMOTE_DB_PASSWORD_ENV
+  ECS_EXEC_B64_CHUNK_SIZE
 
 Notes:
   - DB credentials are resolved via (priority):
@@ -219,9 +221,9 @@ AWS_REGION="${AWS_REGION:-ap-northeast-1}"
 if [[ -n "${NAME_PREFIX:-}" ]]; then
   DB_HOST_PARAM="${DB_HOST_PARAM:-/${NAME_PREFIX}/db/host}"
   DB_PORT_PARAM="${DB_PORT_PARAM:-/${NAME_PREFIX}/db/port}"
-  DB_NAME_PARAM="${DB_NAME_PARAM:-/${NAME_PREFIX}/n8n/db/name}"
-  DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/n8n/db/username}"
-  DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"
+  DB_NAME_PARAM="${DB_NAME_PARAM:-/${NAME_PREFIX}/db/name}"
+  DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/db/username}"
+  DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/db/password}"
 fi
 
 if [[ "${DRY_RUN}" == "true" ]]; then
@@ -304,17 +306,18 @@ echo "  SCHEMA_FILE=${SCHEMA_FILE}"
 apply_local_psql() {
   require_cmd "psql"
   export PGPASSWORD="${DB_PASSWORD}"
-  psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" -v ON_ERROR_STOP=1 -f "${SCHEMA_FILE}"
+  psql -X -P pager=off -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -d "${DB_NAME}" -v ON_ERROR_STOP=1 -f "${SCHEMA_FILE}"
 }
 
 apply_via_ecs_exec() {
   require_cmd "aws"
   require_cmd "python3"
   require_cmd "base64"
+  require_cmd "gzip"
 
   ECS_CLUSTER="${ECS_CLUSTER:-}"
   ECS_SERVICE="${ECS_SERVICE:-}"
-  ECS_CONTAINER="${ECS_CONTAINER:-n8n}"
+  ECS_CONTAINER="${ECS_CONTAINER:-}"
   ECS_TASK="${ECS_TASK:-}"
 
   if [[ -z "${ECS_CLUSTER}" && -n "${NAME_PREFIX:-}" ]]; then
@@ -336,40 +339,152 @@ apply_via_ecs_exec() {
     echo "ERROR: No ECS task found for ${ECS_SERVICE} in ${ECS_CLUSTER}." >&2
     exit 1
   fi
+  if [[ -z "${ECS_CONTAINER}" ]]; then
+    local task_definition=""
+    task_definition="$(aws --profile "${AWS_PROFILE}" --region "${AWS_REGION}" ecs describe-tasks \
+      --cluster "${ECS_CLUSTER}" --tasks "${ECS_TASK}" --query 'tasks[0].taskDefinitionArn' --output text)"
+    ECS_CONTAINER="$(aws --profile "${AWS_PROFILE}" --region "${AWS_REGION}" ecs describe-task-definition \
+      --task-definition "${task_definition}" --output json | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+for container in data.get("taskDefinition", {}).get("containerDefinitions", []):
+    env = {item.get("name"): item.get("value") for item in container.get("environment", [])}
+    if env.get("DB_TYPE") == "postgresdb":
+        print(container.get("name", ""))
+        break
+')"
+  fi
+  if [[ -z "${ECS_CONTAINER}" ]]; then
+    echo "ERROR: n8n application container could not be resolved." >&2
+    exit 1
+  fi
 
-  SCHEMA_B64="$(base64 < "${SCHEMA_FILE}" | tr -d '\n')"
-  PW_B64="$(printf %s "${DB_PASSWORD}" | base64 | tr -d '\n')"
+  ecs_exec_sh() {
+    local remote_script="$1"
+    local show_output="${2:-true}"
+    local marker="__ITSM_ECS_EXEC_OK_${RANDOM}_${RANDOM}__"
+    local remote_cmd_quoted=""
+    remote_cmd_quoted="$(
+      REMOTE_SCRIPT="${remote_script}" MARKER="${marker}" python3 - <<'PY'
+import os, shlex
 
-  REMOTE_CMD_QUOTED="$(
+script = os.environ["REMOTE_SCRIPT"]
+marker = os.environ["MARKER"]
+cmd = f"set -eu; {script}; printf '\\n{marker}\\n'"
+print(shlex.quote(cmd))
+PY
+    )"
+
+    local output=""
+    local status=0
+    set +e
+    output="$(aws --profile "${AWS_PROFILE}" --region "${AWS_REGION}" ecs execute-command \
+      --cluster "${ECS_CLUSTER}" \
+      --task "${ECS_TASK}" \
+      --container "${ECS_CONTAINER}" \
+      --interactive \
+      --command "sh -lc ${remote_cmd_quoted}" 2>&1)"
+    status=$?
+    set -e
+
+    if [[ "${show_output}" == "true" || "${status}" -ne 0 || "${output}" != *"${marker}"* ]]; then
+      printf '%s\n' "${output}"
+    fi
+    if [[ "${status}" -ne 0 || "${output}" != *"${marker}"* ]]; then
+      echo "ERROR: ECS Exec command failed or did not complete." >&2
+      return 1
+    fi
+  }
+
+  local schema_payload_b64=""
+  local remote_base="/tmp/itsm_sor_core_schema.$$"
+  local remote_b64="${remote_base}.sql.gz.b64"
+  local remote_sql="${remote_base}.sql"
+  local remote_log="${remote_base}.log"
+  local chunk_size="${ECS_EXEC_B64_CHUNK_SIZE:-6000}"
+  local remote_db_password_env="${ECS_REMOTE_DB_PASSWORD_ENV:-DB_POSTGRESDB_PASSWORD}"
+
+  schema_payload_b64="$(gzip -c "${SCHEMA_FILE}" | base64 | tr -d '\n')"
+
+  if ! [[ "${chunk_size}" =~ ^[0-9]+$ ]] || (( chunk_size < 1024 )); then
+    echo "ERROR: ECS_EXEC_B64_CHUNK_SIZE must be an integer >= 1024." >&2
+    exit 1
+  fi
+  if ! [[ "${remote_db_password_env}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "ERROR: ECS_REMOTE_DB_PASSWORD_ENV must be a valid environment variable name." >&2
+    exit 1
+  fi
+
+  local cleanup_cmd=""
+  cleanup_cmd="$(
+    REMOTE_B64="${remote_b64}" REMOTE_SQL="${remote_sql}" REMOTE_LOG="${remote_log}" python3 - <<'PY'
+import os, shlex
+
+remote_b64 = os.environ["REMOTE_B64"]
+remote_sql = os.environ["REMOTE_SQL"]
+remote_log = os.environ["REMOTE_LOG"]
+print(f"rm -f {shlex.quote(remote_b64)} {shlex.quote(remote_sql)} {shlex.quote(remote_log)}")
+PY
+  )"
+  ecs_exec_sh "${cleanup_cmd}" "false"
+
+  local total="${#schema_payload_b64}"
+  local offset=0
+  local chunk=""
+  local chunk_no=0
+  local chunk_count=$(( (total + chunk_size - 1) / chunk_size ))
+
+  echo "Uploading compressed schema to ECS task in ${chunk_count} chunks..."
+  while (( offset < total )); do
+    chunk="${schema_payload_b64:offset:chunk_size}"
+    chunk_no=$((chunk_no + 1))
+    local append_cmd=""
+    append_cmd="$(
+      REMOTE_B64="${remote_b64}" B64_CHUNK="${chunk}" python3 - <<'PY'
+import os, shlex
+
+remote_b64 = os.environ["REMOTE_B64"]
+chunk = os.environ["B64_CHUNK"]
+print(f"printf %s {shlex.quote(chunk)} >> {shlex.quote(remote_b64)}")
+PY
+    )"
+    ecs_exec_sh "${append_cmd}" "false"
+    if (( chunk_no == 1 || chunk_no == chunk_count || chunk_no % 10 == 0 )); then
+      echo "  uploaded ${chunk_no}/${chunk_count} chunks"
+    fi
+    offset=$((offset + chunk_size))
+  done
+
+  local apply_cmd=""
+  apply_cmd="$(
     RDS_HOST="${DB_HOST}" RDS_PORT="${DB_PORT}" RDS_USER="${DB_USER}" RDS_DB="${DB_NAME}" \
-    PW_B64="${PW_B64}" SCHEMA_B64="${SCHEMA_B64}" python3 - <<'PY'
+    REMOTE_DB_PASSWORD_ENV="${remote_db_password_env}" \
+    REMOTE_B64="${remote_b64}" REMOTE_SQL="${remote_sql}" REMOTE_LOG="${remote_log}" python3 - <<'PY'
 import os, shlex
 
 host = os.environ["RDS_HOST"]
 port = os.environ["RDS_PORT"]
 user = os.environ["RDS_USER"]
 db = os.environ["RDS_DB"]
-pw_b64 = os.environ["PW_B64"]
-schema_b64 = os.environ["SCHEMA_B64"]
+remote_db_password_env = os.environ["REMOTE_DB_PASSWORD_ENV"]
+remote_b64 = os.environ["REMOTE_B64"]
+remote_sql = os.environ["REMOTE_SQL"]
+remote_log = os.environ["REMOTE_LOG"]
 
-psql_base = f"PGPASSWORD=\"$(printf %s {pw_b64} | base64 -d)\" psql -h {shlex.quote(host)} -p {shlex.quote(port)} -U {shlex.quote(user)} -d {shlex.quote(db)} -v ON_ERROR_STOP=1"
+password_ref = "${" + remote_db_password_env + ":?remote DB password environment variable is not set}"
+psql_base = f"PGPASSWORD=\"{password_ref}\" psql -X -P pager=off -h {shlex.quote(host)} -p {shlex.quote(port)} -U {shlex.quote(user)} -d {shlex.quote(db)} -v ON_ERROR_STOP=1"
 
-cmd = "set -euo pipefail; "
-cmd += f"printf %s {shlex.quote(schema_b64)} | base64 -d > /tmp/itsm_sor_core_schema.sql; "
-cmd += f"{psql_base} -f /tmp/itsm_sor_core_schema.sql; "
-cmd += "rm -f /tmp/itsm_sor_core_schema.sql"
-
-print(shlex.quote(cmd))
+cmd = f"base64 -d {shlex.quote(remote_b64)} | gzip -dc > {shlex.quote(remote_sql)}; "
+cmd += f"if {psql_base} -q -f {shlex.quote(remote_sql)} > {shlex.quote(remote_log)} 2>&1; then "
+cmd += f"rm -f {shlex.quote(remote_b64)} {shlex.quote(remote_sql)} {shlex.quote(remote_log)}; "
+cmd += "else status=$?; "
+cmd += f"tail -n 80 {shlex.quote(remote_log)} >&2 || true; "
+cmd += f"rm -f {shlex.quote(remote_b64)} {shlex.quote(remote_sql)} {shlex.quote(remote_log)}; "
+cmd += "exit ${status}; fi"
+print(cmd)
 PY
   )"
-
-  # shellcheck disable=SC2086
-  aws --profile "${AWS_PROFILE}" --region "${AWS_REGION}" ecs execute-command \
-    --cluster "${ECS_CLUSTER}" \
-    --task "${ECS_TASK}" \
-    --container "${ECS_CONTAINER}" \
-    --interactive \
-    --command "sh -lc ${REMOTE_CMD_QUOTED}"
+  ecs_exec_sh "${apply_cmd}" "true"
 }
 
 if [[ "${LOCAL_PSQL}" == "true" ]]; then

@@ -20,6 +20,8 @@ ITSM SoR（`itsm.*`）の運用（DDL/RLS/保持/匿名化/監査アンカー等
 - 保持/削除（plan-only / 実行は各スクリプトで明示）: `apps/itsm_core/sor_ops/scripts/apply_itsm_sor_retention.sh`
 - 匿名化（plan-only / 実行は各スクリプトで明示）: `apps/itsm_core/sor_ops/scripts/anonymize_itsm_principal.sh`
 - 監査アンカー（S3）: `apps/itsm_core/sor_ops/scripts/anchor_itsm_audit_event_hash.sh`
+- 添付ストレージ削除キュー: `apps/itsm_core/sor_ops/scripts/process_attachment_deletion_queue.sh`（既定 dry-run、実削除は `--run`）
+- Core 機能 OQ/PQ: `apps/itsm_core/sor_ops/scripts/run_feature_oq_pq.sh`（既定 dry-run、DB 実行は `--run`）
 
 ## デプロイ（n8n workflow）
 本サブアプリは SoR 運用スクリプトを中心にしつつ、**定期運用（保持/PII redaction）を n8n workflow でも実行できる**ようにする。
@@ -61,11 +63,13 @@ apps/itsm_core/sor_ops/scripts/deploy_workflows.sh --dry-run
 ## OQ（dry-run / plan-only）
 ```bash
 apps/itsm_core/sor_ops/scripts/run_oq.sh --realm-key default --dry-run
+apps/itsm_core/sor_ops/scripts/run_feature_oq_pq.sh --realm-key default --dry-run
 ```
 
 ### n8n スモークテスト（任意）
 ```bash
 apps/itsm_core/sor_ops/scripts/run_oq.sh --realm-key default --with-n8n --run
+apps/itsm_core/sor_ops/scripts/run_feature_oq_pq.sh --realm-key default --execute
 ```
 
 ## よく使うコマンド（例）

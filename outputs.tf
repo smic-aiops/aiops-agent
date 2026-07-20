@@ -202,6 +202,42 @@ output "ecr_repo_exastro_it_automation_api_admin" {
   sensitive   = true
 }
 
+output "ecr_repo_exastro_it_automation_api_organization" {
+  description = "ECR repository name for Exastro IT Automation organization API"
+  value       = var.ecr_repo_exastro_it_automation_api_organization
+  sensitive   = true
+}
+
+output "ecr_repo_exastro_it_automation_migration" {
+  description = "ECR repository name for Exastro IT Automation migration"
+  value       = var.ecr_repo_exastro_it_automation_migration
+  sensitive   = true
+}
+
+output "ecr_repo_exastro_it_automation_by_conductor_synchronize" {
+  description = "ECR repository name for Exastro Conductor synchronization worker"
+  value       = var.ecr_repo_exastro_it_automation_by_conductor_synchronize
+  sensitive   = true
+}
+
+output "ecr_repo_exastro_it_automation_by_conductor_regularly" {
+  description = "ECR repository name for Exastro Conductor schedule worker"
+  value       = var.ecr_repo_exastro_it_automation_by_conductor_regularly
+  sensitive   = true
+}
+
+output "ecr_repo_exastro_it_automation_by_terraform_cli_vars_listup" {
+  description = "ECR repository name for Exastro Terraform CLI variable discovery worker"
+  value       = var.ecr_repo_exastro_it_automation_by_terraform_cli_vars_listup
+  sensitive   = true
+}
+
+output "ecr_repo_exastro_it_automation_by_terraform_cli_execute" {
+  description = "ECR repository name for Exastro Terraform CLI execution worker"
+  value       = var.ecr_repo_exastro_it_automation_by_terraform_cli_execute
+  sensitive   = true
+}
+
 output "ecr_repo_odoo" {
   description = "ECR repository name for Odoo"
   value       = var.ecr_repo_odoo
@@ -571,6 +607,36 @@ output "exastro_it_automation_api_admin_image_tag" {
   description = "Exastro IT Automation API admin image (repo:tag)"
   value       = var.exastro_it_automation_api_admin_image_tag
   sensitive   = true
+}
+
+output "exastro_it_automation_api_organization_image_tag" {
+  description = "Upstream Exastro IT Automation organization API image"
+  value       = var.exastro_it_automation_api_organization_image_tag
+}
+
+output "exastro_it_automation_migration_image_tag" {
+  description = "Upstream Exastro IT Automation migration image"
+  value       = var.exastro_it_automation_migration_image_tag
+}
+
+output "exastro_it_automation_by_conductor_synchronize_image_tag" {
+  description = "Upstream Exastro Conductor synchronization worker image"
+  value       = var.exastro_it_automation_by_conductor_synchronize_image_tag
+}
+
+output "exastro_it_automation_by_conductor_regularly_image_tag" {
+  description = "Upstream Exastro Conductor schedule worker image"
+  value       = var.exastro_it_automation_by_conductor_regularly_image_tag
+}
+
+output "exastro_it_automation_by_terraform_cli_vars_listup_image_tag" {
+  description = "Upstream Exastro Terraform CLI variable discovery worker image"
+  value       = var.exastro_it_automation_by_terraform_cli_vars_listup_image_tag
+}
+
+output "exastro_it_automation_by_terraform_cli_execute_image_tag" {
+  description = "Upstream Exastro Terraform CLI execution worker image"
+  value       = var.exastro_it_automation_by_terraform_cli_execute_image_tag
 }
 
 output "image_architecture" {
@@ -1113,6 +1179,11 @@ output "service_control_api_base_url" {
   sensitive   = true
 }
 
+output "sulu_image_builder_project_name" {
+  description = "AWS CodeBuild project used by the RFC workflow to build and push Sulu images"
+  value       = module.stack.sulu_image_builder_project_name
+}
+
 output "gitlab_admin_token_parameter_name" {
   description = "SSM parameter name for the GitLab admin token (if created)"
   value       = module.stack.gitlab_admin_token_parameter_name
@@ -1274,6 +1345,11 @@ output "initial_credentials" {
   description = "Initial admin credentials (SSM parameter names) for selected services"
   value       = module.stack.initial_credentials
   sensitive   = true
+}
+
+output "gitlab_oidc_ssm_parameters" {
+  description = "SSM parameter names used by the GitLab Keycloak OIDC client"
+  value       = module.stack.gitlab_oidc_ssm_parameters
 }
 
 output "service_admin_info" {

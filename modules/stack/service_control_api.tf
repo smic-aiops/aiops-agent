@@ -167,6 +167,35 @@ data "aws_iam_policy_document" "service_control_inline" {
     resources = ["*"]
   }
 
+  statement {
+    actions = [
+      "ecs:RegisterTaskDefinition",
+      "ecs:ListTagsForResource",
+      "ecs:TagResource",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "iam:PassRole"
+    ]
+    resources = [
+      aws_iam_role.ecs_execution[0].arn,
+      aws_iam_role.ecs_task[0].arn,
+    ]
+  }
+
+  statement {
+    actions = [
+      "codebuild:BatchGetBuilds",
+      "codebuild:StartBuild",
+    ]
+    resources = [
+      "arn:aws:codebuild:${var.region}:${data.aws_caller_identity.current.account_id}:project/${local.sulu_image_builder_project_name}"
+    ]
+  }
+
   # ECR イメージタグ取得
   statement {
     actions = [
@@ -199,6 +228,7 @@ data "aws_iam_policy_document" "service_control_inline" {
       "ssm:GetParameter"
     ]
     resources = [
+      "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${local.aiops_workflows_token_parameter_name}",
       "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${local.keycloak_admin_username_parameter_name}",
       "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${local.keycloak_admin_password_parameter_name}",
       "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${local.odoo_admin_password_parameter_name}",
@@ -279,16 +309,22 @@ resource "aws_lambda_function" "service_control" {
   environment {
     variables = merge(
       {
-        CLUSTER_ARN                           = local.service_control_api_cluster_arn
-        START_DESIRED                         = "1"
-        SERVICE_CONTROL_SSM_PATH              = local.service_control_schedule_prefix
-        SERVICE_CONTROL_DEFAULT_REALM         = coalesce(local.sulu_primary_realm, "")
-        KEYCLOAK_ADMIN_USERNAME_SSM_PARAMETER = local.keycloak_admin_username_parameter_name
-        KEYCLOAK_ADMIN_PASSWORD_SSM_PARAMETER = local.keycloak_admin_password_parameter_name
-        ODOO_ADMIN_USERNAME                   = "admin"
-        ODOO_ADMIN_PASSWORD_SSM_PARAMETER     = local.odoo_admin_password_parameter_name
-        PGADMIN_ADMIN_USERNAME                = "admin@${local.hosted_zone_name_input}"
-        PGADMIN_PASSWORD_SSM_PARAMETER        = local.pgadmin_default_password_parameter_name
+        CLUSTER_ARN                              = local.service_control_api_cluster_arn
+        START_DESIRED                            = "1"
+        SERVICE_CONTROL_SSM_PATH                 = local.service_control_schedule_prefix
+        SERVICE_CONTROL_DEFAULT_REALM            = coalesce(local.sulu_primary_realm, "")
+        SERVICE_CONTROL_AUTH_TOKEN_SSM_PARAMETER = local.aiops_workflows_token_parameter_name
+        KEYCLOAK_ADMIN_USERNAME_SSM_PARAMETER    = local.keycloak_admin_username_parameter_name
+        KEYCLOAK_ADMIN_PASSWORD_SSM_PARAMETER    = local.keycloak_admin_password_parameter_name
+        ODOO_ADMIN_USERNAME                      = "admin"
+        ODOO_ADMIN_PASSWORD_SSM_PARAMETER        = local.odoo_admin_password_parameter_name
+        PGADMIN_ADMIN_USERNAME                   = "admin@${local.hosted_zone_name_input}"
+        PGADMIN_PASSWORD_SSM_PARAMETER           = local.pgadmin_default_password_parameter_name
+        SULU_IMAGE_BUILDER_PROJECT_NAME          = local.sulu_image_builder_enabled ? local.sulu_image_builder_project_name : ""
+        SULU_ECR_REPOSITORIES = jsonencode([
+          "${var.ecr_namespace}/${var.ecr_repo_sulu}",
+          "${var.ecr_namespace}/${var.ecr_repo_sulu_nginx}",
+        ])
       },
       var.create_ssm_parameters ? {
         SERVICE_ARNS_SSM_PARAMETER      = aws_ssm_parameter.service_control_service_arns[0].name
@@ -427,6 +463,15 @@ resource "aws_apigatewayv2_route" "service_control" {
     }
     "POST /stop" = {
       route = "POST /stop"
+    }
+    "POST /deploy" = {
+      route = "POST /deploy"
+    }
+    "POST /build" = {
+      route = "POST /build"
+    }
+    "GET /build-status" = {
+      route = "GET /build-status"
     }
     "GET /schedule" = {
       route = "GET /schedule"

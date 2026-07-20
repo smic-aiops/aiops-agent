@@ -1,0 +1,91 @@
+{
+  "name": "GitLab Realm Admin Membership Sync",
+  "nodes": [
+    {
+      "parameters": {"rule": {"interval": [{"field": "minutes", "minutesInterval": 5}]}},
+      "id": "1",
+      "name": "Schedule Realm Admin Sync",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 160]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { invocation: 'schedule', realm: String($env.N8N_REALM || $env.N8N_ENV_REALM || 'aiops').trim(), dry_run: false } }];"
+      },
+      "id": "2",
+      "name": "Build Scheduled Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 160]
+    },
+    {
+      "parameters": {"path": "identity/gitlab-realm-admin-sync", "httpMethod": "POST", "responseMode": "responseNode", "options": {}},
+      "id": "3",
+      "name": "Webhook Realm Admin Sync",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst body = request.body && typeof request.body === 'object' ? request.body : request;\nconst header = (name) => { const key = Object.keys(headers).find((item) => String(item).toLowerCase() === name.toLowerCase()); return key ? headers[key] : undefined; };\nconst expected = String($env.N8N_WORKFLOWS_TOKEN || '').trim();\nconst provided = String(header('authorization') || header('x-aiops-workflows-token') || '').replace(/^bearer\\s+/i, '').trim();\nif (!expected) throw new Error('N8N_WORKFLOWS_TOKEN is not set');\nif (provided !== expected) throw new Error('invalid workflows token');\nconst truthy = (value) => ['1', 'true', 'yes', 'y', 'on'].includes(String(value ?? '').trim().toLowerCase());\nreturn [{ json: { invocation: 'webhook', realm: String(body.realm || $env.N8N_REALM || $env.N8N_ENV_REALM || '').trim(), dry_run: body.dry_run === undefined ? true : truthy(body.dry_run) } }];"
+      },
+      "id": "4",
+      "name": "Validate Manual Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 360]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json ?? {};\nconst realm = String(input.realm || '').trim();\nif (!realm) throw new Error('realm is required');\nconst dryRun = input.dry_run === true;\nconst cleanBase = (value) => String(value || '').trim().replace(/\\/+$/, '');\nconst keycloakBase = cleanBase($env.N8N_KEYCLOAK_BASE_URL || $env.KEYCLOAK_BASE_URL);\nconst keycloakAdminRealm = String($env.N8N_KEYCLOAK_ADMIN_REALM || 'master').trim();\nconst keycloakUser = String($env.N8N_KEYCLOAK_ADMIN_USERNAME || '').trim();\nconst keycloakPassword = String($env.N8N_KEYCLOAK_ADMIN_PASSWORD || '').trim();\nconst gitlabBase = cleanBase($env.GITLAB_API_BASE_URL || (($env.GITLAB_BASE_URL || '') + '/api/v4'));\nconst gitlabToken = String($env.N8N_GITLAB_TOKEN || $env.GITLAB_TOKEN || '').trim();\nfor (const [name, value] of Object.entries({keycloakBase, keycloakUser, keycloakPassword, gitlabBase, gitlabToken})) { if (!value) throw new Error(`${name} is required`); }\nconst http = async (method, url, options = {}) => this.helpers.httpRequest({method, url, json: true, timeout: 30000, ...options});\nconst tokenBody = `client_id=admin-cli&grant_type=password&username=${encodeURIComponent(keycloakUser)}&password=${encodeURIComponent(keycloakPassword)}`;\nconst tokenResponse = await http('POST', `${keycloakBase}/realms/${encodeURIComponent(keycloakAdminRealm)}/protocol/openid-connect/token`, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: tokenBody});\nconst accessToken = String(tokenResponse?.access_token || '');\nif (!accessToken) throw new Error('Keycloak admin token was not returned');\nconst kcHeaders = {Authorization: `Bearer ${accessToken}`};\nconst clients = await http('GET', `${keycloakBase}/admin/realms/${encodeURIComponent(realm)}/clients`, {headers: kcHeaders, qs: {clientId: 'realm-management'}});\nconst realmManagementId = clients?.[0]?.id;\nif (!realmManagementId) throw new Error(`realm-management client was not found for ${realm}`);\nconst effectiveAdmins = [];\nfor (let first = 0; ; first += 100) {\n  const users = await http('GET', `${keycloakBase}/admin/realms/${encodeURIComponent(realm)}/users`, {headers: kcHeaders, qs: {first, max: 100}});\n  for (const user of Array.isArray(users) ? users : []) {\n    if (user?.enabled !== true || !String(user?.email || '').trim()) continue;\n    const roles = await http('GET', `${keycloakBase}/admin/realms/${encodeURIComponent(realm)}/users/${encodeURIComponent(user.id)}/role-mappings/clients/${encodeURIComponent(realmManagementId)}/composite`, {headers: kcHeaders});\n    if ((Array.isArray(roles) ? roles : []).some((role) => role?.name === 'realm-admin')) effectiveAdmins.push({username: String(user.username || ''), email: String(user.email)});\n  }\n  if (!Array.isArray(users) || users.length < 100) break;\n}\nconst glHeaders = {'PRIVATE-TOKEN': gitlabToken};\nconst group = await http('GET', `${gitlabBase}/groups/${encodeURIComponent(realm)}`, {headers: glHeaders});\nif (!group?.id) throw new Error(`GitLab group was not found: ${realm}`);\nconst memberIds = new Set();\nfor (let page = 1; ; page += 1) {\n  const members = await http('GET', `${gitlabBase}/groups/${group.id}/members/all`, {headers: glHeaders, qs: {per_page: 100, page}});\n  for (const member of Array.isArray(members) ? members : []) memberIds.add(String(member.id));\n  if (!Array.isArray(members) || members.length < 100) break;\n}\nconst actions = [];\nconst waitingForGitLab = [];\nfor (const admin of effectiveAdmins) {\n  const users = await http('GET', `${gitlabBase}/users`, {headers: glHeaders, qs: {search: admin.username || admin.email, per_page: 100}});\n  const gitlabUser = (Array.isArray(users) ? users : []).find((user) => String(user.username || '').toLowerCase() === admin.username.toLowerCase() || String(user.email || user.public_email || '').toLowerCase() === admin.email.toLowerCase() || (Array.isArray(user.identities) && user.identities.some((identity) => identity?.provider === 'openid_connect' && identity?.extern_uid === admin.username)));\n  if (!gitlabUser) { waitingForGitLab.push({...admin, reason: 'gitlab_user_not_created'}); continue; }\n  if (memberIds.has(String(gitlabUser.id))) continue;\n  actions.push({action: 'add_owner', user_id: gitlabUser.id, username: gitlabUser.username, email: admin.email, group_id: group.id});\n  if (!dryRun) await http('POST', `${gitlabBase}/groups/${group.id}/members`, {headers: glHeaders, body: {user_id: gitlabUser.id, access_level: 50}});\n}\nreturn [{json: {ok: true, workflow_id: 'wf.gitlab_realm_admin_membership_sync', invocation: input.invocation, realm, dry_run: dryRun, effective_admins: effectiveAdmins, actions, waiting_for_gitlab: waitingForGitLab, applied: dryRun ? 0 : actions.length, checked_at: new Date().toISOString()}}];"
+      },
+      "id": "5",
+      "name": "Reconcile Realm Admin Memberships",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [740, 260]
+    },
+    {
+      "parameters": {"conditions": {"options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"}, "conditions": [{"id": "is-webhook", "leftValue": "={{ $json.invocation }}", "rightValue": "webhook", "operator": {"type": "string", "operation": "equals"}}], "combinator": "and"}, "options": {}},
+      "id": "6",
+      "name": "IF Manual Invocation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [980, 260]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ $json }}", "options": {}},
+      "id": "7",
+      "name": "Respond Sync Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1220, 200]
+    },
+    {
+      "parameters": {},
+      "id": "8",
+      "name": "Scheduled Sync Complete",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1220, 340]
+    }
+  ],
+  "connections": {
+    "Schedule Realm Admin Sync": {"main": [[{"node": "Build Scheduled Request", "type": "main", "index": 0}]]},
+    "Build Scheduled Request": {"main": [[{"node": "Reconcile Realm Admin Memberships", "type": "main", "index": 0}]]},
+    "Webhook Realm Admin Sync": {"main": [[{"node": "Validate Manual Request", "type": "main", "index": 0}]]},
+    "Validate Manual Request": {"main": [[{"node": "Reconcile Realm Admin Memberships", "type": "main", "index": 0}]]},
+    "Reconcile Realm Admin Memberships": {"main": [[{"node": "IF Manual Invocation", "type": "main", "index": 0}]]},
+    "IF Manual Invocation": {"main": [[{"node": "Respond Sync Result", "type": "main", "index": 0}], [{"node": "Scheduled Sync Complete", "type": "main", "index": 0}]]}
+  },
+  "pinData": {},
+  "settings": {"executionOrder": "v1"},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "00000000-0000-4000-8000-000000000064",
+  "meta": {"templateCredsSetupCompleted": true},
+  "aiops_catalog": {"workflowId": "wf.gitlab_realm_admin_membership_sync", "revision": 1, "createdBy": {"id": "1", "name": "system"}, "workflow_class": "service_request", "summary": "Keycloak realm-adminの実効権限をGitLabグループOwnerへ定期反映", "realm": "prod", "platform": "gitlab", "required_roles": ["realm-admin"], "required_groups": ["Admins"], "risk_level": "medium", "impact_scope": "identity", "category": "identity-reconciliation", "run_window": "24x7", "params_schema": {"type": "object", "properties": {"realm": {"type": "string"}, "dry_run": {"type": "boolean"}}, "required": ["realm"]}}
+}

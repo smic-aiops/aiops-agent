@@ -215,6 +215,7 @@ for realm in "${REALMS_LIST[@]}"; do
   container_name="$(resolve_container_name "${realm}")"
 
   clear_cmd=""
+  symfony_env_escape='if [ -n "${DATABASE_URL:-}" ]; then DATABASE_URL="$(printf '\''%s'\'' "${DATABASE_URL}" | sed '\''s/%/%%/g'\'')"; export DATABASE_URL; fi; if [ -n "${ITSM_SOR_DATABASE_URL:-}" ]; then ITSM_SOR_DATABASE_URL="$(printf '\''%s'\'' "${ITSM_SOR_DATABASE_URL}" | sed '\''s/%/%%/g'\'')"; export ITSM_SOR_DATABASE_URL; fi; if [ -n "${MAILER_DSN:-}" ]; then MAILER_DSN="$(printf '\''%s'\'' "${MAILER_DSN}" | sed '\''s/%/%%/g'\'')"; export MAILER_DSN; fi'
   for ctx in ${CACHE_CONTEXTS_RAW}; do
     [[ -n "${ctx}" ]] || continue
     console="bin/${ctx}console"
@@ -235,6 +236,8 @@ for realm in "${REALMS_LIST[@]}"; do
       clear_cmd="${step}"
     fi
   done
+
+  clear_cmd="${symfony_env_escape} && ${clear_cmd}"
 
   # ECS Exec runs as the container user (php-fpm container is typically root here).
   # cache:clear/cache:warmup can leave files owned by root, while php-fpm workers run as www-data.
@@ -343,13 +346,21 @@ for realm in "${REALMS_LIST[@]}"; do
 
     printf '%s\n' "${out}"
 
-    if [[ "${rc}" -eq 0 ]]; then
+    # Session Manager may return 0 even when the command inside the container
+    # failed. Do not accept a partial cache-clear success followed by a warmup
+    # exception as a successful deployment.
+    if printf '%s' "${out}" | grep -Eiq 'non-existent parameter|DefinitionErrorException|ParseError|[[:space:]]\[KO\]|\[critical\]|uncaught (error|exception)|In [^[:space:]]+ line [0-9]+'; then
+      rc=1
+    fi
+
+    if [[ "${rc}" -eq 0 ]] && printf '%s' "${out}" | grep -Eq 'Cache for the ".*" environment .* was successfully'; then
       exec_succeeded="true"
       break
     fi
 
     # Treat as success if Symfony cache clear/warmup output is present but the session wrapper exited non-zero.
-    if printf '%s' "${out}" | grep -Eq "Cache for the \".*\" environment \\(debug=.*\\) was successfully"; then
+    if ! printf '%s' "${out}" | grep -Eiq 'non-existent parameter|DefinitionErrorException|ParseError|[[:space:]]\[KO\]|\[critical\]|uncaught (error|exception)|In [^[:space:]]+ line [0-9]+' \
+      && printf '%s' "${out}" | grep -Eq "Cache for the \".*\" environment \\(debug=.*\\) was successfully"; then
       exec_succeeded="true"
       break
     fi

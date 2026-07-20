@@ -1,35 +1,36 @@
 locals {
-  alb_name              = "${local.name_prefix}-alb"
-  alb_sg_name           = "${local.name_prefix}-alb-sg"
-  ecs_service_sg        = "${local.name_prefix}-ecs-sg"
-  tg_zulip_name         = "${local.name_prefix}-zulip-tg"
-  tg_exastro_web_name   = "${local.name_prefix}-exastro-web-tg"
-  tg_exastro_api_name   = "${local.name_prefix}-exastro-api-tg"
-  tg_pgadmin_name       = "${local.name_prefix}-pgadmin-tg"
-  tg_keycloak_name      = "${local.name_prefix}-keycloak-tg"
-  tg_odoo_name          = "${local.name_prefix}-odoo-tg"
-  tg_gitlab_name        = "${local.name_prefix}-gitlab-tg"
-  tg_gitlab_ssh_name    = "${local.name_prefix}-gitlab-ssh-tg"
-  nlb_gitlab_ssh_name   = "${local.name_prefix}-gitlab-ssh-nlb"
-  zulip_host            = "${local.service_subdomain_map["zulip"]}.${local.hosted_zone_name_input}"
-  zulip_realm_host_map  = { for realm in var.realms : realm => "${realm}.zulip.${local.hosted_zone_name_input}" }
-  zulip_realms_sorted   = sort(var.realms)
-  zulip_oidc_idps_doc   = var.zulip_oidc_idps_yaml != null ? tomap(yamldecode(var.zulip_oidc_idps_yaml)) : {}
-  zulip_oidc_by_realm   = { for k, v in local.zulip_oidc_idps_doc : replace(k, "keycloak_", "") => v if startswith(k, "keycloak_") }
-  zulip_allowed_hosts   = [local.zulip_host]
-  exastro_web_host      = "${local.service_subdomain_map["exastro_web"]}.${local.hosted_zone_name_input}"
-  exastro_api_host      = "${local.service_subdomain_map["exastro_api"]}.${local.hosted_zone_name_input}"
-  pgadmin_host          = "${local.service_subdomain_map["pgadmin"]}.${local.hosted_zone_name_input}"
-  keycloak_host         = "${local.service_subdomain_map["keycloak"]}.${local.hosted_zone_name_input}"
-  odoo_host             = "${local.service_subdomain_map["odoo"]}.${local.hosted_zone_name_input}"
-  gitlab_host           = "${local.service_subdomain_map["gitlab"]}.${local.hosted_zone_name_input}"
-  gitlab_ssh_host       = coalesce(var.gitlab_ssh_host, "gitlab-ssh.${local.hosted_zone_name_input}")
-  alb_cert_name         = "${local.name_prefix}-alb-cert"
-  service_subnet_keys   = sort(keys(local.private_subnet_ids))
-  service_subnet_id     = local.private_subnet_ids[local.service_subnet_keys[0]]
-  exastro_desired_count = var.exastro_desired_count
-  gitlab_ssh_enabled    = var.create_gitlab && length(var.gitlab_ssh_cidr_blocks) > 0
-  public_subnet_cidrs   = [for s in local.public_subnets : s.cidr]
+  alb_name                = "${local.name_prefix}-alb"
+  alb_sg_name             = "${local.name_prefix}-alb-sg"
+  ecs_service_sg          = "${local.name_prefix}-ecs-sg"
+  tg_zulip_name           = "${local.name_prefix}-zulip-tg"
+  tg_exastro_web_name     = "${local.name_prefix}-exastro-web-tg"
+  tg_exastro_api_name     = "${local.name_prefix}-exastro-api-tg"
+  tg_exastro_api_org_name = "${local.name_prefix}-exastro-api-org-tg"
+  tg_pgadmin_name         = "${local.name_prefix}-pgadmin-tg"
+  tg_keycloak_name        = "${local.name_prefix}-keycloak-tg"
+  tg_odoo_name            = "${local.name_prefix}-odoo-tg"
+  tg_gitlab_name          = "${local.name_prefix}-gitlab-tg"
+  tg_gitlab_ssh_name      = "${local.name_prefix}-gitlab-ssh-tg"
+  nlb_gitlab_ssh_name     = "${local.name_prefix}-gitlab-ssh-nlb"
+  zulip_host              = "${local.service_subdomain_map["zulip"]}.${local.hosted_zone_name_input}"
+  zulip_realm_host_map    = { for realm in var.realms : realm => "${realm}.zulip.${local.hosted_zone_name_input}" }
+  zulip_realms_sorted     = sort(var.realms)
+  zulip_oidc_idps_doc     = var.zulip_oidc_idps_yaml != null ? tomap(yamldecode(var.zulip_oidc_idps_yaml)) : {}
+  zulip_oidc_by_realm     = { for k, v in local.zulip_oidc_idps_doc : replace(k, "keycloak_", "") => v if startswith(k, "keycloak_") }
+  zulip_allowed_hosts     = [local.zulip_host]
+  exastro_web_host        = "${local.service_subdomain_map["exastro_web"]}.${local.hosted_zone_name_input}"
+  exastro_api_host        = "${local.service_subdomain_map["exastro_api"]}.${local.hosted_zone_name_input}"
+  pgadmin_host            = "${local.service_subdomain_map["pgadmin"]}.${local.hosted_zone_name_input}"
+  keycloak_host           = "${local.service_subdomain_map["keycloak"]}.${local.hosted_zone_name_input}"
+  odoo_host               = "${local.service_subdomain_map["odoo"]}.${local.hosted_zone_name_input}"
+  gitlab_host             = "${local.service_subdomain_map["gitlab"]}.${local.hosted_zone_name_input}"
+  gitlab_ssh_host         = coalesce(var.gitlab_ssh_host, "gitlab-ssh.${local.hosted_zone_name_input}")
+  alb_cert_name           = "${local.name_prefix}-alb-cert"
+  service_subnet_keys     = sort(keys(local.private_subnet_ids))
+  service_subnet_id       = local.private_subnet_ids[local.service_subnet_keys[0]]
+  exastro_desired_count   = var.exastro_desired_count
+  gitlab_ssh_enabled      = var.create_gitlab && length(var.gitlab_ssh_cidr_blocks) > 0
+  public_subnet_cidrs     = [for s in local.public_subnets : s.cidr]
 }
 
 resource "aws_security_group" "alb" {
@@ -280,11 +281,12 @@ resource "aws_lb_target_group" "zulip" {
 resource "aws_lb_target_group" "exastro_web" {
   count = var.create_ecs && local.exastro_service_enabled ? 1 : 0
 
-  name_prefix = "itaw-"
-  port        = 80
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = local.vpc_id
+  name_prefix          = "itaw-"
+  port                 = 80
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = local.vpc_id
+  deregistration_delay = 30
 
   health_check {
     path                = "/healthz"
@@ -305,15 +307,16 @@ resource "aws_lb_target_group" "exastro_web" {
 resource "aws_lb_target_group" "exastro_api_admin" {
   count = var.create_ecs && local.exastro_service_enabled ? 1 : 0
 
-  name_prefix = "itaa-"
-  port        = 8000
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = local.vpc_id
+  name_prefix          = "itaa-"
+  port                 = 8000
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = local.vpc_id
+  deregistration_delay = 30
 
   health_check {
-    path                = "/healthz"
-    matcher             = "200-499" # Exastro API returns 400 to ALB health checks without application headers.
+    path                = "/internal-api/health-check/liveness"
+    matcher             = "200-399"
     healthy_threshold   = 2
     unhealthy_threshold = 5
     timeout             = 5
@@ -321,6 +324,32 @@ resource "aws_lb_target_group" "exastro_api_admin" {
   }
 
   tags = merge(local.tags, { Name = local.tg_exastro_api_name })
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_lb_target_group" "exastro_api_organization" {
+  count = var.create_ecs && local.exastro_service_enabled ? 1 : 0
+
+  name_prefix          = "itao-"
+  port                 = 8001
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = local.vpc_id
+  deregistration_delay = 30
+
+  health_check {
+    path                = "/internal-api/health-check/liveness"
+    matcher             = "200-399"
+    healthy_threshold   = 2
+    unhealthy_threshold = 5
+    timeout             = 5
+    interval            = 30
+  }
+
+  tags = merge(local.tags, { Name = local.tg_exastro_api_org_name })
 
   lifecycle {
     create_before_destroy = true
@@ -1192,6 +1221,34 @@ resource "aws_lb_listener_rule" "exastro_api_http_header" {
   }
 }
 
+resource "aws_lb_listener_rule" "exastro_api_organization_http" {
+  count = var.create_ecs && local.exastro_service_enabled ? 1 : 0
+
+  listener_arn = aws_lb_listener.http[0].arn
+  priority     = 20
+
+  action {
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.exastro_api_organization[0].arn
+      }
+    }
+  }
+
+  condition {
+    host_header {
+      values = [local.exastro_api_host]
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*/workspaces/*/ita/menu/*"]
+    }
+  }
+}
+
 resource "aws_lb_listener_rule" "exastro_api_http" {
   count = var.create_ecs && local.exastro_service_enabled ? 1 : 0
 
@@ -1278,6 +1335,34 @@ resource "aws_lb_listener_rule" "exastro_api_header" {
     http_header {
       http_header_name = "X-Service-Key"
       values           = ["exastro-api"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "exastro_api_organization" {
+  count = var.create_ecs && local.exastro_service_enabled ? 1 : 0
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = 20
+
+  action {
+    type = "forward"
+    forward {
+      target_group {
+        arn = aws_lb_target_group.exastro_api_organization[0].arn
+      }
+    }
+  }
+
+  condition {
+    host_header {
+      values = [local.exastro_api_host]
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*/workspaces/*/ita/menu/*"]
     }
   }
 }
@@ -2143,6 +2228,12 @@ resource "aws_ecs_service" "exastro" {
     target_group_arn = aws_lb_target_group.exastro_api_admin[0].arn
     container_name   = "exastro-api"
     container_port   = 8000
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.exastro_api_organization[0].arn
+    container_name   = "ita-api-organization"
+    container_port   = 8001
   }
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-exastro-svc" })

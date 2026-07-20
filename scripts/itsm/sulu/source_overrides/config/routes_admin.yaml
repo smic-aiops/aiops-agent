@@ -13,40 +13,100 @@ itsm_incidents_list:
     controller: App\Controller\IstmIncidentController::cgetAction
     methods: [GET]
 
+itsm_incidents_create:
+    path: /admin/api/itsm/incidents
+    controller: App\Controller\IstmIncidentController::postAction
+    methods: [POST]
+
 itsm_incidents_detail:
     path: /admin/api/itsm/incidents/{id}
     controller: App\Controller\IstmIncidentController::getAction
     methods: [GET]
+
+itsm_incidents_update:
+    path: /admin/api/itsm/incidents/{id}
+    controller: App\Controller\IstmIncidentController::putAction
+    methods: [PUT]
+
+itsm_incidents_delete:
+    path: /admin/api/itsm/incidents/{id}
+    controller: App\Controller\IstmIncidentController::deleteAction
+    methods: [DELETE]
 
 itsm_service_requests_list:
     path: /admin/api/itsm/service-requests
     controller: App\Controller\IstmServiceRequestController::cgetAction
     methods: [GET]
 
+itsm_service_requests_create:
+    path: /admin/api/itsm/service-requests
+    controller: App\Controller\IstmServiceRequestController::postAction
+    methods: [POST]
+
 itsm_service_requests_detail:
     path: /admin/api/itsm/service-requests/{id}
     controller: App\Controller\IstmServiceRequestController::getAction
     methods: [GET]
+
+itsm_service_requests_update:
+    path: /admin/api/itsm/service-requests/{id}
+    controller: App\Controller\IstmServiceRequestController::putAction
+    methods: [PUT]
+
+itsm_service_requests_delete:
+    path: /admin/api/itsm/service-requests/{id}
+    controller: App\Controller\IstmServiceRequestController::deleteAction
+    methods: [DELETE]
 
 itsm_problems_list:
     path: /admin/api/itsm/problems
     controller: App\Controller\IstmProblemController::cgetAction
     methods: [GET]
 
+itsm_problems_create:
+    path: /admin/api/itsm/problems
+    controller: App\Controller\IstmProblemController::postAction
+    methods: [POST]
+
 itsm_problems_detail:
     path: /admin/api/itsm/problems/{id}
     controller: App\Controller\IstmProblemController::getAction
     methods: [GET]
+
+itsm_problems_update:
+    path: /admin/api/itsm/problems/{id}
+    controller: App\Controller\IstmProblemController::putAction
+    methods: [PUT]
+
+itsm_problems_delete:
+    path: /admin/api/itsm/problems/{id}
+    controller: App\Controller\IstmProblemController::deleteAction
+    methods: [DELETE]
 
 itsm_change_requests_list:
     path: /admin/api/itsm/change-requests
     controller: App\Controller\IstmChangeRequestController::cgetAction
     methods: [GET]
 
+itsm_change_requests_create:
+    path: /admin/api/itsm/change-requests
+    controller: App\Controller\IstmChangeRequestController::postAction
+    methods: [POST]
+
 itsm_change_requests_detail:
     path: /admin/api/itsm/change-requests/{id}
     controller: App\Controller\IstmChangeRequestController::getAction
     methods: [GET]
+
+itsm_change_requests_update:
+    path: /admin/api/itsm/change-requests/{id}
+    controller: App\Controller\IstmChangeRequestController::putAction
+    methods: [PUT]
+
+itsm_change_requests_delete:
+    path: /admin/api/itsm/change-requests/{id}
+    controller: App\Controller\IstmChangeRequestController::deleteAction
+    methods: [DELETE]
 
 itsm_kpi_config:
     path: /admin/api/itsm/kpi/config

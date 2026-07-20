@@ -174,6 +174,10 @@ if [[ -z "${N8N_BASE_URL}" ]]; then
 fi
 
 if [[ -z "${ZULIP_BASE_URL}" ]]; then
+  ZULIP_BASE_URL="$(terraform_output_optional N8N_ZULIP_API_BASE_URLS_YAML | yaml_lookup_by_realm "${REALM}" || true)"
+fi
+
+if [[ -z "${ZULIP_BASE_URL}" ]]; then
   ZULIP_BASE_URL="$(terraform_output_optional N8N_ZULIP_API_BASE_URL | yaml_lookup_by_realm "${REALM}" || true)"
 fi
 
@@ -563,4 +567,9 @@ done
 
 echo "execution_id=${new_exec_id}"
 echo "execution_status=${execution_status}"
-echo "summary=$(print_execution_summary "${new_exec_id}")"
+summary="$(print_execution_summary "${new_exec_id}")"
+echo "summary=${summary}"
+if [[ "${execution_status}" != "success" ]] || ! jq -e '.ok == true' >/dev/null 2>&1 <<<"${summary}"; then
+  echo "Zulip/GitLab sync execution did not complete successfully" >&2
+  exit 1
+fi

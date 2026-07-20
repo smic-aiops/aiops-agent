@@ -94,9 +94,8 @@ request_post() {
     return 1
   fi
   if command -v jq >/dev/null 2>&1; then
-    local ok
-    ok="$(printf '%s' "${body_out}" | jq -r '.ok // empty' 2>/dev/null || true)"
-    if [[ -n "${ok}" && "${ok}" != "true" ]]; then
+    if [[ -z "${body_out}" ]] || ! printf '%s' "${body_out}" | jq -e '.ok == true' >/dev/null 2>&1; then
+      echo "${name}: response must be non-empty JSON with ok=true" >&2
       return 1
     fi
   fi
@@ -149,4 +148,13 @@ PY
 fi
 
 request_post "aiops-write-test" "${N8N_BASE_URL%/}/webhook/itsm/sor/aiops/write/test" "${payload_aiops}"
+
+payload_core_test="$(jq -nc --arg realm "${REALM}" '{realm:$realm}')"
+request_post "core-api-test" "${N8N_BASE_URL%/}/webhook/itsm/core/api/test" "${payload_core_test}"
+
+if [[ -z "${ITSM_SOR_WEBHOOK_TOKEN:-}" ]] && ! ${DRY_RUN}; then
+  ITSM_SOR_WEBHOOK_TOKEN="$(terraform_output N8N_WORKFLOWS_TOKEN)"
+fi
+payload_core_search="$(jq -nc --arg realm "${REALM}" '{realm:$realm,action:"search",resource_type:"incident",query:"OQ Core API",limit:5,payload:{}}')"
+request_post "core-api-search" "${N8N_BASE_URL%/}/webhook/itsm/core/api" "${payload_core_search}"
 echo "[hint] GitLab backfill OQ: apps/itsm_core/gitlab_backfill_to_sor/scripts/run_oq.sh"

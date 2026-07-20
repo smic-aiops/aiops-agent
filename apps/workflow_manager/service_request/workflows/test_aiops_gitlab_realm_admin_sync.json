@@ -1,0 +1,63 @@
+{
+  "name": "Test GitLab Realm Admin Membership Sync",
+  "nodes": [
+    {
+      "parameters": {"path": "tests/identity/gitlab-realm-admin-sync", "httpMethod": "POST", "responseMode": "responseNode", "options": {}},
+      "id": "1",
+      "name": "Webhook Test Realm Admin Sync",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst body = request.body && typeof request.body === 'object' ? request.body : {};\nconst key = Object.keys(headers).find((item) => String(item).toLowerCase() === 'authorization');\nconst expected = String($env.N8N_WORKFLOWS_TOKEN || '').trim();\nconst provided = String(key ? headers[key] : '').replace(/^bearer\\s+/i, '').trim();\nif (!expected || provided !== expected) return [{json:{ok:false,status_code:401,error:'invalid workflows token'}}];\nconst expectedEmail = String(body.expected_email || '').trim().toLowerCase();\nif (!expectedEmail) return [{json:{ok:false,status_code:400,error:'expected_email is required'}}];\nreturn [{json:{realm:String(body.realm || $env.N8N_REALM || $env.N8N_ENV_REALM || 'aiops'),dry_run:true,expected_email:expectedEmail}}];"
+      },
+      "id": "2",
+      "name": "Validate Test Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 240]
+    },
+    {
+      "parameters": {"url": "={{ (() => { const origin = String($env.N8N_WEBHOOK_BASE_URL || $env.N8N_PUBLIC_API_BASE_URL || '').replace(/\\/+$/, '').replace(/\\/api\\/v1$/, ''); const base = origin.endsWith('/webhook') ? origin : origin + '/webhook'; return base + '/identity/gitlab-realm-admin-sync'; })() }}", "method": "POST", "sendHeaders": true, "headerParameters": {"parameters": [{"name": "Authorization", "value": "={{ 'Bearer ' + $env.N8N_WORKFLOWS_TOKEN }}"}]}, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ { realm: $json.realm, dry_run: true } }}", "options": {"timeout": 60000}},
+      "id": "3",
+      "name": "Call Realm Admin Sync Dry Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json ?? {};\nconst admins = Array.isArray(result.effective_admins) ? result.effective_admins : [];\nconst expectedEmail = String($node['Validate Test Request'].json.expected_email || '').toLowerCase();\nconst passed = result.ok === true && result.dry_run === true && result.workflow_id === 'wf.gitlab_realm_admin_membership_sync' && admins.some((user) => String(user.email || '').toLowerCase() === expectedEmail);\nreturn [{json:{ok:passed,status_code:passed?200:500,expected_email:expectedEmail,target_response:result,error:passed?null:'effective inherited realm-admin was not detected'}}];"
+      },
+      "id": "4",
+      "name": "Assert Inherited Realm Admin",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 240]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ $json }}", "options": {"responseCode": "={{ $json.status_code }}"}},
+      "id": "5",
+      "name": "Respond Test Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1200, 240]
+    }
+  ],
+  "connections": {
+    "Webhook Test Realm Admin Sync": {"main": [[{"node": "Validate Test Request", "type": "main", "index": 0}]]},
+    "Validate Test Request": {"main": [[{"node": "Call Realm Admin Sync Dry Run", "type": "main", "index": 0}]]},
+    "Call Realm Admin Sync Dry Run": {"main": [[{"node": "Assert Inherited Realm Admin", "type": "main", "index": 0}]]},
+    "Assert Inherited Realm Admin": {"main": [[{"node": "Respond Test Result", "type": "main", "index": 0}]]}
+  },
+  "pinData": {},
+  "settings": {"executionOrder": "v1"},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "versionId": "00000000-0000-4000-8000-000000000065",
+  "meta": {"templateCredsSetupCompleted": true},
+  "aiops_catalog": {"workflowId": "test.gitlab_realm_admin_membership_sync", "revision": 1, "createdBy": {"id": "1", "name": "system"}, "workflow_class": "service_request", "summary": "GitLab realm-admin同期の継承ロール検出を非破壊検証", "realm": "prod", "platform": "gitlab", "required_roles": ["realm-admin"], "required_groups": ["Admins"], "risk_level": "low", "impact_scope": "identity", "category": "test", "run_window": "24x7", "params_schema": {"type": "object", "required": ["expected_email"], "properties": {"expected_email": {"type": "string", "format": "email"}, "realm": {"type": "string"}}}}
+}

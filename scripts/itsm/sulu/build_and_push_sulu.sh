@@ -13,6 +13,7 @@ Usage:
 Environment overrides:
   DRY_RUN        true/false (default: false)
   AWS_PROFILE    (default: terraform output aws_profile, fallback Admin-AIOps)
+                 Set to __environment__ to use the AWS SDK/container credential chain without --profile.
   AWS_ACCOUNT_ID (optional; if unset and DRY_RUN=false, resolved via `aws sts get-caller-identity`)
   AWS_REGION     (default: ap-northeast-1)
   IMAGE_ARCH     (default: terraform output image_architecture, fallback linux/amd64)
@@ -22,6 +23,7 @@ Environment overrides:
   ECR_REPO_SULU_NGINX  (default: terraform output ecr_repo_sulu_nginx, fallback sulu-nginx)
 
   SULU_IMAGE_TAG   (default: terraform output sulu_image_tag, fallback 3.0.0)
+  SULU_PUSH_LATEST true/false (default: true; RFC builds set false to preserve the current latest tag)
   SULU_CONTEXT     (default: ./docker/sulu)
   SULU_NGINX_CONTEXT     (default: SULU_CONTEXT)
   SULU_NGINX_DOCKERFILE  (default: <SULU_CONTEXT>/nginx/Dockerfile)
@@ -188,7 +190,19 @@ if [ -z "${AWS_PROFILE:-}" ]; then
   AWS_PROFILE="$(tf_output_raw aws_profile)"
 fi
 AWS_PROFILE="${AWS_PROFILE:-Admin-AIOps}"
-export AWS_PROFILE
+if [[ "${AWS_PROFILE}" == "__environment__" ]]; then
+  AWS_PROFILE=""
+else
+  export AWS_PROFILE
+fi
+
+aws_cli() {
+  if [[ -n "${AWS_PROFILE}" ]]; then
+    aws --profile "${AWS_PROFILE}" "$@"
+  else
+    aws "$@"
+  fi
+}
 
 AWS_REGION="${AWS_REGION:-ap-northeast-1}"
 if [ -z "${ECR_PREFIX:-}" ]; then
@@ -206,6 +220,7 @@ ECR_REPO_SULU_NGINX="${ECR_REPO_SULU_NGINX:-sulu-nginx}"
 
 SULU_IMAGE_TAG="${SULU_IMAGE_TAG:-$(tf_output_raw sulu_image_tag)}"
 SULU_IMAGE_TAG="${SULU_IMAGE_TAG:-3.0.3}"
+SULU_PUSH_LATEST="$(to_bool "${SULU_PUSH_LATEST:-true}")"
 SULU_CONTEXT="${SULU_CONTEXT:-./docker/sulu}"
 SULU_CONTEXT="$(resolve_path "${SULU_CONTEXT}")"
 SULU_NGINX_CONTEXT="${SULU_NGINX_CONTEXT:-${SULU_CONTEXT}}"
@@ -290,10 +305,10 @@ ensure_aiops_seed_files() {
 
 login_ecr() {
   if [[ "${DRY_RUN}" == "true" ]]; then
-    echo "[sulu] (dry-run) aws --profile \"${AWS_PROFILE}\" ecr get-login-password --region \"${AWS_REGION}\" | docker login --username AWS --password-stdin \"${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com\""
+    echo "[sulu] (dry-run) aws${AWS_PROFILE:+ --profile \"${AWS_PROFILE}\"} ecr get-login-password --region \"${AWS_REGION}\" | docker login --username AWS --password-stdin \"${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com\""
     return 0
   fi
-  aws --profile "${AWS_PROFILE}" ecr get-login-password --region "${AWS_REGION}" \
+  aws_cli ecr get-login-password --region "${AWS_REGION}" \
     | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 }
 
@@ -301,12 +316,12 @@ ensure_repo() {
   local repo="$1"
   if [[ "${DRY_RUN}" == "true" ]]; then
     echo "[sulu] (dry-run) ensure ECR repo exists: ${repo}"
-    echo "  aws --profile \"${AWS_PROFILE}\" ecr describe-repositories --repository-names \"${repo}\" --region \"${AWS_REGION}\""
-    echo "  aws --profile \"${AWS_PROFILE}\" ecr create-repository --repository-name \"${repo}\" --image-scanning-configuration scanOnPush=true --region \"${AWS_REGION}\""
+    echo "  aws${AWS_PROFILE:+ --profile \"${AWS_PROFILE}\"} ecr describe-repositories --repository-names \"${repo}\" --region \"${AWS_REGION}\""
+    echo "  aws${AWS_PROFILE:+ --profile \"${AWS_PROFILE}\"} ecr create-repository --repository-name \"${repo}\" --image-scanning-configuration scanOnPush=true --region \"${AWS_REGION}\""
     return 0
   fi
-  if ! aws --profile "${AWS_PROFILE}" ecr describe-repositories --repository-names "${repo}" --region "${AWS_REGION}" >/dev/null 2>&1; then
-    aws --profile "${AWS_PROFILE}" ecr create-repository \
+  if ! aws_cli ecr describe-repositories --repository-names "${repo}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+    aws_cli ecr create-repository \
       --repository-name "${repo}" \
       --image-scanning-configuration scanOnPush=true \
       --region "${AWS_REGION}" >/dev/null
@@ -333,15 +348,23 @@ build_image() {
 push_image() {
   local ecr_uri="$1" label="$2"
   if [[ "${DRY_RUN}" == "true" ]]; then
-    echo "[sulu:${label}] (dry-run) docker push \"${ecr_uri}:latest\""
+    if [[ "${SULU_PUSH_LATEST}" == "true" ]]; then
+      echo "[sulu:${label}] (dry-run) docker push \"${ecr_uri}:latest\""
+    fi
     echo "[sulu:${label}] (dry-run) docker tag \"${ecr_uri}:latest\" \"${ecr_uri}:${SULU_IMAGE_TAG}\""
     echo "[sulu:${label}] (dry-run) docker push \"${ecr_uri}:${SULU_IMAGE_TAG}\""
     return 0
   fi
-  docker push "${ecr_uri}:latest"
+  if [[ "${SULU_PUSH_LATEST}" == "true" ]]; then
+    docker push "${ecr_uri}:latest"
+  fi
   docker tag "${ecr_uri}:latest" "${ecr_uri}:${SULU_IMAGE_TAG}"
   docker push "${ecr_uri}:${SULU_IMAGE_TAG}"
-  echo "[sulu:${label}] Pushed ${ecr_uri}:latest and ${ecr_uri}:${SULU_IMAGE_TAG}"
+  if [[ "${SULU_PUSH_LATEST}" == "true" ]]; then
+    echo "[sulu:${label}] Pushed ${ecr_uri}:latest and ${ecr_uri}:${SULU_IMAGE_TAG}"
+  else
+    echo "[sulu:${label}] Pushed ${ecr_uri}:${SULU_IMAGE_TAG} (latest preserved)"
+  fi
 }
 
 main() {
@@ -371,7 +394,7 @@ main() {
     if [[ "${DRY_RUN}" == "true" ]]; then
       AWS_ACCOUNT_ID="<AWS_ACCOUNT_ID>"
     else
-      AWS_ACCOUNT_ID="$(aws --profile "${AWS_PROFILE}" sts get-caller-identity --query Account --output text)"
+      AWS_ACCOUNT_ID="$(aws_cli sts get-caller-identity --query Account --output text)"
     fi
   fi
 

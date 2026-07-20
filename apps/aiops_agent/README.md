@@ -98,6 +98,8 @@ flowchart LR
 | `execution_engine` | Job Engine（キュー/worker）: 実行委譲と回復（リトライ等） | `apps/aiops_agent/execution_engine/docs/app_requirements.md` | `apps/aiops_agent/execution_engine/scripts/deploy_workflows.sh` | `apps/aiops_agent/execution_engine/scripts/run_oq.sh` |
 | `knowledge_store` | ContextStore/ApprovalStore/Problem Management の読み書き・dedupe 等 | `apps/aiops_agent/knowledge_store/docs/app_requirements.md` | `apps/aiops_agent/knowledge_store/scripts/deploy_workflows.sh` | `apps/aiops_agent/knowledge_store/scripts/run_oq.sh` |
 
+全コンポーネントの統合IQ/PQは `apps/aiops_agent/scripts/run_all_iq.sh` / `apps/aiops_agent/scripts/run_all_pq.sh` を使用する。全Apps共通基準は `docs/validation/apps-iq-oq-pq.md` を正とする。
+
 ### Webhook（代表）
 n8n の Webhook ベース URL を `https://n8n.example.com/webhook` とした場合のパス。
 
@@ -149,7 +151,10 @@ apps/aiops_agent/orchestrator/scripts/deploy_workflows.sh
   - `N8N_REALM_DATA_DIR_BASE`（既定 `apps/aiops_agent/orchestrator/data`）
 
 ### DB（ContextStore / ApprovalStore / Problem Management）
-- スキーマ: `apps/aiops_agent/knowledge_store/sql/`
+- ContextStore の接続先は n8n 資格情報 `aiops-postgres` が使うアプリDB（`terraform output rds_postgresql.database`、現環境は `appDB`）。n8n 本体DB（SSM `/<name_prefix>/n8n/db/name`、現環境は `n8napp`）とは分離する。
+- スキーマ: `apps/aiops_agent/knowledge_store/sql/aiops_context_store.sql`
+- 適用（既定 dry-run）: `apps/aiops_agent/knowledge_store/scripts/apply_aiops_context_store_schema.sh`
+- セットアップ統合: `apps/aiops_agent/orchestrator/scripts/setup_aiops_agent.sh --apply-context-schema`（実適用は `--execute` 併用）
 - seed 取り込み:
   - `apps/aiops_agent/knowledge_store/scripts/import_aiops_problem_management_seed.sh`
   - `apps/aiops_agent/knowledge_store/scripts/import_aiops_approval_history_seed.sh`

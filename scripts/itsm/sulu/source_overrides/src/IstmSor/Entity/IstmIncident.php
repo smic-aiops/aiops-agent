@@ -43,8 +43,8 @@ class IstmIncident
     #[ORM\Column(type: Types::STRING, name: 'assignee_principal_id', nullable: true)]
     private ?string $assigneePrincipalId = null;
 
-    #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, name: 'opened_at')]
-    private \DateTimeImmutable $openedAt;
+    #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, name: 'started_at', nullable: true)]
+    private ?\DateTimeImmutable $openedAt = null;
 
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, name: 'resolved_at', nullable: true)]
     private ?\DateTimeImmutable $resolvedAt = null;
@@ -108,7 +108,7 @@ class IstmIncident
         return $this->assigneePrincipalId;
     }
 
-    public function getOpenedAt(): \DateTimeImmutable
+    public function getOpenedAt(): ?\DateTimeImmutable
     {
         return $this->openedAt;
     }

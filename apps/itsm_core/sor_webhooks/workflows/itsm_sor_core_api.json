@@ -1,0 +1,85 @@
+{
+  "name": "itsm-sor-core-api",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "itsm/core/api",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1111111-1111-4111-8111-111111111111",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst body = request.body && typeof request.body === 'object' ? request.body : request;\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst expected = String($env.ITSM_CORE_API_TOKEN || $env.N8N_WORKFLOWS_TOKEN || '');\nlet provided = String(headers.authorization || headers.Authorization || headers['x-itsm-api-token'] || '');\nprovided = provided.replace(/^Bearer\\s+/i, '').trim();\nconst allowedActions = new Set(['get','list','search','create','update','delete','add_comment','set_tag','grant_acl','add_attachment','sync_cmdb','list_attachment_deletions','ack_attachment_deletion']);\nconst action = String(body.action || '').trim().toLowerCase();\nconst resourceType = String(body.resource_type || body.resourceType || '').trim().toLowerCase();\nconst limit = Math.min(200, Math.max(1, Number.parseInt(String(body.limit || 50), 10) || 50));\nconst authorized = Boolean(expected && provided && expected === provided);\nreturn [{json:{authorized, realm:String(body.realm || $env.N8N_REALM || $env.N8N_OBSERVER_REALM || 'default'), action, resource_type:resourceType, resource_id:body.resource_id || body.resourceId || null, query:body.query || null, limit, payload:(body.payload && typeof body.payload === 'object') ? body.payload : {}, validation_error: allowedActions.has(action) && resourceType ? null : 'invalid action or resource_type'}}];"
+      },
+      "id": "a2222222-2222-4222-8222-222222222222",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 260]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "conditions": [
+            {"id": "authorized", "leftValue": "={{ $json.authorized && !$json.validation_error }}", "rightValue": true, "operator": {"type": "boolean", "operation": "true", "singleValue": true}}
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a3333333-3333-4333-8333-333333333333",
+      "name": "Authorized?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [640, 260]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH context AS (\n  SELECT itsm.set_rls_context('{{ String($json.realm).replace(/'/g, \"''\") }}') AS realm_id\n)\nSELECT itsm.core_api_dispatch_v2(\n  '{{ String($json.realm).replace(/'/g, \"''\") }}',\n  '{{ String($json.action).replace(/'/g, \"''\") }}',\n  '{{ String($json.resource_type).replace(/'/g, \"''\") }}',\n  '{{ JSON.stringify($json.payload || {}).replace(/'/g, \"''\") }}'::jsonb,\n  NULLIF('{{ String($json.resource_id || '').replace(/'/g, \"''\") }}','')::uuid,\n  NULLIF('{{ String($json.query || '').replace(/'/g, \"''\") }}',''),\n  {{ Number($json.limit || 50) }}\n) AS result\nFROM context;",
+        "options": {}
+      },
+      "id": "a4444444-4444-4444-8444-444444444444",
+      "name": "Dispatch API",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [880, 180],
+      "credentials": {"postgres": {"name": "RDS Postgres"}}
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ $json.result }}", "options": {"responseCode": 200}},
+      "id": "a5555555-5555-4555-8555-555555555555",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1100, 180]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ {ok:false,error:$json.validation_error || 'unauthorized'} }}", "options": {"responseCode": 401}},
+      "id": "a6666666-6666-4666-8666-666666666666",
+      "name": "Respond Rejected",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [880, 360]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Validate Request", "type": "main", "index": 0}]]},
+    "Validate Request": {"main": [[{"node": "Authorized?", "type": "main", "index": 0}]]},
+    "Authorized?": {"main": [[{"node": "Dispatch API", "type": "main", "index": 0}], [{"node": "Respond Rejected", "type": "main", "index": 0}]]},
+    "Dispatch API": {"main": [[{"node": "Respond Success", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "active": false,
+  "versionId": "a7777777-7777-4777-8777-777777777777",
+  "meta": {"templateCredsSetupCompleted": false},
+  "tags": []
+}

@@ -2,7 +2,10 @@ doctrine:
     dbal:
         connections:
             itsm_sor:
-                url: '%env(resolve:ITSM_SOR_DATABASE_URL)%'
+                # Keep percent-encoded database passwords as a runtime env value.
+                # `resolve:` would re-parse sequences such as `%2B` as Symfony
+                # container parameters during cache warmup.
+                url: '%env(ITSM_SOR_DATABASE_URL)%'
     orm:
         entity_managers:
             itsm_sor:

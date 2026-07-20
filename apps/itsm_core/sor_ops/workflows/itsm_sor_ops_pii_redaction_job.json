@@ -81,8 +81,8 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{ $json.do_execute }}",
-              "operation": "isTrue"
+              "value1": "={{ $json.do_execute === true }}",
+              "value2": true
             }
           ]
         }
@@ -168,4 +168,3 @@
     }
   }
 }
-

@@ -122,15 +122,24 @@ ensure_vendor() {
 if [[ "${DRY_RUN}" == "true" ]]; then
   ensure_vendor
   echo "[sulu-admin] (dry-run) build admin assets in ${ADMIN_DIR}"
+  echo "[sulu-admin] (dry-run) align CKEditor dependencies"
   echo "[sulu-admin] (dry-run) npm install ${NPM_INSTALL_ARGS}"
+  echo "[sulu-admin] (dry-run) npm dedupe ${NPM_INSTALL_ARGS}"
   echo "[sulu-admin] (dry-run) npm run ${NPM_BUILD_SCRIPT}"
   exit 0
 fi
 
 ensure_vendor
 
+ALIGN_CKEDITOR_SCRIPT="${SCRIPT_DIR}/align_sulu_admin_ckeditor_versions.sh"
+if [[ ! -x "${ALIGN_CKEDITOR_SCRIPT}" ]]; then
+  echo "ERROR: CKEditor alignment helper is missing or not executable: ${ALIGN_CKEDITOR_SCRIPT}" >&2
+  exit 1
+fi
+"${ALIGN_CKEDITOR_SCRIPT}"
+
 if command -v npm >/dev/null 2>&1; then
-  (cd "${ADMIN_DIR}" && npm install ${NPM_INSTALL_ARGS} && npm run "${NPM_BUILD_SCRIPT}")
+  (cd "${ADMIN_DIR}" && npm install ${NPM_INSTALL_ARGS} && npm dedupe ${NPM_INSTALL_ARGS} && npm run "${NPM_BUILD_SCRIPT}")
   echo "[sulu-admin] build completed (local npm)"
   exit 0
 fi
@@ -143,7 +152,7 @@ if command -v docker >/dev/null 2>&1; then
     -v "${SULU_CONTEXT}/source:/app" \
     -w /app/assets/admin \
     "${ADMIN_ASSETS_BUILD_IMAGE}" \
-    sh -lc "mkdir -p /tmp/.npm && npm install ${NPM_INSTALL_ARGS} && npm run ${NPM_BUILD_SCRIPT}"
+    sh -lc "mkdir -p /tmp/.npm && npm install ${NPM_INSTALL_ARGS} && npm dedupe ${NPM_INSTALL_ARGS} && npm run ${NPM_BUILD_SCRIPT}"
   echo "[sulu-admin] build completed (docker)"
   exit 0
 fi

@@ -1,0 +1,39 @@
+{
+  "name": "Test Sulu Source Version Compare",
+  "nodes": [
+    {
+      "parameters": {"path": "tests/sulu/source-version-compare", "httpMethod": "POST", "responseMode": "responseNode", "options": {}},
+      "id": "1",
+      "name": "Webhook Test Sulu Source Version Compare",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $json ?? {};\nconst headers = request.headers && typeof request.headers === 'object' ? request.headers : {};\nconst getHeader = (name) => { const lower = String(name).toLowerCase(); const key = Object.keys(headers).find((item) => String(item).toLowerCase() === lower); return key ? headers[key] : undefined; };\nconst expectedToken = String($env.N8N_WORKFLOWS_TOKEN || '').trim();\nconst providedToken = String(getHeader('authorization') || getHeader('x-aiops-workflows-token') || '').trim().replace(/^bearer\\s+/i, '').trim();\nif (!expectedToken) return [{ json: { ok: false, status_code: 500, error: 'N8N_WORKFLOWS_TOKEN is not set' } }];\nif (providedToken !== expectedToken) return [{ json: { ok: false, status_code: 401, error: 'invalid workflows token' } }];\nconst rawBase = String($env.N8N_WEBHOOK_BASE_URL || ($env.N8N_PUBLIC_API_BASE_URL ? `${String($env.N8N_PUBLIC_API_BASE_URL).replace(/\\/+$/, '')}/webhook` : '')).replace(/\\/+$/, '');\nif (!rawBase) return [{ json: { ok: false, status_code: 500, error: 'webhook base URL is not configured' } }];\nconst payload = request.body && typeof request.body === 'object' ? request.body : {};\nconst baseVersion = String(payload.base_version ?? payload.baseVersion ?? '3.0.3').trim();\nconst targetVersion = String(payload.target_version ?? payload.targetVersion ?? '3.0.4').trim();\ntry {\n  const response = await this.helpers.httpRequest({ method: 'POST', url: `${rawBase}/sulu/source-version-compare`, json: true, headers: { Authorization: `Bearer ${expectedToken}` }, body: { base_version: baseVersion, target_version: targetVersion, correlation_id: 'oq-sulu-source-version-compare-selftest' }, timeout: 90000 });\n  const passed = response?.ok === true && response?.workflow_id === 'wf.sulu_source_version_compare' && response?.status === 'analyzed' && response?.source?.base_version === baseVersion && response?.source?.target_version === targetVersion && Number(response?.comparison?.changed_files ?? 0) > 0 && Array.isArray(response?.findings) && response.findings.length > 0 && response?.assessment?.manual_review_required === true;\n  return [{ json: { ok: passed, status_code: passed ? 200 : 500, target_response: response, error: passed ? null : 'target workflow comparison assertions failed' } }];\n} catch (error) { return [{ json: { ok: false, status_code: 500, error: error?.message ? String(error.message) : String(error) } }]; }"
+      },
+      "id": "2",
+      "name": "Run Source Version Comparison",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 200]
+    },
+    {
+      "parameters": {"respondWith": "json", "responseBody": "={{ { ok: $json.ok, data: $json, error: $json.error } }}", "options": {"responseCode": "={{$json.status_code}}"}},
+      "id": "3",
+      "name": "Respond Source Comparison Test",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [820, 200]
+    }
+  ],
+  "connections": {
+    "Webhook Test Sulu Source Version Compare": {"main": [[{"node": "Run Source Version Comparison", "type": "main", "index": 0}]]},
+    "Run Source Version Comparison": {"main": [[{"node": "Respond Source Comparison Test", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionTimeout": 120},
+  "versionId": "1.0.0",
+  "meta": {"revision": 1, "createdBy": {"id": "1", "name": "system"}}
+}

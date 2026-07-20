@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\IstmSor\Entity\IstmIncident;
 use App\ListBuilder\IstmDoctrineListBuilderFactory;
 use App\Service\IstmSorRlsContext;
+use App\Service\IstmCoreWriter;
 use FOS\RestBundle\View\ViewHandlerInterface;
 use Sulu\Component\Rest\AbstractRestController;
 use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilder;
@@ -21,6 +22,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 final class IstmIncidentController extends AbstractRestController
 {
+    use IstmWritableControllerTrait;
     private const LIST_KEY = 'itsm_incidents';
     private const SECURITY_CONTEXT = 'app.itsm.incidents';
 
@@ -32,6 +34,7 @@ final class IstmIncidentController extends AbstractRestController
         private readonly RestHelperInterface $restHelper,
         private readonly SecurityCheckerInterface $securityChecker,
         private readonly IstmSorRlsContext $rlsContext,
+        private readonly IstmCoreWriter $coreWriter,
     ) {
         parent::__construct($viewHandler, $tokenStorage);
     }
@@ -84,11 +87,15 @@ final class IstmIncidentController extends AbstractRestController
             'priority' => $incident->getPriority(),
             'requesterPrincipalId' => $incident->getRequesterPrincipalId(),
             'assigneePrincipalId' => $incident->getAssigneePrincipalId(),
-            'openedAt' => $incident->getOpenedAt()->format(DATE_ATOM),
+            'openedAt' => $incident->getOpenedAt()?->format(DATE_ATOM),
             'resolvedAt' => $incident->getResolvedAt()?->format(DATE_ATOM),
             'closedAt' => $incident->getClosedAt()?->format(DATE_ATOM),
             'createdAt' => $incident->getCreatedAt()->format(DATE_ATOM),
             'updatedAt' => $incident->getUpdatedAt()->format(DATE_ATOM),
         ]));
     }
+
+    public function postAction(Request $request): Response { return $this->createResource($request, 'incident'); }
+    public function putAction(Request $request, string $id): Response { return $this->updateResource($request, 'incident', $id); }
+    public function deleteAction(Request $request, string $id): Response { return $this->deleteResource($request, 'incident', $id); }
 }

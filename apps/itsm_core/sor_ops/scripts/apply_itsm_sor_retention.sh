@@ -108,9 +108,9 @@ fi
 rk_sql="${REALM_KEY//\'/''}"
 
 sql="$(cat <<SQL
-\\set ON_ERROR_STOP on
-\\pset format unaligned
-\\pset tuples_only on
+\set ON_ERROR_STOP on
+\pset format unaligned
+\pset tuples_only on
 SELECT itsm.apply_retention(itsm.get_realm_id('${rk_sql}'), ${dry_sql})::text;
 SQL
 )"

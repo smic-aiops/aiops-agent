@@ -30,7 +30,7 @@
   - `terraform.tfstate`、秘匿情報を含む tfvars、イメージ tarball（`images/` はローカルのまま）をコミットしないでください。
 
 ## セキュリティ・設定の注意
-  - 秘匿情報はモジュールパラメータ（`*_ssm_params`, SMTP creds）経由で SSM/Secrets Manager に置き、tfvars へ平文で入れないでください。
+  - 実行環境へ渡す秘匿情報は、モジュールパラメータ（`*_ssm_params`, SMTP creds）経由で SSM/Secrets Manager に置いてください。Git 管理外であることを確認したローカル `*.tfvars` は、スクリプトが生成・更新する資格情報の SSoT として平文値を保持してよいものとします。実値を含む tfvars は `git add -f` せず、共有・バックアップ時も秘密情報として扱ってください。
   - デフォルトの profile/region: `terraform output -raw aws_profile` の値、`ap-northeast-1`。上書きする場合も provider alias は一貫させてください。
   - apply 前に WAF の geo ルールやサービスの自動停止フラグを確認し、露出/コストを避けてください。
 

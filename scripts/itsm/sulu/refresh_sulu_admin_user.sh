@@ -345,6 +345,16 @@ sql_escape() {
   printf "%s" "${value//\'/\'\'}"
 }
 
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  export DATABASE_URL="$(printf '%s' "${DATABASE_URL}" | sed 's/%/%%/g')"
+fi
+if [[ -n "${ITSM_SOR_DATABASE_URL:-}" ]]; then
+  export ITSM_SOR_DATABASE_URL="$(printf '%s' "${ITSM_SOR_DATABASE_URL}" | sed 's/%/%%/g')"
+fi
+if [[ -n "${MAILER_DSN:-}" ]]; then
+  export MAILER_DSN="$(printf '%s' "${MAILER_DSN}" | sed 's/%/%%/g')"
+fi
+
 	export SYMFONY_DEPRECATIONS_HELPER=disabled
 
 	TABLE_SCHEMA="${SULU_DB_SCHEMA:-public}"

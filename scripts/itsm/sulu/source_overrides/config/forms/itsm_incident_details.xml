@@ -6,61 +6,61 @@
     <key>itsm_incident_details</key>
 
     <properties>
-        <property name="number" type="text_line" disabledCondition="true">
+        <property name="number" type="text_line">
             <meta><title>app.itsm.incidents.table.number</title></meta>
         </property>
 
-        <property name="title" type="text_line" disabledCondition="true">
+        <property name="title" type="text_line">
             <meta><title>sulu_admin.title</title></meta>
         </property>
 
-        <property name="status" type="text_line" disabledCondition="true">
+        <property name="status" type="text_line">
             <meta><title>app.itsm.incidents.table.status</title></meta>
         </property>
 
-        <property name="priority" type="text_line" disabledCondition="true">
+        <property name="priority" type="text_line">
             <meta><title>app.itsm.incidents.table.priority</title></meta>
         </property>
 
-        <property name="requesterPrincipalId" type="text_line" disabledCondition="true">
+        <property name="requesterPrincipalId" type="text_line">
             <meta><title>app.itsm.incidents.table.requester</title></meta>
         </property>
 
-        <property name="assigneePrincipalId" type="text_line" disabledCondition="true">
+        <property name="assigneePrincipalId" type="text_line">
             <meta><title>app.itsm.incidents.table.assignee</title></meta>
         </property>
 
-        <property name="openedAt" type="datetime" disabledCondition="true">
+        <property name="openedAt" type="datetime">
             <meta><title>app.itsm.incidents.table.opened_at</title></meta>
         </property>
 
-        <property name="updatedAt" type="datetime" disabledCondition="true">
+        <property name="updatedAt" type="datetime">
             <meta><title>sulu_admin.changed</title></meta>
         </property>
 
-        <property name="description" type="text_area" disabledCondition="true">
+        <property name="description" type="text_area">
             <meta><title>sulu_admin.description</title></meta>
         </property>
 
         <section name="meta">
             <meta><title>sulu_admin.info</title></meta>
             <properties>
-                <property name="id" type="text_line" disabledCondition="true">
+                <property name="id" type="text_line">
                     <meta><title>sulu_admin.id</title></meta>
                 </property>
-                <property name="realmKey" type="text_line" disabledCondition="true">
+                <property name="realmKey" type="text_line">
                     <meta><title>app.itsm.field.realm</title></meta>
                 </property>
-                <property name="serviceId" type="text_line" disabledCondition="true">
+                <property name="serviceId" type="text_line">
                     <meta><title>app.itsm.field.service_id</title></meta>
                 </property>
-                <property name="resolvedAt" type="datetime" disabledCondition="true">
+                <property name="resolvedAt" type="datetime">
                     <meta><title>app.itsm.incidents.field.resolved_at</title></meta>
                 </property>
-                <property name="closedAt" type="datetime" disabledCondition="true">
+                <property name="closedAt" type="datetime">
                     <meta><title>app.itsm.incidents.field.closed_at</title></meta>
                 </property>
-                <property name="createdAt" type="datetime" disabledCondition="true">
+                <property name="createdAt" type="datetime">
                     <meta><title>sulu_admin.created</title></meta>
                 </property>
             </properties>

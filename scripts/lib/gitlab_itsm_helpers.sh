@@ -656,7 +656,7 @@ fetch_keycloak_token() {
 
 keycloak_realm_admin_emails() {
   local realm="$1"
-  local client_id
+  local client_id first max users count user_id email roles
   keycloak_request GET "/admin/realms/${realm}/clients?clientId=realm-management"
   if [[ "${KEYCLOAK_LAST_STATUS}" != "200" ]]; then
     echo "ERROR: Failed to fetch realm-management client for realm ${realm} (HTTP ${KEYCLOAK_LAST_STATUS})." >&2
@@ -669,14 +669,38 @@ keycloak_realm_admin_emails() {
     exit 1
   fi
 
-  keycloak_request GET "/admin/realms/${realm}/clients/${client_id}/roles/realm-admin/users"
-  if [[ "${KEYCLOAK_LAST_STATUS}" != "200" ]]; then
-    echo "ERROR: Failed to fetch realm-admin users for realm ${realm} (HTTP ${KEYCLOAK_LAST_STATUS})." >&2
-    echo "${KEYCLOAK_LAST_BODY}" >&2
-    exit 1
-  fi
-
-  echo "${KEYCLOAK_LAST_BODY}" | jq -r 'map(.email // empty) | map(select(. != "")) | unique[]'
+  # The role-users endpoint only returns direct assignments. Realm admins are
+  # normally granted realm-admin through the Admins group, so inspect each
+  # user's effective (composite) client roles to include inherited grants.
+  first=0
+  max="${KEYCLOAK_USERS_PAGE_SIZE:-100}"
+  while true; do
+    keycloak_request GET "/admin/realms/${realm}/users?first=${first}&max=${max}"
+    if [[ "${KEYCLOAK_LAST_STATUS}" != "200" ]]; then
+      echo "ERROR: Failed to fetch users for realm ${realm} (HTTP ${KEYCLOAK_LAST_STATUS})." >&2
+      echo "${KEYCLOAK_LAST_BODY}" >&2
+      exit 1
+    fi
+    users="${KEYCLOAK_LAST_BODY}"
+    count="$(echo "${users}" | jq -r 'length')"
+    while IFS=$'\t' read -r user_id email; do
+      [[ -n "${user_id}" && -n "${email}" ]] || continue
+      keycloak_request GET "/admin/realms/${realm}/users/${user_id}/role-mappings/clients/${client_id}/composite"
+      if [[ "${KEYCLOAK_LAST_STATUS}" != "200" ]]; then
+        echo "ERROR: Failed to fetch effective realm-management roles for user ${user_id} in realm ${realm} (HTTP ${KEYCLOAK_LAST_STATUS})." >&2
+        echo "${KEYCLOAK_LAST_BODY}" >&2
+        exit 1
+      fi
+      roles="${KEYCLOAK_LAST_BODY}"
+      if echo "${roles}" | jq -e 'any(.[]; .name == "realm-admin")' >/dev/null; then
+        printf '%s\n' "${email}"
+      fi
+    done < <(echo "${users}" | jq -r '.[] | select(.enabled == true) | [.id, (.email // "")] | @tsv')
+    if (( count < max )); then
+      break
+    fi
+    first=$((first + max))
+  done | sort -u
 }
 
 gitlab_find_user_id_by_email() {

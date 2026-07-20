@@ -175,6 +175,33 @@ urlencode() {
   jq -nr --arg v "${1}" '$v|@uri'
 }
 
+add_missing_webhook_ids() {
+  local workflow_json="$1"
+  local workflow_name="$2"
+  local node_index seed digest webhook_id
+
+  # n8n may report a workflow as active without registering a production
+  # webhook when Webhook Trigger nodes imported through the API have no
+  # webhookId.  Derive a stable UUID from the workflow/node identity so that
+  # repeated syncs are idempotent and do not change webhook registrations.
+  while IFS=$'\t' read -r node_index seed; do
+    [[ -n "${node_index}" ]] || continue
+    if command -v shasum >/dev/null 2>&1; then
+      digest="$(printf '%s' "${workflow_name}:${seed}" | shasum -a 256 | awk '{print $1}')"
+    elif command -v sha256sum >/dev/null 2>&1; then
+      digest="$(printf '%s' "${workflow_name}:${seed}" | sha256sum | awk '{print $1}')"
+    else
+      echo "sha256 utility is required to derive webhookId" >&2
+      return 1
+    fi
+    webhook_id="${digest:0:8}-${digest:8:4}-${digest:12:4}-${digest:16:4}-${digest:20:12}"
+    workflow_json="$(jq --argjson idx "${node_index}" --arg webhook_id "${webhook_id}" \
+      '.nodes[$idx].webhookId //= $webhook_id' <<<"${workflow_json}")"
+  done < <(jq -r '.nodes | to_entries[] | select(.value.type == "n8n-nodes-base.webhook" and ((.value.webhookId // "") == "")) | [.key, (.value.id // .value.name // (.key|tostring))] | @tsv' <<<"${workflow_json}")
+
+  printf '%s' "${workflow_json}"
+}
+
 derive_n8n_public_base_url() {
   if [ -z "${1:-}" ] && command -v terraform >/dev/null 2>&1; then
     terraform -chdir="${REPO_ROOT}" output -json 2>/dev/null | jq -r '.service_urls.value.n8n // empty' || true
@@ -606,22 +633,78 @@ for realm in "${TARGET_REALMS[@]}"; do
       wf_json="$(cat "${file}")"
       wf_name="$(jq -r '.name // empty' <<<"${wf_json}")"
       require_var "workflow.name (${file})" "${wf_name}"
+      wf_json="$(add_missing_webhook_ids "${wf_json}" "${wf_name}")"
+      wf_payload="$(jq 'del(.id, .active, .createdAt, .updatedAt, .versionId, .meta, .tags, .shared, .staticData, .pinData)
+        | .settings = (.settings // {})
+        | .connections = (.connections // {})' <<<"${wf_json}")"
 
-      search_url="${realm_public_api_base_url}/api/v1/workflows?filter=$(urlencode "{\"name\":\"${wf_name}\"}")"
-      existing_id="$(curl -sS -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${search_url}" | jq -r '.data[0].id // empty' || true)"
+      search_url="${realm_public_api_base_url}/api/v1/workflows?name=$(urlencode "${wf_name}")&limit=100"
+      existing_id="$(curl -sS -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${search_url}" \
+        | jq -r --arg name "${wf_name}" '(.data // []) | map(select(.name == $name)) | .[0].id // empty' || true)"
       if [[ -n "${existing_id}" ]]; then
         echo "[n8n] update: ${wf_name} (id=${existing_id})"
-        curl -sS -X PUT -H "X-N8N-API-KEY: ${realm_n8n_api_key}" -H "Content-Type: application/json" \
-          --data "${wf_json}" "${realm_public_api_base_url}/api/v1/workflows/${existing_id}" >/dev/null
+        # Updating an already active workflow does not reliably rebuild n8n's
+        # production webhook registry.  Deactivate it first and require the
+        # subsequent activation request to succeed.
         if is_truthy "${ACTIVATE}"; then
-          curl -sS -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${realm_public_api_base_url}/api/v1/workflows/${existing_id}/activate" >/dev/null || true
+          response_file="$(mktemp)"
+          response_status="$(curl -sS -o "${response_file}" -w '%{http_code}' -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" \
+            "${realm_public_api_base_url}/api/v1/workflows/${existing_id}/deactivate")"
+          if [[ "${response_status}" != 2* ]]; then
+            echo "[n8n] ERROR: deactivate failed for ${wf_name} (HTTP ${response_status})" >&2
+            jq '{message, error}' "${response_file}" >&2 2>/dev/null || true
+            rm -f "${response_file}"
+            exit 1
+          fi
+          rm -f "${response_file}"
+        fi
+        response_file="$(mktemp)"
+        response_status="$(curl -sS -o "${response_file}" -w '%{http_code}' -X PUT -H "X-N8N-API-KEY: ${realm_n8n_api_key}" -H "Content-Type: application/json" \
+          --data "${wf_payload}" "${realm_public_api_base_url}/api/v1/workflows/${existing_id}")"
+        if [[ "${response_status}" != 2* ]]; then
+          echo "[n8n] ERROR: update failed for ${wf_name} (HTTP ${response_status})" >&2
+          jq '{message, error}' "${response_file}" >&2 2>/dev/null || true
+          rm -f "${response_file}"
+          exit 1
+        fi
+        rm -f "${response_file}"
+        if is_truthy "${ACTIVATE}"; then
+          response_file="$(mktemp)"
+          response_status="$(curl -sS -o "${response_file}" -w '%{http_code}' -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" \
+            "${realm_public_api_base_url}/api/v1/workflows/${existing_id}/activate")"
+          if [[ "${response_status}" != 2* ]]; then
+            echo "[n8n] ERROR: activate failed for ${wf_name} (HTTP ${response_status})" >&2
+            jq '{message, error}' "${response_file}" >&2 2>/dev/null || true
+            rm -f "${response_file}"
+            exit 1
+          fi
+          rm -f "${response_file}"
         fi
       else
         echo "[n8n] create: ${wf_name}"
-        created_id="$(curl -sS -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" -H "Content-Type: application/json" \
-          --data "${wf_json}" "${realm_public_api_base_url}/api/v1/workflows" | jq -r '.id // empty' || true)"
+        response_file="$(mktemp)"
+        response_status="$(curl -sS -o "${response_file}" -w '%{http_code}' -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" -H "Content-Type: application/json" \
+          --data "${wf_payload}" "${realm_public_api_base_url}/api/v1/workflows")"
+        if [[ "${response_status}" != 2* ]]; then
+          echo "[n8n] ERROR: create failed for ${wf_name} (HTTP ${response_status})" >&2
+          jq '{message, error}' "${response_file}" >&2 2>/dev/null || true
+          rm -f "${response_file}"
+          exit 1
+        fi
+        created_id="$(jq -r '.id // empty' "${response_file}")"
+        rm -f "${response_file}"
+        require_var "created workflow id (${wf_name})" "${created_id}"
         if is_truthy "${ACTIVATE}" && [[ -n "${created_id}" ]]; then
-          curl -sS -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" "${realm_public_api_base_url}/api/v1/workflows/${created_id}/activate" >/dev/null || true
+          response_file="$(mktemp)"
+          response_status="$(curl -sS -o "${response_file}" -w '%{http_code}' -X POST -H "X-N8N-API-KEY: ${realm_n8n_api_key}" \
+            "${realm_public_api_base_url}/api/v1/workflows/${created_id}/activate")"
+          if [[ "${response_status}" != 2* ]]; then
+            echo "[n8n] ERROR: activate failed for ${wf_name} (HTTP ${response_status})" >&2
+            jq '{message, error}' "${response_file}" >&2 2>/dev/null || true
+            rm -f "${response_file}"
+            exit 1
+          fi
+          rm -f "${response_file}"
         fi
       fi
     done

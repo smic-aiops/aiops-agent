@@ -1,6 +1,8 @@
 -- Context store schema for the AIOps adapter/orchestrator/job-engine reference implementation.
 -- This is intentionally separate from n8n's internal tables.
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS aiops_dedupe (
   dedupe_key TEXT PRIMARY KEY,
   context_id UUID NOT NULL,
@@ -151,6 +153,20 @@ CREATE TABLE IF NOT EXISTS aiops_job_queue (
 CREATE INDEX IF NOT EXISTS aiops_job_queue_status_created_at_idx
   ON aiops_job_queue (status, created_at);
 
+CREATE TABLE IF NOT EXISTS aiops_execution_events (
+  event_id BIGSERIAL PRIMARY KEY,
+  trace_id TEXT NOT NULL,
+  job_id UUID NULL REFERENCES aiops_job_queue(job_id) ON DELETE CASCADE,
+  phase TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed', 'waiting')),
+  message TEXT NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS aiops_execution_events_trace_event_idx
+  ON aiops_execution_events (trace_id, event_id);
+
 CREATE TABLE IF NOT EXISTS aiops_job_results (
   job_id UUID PRIMARY KEY REFERENCES aiops_job_queue(job_id) ON DELETE CASCADE,
   status TEXT NOT NULL,
@@ -175,6 +191,24 @@ CREATE INDEX IF NOT EXISTS aiops_job_feedback_job_id_idx
 
 CREATE INDEX IF NOT EXISTS aiops_job_feedback_context_id_idx
   ON aiops_job_feedback (context_id);
+
+CREATE TABLE IF NOT EXISTS aiops_preview_feedback (
+  preview_feedback_id UUID PRIMARY KEY,
+  approval_id UUID NOT NULL,
+  context_id UUID NOT NULL REFERENCES aiops_context(context_id) ON DELETE CASCADE,
+  actor JSONB NOT NULL,
+  score SMALLINT NOT NULL CHECK (score BETWEEN 1 AND 4),
+  comment TEXT NULL,
+  selected_workflow_id TEXT NULL,
+  selected_policy_id TEXT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS aiops_preview_feedback_approval_id_idx
+  ON aiops_preview_feedback (approval_id);
+
+CREATE INDEX IF NOT EXISTS aiops_preview_feedback_context_id_idx
+  ON aiops_preview_feedback (context_id);
 
 CREATE TABLE IF NOT EXISTS aiops_prompt_history (
   prompt_id BIGSERIAL PRIMARY KEY,
@@ -350,3 +384,5 @@ ON CONFLICT (prompt_key, prompt_hash) DO NOTHING;
 
 ALTER TABLE aiops_job_queue
   ADD COLUMN IF NOT EXISTS trace_id TEXT NULL;
+
+COMMIT;

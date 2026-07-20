@@ -16,6 +16,8 @@ ITSM SoR（`itsm.*`）へ投入する SoR コアの Webhook ワークフロー�
 - AIOps 自動処理キュー投入: `apps/itsm_core/sor_webhooks/workflows/itsm_sor_aiops_auto_enqueue.json`（`POST /webhook/itsm/sor/aiops/auto_enqueue`）
 - 承認結果（decision）を SoR へ記録: `apps/itsm_core/sor_webhooks/workflows/itsm_sor_aiops_approval_decision.json`（`POST /webhook/itsm/sor/aiops/approval/decision`）
 - 承認コメント等を SoR へ記録: `apps/itsm_core/sor_webhooks/workflows/itsm_sor_aiops_approval_comment.json`（`POST /webhook/itsm/sor/aiops/approval/comment`）
+- ITSM Core CRUD/検索 API: `apps/itsm_core/sor_webhooks/workflows/itsm_sor_core_api.json`（`POST /webhook/itsm/core/api`）
+- ITSM Core API OQ: `apps/itsm_core/sor_webhooks/workflows/itsm_sor_core_api_test.json`（`POST /webhook/itsm/core/api/test`）
 
 ## 同期（n8n Public API へ upsert）
 ```bash

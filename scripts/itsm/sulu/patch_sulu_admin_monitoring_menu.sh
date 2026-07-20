@@ -208,7 +208,22 @@ fi
 ADMIN_PHP_PATH="${REPO_ROOT}/docker/sulu/source/src/Admin/MonitoringAdmin.php"
 ADMIN_TRANSLATIONS_JA_PATH="${REPO_ROOT}/docker/sulu/source/translations/sulu_admin.ja.yaml"
 ADMIN_TRANSLATIONS_EN_PATH="${REPO_ROOT}/docker/sulu/source/translations/sulu_admin.en.yaml"
-ADMIN_MAIN_JS_PATH="${REPO_ROOT}/docker/sulu/source/public/build/admin/main.4bad9125f602e3464d93.js"
+ADMIN_MANIFEST_PATH="${REPO_ROOT}/docker/sulu/source/public/build/admin/manifest.json"
+if [[ ! -f "${ADMIN_MANIFEST_PATH}" ]]; then
+  echo "ERROR: Missing Sulu admin manifest: ${ADMIN_MANIFEST_PATH}" >&2
+  echo "Build the admin assets before running this patch." >&2
+  exit 1
+fi
+if ! command -v jq >/dev/null 2>&1; then
+  echo "ERROR: jq is required to resolve the hashed Sulu admin bundle." >&2
+  exit 1
+fi
+ADMIN_MAIN_JS_REL="$(jq -er '.["main.js"] // empty' "${ADMIN_MANIFEST_PATH}" 2>/dev/null || true)"
+if [[ -z "${ADMIN_MAIN_JS_REL}" ]]; then
+  echo "ERROR: main.js is missing from ${ADMIN_MANIFEST_PATH}" >&2
+  exit 1
+fi
+ADMIN_MAIN_JS_PATH="${REPO_ROOT}/docker/sulu/source/public${ADMIN_MAIN_JS_REL}"
 ADMIN_ROUTES_PATH="${REPO_ROOT}/docker/sulu/source/config/routes_admin.yaml"
 N8N_OBSERVER_CONTROLLER_PATH="${REPO_ROOT}/docker/sulu/source/src/Controller/N8nObserverController.php"
 N8N_OBSERVER_EVENT_ENTITY_PATH="${REPO_ROOT}/docker/sulu/source/src/Entity/N8nObserverEvent.php"
@@ -226,6 +241,17 @@ N8N_OBSERVER_EVENT_REPOSITORY_B64="$(b64_file "${N8N_OBSERVER_EVENT_REPOSITORY_P
 PHP_CONTAINER_SCRIPT="$(cat <<EOF
 set -euo pipefail
 cd /var/www/html
+
+if [[ -n "\${DATABASE_URL:-}" ]]; then
+  export DATABASE_URL="\$(printf '%s' "\${DATABASE_URL}" | sed 's/%/%%/g')"
+fi
+if [[ -n "\${ITSM_SOR_DATABASE_URL:-}" ]]; then
+  export ITSM_SOR_DATABASE_URL="\$(printf '%s' "\${ITSM_SOR_DATABASE_URL}" | sed 's/%/%%/g')"
+fi
+if [[ -n "\${MAILER_DSN:-}" ]]; then
+  export MAILER_DSN="\$(printf '%s' "\${MAILER_DSN}" | sed 's/%/%%/g')"
+fi
+
 mkdir -p src/Admin src/Controller src/Entity src/Repository translations config
 
 printf %s ${ADMIN_PHP_B64} | base64 -d > src/Admin/MonitoringAdmin.php

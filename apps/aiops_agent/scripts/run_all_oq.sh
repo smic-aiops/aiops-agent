@@ -129,7 +129,13 @@ main() {
     total=$((total + 1))
     log "component=${component} script=${script}"
 
-    if ! bash "${script}" "${pass_args[@]}"; then
+    local oq_rc=0
+    if [[ "${#pass_args[@]}" -gt 0 ]]; then
+      bash "${script}" "${pass_args[@]}" || oq_rc=$?
+    else
+      bash "${script}" || oq_rc=$?
+    fi
+    if [[ "${oq_rc}" -ne 0 ]]; then
       warn "failed: component=${component}"
       failed=$((failed + 1))
       failed_components+=("${component}")

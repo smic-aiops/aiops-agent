@@ -22,8 +22,8 @@
 flowchart LR
   Source[ソース（Slack/Zulip/Mattermost 等 / CloudWatch 等）] --> Adapter[アダプター（n8n）]
 
-  Adapter <--> ContextStore[(コンテキストストア（n8n Postgres（RDS）, aiops_*）)]
-  Adapter <--> ApprovalStore[(承認履歴/評価ストア（n8n Postgres（RDS）, aiops_*）)]
+  Adapter <--> ContextStore[(コンテキストストア（RDS アプリDB / aiops_*）)]
+  Adapter <--> ApprovalStore[(承認履歴/評価ストア（RDS アプリDB / aiops_*）)]
   Adapter <--> EscalationTable[(エスカレーション表（GitLab MD + n8n static data cache）)]
 
   Adapter -->|Zulip: 在籍チェック（任意）| IdP[IdP（Keycloak Admin API）]
@@ -127,7 +127,7 @@ sequenceDiagram
 * 受信/プレビュー/返信/承認/評価/コールバックはワークフローを分割し、責務境界を明確にする。
 * LLM 呼び出しは用途別プロンプトごとに Chat ノードを分け、入出力スキーマは仕様書に合わせる。
 * `jobs.Preview`/`jobs.enqueue`/RAG/DB 参照は Tool/HTTP/DB ノードで統一し、facts を後段へ渡す。
-* ContextStore/承認/評価は Postgres（`aiops_*`）に寄せ、冪等性と永続化を担保する（参照実装では Redis は使わない）。
+* ContextStore/承認/評価は、n8n 資格情報 `aiops-postgres` が接続する RDS アプリDB（`aiops_*`）に寄せ、冪等性と永続化を担保する。n8n 本体の内部DBへは作成しない（参照実装では Redis は使わない）。
 * ソース別の投稿・認証はサブフロー化し、チャット基盤ごとの差異を局所化する。
 * エスカレーション表とワークフローカタログは GitLab MD を正とし、n8n static data にキャッシュしてレート制限と遅延を抑える。ワークフローカタログは取得不能時に Workflow Manager の catalog API へフォールバックできる。
 

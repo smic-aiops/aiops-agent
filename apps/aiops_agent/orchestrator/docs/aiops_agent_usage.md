@@ -101,9 +101,17 @@ apps/aiops_agent/orchestrator/scripts/setup_aiops_agent.sh --execute
 apps/aiops_agent/orchestrator/scripts/setup_aiops_agent.sh --execute --deploy-workflows
 # ※ itsm_core（SoR bootstrap / workflow sync）→ aiops_agent の順で同期します
 
+# ContextStore の対象DB確認（dry-run）
+apps/aiops_agent/orchestrator/scripts/setup_aiops_agent.sh --apply-context-schema
+
+# aiops-postgres 接続先のアプリDBへスキーマを適用・検証
+apps/aiops_agent/orchestrator/scripts/setup_aiops_agent.sh --execute --apply-context-schema
+
 # Zulip ingest 疎通テスト（tenant-a）
 apps/aiops_agent/orchestrator/scripts/setup_aiops_agent.sh --execute --test-ingest --zulip-tenant tenant-a
 ```
+
+ContextStore の対象は `terraform output rds_postgresql.database` で解決するアプリDBです。SSM `/<name_prefix>/n8n/db/name` の n8n 本体DBへは適用しません。
 
 ### GitLab 問題管理 Issue 同期（n8n）
 

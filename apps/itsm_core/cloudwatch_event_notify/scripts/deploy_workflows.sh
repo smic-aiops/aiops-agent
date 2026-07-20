@@ -103,7 +103,13 @@ resolve_zulip_env_overrides_for_realm() {
   local zulip_bot_api_key=""
 
   local base_urls_yaml
-  base_urls_yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+  base_urls_yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URLS_YAML)"
+  if [[ -z "${base_urls_yaml}" || "${base_urls_yaml}" == "null" ]]; then
+    base_urls_yaml="$(tf_output_raw N8N_ZULIP_API_BASE_URL)"
+  fi
+  if [[ -z "${base_urls_yaml}" || "${base_urls_yaml}" == "null" ]]; then
+    base_urls_yaml="$(tf_output_raw zulip_api_mess_base_urls_yaml)"
+  fi
   if [[ -n "${base_urls_yaml}" && "${base_urls_yaml}" != "null" ]]; then
     if [[ -z "${zulip_base_url}" ]]; then
       zulip_base_url="$(mapping_get "${base_urls_yaml}" "${realm}")"
@@ -114,7 +120,10 @@ resolve_zulip_env_overrides_for_realm() {
   fi
 
   local emails_yaml
-  emails_yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
+  emails_yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAILS_YAML)"
+  if [[ -z "${emails_yaml}" || "${emails_yaml}" == "null" ]]; then
+    emails_yaml="$(tf_output_raw N8N_ZULIP_BOT_EMAIL)"
+  fi
   if [[ -z "${emails_yaml}" || "${emails_yaml}" == "null" ]]; then
     emails_yaml="$(tf_output_raw zulip_mess_bot_emails_yaml)"
   fi
@@ -129,7 +138,10 @@ resolve_zulip_env_overrides_for_realm() {
   fi
   if [[ -z "${zulip_bot_api_key}" ]]; then
     local token_yaml
-    token_yaml="$(tf_output_raw N8N_ZULIP_BOT_TOKEN)"
+    token_yaml="$(tf_output_raw N8N_ZULIP_BOT_TOKENS_YAML)"
+    if [[ -z "${token_yaml}" || "${token_yaml}" == "null" ]]; then
+      token_yaml="$(tf_output_raw N8N_ZULIP_BOT_TOKEN)"
+    fi
     if [[ -z "${token_yaml}" || "${token_yaml}" == "null" ]]; then
       token_yaml="$(tf_output_raw zulip_mess_bot_tokens_yaml)"
     fi

@@ -103,9 +103,9 @@ itsm_load_defaults_from_terraform_outputs
 if [[ -n "${NAME_PREFIX:-}" ]]; then
   DB_HOST_PARAM="${DB_HOST_PARAM:-/${NAME_PREFIX}/db/host}"
   DB_PORT_PARAM="${DB_PORT_PARAM:-/${NAME_PREFIX}/db/port}"
-  DB_NAME_PARAM="${DB_NAME_PARAM:-/${NAME_PREFIX}/n8n/db/name}"
-  DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/n8n/db/username}"
-  DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/n8n/db/password}"
+  DB_NAME_PARAM="${DB_NAME_PARAM:-/${NAME_PREFIX}/db/name}"
+  DB_USER_PARAM="${DB_USER_PARAM:-/${NAME_PREFIX}/db/username}"
+  DB_PASSWORD_PARAM="${DB_PASSWORD_PARAM:-/${NAME_PREFIX}/db/password}"
 fi
 
 if [[ "${DRY_RUN}" == "true" ]]; then
@@ -127,10 +127,10 @@ itsm_resolve_db_connection
 itsm_ensure_db_connection
 
 sql="$(cat <<'SQL'
-\\set ON_ERROR_STOP on
-\\pset format unaligned
-\\pset tuples_only on
-\\pset fieldsep '|'
+\set ON_ERROR_STOP on
+\pset format unaligned
+\pset tuples_only on
+\pset fieldsep '|'
 WITH v AS (
   SELECT
     to_regclass('itsm.realm') IS NOT NULL AS realm_ok,
@@ -139,26 +139,34 @@ WITH v AS (
     to_regclass('itsm.external_ref') IS NOT NULL AS external_ref_ok,
     to_regclass('itsm.incident') IS NOT NULL AS incident_ok,
     to_regclass('itsm.service_request') IS NOT NULL AS service_request_ok,
-	    to_regclass('itsm.problem') IS NOT NULL AS problem_ok,
-	    to_regclass('itsm.change_request') IS NOT NULL AS change_request_ok,
-	    to_regprocedure('itsm.get_realm_id(text)') IS NOT NULL AS get_realm_id_ok,
-	    to_regprocedure('itsm.set_rls_context(text,text,jsonb,jsonb,boolean)') IS NOT NULL AS set_rls_context_ok,
-	    to_regprocedure('itsm.next_record_number(uuid,text,text,integer)') IS NOT NULL AS next_record_number_ok
-	)
-	SELECT
-	  realm_ok AND audit_event_ok AND approval_ok AND external_ref_ok
-	    AND incident_ok AND service_request_ok AND problem_ok AND change_request_ok
-	    AND get_realm_id_ok AND set_rls_context_ok AND next_record_number_ok AS ok,
-	  realm_ok, audit_event_ok, approval_ok, external_ref_ok,
-	  incident_ok, service_request_ok, problem_ok, change_request_ok,
-	  get_realm_id_ok, set_rls_context_ok, next_record_number_ok
-	FROM v;
+    to_regclass('itsm.problem') IS NOT NULL AS problem_ok,
+    to_regclass('itsm.change_request') IS NOT NULL AS change_request_ok,
+    to_regprocedure('itsm.get_realm_id(text)') IS NOT NULL AS get_realm_id_ok,
+    to_regprocedure('itsm.set_rls_context(text,text,jsonb,jsonb,boolean)') IS NOT NULL AS set_rls_context_ok,
+    to_regprocedure('itsm.next_record_number(uuid,text,text,integer)') IS NOT NULL AS next_record_number_ok
+)
+SELECT
+  realm_ok AND audit_event_ok AND approval_ok AND external_ref_ok
+    AND incident_ok AND service_request_ok AND problem_ok AND change_request_ok
+    AND get_realm_id_ok AND set_rls_context_ok AND next_record_number_ok AS ok,
+  realm_ok, audit_event_ok, approval_ok, external_ref_ok,
+  incident_ok, service_request_ok, problem_ok, change_request_ok,
+  get_realm_id_ok, set_rls_context_ok, next_record_number_ok
+FROM v;
 SQL
 )"
 
 out="$(itsm_run_sql_auto "${sql}" 2>/dev/null || true)"
 
-if [[ "${out}" == "t|"* || "${out}" == "t" ]]; then
+schema_ok="false"
+while IFS= read -r line; do
+  if [[ "${line}" == "t|"* || "${line}" == "t" ]]; then
+    schema_ok="true"
+    break
+  fi
+done <<<"${out}"
+
+if [[ "${schema_ok}" == "true" ]]; then
   echo "[itsm] schema check OK (realm_key=${REALM_KEY})"
   exit 0
 fi

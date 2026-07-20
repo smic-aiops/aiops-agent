@@ -1,6 +1,6 @@
 # ITSM コア（SoR）機能一覧と実装状況
 
-本書は「ITSM コア（SoR: System of Record）」として共有 RDS(PostgreSQL) に集約したい機能について、**現時点で何が実装済み/部分実装/未実装か** を俯瞰するためのチェックリストです。
+本書は「ITSM コア（SoR: System of Record）」として共有 RDS(PostgreSQL) に集約する機能と、実装・検証経路を俯瞰するためのチェックリストです。
 
 前提:
 - ここでいう SoR は **共有 RDS(PostgreSQL) の `itsm.*` スキーマ**を指します。
@@ -17,13 +17,13 @@
 |---|---|---|---|
 | SoR スキーマ（`itsm.*`） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | ここが実装の正（MVP）。 |
 | レコード（最小核）: Incident / SRQ / Problem / Change | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | 列/状態遷移/必須項目は最小限。`service_id` 等は NULL 許容。 |
-| CMDB（最小核）: Service / CI / CI relation | 部分実装 | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | テーブルはあるが、**投入/同期の運用経路**が未整備（現状の CMDB 正は GitLab `cmdb/` 前提）。 |
+| CMDB: Service / CI / CI relation | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.sync_cmdb`）、`apps/itsm_core/sor_webhooks/workflows/itsm_sor_core_api.json` | API の `sync_cmdb` は dry-run と冪等 upsert に対応。 |
 | 外部参照（GitLab/Zulip 等）: `itsm.external_ref` | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | `ref_key` ユニークで重複投入を防止。 |
 | 採番（INC/CHG/SRQ/PRB など） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.next_record_number`） | 幅/接頭辞は呼び出し側（ワークフロー）で決定。 |
 | 監査イベント（追記型）: `itsm.audit_event` | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | `integrity.event_key` を使った冪等投入が前提。 |
 | 承認（共通）: `itsm.approval` | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | 現状の書き込み主体は AIOpsAgent。 |
-| タグ/コメント/添付/ACL | 部分実装 | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | テーブルはあるが、投入/運用経路（UI/API/ワークフロー）が未整備。 |
-| ポリモーフィック参照の参照整合性（comment/attachment/tag/acl の FK） | 部分実装 | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` | `resource_type/resource_id` は汎用参照のため、DB の FK で完全担保できません（必要ならトリガ/分割テーブルが必要）。 |
+| タグ/コメント/添付/ACL | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（Core API dispatch）、`apps/itsm_core/sor_webhooks/workflows/itsm_sor_core_api.json` | `set_tag` / `add_comment` / `add_attachment` / `grant_acl` を提供。 |
+| ポリモーフィック参照の参照整合性（comment/attachment/tag/acl） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（resource registry・整合性/cleanup trigger） | 登録済み resource type と同一 realm の実在 resource を DB trigger で検証。 |
 
 ## 2. SoR 適用（DDL）とデプロイ統合
 
@@ -57,11 +57,11 @@
 | 機能 | 状態 | 根拠（実装） | 補足（不足/注意） |
 |---|---|---|---|
 | GitLab Issue → SoR レコード upsert（最小） | 実装済み | `apps/itsm_core/zulip_gitlab_issue_sync/workflows/zulip_gitlab_issue_sync.json` | `itsm.external_ref(ref_type=gitlab_issue)` をキーに作成/更新。 |
-| ステータス遷移（状態機械）/必須フィールド検証 | 未実装 | （なし） | DB の CHECK は最小。業務ルールは未整備。 |
-| サービスカタログ（Request catalog） | 未実装 | （なし） | 既存はワークフロー/テンプレ中心（`apps/workflow_manager`）。SoR 側のモデルは未整備。 |
+| ステータス遷移（状態機械）/必須フィールド検証 | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（state transition rules・検証 trigger） | Incident/SRQ/Problem/Change の不正遷移を DB で拒否。 |
+| サービスカタログ（Request catalog） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.request_catalog_item`） | active item、入力スキーマ、service 関連と SRQ 作成時検証を実装。 |
 | SLA/SLO 計測（受付/解決/期限） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.sla_target`/`itsm.sla_pause`/`itsm.sla_metrics`/`itsm.slo_breach`） | SLA は SoR で目標値/停止区間を保持し、ビューで経過/期限/逸脱を算出（business hours/holiday 対応。既定: `Asia/Tokyo` + `jp_standard` + `jp`。service/CMDB で上書き可）。SLO は時系列は Athena/Grafana を正とし、SoR には逸脱イベント（`slo_breach`）を記録できる。 |
 | SLA 計測の集計（S3/Athena 用・日次） | 実装済み | `apps/itsm_core/itsm_sla_metrics_sync/workflows/itsm_sla_metrics_sync.json` | `itsm.sla_metrics_at(p_at)` を入力に `metrics.json` / `sla_events.jsonl` を S3 に出力（既定: 前日UTC）。 |
-| 参照整合性強化（service_id/ci などの必須化、辞書化） | 未実装 | （なし） | 段階導入の設計が必要（現状は NULL 許容）。 |
+| 参照整合性強化（service_id/ci などの必須化、辞書化） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（default dictionary・FK・integrity view） | 既存連携は realm ごとの `SVC-UNASSIGNED` へ安全に補完し、新規レコードの service 欠落を防止。 |
 
 ## 6. セキュリティ/ガバナンス（DB運用）
 
@@ -69,15 +69,15 @@
 |---|---|---|---|
 | RLS（Row Level Security）/ポリシー | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_rls.sql`, `apps/itsm_core/sor_ops/sql/itsm_sor_rls_force.sql`, `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.set_rls_context`）, `apps/itsm_core/sor_ops/scripts/import_itsm_sor_core_schema.sh`, `apps/itsm_core/sor_ops/scripts/configure_itsm_sor_rls_context.sh` | 運用: RLS を適用すると `itsm.*` へのアクセスは `app.realm_key`/`app.realm_id` が必須（未設定は fail close / エラー）。n8n/直DB は (A) ロール既定値（`ALTER ROLE ... SET app.*`）で固定するか、(B) 各 SQL の先頭で `itsm.set_rls_context(..., local=true)` を呼んで statement 内で確実化する（複数 statement の場合は各 statement で呼ぶ）。 |
 | 監査イベントの改ざん耐性（append-only + ハッシュチェーン + 外部アンカー） | 実装済み | `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql` / `apps/itsm_core/sor_ops/scripts/anchor_itsm_audit_event_hash.sh` / Terraform(`itsm_audit_event_anchor_*`) | S3 アンカーは `itsm_audit_event_anchor_enabled=true` の上で定期実行が必要（推奨）。 |
-| アーカイブ/保持期間/削除（運用・監査要件） | 部分実装 | `apps/itsm_core/bootstrap/docs/data-retention.md`, `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`, `apps/itsm_core/sor_ops/scripts/apply_itsm_sor_retention.sh` | レルム別 `itsm.retention_policy` と purge 関数/ジョブ（dry-run→execute）を追加。監査ログ（`audit_event`）の物理削除は既定で無効。添付実体の削除はストレージ側（S3 lifecycle 等）が正。 |
+| アーカイブ/保持期間/削除（運用・監査要件） | 実装済み | `apps/itsm_core/bootstrap/docs/data-retention.md`, `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`, `apps/itsm_core/sor_ops/scripts/apply_itsm_sor_retention.sh`, `apps/itsm_core/sor_ops/scripts/process_attachment_deletion_queue.sh` | レルム別保持、DB purge、監査ログ保護、添付実体の削除キュー処理を実装。実削除は明示的な `--execute` が必要。 |
 
 ## 7. UI/API（SoR の利用者導線）
 
 | 機能 | 状態 | 根拠（実装） | 補足（不足/注意） |
 |---|---|---|---|
-| ITSM コア API（CRUD/検索/参照） | 未実装 | （なし） | 現状は n8n ワークフローから DB 直叩き。 |
-| Sulu admin（read-only 一覧/検索） | 実装済み | `scripts/itsm/sulu/source_overrides/src/Admin/IstmAdmin.php`, `scripts/itsm/sulu/source_overrides/config/routes_admin.yaml`, `scripts/itsm/sulu/source_overrides/src/Controller/Istm*Controller.php` | 決定一覧（`/itsm/decisions`）および Incident/SRQ/Problem/Change の参照導線。書き込み UI は無し。SoR 接続（`ITSM_SOR_DATABASE_URL`）が必要。静的チェック: `scripts/itsm/sulu/check_sulu_itsm_admin_readonly.sh`。 |
-| UI（サービスデスク画面） | 未実装 | （なし） | Sulu admin は「参照（read-only）」の導線であり、サービスデスク UI は別途。 |
+| ITSM コア API（CRUD/検索/参照） | 実装済み | `apps/itsm_core/sor_webhooks/workflows/itsm_sor_core_api.json`, `apps/itsm_core/sor_ops/sql/itsm_sor_core.sql`（`itsm.core_api_dispatch_v2`） | Bearer token、realm/RLS、CRUD、検索、CMDB、comment/tag/attachment/ACL、添付削除キューを提供。 |
+| Sulu admin（一覧/検索/編集） | 実装済み | `scripts/itsm/sulu/source_overrides/src/Admin/IstmAdmin.php`, `scripts/itsm/sulu/source_overrides/config/routes_admin.yaml`, `scripts/itsm/sulu/source_overrides/src/Controller/Istm*Controller.php` | 決定一覧と Incident/SRQ/Problem/Change の一覧・作成・更新・削除。Sulu 権限と SoR 接続が必要。 |
+| UI（サービスデスク画面） | 実装済み | `scripts/itsm/sulu/source_overrides/config/forms/`, `scripts/itsm/sulu/source_overrides/src/Admin/IstmAdmin.php`, `scripts/itsm/sulu/source_overrides/src/Service/IstmCoreWriter.php` | Sulu admin の list/form toolbar と Core API 相当の DB 書き込み経路で実装。 |
 
 ## 8. 継続的改善（CIR）運用支援（SoR 外）
 
@@ -92,8 +92,12 @@
 | system.md 完了後の CIR クローズ（`状態/Closed` 付与 + Issue close + 結果サマリ note） | 実装済み | `apps/itsm_core/cir_issue_close/workflows/itsm_cir_issue_close.json` | note は marker で重複抑止。`状態/Closed` 付与により起票者 DM 通知（前行）をトリガ。 |
 | CIR テンプレ起票時の自動ラベル付与（`ITSM/継続的改善` + `状態/New`） | 実装済み | `apps/itsm_core/cir_auto_label/workflows/gitlab_cir_auto_label.json` | テンプレ marker による対象判定。Project Hook（Issue events）が必要。 |
 
-## 次に「未実装」を潰す優先候補（最小）
+## 適格性確認
 
-1. **RLS の適用/運用**（RLS を入れるなら `app.*` セッション変数設計とセットで）
-2. **状態遷移/必須フィールド**（incident/change/request/problem の運用ルールを CHECK/トリガ/アプリ側検証へ落とす）
-3. **GitLab Issue 全件バックフィルの運用手順整備**（増分 run / 例外処理 / 実行時間の見積もり）
+- 機能 OQ/PQ: `apps/itsm_core/sor_ops/scripts/run_feature_oq_pq.sh`
+- DB OQ: `apps/itsm_core/sor_ops/sql/itsm_sor_core_feature_oq.sql`
+- 性能 PQ: `apps/itsm_core/sor_ops/sql/itsm_sor_core_feature_pq.sql`
+- n8n Core API OQ: `apps/itsm_core/sor_webhooks/scripts/run_oq.sh`
+- 全サブアプリ回帰: `apps/itsm_core/scripts/run_all_oq.sh`
+
+上表に未実装・部分実装の項目はありません。環境へ反映した日付、実行ログ、逸脱は `evidence/` の各 IQ/OQ/PQ 証跡に保存します。

@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\n\nconst body = $json ?? {};\nconst query = body.query ?? {};\nconst approvalToken = body.approval_token ?? body.approvalToken ?? body.token ?? query.token ?? query.approval_token ?? null;\n\nif (!approvalToken) {\n  return [{ json: { valid: false, status_code: 400, error: 'approval_token is required' } }];\n}\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nconst decisions = Array.isArray(interactionGrammar?.approval?.decisions)\n  ? interactionGrammar.approval.decisions.map((v) => String(v).trim().toLowerCase()).filter(Boolean)\n  : ['approve', 'deny'];\n\nconst keywords = (interactionGrammar?.approval?.keywords && typeof interactionGrammar.approval.keywords === 'object')\n  ? interactionGrammar.approval.keywords\n  : {};\n\nconst decisionRaw = body.decision ?? body.action ?? body.intent ?? body.command ?? query.decision ?? null;\nconst decisionText = decisionRaw ? String(decisionRaw).trim().toLowerCase() : null;\n\nif (!decisionText) {\n  return [{ json: { valid: false, status_code: 400, error: 'decision is required' } }];\n}\n\nfunction normalizeDecision(text) {\n  if (decisions.includes(text)) return text;\n  for (const d of decisions) {\n    const list = keywords?.[d];\n    if (Array.isArray(list)) {\n      const normalized = list.map((v) => String(v).trim().toLowerCase()).filter(Boolean);\n      if (normalized.includes(text)) return d;\n    }\n  }\n  return null;\n}\n\nconst decision = normalizeDecision(decisionText);\nif (!decision) {\n  return [{ json: { valid: false, status_code: 400, error: 'invalid decision' } }];\n}\n\nconst approverActor = body.actor ?? body.approver_actor ?? null;\n\nconst secret = $env.N8N_APPROVAL_HMAC_SECRET_NAME;\nif (!secret) {\n  return [{ json: { valid: false, status_code: 500, error: 'N8N_APPROVAL_HMAC_SECRET_NAME is not set' } }];\n}\n\nlet decoded = null;\ntry {\n  decoded = JSON.parse(Buffer.from(String(approvalToken), 'base64url').toString('utf8'));\n} catch (error) {\n  return [{ json: { valid: false, status_code: 400, error: 'invalid approval_token' } }];\n}\n\nconst { signature, ...payload } = decoded;\nconst expected = crypto.createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');\nif (signature !== expected) {\n  return [{ json: { valid: false, status_code: 401, error: 'invalid approval_token signature' } }];\n}\n\nif (payload.expires_at && new Date(payload.expires_at).getTime() < Date.now()) {\n  return [{ json: { valid: false, status_code: 410, error: 'approval_token expired' } }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    approval_token: approvalToken,\n    approval_id: payload.approval_id,\n    context_id: payload.context_id,\n    decision,\n    actor: approverActor ?? payload.actor ?? {}\n  }\n}];\n"
+        "jsCode": "const crypto = require('crypto');\n\nconst request = $json ?? {};\nconst body = (request.body && typeof request.body === \"object\") ? request.body : request;\nconst query = body.query ?? {};\nconst approvalToken = body.approval_token ?? body.approvalToken ?? body.token ?? query.token ?? query.approval_token ?? null;\n\nif (!approvalToken) {\n  return [{ json: { valid: false, status_code: 400, error: 'approval_token is required' } }];\n}\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nconst decisions = Array.isArray(interactionGrammar?.approval?.decisions)\n  ? interactionGrammar.approval.decisions.map((v) => String(v).trim().toLowerCase()).filter(Boolean)\n  : ['approve', 'deny'];\n\nconst keywords = (interactionGrammar?.approval?.keywords && typeof interactionGrammar.approval.keywords === 'object')\n  ? interactionGrammar.approval.keywords\n  : {};\n\nconst decisionRaw = body.decision ?? body.action ?? body.intent ?? body.command ?? query.decision ?? null;\nconst decisionText = decisionRaw ? String(decisionRaw).trim().toLowerCase() : null;\n\nif (!decisionText) {\n  return [{ json: { valid: false, status_code: 400, error: 'decision is required' } }];\n}\n\nfunction normalizeDecision(text) {\n  if (decisions.includes(text)) return text;\n  for (const d of decisions) {\n    const list = keywords?.[d];\n    if (Array.isArray(list)) {\n      const normalized = list.map((v) => String(v).trim().toLowerCase()).filter(Boolean);\n      if (normalized.includes(text)) return d;\n    }\n  }\n  return null;\n}\n\nconst decision = normalizeDecision(decisionText);\nif (!decision) {\n  return [{ json: { valid: false, status_code: 400, error: 'invalid decision' } }];\n}\n\nconst approverActor = body.actor ?? body.approver_actor ?? null;\n\nconst secret = $env.N8N_APPROVAL_HMAC_SECRET_NAME;\nif (!secret) {\n  return [{ json: { valid: false, status_code: 500, error: 'N8N_APPROVAL_HMAC_SECRET_NAME is not set' } }];\n}\n\nlet decoded = null;\ntry {\n  decoded = JSON.parse(Buffer.from(String(approvalToken), 'base64url').toString('utf8'));\n} catch (error) {\n  return [{ json: { valid: false, status_code: 400, error: 'invalid approval_token' } }];\n}\n\nconst { signature, ...payload } = decoded;\nconst expected = crypto.createHmac('sha256', secret).update(JSON.stringify(payload)).digest('hex');\nif (signature !== expected) {\n  return [{ json: { valid: false, status_code: 401, error: 'invalid approval_token signature' } }];\n}\n\nif (payload.expires_at && new Date(payload.expires_at).getTime() < Date.now()) {\n  return [{ json: { valid: false, status_code: 410, error: 'approval_token expired' } }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    approval_token: approvalToken,\n    approval_id: payload.approval_id,\n    context_id: payload.context_id,\n    decision,\n    actor: approverActor ?? payload.actor ?? {}\n  }\n}];\n"
       },
       "id": "2",
       "name": "Parse Approval Token",
@@ -33,18 +33,31 @@
     {
       "parameters": {
         "conditions": {
-          "boolean": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{$json.valid}}",
-              "value2": true
+              "id": "3-condition",
+              "leftValue": "={{$json.valid}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "3",
       "name": "IF Token Valid",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         700,
         240
@@ -85,7 +98,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT approval_id, context_id, job_plan, required_confirm, expires_at, approved_at, used_at\nFROM aiops_pending_approvals\nWHERE approval_id = {{$json.approval_id}}::uuid AND context_id = {{$json.context_id}}::uuid;"
+        "query": "SELECT approval_id, context_id, job_plan, required_confirm, expires_at, approved_at, used_at\nFROM aiops_pending_approvals\nWHERE approval_id = '{{ String($json.approval_id || '').replace(/'/g, \"''\") }}'::uuid AND context_id = '{{ String($json.context_id || '').replace(/'/g, \"''\") }}'::uuid;"
       },
       "id": "6",
       "name": "Load Pending Approval",
@@ -112,18 +125,31 @@
     {
       "parameters": {
         "conditions": {
-          "boolean": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{$json.valid}}",
-              "value2": true
+              "id": "8-condition",
+              "leftValue": "={{$json.valid}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "8",
       "name": "IF Pending Valid",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         1620,
         240
@@ -131,13 +157,14 @@
     },
     {
       "parameters": {
-        "url": "={{(() => {\n  const baseRaw = $env.N8N_ORCHESTRATOR_BASE_URL\n    || $env.N8N_WEBHOOK_BASE_URL\n    || $env.N8N_ORCHESTRATOR_BASE_URL\n    || $env.N8N_WEBHOOK_BASE_URL\n    || $env.N8N_ADAPTER_BASE_URL\n    || $env.N8N_APPROVAL_BASE_URL\n    || '';\n\n  let base = String(baseRaw ?? '').trim().replace(/\\/+$/, '');\n  if (!base) return '';\n\n  if (base.includes('/webhook/')) {\n    base = base.replace(/\\/webhook\\/.*/, '/webhook');\n  }\n\n  const webhookIndex = base.indexOf('/webhook');\n  if (webhookIndex >= 0) {\n    base = base.slice(0, webhookIndex) + '/webhook';\n  } else {\n    base = base + '/webhook';\n  }\n\n  const m = base.match(/^https?:\\/\\/([^/]+):5678(\\/|$)/);\n  if (m) {\n    const host = m[1];\n    const isLocal = host === 'localhost'\n      || host === '127.0.0.1'\n      || /^10\\./.test(host)\n      || /^192\\.168\\./.test(host)\n      || /^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(host);\n    if (isLocal) {\n      base = base.replace(/^https:\\/\\//, 'http://');\n    } else {\n      base = base.replace(/^https?:\\/\\/([^/]+):5678(\\/|$)/, 'https://$1$2');\n    }\n  }\n\n  base = base.replace(/\\/+$/, '');\n  return base + '/jobs/enqueue';\n})()}}",
+        "url": "={{(() => {\n  const baseRaw = $env.N8N_PUBLIC_API_BASE_URL\n    || $env.N8N_ORCHESTRATOR_BASE_URL\n    || $env.N8N_WEBHOOK_BASE_URL\n    || $env.N8N_ORCHESTRATOR_BASE_URL\n    || $env.N8N_WEBHOOK_BASE_URL\n    || $env.N8N_ADAPTER_BASE_URL\n    || $env.N8N_APPROVAL_BASE_URL\n    || '';\n\n  let base = String(baseRaw ?? '').trim().replace(/\\/+$/, '');\n  if (!base) return '';\n\n  if (base.includes('/webhook/')) {\n    base = base.replace(/\\/webhook\\/.*/, '/webhook');\n  }\n\n  const webhookIndex = base.indexOf('/webhook');\n  if (webhookIndex >= 0) {\n    base = base.slice(0, webhookIndex) + '/webhook';\n  } else {\n    base = base + '/webhook';\n  }\n\n  const m = base.match(/^https?:\\/\\/([^/]+):5678(\\/|$)/);\n  if (m) {\n    const host = m[1];\n    const isLocal = host === 'localhost'\n      || host === '127.0.0.1'\n      || /^10\\./.test(host)\n      || /^192\\.168\\./.test(host)\n      || /^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(host);\n    if (isLocal) {\n      base = base.replace(/^https:\\/\\//, 'http://');\n    } else {\n      base = base.replace(/^https?:\\/\\/([^/]+):5678(\\/|$)/, 'https://$1$2');\n    }\n  }\n\n  base = base.replace(/\\/+$/, '');\n  return base + '/jobs/enqueue';\n})()}}",
         "method": "POST",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { context_id: $json.context_id, job_plan: $json.job_plan, approval_token: $json.approval_token } }}",
         "options": {
-          "timeout": 20000
+          "timeout": 20000,
+          "allowUnauthorizedCerts": true
         }
       },
       "id": "9",
@@ -152,7 +179,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE aiops_context\nSET normalized_event = normalized_event || jsonb_build_object('job_id', {{$json.job_id}})\nWHERE context_id = {{$json.context_id}}::uuid;"
+        "query": "UPDATE aiops_context\nSET normalized_event = normalized_event || jsonb_build_object('job_id', '{{ String($json.job_id || '').replace(/'/g, \"''\") }}')\nWHERE context_id = '{{ String($json.context_id || '').replace(/'/g, \"''\") }}'::uuid;"
       },
       "id": "10",
       "name": "Context Store (job_id)",
@@ -166,7 +193,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT reply_target\nFROM aiops_context\nWHERE context_id = {{$node['Call Orchestrator Enqueue'] ? $node['Call Orchestrator Enqueue'].json.context_id : $json.context_id}}::uuid;"
+        "query": "SELECT reply_target\nFROM aiops_context\nWHERE context_id = '{{ String($node['Call Orchestrator Enqueue'] ? $node['Call Orchestrator Enqueue'].json.context_id : $json.context_id).replace(/'/g, \"''\") }}'::uuid;"
       },
       "id": "11",
       "name": "Load Context",
@@ -179,7 +206,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $json?.[0] ?? $json ?? {};\nconst replyTarget = row.reply_target;\nif (!replyTarget) throw new Error('reply_target not found');\n\nconst enqueue = $node['Call Orchestrator Enqueue']?.json ?? {};\nconst jobId = enqueue.job_id ?? null;\nconst source = replyTarget.source ?? 'unknown';\nconst decision = String($node['Validate Pending Approval'].json?.decision ?? '').trim().toLowerCase();\nconst approvalId = $node['Parse Approval Token']?.json?.approval_id ?? row.approval_id ?? null;\nconst contextId = enqueue.context_id ?? $node['Validate Pending Approval'].json?.context_id ?? row.context_id ?? null;\nconst actor = $node['Validate Pending Approval'].json?.actor ?? $node['Parse Approval Token'].json?.actor ?? {};\nconst jobPlan = $node['Validate Pending Approval'].json?.job_plan ?? null;\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nlet decisionPolicyDoc = null;\ntry {\n  decisionPolicyDoc = JSON.parse(\"__POLICY__DECISION__\");\n} catch (error) {\n  decisionPolicyDoc = null;\n}\n\nconst ackFallbacks = decisionPolicyDoc?.fallbacks?.approval_ack_messages ?? {};\nconst ackTemplate = interactionGrammar?.approval?.ack_messages?.[decision]\n  ?? ackFallbacks?.[decision]\n  ?? '';\n\nconst isTruthy = (value) => {\n  const v = String(value ?? '').trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n};\n\nconst decisionPrefix = String($env.AIOPS_ZULIP_DECISION_PREFIX || '/decision').trim() || '/decision';\nconst asDecision = isTruthy($env.AIOPS_ZULIP_APPROVAL_AS_DECISION ?? 'true');\n\nconst actorName = String(actor?.name ?? actor?.full_name ?? actor?.username ?? actor?.email ?? '').trim();\nconst actorLine = actorName ? `- 承認者: ${actorName}` : null;\n\nconst workflowId = String(jobPlan?.workflow_id ?? jobPlan?.workflowId ?? '').trim();\nconst jobSummary = String(jobPlan?.summary ?? '').trim();\nconst workflowLine = workflowId ? `- 対象: ${workflowId}${jobSummary ? ` (${jobSummary})` : ''}` : null;\n\nlet content = '';\nif (source === 'zulip' && asDecision) {\n  const verb = (decision === 'deny') ? '却下' : '承認';\n  const headParts = [decisionPrefix, `AIOpsAgent 実行${verb}`];\n  if (workflowId) headParts.push(`workflow=${workflowId}`);\n  const head = headParts.join(' ');\n\n  const lines = [\n    head,\n    actorLine,\n    approvalId ? `- approval_id: ${approvalId}` : null,\n    contextId ? `- context_id: ${contextId}` : null,\n    jobId ? `- job_id: ${jobId}` : null,\n    workflowLine,\n  ].filter(Boolean);\n\n  content = lines.join('\\n');\n} else {\n  const jobLine = jobId && decision !== 'deny' ? `\nJob ID: ${jobId}` : '';\n  content = String(ackTemplate).split('{job_line}').join(jobLine);\n}\n\nreturn [{\n  json: {\n    reply_target: replyTarget,\n    content,\n    source,\n    decision,\n    approval_id: approvalId,\n    job_id: jobId,\n    context_id: contextId,\n  }\n}];\n"
+        "jsCode": "const row = $json?.[0] ?? $json ?? {};\nconst replyTarget = row.reply_target;\nif (!replyTarget) throw new Error('reply_target not found');\n\nconst enqueue = $node['Call Orchestrator Enqueue']?.json ?? {};\nconst jobId = enqueue.job_id ?? null;\nconst source = replyTarget.source ?? 'unknown';\nconst decision = String($node['Validate Pending Approval'].json?.decision ?? '').trim().toLowerCase();\nconst approvalId = $node['Parse Approval Token']?.json?.approval_id ?? row.approval_id ?? null;\nconst contextId = enqueue.context_id ?? $node['Validate Pending Approval'].json?.context_id ?? row.context_id ?? null;\nconst actor = $node['Validate Pending Approval'].json?.actor ?? $node['Parse Approval Token'].json?.actor ?? {};\nconst jobPlan = $node['Validate Pending Approval'].json?.job_plan ?? null;\n\nlet interactionGrammar = null;\ntry {\n  interactionGrammar = JSON.parse(\"__POLICY__INTERACTION_GRAMMAR__\");\n} catch (error) {\n  interactionGrammar = null;\n}\n\nlet decisionPolicyDoc = null;\ntry {\n  decisionPolicyDoc = JSON.parse(\"__POLICY__DECISION__\");\n} catch (error) {\n  decisionPolicyDoc = null;\n}\n\nconst ackFallbacks = decisionPolicyDoc?.fallbacks?.approval_ack_messages ?? {};\nconst ackTemplate = interactionGrammar?.approval?.ack_messages?.[decision]\n  ?? ackFallbacks?.[decision]\n  ?? '';\n\nconst isTruthy = (value) => {\n  const v = String(value ?? '').trim().toLowerCase();\n  return ['1', 'true', 'yes', 'y', 'on'].includes(v);\n};\n\nconst decisionPrefix = String($env.AIOPS_ZULIP_DECISION_PREFIX || '/decision').trim() || '/decision';\nconst asDecision = isTruthy($env.AIOPS_ZULIP_APPROVAL_AS_DECISION ?? 'true');\n\nconst actorName = String(actor?.name ?? actor?.full_name ?? actor?.username ?? actor?.email ?? '').trim();\nconst actorLine = actorName ? `- 承認者: ${actorName}` : null;\n\nconst workflowId = String(jobPlan?.workflow_id ?? jobPlan?.workflowId ?? '').trim();\nconst jobSummary = String(jobPlan?.summary ?? '').trim();\nconst workflowLine = workflowId ? `- 対象ワークフロー: ${workflowId}` : null;\nconst summaryLine = jobSummary ? `- 実行概要: ${jobSummary.replace(/^workflow=/, 'ワークフロー=')}` : null;\n\nlet content = '';\nif (source === 'zulip' && asDecision) {\n  const verb = (decision === 'deny') ? '却下' : '承認';\n  const headParts = [decisionPrefix, `AIOpsAgentの実行を${verb}`];\n  if (workflowId) headParts.push(`対象ワークフロー=${workflowId}`);\n  const head = headParts.join(' ');\n\n  const lines = [\n    head,\n    actorLine,\n    approvalId ? `- 承認ID: ${approvalId}` : null,\n    contextId ? `- コンテキストID: ${contextId}` : null,\n    jobId ? `- ジョブID: ${jobId}` : null,\n    workflowLine,\n    summaryLine,\n  ].filter(Boolean);\n\n  content = lines.join('\\n');\n} else {\n  const jobLine = jobId && decision !== 'deny' ? `\nジョブID: ${jobId}` : '';\n  content = String(ackTemplate).split('{job_line}').join(jobLine);\n}\n\nreturn [{\n  json: {\n    reply_target: replyTarget,\n    content,\n    source,\n    decision,\n    approval_id: approvalId,\n    job_id: jobId,\n    context_id: contextId,\n  }\n}];\n"
       },
       "id": "12",
       "name": "Build Approval Ack",
@@ -193,18 +220,30 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{ $json.reply_target?.source ?? 'zulip' }}",
-              "value2": "zulip"
+              "id": "13-condition",
+              "leftValue": "={{ $json.reply_target?.source ?? 'zulip' }}",
+              "rightValue": "zulip",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "13",
       "name": "IF Zulip Source",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         2720,
         220
@@ -214,28 +253,38 @@
       "parameters": {
         "url": "={{ (() => {\n  const tenant = $json.reply_target?.tenant ?? $json.reply_target?.realm ?? '';\n  const jsonRaw = $env.N8N_ZULIP_API_BASE_URL || '';\n  const yamlRaw = $env.N8N_ZULIP_API_BASE_URL || '';\n  const fallback = $env.N8N_ZULIP_API_BASE_URL || $env.ZULIP_API_BASE_URL || '';\n  const parseYaml = (text) => {\n    const map = {};\n    String(text).split(/\\r?\\n/).forEach((line) => {\n      const trimmed = line.trim();\n      if (!trimmed || trimmed.startsWith('#')) return;\n      const idx = trimmed.indexOf(':');\n      if (idx <= 0) return;\n      const key = trimmed.slice(0, idx).trim();\n      let value = trimmed.slice(idx + 1).trim();\n      if (!key) return;\n      value = value.replace(/^['\"]|['\"]$/g, '');\n      map[key] = value;\n    });\n    return map;\n  };\n  let map = {};\n  if (jsonRaw) {\n    try {\n      const parsed = JSON.parse(jsonRaw);\n      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {\n        map = parsed;\n      }\n    } catch (error) {}\n  }\n  if (!Object.keys(map).length && yamlRaw) {\n    map = parseYaml(yamlRaw);\n  }\n  const base = (tenant && map[tenant]) ? map[tenant] : (map.default || fallback);\n  const trimmed = base ? String(base).replace(/\\/+$/, '') : '';\n  if (!trimmed) return '';\n  const apiBase = trimmed.endsWith('/api/v1') ? trimmed : (trimmed + '/api/v1');\n  return apiBase + '/messages';\n})() }}",
         "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ { type: 'stream', to: $json.reply_target.stream, topic: $json.reply_target.topic, content: $json.content } }}",
-        "options": {},
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
+        "contentType": "form-urlencoded",
+        "specifyBody": "keypair",
+        "bodyParameters": {
           "parameters": [
             {
-              "name": "Content-Type",
-              "value": "application/json"
+              "name": "type",
+              "value": "stream"
             },
             {
-              "name": "Authorization",
-              "value": "={{ (() => {\n  const tenant = $json.reply_target?.tenant ?? $json.reply_target?.realm ?? '';\n  const tokenJsonRaw = $env.N8N_ZULIP_BOT_TOKEN || '';\n  const tokenYamlRaw = $env.ZULIP_BOT_TOKEN || $env.N8N_ZULIP_BOT_TOKEN || '';\n  const emailJsonRaw = $env.N8N_ZULIP_BOT_EMAIL || '';\n  const emailYamlRaw = $env.N8N_ZULIP_BOT_EMAIL || '';\n  const fallbackToken = $env.N8N_ZULIP_BOT_TOKEN || $env.ZULIP_BOT_TOKEN || '';\n  const fallbackEmail = $env.N8N_ZULIP_BOT_EMAIL || $env.ZULIP_BOT_EMAIL || '';\n  const parseYaml = (text) => {\n    const map = {};\n    String(text).split(/\\r?\\n/).forEach((line) => {\n      const trimmed = line.trim();\n      if (!trimmed || trimmed.startsWith('#')) return;\n      const idx = trimmed.indexOf(':');\n      if (idx <= 0) return;\n      const key = trimmed.slice(0, idx).trim();\n      let value = trimmed.slice(idx + 1).trim();\n      if (!key) return;\n      value = value.replace(/^['\"]|['\"]$/g, '');\n      map[key] = value;\n    });\n    return map;\n  };\n  const parseMap = (jsonRaw, yamlRaw) => {\n    let map = {};\n    if (jsonRaw) {\n      try {\n        const parsed = JSON.parse(jsonRaw);\n        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {\n          map = parsed;\n        }\n      } catch (error) {}\n    }\n    if (!Object.keys(map).length && yamlRaw) {\n      map = parseYaml(yamlRaw);\n    }\n    return map;\n  };\n  const tokenMap = parseMap(tokenJsonRaw, tokenYamlRaw);\n  const emailMap = parseMap(emailJsonRaw, emailYamlRaw);\n  const token = (tenant && tokenMap[tenant]) ? tokenMap[tenant] : (tokenMap.default || fallbackToken);\n  const email = (tenant && emailMap[tenant]) ? emailMap[tenant] : (emailMap.default || fallbackEmail);\n  if (!email || !token) return '';\n  return 'Basic ' + Buffer.from(email + ':' + token).toString('base64');\n})() }}"
+              "name": "to",
+              "value": "={{ $json.reply_target.stream }}"
+            },
+            {
+              "name": "topic",
+              "value": "={{ $json.reply_target.topic }}"
+            },
+            {
+              "name": "content",
+              "value": "={{ $json.content }}"
             }
           ]
-        }
+        },
+        "options": {},
+        "sendHeaders": false
       },
       "id": "14",
       "name": "Post to Zulip",
       "type": "n8n-nodes-base.httpRequest",
+      "nodeCredentialType": "httpBasicAuth",
       "typeVersion": 4,
       "position": [
         2920,
@@ -245,18 +294,30 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{ $json.reply_target?.source ?? '' }}",
-              "value2": "slack"
+              "id": "15-condition",
+              "leftValue": "={{ $json.reply_target?.source ?? '' }}",
+              "rightValue": "slack",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "15",
       "name": "IF Slack Source",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         2920,
         240
@@ -288,18 +349,30 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{ $json.reply_target?.source ?? '' }}",
-              "value2": "mattermost"
+              "id": "17-condition",
+              "leftValue": "={{ $json.reply_target?.source ?? '' }}",
+              "rightValue": "mattermost",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "17",
       "name": "IF Mattermost Source",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         3120,
         360
@@ -331,18 +404,30 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{ $json.reply_target?.source ?? '' }}",
-              "value2": "teams"
+              "id": "19-condition",
+              "leftValue": "={{ $json.reply_target?.source ?? '' }}",
+              "rightValue": "teams",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "19",
       "name": "IF Teams Source",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         3320,
         480
@@ -399,18 +484,30 @@
     {
       "parameters": {
         "conditions": {
-          "string": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
             {
-              "value1": "={{$json.decision}}",
-              "value2": "deny"
+              "id": "22-condition",
+              "leftValue": "={{$json.decision}}",
+              "rightValue": "deny",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         }
       },
       "id": "22",
       "name": "IF Decision Deny",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
         1840,
         120
@@ -419,7 +516,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE aiops_pending_approvals\nSET used_at = NOW()\nWHERE approval_id = {{$json.approval_id}}::uuid AND context_id = {{$json.context_id}}::uuid AND used_at IS NULL\nRETURNING approval_id;"
+        "query": "UPDATE aiops_pending_approvals\nSET used_at = NOW()\nWHERE approval_id = '{{ String($json.approval_id || '').replace(/'/g, \"''\") }}'::uuid AND context_id = '{{ String($json.context_id || '').replace(/'/g, \"''\") }}'::uuid AND used_at IS NULL\nRETURNING approval_id;"
       },
       "id": "23",
       "name": "Mark Approval Denied",
@@ -433,7 +530,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO aiops_approval_history (approval_history_id, context_id, approval_id, actor, decision, job_plan)\nVALUES ({{$node['Parse Approval Token'].json.approval_id}}::uuid, {{$node['Validate Pending Approval'].json.context_id}}::uuid, {{$node['Parse Approval Token'].json.approval_id}}::uuid, COALESCE({{$node['Parse Approval Token'].json.actor}}::jsonb, '{}'::jsonb), 'denied', {{$node['Validate Pending Approval'].json.job_plan}}::jsonb)\nON CONFLICT (approval_history_id) DO NOTHING;"
+        "query": "INSERT INTO aiops_approval_history (approval_history_id, context_id, approval_id, actor, decision, job_plan)\nVALUES ('{{ String($node['Parse Approval Token'].json.approval_id || '').replace(/'/g, \"''\") }}'::uuid, '{{ String($node['Validate Pending Approval'].json.context_id || '').replace(/'/g, \"''\") }}'::uuid, '{{ String($node['Parse Approval Token'].json.approval_id || '').replace(/'/g, \"''\") }}'::uuid, COALESCE(NULLIF('{{ JSON.stringify($node['Parse Approval Token'].json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb), 'denied', COALESCE(NULLIF('{{ JSON.stringify($node['Validate Pending Approval'].json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb))\nON CONFLICT (approval_history_id) DO NOTHING;"
       },
       "id": "24",
       "name": "Record Approval Denied",
@@ -447,7 +544,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO aiops_approval_history (approval_history_id, context_id, approval_id, actor, decision, job_plan)\nVALUES ({{$node['Parse Approval Token'].json.approval_id}}::uuid, {{$node['Validate Pending Approval'].json.context_id}}::uuid, {{$node['Parse Approval Token'].json.approval_id}}::uuid, COALESCE({{$node['Parse Approval Token'].json.actor}}::jsonb, '{}'::jsonb), 'approved', {{$node['Validate Pending Approval'].json.job_plan}}::jsonb)\nON CONFLICT (approval_history_id) DO NOTHING;"
+        "query": "INSERT INTO aiops_approval_history (approval_history_id, context_id, approval_id, actor, decision, job_plan)\nVALUES ('{{ String($node['Parse Approval Token'].json.approval_id || '').replace(/'/g, \"''\") }}'::uuid, '{{ String($node['Validate Pending Approval'].json.context_id || '').replace(/'/g, \"''\") }}'::uuid, '{{ String($node['Parse Approval Token'].json.approval_id || '').replace(/'/g, \"''\") }}'::uuid, COALESCE(NULLIF('{{ JSON.stringify($node['Parse Approval Token'].json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb), 'approved', COALESCE(NULLIF('{{ JSON.stringify($node['Validate Pending Approval'].json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb))\nON CONFLICT (approval_history_id) DO NOTHING;"
       },
       "id": "25",
       "name": "Record Approval Approved",
@@ -1207,7 +1304,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE aiops_approval_history\nSET comment = NULLIF(({{ JSON.stringify($json.content || '') }}::jsonb #>> '{}'), '')\nWHERE approval_history_id = {{$json.approval_id}}::uuid;"
+        "query": "UPDATE aiops_approval_history\nSET comment = NULLIF(('{{ JSON.stringify($json.content || '').replace(/'/g, \"''\") }}'::jsonb #>> '{}'), '')\nWHERE approval_history_id = '{{ String($json.approval_id || '').replace(/'/g, \"''\") }}'::uuid;"
       },
       "id": "update-approval-history-comment",
       "name": "Update Approval History Comment",
@@ -1231,51 +1328,51 @@
         420
       ]
     },
-		    {
-		      "parameters": {
-		        "operation": "executeQuery",
-		        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    NULLIF(NULLIF('{{ $node[\"Parse Approval Token\"].json.approval_id }}',''), 'undefined')::uuid AS approval_id,\n    NULLIF(NULLIF('{{ $node[\"Validate Pending Approval\"].json.context_id }}',''), 'undefined')::uuid AS context_id,\n    LOWER('{{ String($node[\"Validate Pending Approval\"].json.decision || \"\").replace(/'/g, \"''\") }}') AS decision,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Validate Pending Approval\"].json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Validate Pending Approval\"].json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS job_plan,\n    COALESCE(NULLIF('{{ JSON.stringify(($node[\"Load Context\"].json.reply_target || $node[\"Load Context\"].json?.[0]?.reply_target || {})).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($node[\"Validate Pending Approval\"].json.job_plan?.trace_id ?? $node[\"Validate Pending Approval\"].json.context_id ?? \"\").replace(/'/g, \"''\") }}', '') AS correlation_id\n)\nSELECT\n  CASE\n    WHEN v.realm_key IS NULL OR v.realm_key = '' OR v.approval_id IS NULL OR v.context_id IS NULL THEN NULL\n    ELSE itsm.aiops_upsert_approval_decision(\n      v.realm_key,\n      v.approval_id,\n      v.context_id,\n      v.decision,\n      NULLIF(v.actor #>> '{email}', ''),\n      v.actor,\n      v.job_plan,\n      v.reply_target,\n      v.correlation_id,\n      NOW()\n    )\n  END AS approval_id\nFROM v;"
-		      },
-		      "id": "76",
-		      "name": "Upsert SoR Approval (itsm.approval)",
-		      "type": "n8n-nodes-base.postgres",
-		      "typeVersion": 2,
-		      "position": [
-		        1220,
-		        560
-		      ],
-		      "continueOnFail": true
-		    },
-		    {
-		      "parameters": {
-		        "operation": "executeQuery",
-		        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    NULLIF(NULLIF('{{ $node[\"Parse Approval Token\"].json.approval_id }}',''), 'undefined')::uuid AS approval_id,\n    LOWER('{{ String($node[\"Validate Pending Approval\"].json.decision || \"\").replace(/'/g, \"''\") }}') AS decision,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Validate Pending Approval\"].json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Validate Pending Approval\"].json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS job_plan,\n    COALESCE(NULLIF('{{ JSON.stringify(($node[\"Load Context\"].json.reply_target || $node[\"Load Context\"].json?.[0]?.reply_target || {})).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($node[\"Validate Pending Approval\"].json.job_plan?.trace_id ?? $node[\"Validate Pending Approval\"].json.context_id ?? \"\").replace(/'/g, \"''\") }}', '') AS correlation_id\n)\nSELECT\n  CASE\n    WHEN v.realm_key IS NULL OR v.realm_key = '' OR v.approval_id IS NULL THEN NULL\n    ELSE itsm.aiops_insert_approval_decision_audit_event(\n      v.realm_key,\n      v.approval_id,\n      v.decision,\n      v.actor,\n      v.job_plan,\n      v.reply_target,\n      v.correlation_id\n    )\n  END AS audit_event_id,\n  v.approval_id,\n  v.reply_target\nFROM v;"
-		      },
-		      "id": "77",
-		      "name": "Insert SoR Audit Event (Approval Decision)",
-		      "type": "n8n-nodes-base.postgres",
-		      "typeVersion": 2,
-		      "position": [
-		        1460,
-		        560
-		      ],
-		      "continueOnFail": true
-		    },
-		    {
-		      "parameters": {
-		        "operation": "executeQuery",
-		        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    NULLIF(NULLIF('{{ $node[\"Build Approval Ack\"].json.approval_id ?? $node[\"Parse Approval Token\"].json.approval_id ?? \"\" }}',''), 'undefined')::uuid AS approval_id,\n    NULLIF('{{ String($node[\"Build Approval Ack\"].json.content ?? \"\").replace(/'/g, \"''\") }}', '') AS comment,\n    COALESCE(NULLIF('{{ JSON.stringify(($node[\"Validate Pending Approval\"].json?.actor) ?? ($node[\"Parse Approval Token\"].json?.actor) ?? {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Build Approval Ack\"].json.reply_target ?? {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target\n), upd AS (\n  SELECT\n    CASE\n      WHEN v.realm_key IS NULL OR v.realm_key = '' OR v.approval_id IS NULL THEN NULL\n      ELSE itsm.aiops_update_approval_comment(\n        v.realm_key,\n        v.approval_id,\n        v.comment\n      )\n    END AS approval_id\n  FROM v\n), ins AS (\n  SELECT\n    CASE\n      WHEN v.realm_key IS NULL OR v.realm_key = '' OR v.approval_id IS NULL THEN NULL\n      ELSE itsm.aiops_insert_approval_comment_audit_event(\n        v.realm_key,\n        v.approval_id,\n        v.comment,\n        v.actor,\n        v.reply_target\n      )\n    END AS audit_event_id\n  FROM v\n)\nSELECT (SELECT approval_id FROM upd) AS approval_id, (SELECT audit_event_id FROM ins) AS audit_event_id;"
-		      },
-		      "id": "78",
-		      "name": "Upsert SoR Approval Comment",
-		      "type": "n8n-nodes-base.postgres",
-		      "typeVersion": 2,
-		      "position": [
-		        1880,
-		        760
-		      ],
-		      "continueOnFail": true
-		    }
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    NULLIF(NULLIF('{{ $node[\"Parse Approval Token\"].json.approval_id }}',''), 'undefined')::uuid AS approval_id,\n    NULLIF(NULLIF('{{ $node[\"Validate Pending Approval\"].json.context_id }}',''), 'undefined')::uuid AS context_id,\n    LOWER('{{ String($node[\"Validate Pending Approval\"].json.decision || \"\").replace(/'/g, \"''\") }}') AS decision,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Validate Pending Approval\"].json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Validate Pending Approval\"].json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS job_plan,\n    COALESCE(NULLIF('{{ JSON.stringify(($node[\"Load Context\"].json.reply_target || $node[\"Load Context\"].json?.[0]?.reply_target || {})).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($node[\"Validate Pending Approval\"].json.job_plan?.trace_id ?? $node[\"Validate Pending Approval\"].json.context_id ?? \"\").replace(/'/g, \"''\") }}', '') AS correlation_id\n)\nSELECT\n  CASE\n    WHEN v.realm_key IS NULL OR v.realm_key = '' OR v.approval_id IS NULL OR v.context_id IS NULL THEN NULL\n    ELSE itsm.aiops_upsert_approval_decision(\n      v.realm_key,\n      v.approval_id,\n      v.context_id,\n      v.decision,\n      NULLIF(v.actor #>> '{email}', ''),\n      v.actor,\n      v.job_plan,\n      v.reply_target,\n      v.correlation_id,\n      NOW()\n    )\n  END AS approval_id\nFROM v;"
+      },
+      "id": "76",
+      "name": "Upsert SoR Approval (itsm.approval)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        560
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    NULLIF(NULLIF('{{ $node[\"Parse Approval Token\"].json.approval_id }}',''), 'undefined')::uuid AS approval_id,\n    LOWER('{{ String($node[\"Validate Pending Approval\"].json.decision || \"\").replace(/'/g, \"''\") }}') AS decision,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Validate Pending Approval\"].json.actor || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Validate Pending Approval\"].json.job_plan || {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS job_plan,\n    COALESCE(NULLIF('{{ JSON.stringify(($node[\"Load Context\"].json.reply_target || $node[\"Load Context\"].json?.[0]?.reply_target || {})).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target,\n    NULLIF('{{ String($node[\"Validate Pending Approval\"].json.job_plan?.trace_id ?? $node[\"Validate Pending Approval\"].json.context_id ?? \"\").replace(/'/g, \"''\") }}', '') AS correlation_id\n)\nSELECT\n  CASE\n    WHEN v.realm_key IS NULL OR v.realm_key = '' OR v.approval_id IS NULL THEN NULL\n    ELSE itsm.aiops_insert_approval_decision_audit_event(\n      v.realm_key,\n      v.approval_id,\n      v.decision,\n      v.actor,\n      v.job_plan,\n      v.reply_target,\n      v.correlation_id\n    )\n  END AS audit_event_id,\n  v.approval_id,\n  v.reply_target\nFROM v;"
+      },
+      "id": "77",
+      "name": "Insert SoR Audit Event (Approval Decision)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        560
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH v AS (\n  SELECT\n    NULLIF('{{ String($env.N8N_OBSERVER_REALM ?? $env.N8N_REALM ?? $env.ZULIP_REALM ?? \"default\").replace(/'/g, \"''\") }}','') AS realm_key,\n    NULLIF(NULLIF('{{ $node[\"Build Approval Ack\"].json.approval_id ?? $node[\"Parse Approval Token\"].json.approval_id ?? \"\" }}',''), 'undefined')::uuid AS approval_id,\n    NULLIF('{{ String($node[\"Build Approval Ack\"].json.content ?? \"\").replace(/'/g, \"''\") }}', '') AS comment,\n    COALESCE(NULLIF('{{ JSON.stringify(($node[\"Validate Pending Approval\"].json?.actor) ?? ($node[\"Parse Approval Token\"].json?.actor) ?? {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS actor,\n    COALESCE(NULLIF('{{ JSON.stringify($node[\"Build Approval Ack\"].json.reply_target ?? {}).replace(/'/g, \"''\") }}', 'undefined')::jsonb, '{}'::jsonb) AS reply_target\n), upd AS (\n  SELECT\n    CASE\n      WHEN v.realm_key IS NULL OR v.realm_key = '' OR v.approval_id IS NULL THEN NULL\n      ELSE itsm.aiops_update_approval_comment(\n        v.realm_key,\n        v.approval_id,\n        v.comment\n      )\n    END AS approval_id\n  FROM v\n), ins AS (\n  SELECT\n    CASE\n      WHEN v.realm_key IS NULL OR v.realm_key = '' OR v.approval_id IS NULL THEN NULL\n      ELSE itsm.aiops_insert_approval_comment_audit_event(\n        v.realm_key,\n        v.approval_id,\n        v.comment,\n        v.actor,\n        v.reply_target\n      )\n    END AS audit_event_id\n  FROM v\n)\nSELECT (SELECT approval_id FROM upd) AS approval_id, (SELECT audit_event_id FROM ins) AS audit_event_id;"
+      },
+      "id": "78",
+      "name": "Upsert SoR Approval Comment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        1880,
+        760
+      ],
+      "continueOnFail": true
+    }
   ],
   "connections": {
     "Webhook (Approval Confirm)": {

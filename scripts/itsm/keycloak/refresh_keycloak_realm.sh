@@ -1231,6 +1231,15 @@ run_client_provisioning() {
             fi
           fi
 
+          if [[ "${SERVICE_NAME}" == "gitlab" && -z "${USER_REDIRECT_URIS:-}" ]]; then
+            if (( ${#REALMS_TO_PROCESS[@]} == 1 )); then
+              REDIRECT_URIS="${ROOT_URL}/users/auth/openid_connect/callback"
+            else
+              realm_suffix="$(printf '%s' "${KEYCLOAK_REALM}" | sed -E 's/[^0-9A-Za-z_-]+/_/g')"
+              REDIRECT_URIS="${ROOT_URL}/users/auth/openid_connect_keycloak_${realm_suffix}/callback"
+            fi
+          fi
+
           client_internal_id="$(ensure_client "${token}")"
           if [[ "${KEYCLOAK_SKIP_CURRENT_SERVICE}" == "true" ]]; then
             echo "[warn] Skipping ${SERVICE_NAME} in realm '${KEYCLOAK_REALM}' because Keycloak returned 502." >&2
@@ -1396,9 +1405,9 @@ run_client_provisioning() {
           default_redirect="${ROOT_URL}/auth_oauth/signin"
           ;;
         gitlab)
-          # Allow multiple GitLab OmniAuth provider callback URLs without re-registering each one.
-          # Keycloak wildcard matching expects '*' at the end of the URI pattern, so match the whole /users/auth/ path prefix.
-          default_redirect="${ROOT_URL}/users/auth/*"
+          default_redirect="${ROOT_URL}/users/auth/openid_connect/callback"
+          CLIENT_NAME="${USER_CLIENT_NAME:-GitLab}"
+          SERVICE_ACCOUNTS_ENABLED="${USER_SERVICE_ACCOUNTS_ENABLED:-false}"
           ;;
         grafana)
           default_redirect="${ROOT_URL}/login/generic_oauth,${ROOT_URL}/login/generic_oauth/*"

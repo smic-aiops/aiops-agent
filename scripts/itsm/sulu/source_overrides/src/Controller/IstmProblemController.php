@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\IstmSor\Entity\IstmProblem;
 use App\ListBuilder\IstmDoctrineListBuilderFactory;
 use App\Service\IstmSorRlsContext;
+use App\Service\IstmCoreWriter;
 use FOS\RestBundle\View\ViewHandlerInterface;
 use Sulu\Component\Rest\AbstractRestController;
 use Sulu\Component\Rest\ListBuilder\Doctrine\DoctrineListBuilder;
@@ -21,6 +22,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 final class IstmProblemController extends AbstractRestController
 {
+    use IstmWritableControllerTrait;
     private const LIST_KEY = 'itsm_problems';
     private const SECURITY_CONTEXT = 'app.itsm.problems';
 
@@ -32,6 +34,7 @@ final class IstmProblemController extends AbstractRestController
         private readonly RestHelperInterface $restHelper,
         private readonly SecurityCheckerInterface $securityChecker,
         private readonly IstmSorRlsContext $rlsContext,
+        private readonly IstmCoreWriter $coreWriter,
     ) {
         parent::__construct($viewHandler, $tokenStorage);
     }
@@ -86,4 +89,8 @@ final class IstmProblemController extends AbstractRestController
             'updatedAt' => $problem->getUpdatedAt()->format(DATE_ATOM),
         ]));
     }
+
+    public function postAction(Request $request): Response { return $this->createResource($request, 'problem'); }
+    public function putAction(Request $request, string $id): Response { return $this->updateResource($request, 'problem', $id); }
+    public function deleteAction(Request $request, string $id): Response { return $this->deleteResource($request, 'problem', $id); }
 }

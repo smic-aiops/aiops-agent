@@ -24,6 +24,9 @@ Service Request（サービスリクエスト系ワークフロー）が対象�
 | IQ-WSR-DEP-001 | 同期の dry-run | コマンド | `N8N_DRY_RUN=true` で差分が表示され、エラーがない |
 | IQ-WSR-DEP-002 | ワークフロー同期（upsert） | コマンド | 同期が成功し、n8n 上に反映される |
 | IQ-WSR-EXT-001 | GitLab 同期テスト webhook 疎通 | HTTP | `ok=true` を含む応答が返る |
+| IQ-WSR-EXT-002 | Suluバージョンデプロイのセルフテスト疎通 | HTTP | 非破壊dry-runで`ok=true`を含む応答が返る |
+| IQ-WSR-EXT-003 | Suluソースバージョン比較のセルフテスト疎通 | HTTP | 比較元・比較先タグの分析結果と修正候補が返る |
+| IQ-WSR-EXT-004 | Sulu RFCソース分析のセルフテスト疎通 | HTTP | RFCから対象バージョンが抽出され、ECR push計画がdry-runで返る |
 
 ## 実行手順
 
@@ -47,5 +50,4 @@ apps/workflow_manager/service_request/scripts/run_oq.sh --dry-run
 
 ## 合否判定（最低限）
 
-- 同期が成功し、代表テスト webhook（service-catalog-sync）が疎通できること
-
+- 同期が成功し、代表テスト webhook（service-catalog-sync、Sulu version deploy、Sulu source version compare、Sulu RFC source analysis）が疎通できること
